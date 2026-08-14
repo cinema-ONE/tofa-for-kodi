@@ -29,9 +29,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # v7 for both: the v4/v5 pair declares `using: node20`, and the runners
+      # now force those onto node24 with a deprecation warning on every run.
+      # Pinned to the major tag so patches arrive without a commit here.
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
