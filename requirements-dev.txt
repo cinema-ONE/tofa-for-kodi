@@ -1,0 +1,14 @@
+# Development only. NOTHING here is needed to run the add-on -- Kodi ships
+# its own Python and the add-on imports only the standard library plus
+# `script.module.requests`, which Kodi resolves as an add-on dependency.
+#
+# These are what the tools in tools/ need: the asset generators draw with
+# Pillow, rasterise SVG through cairosvg or resvg, and build the pairing QR
+# with segno. Versions are the ones the current assets were generated with,
+# floored rather than pinned -- a generator that draws a different image on a
+# newer Pillow would show up as a diff in the committed PNG, which is the
+# check that matters.
+Pillow>=12.3.0
+cairosvg>=2.9.0
+resvg_py>=0.3.4
+segno>=1.6.6

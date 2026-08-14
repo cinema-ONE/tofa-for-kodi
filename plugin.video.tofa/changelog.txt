@@ -1,0 +1,53 @@
+0.9.2
+- Forcing a quality below Original no longer costs you surround. The server
+  was being asked for its default stereo AAC; it now delivers E-AC-3 5.1 where
+  your audio output can take it, at the same bitrate. On a stereo output with
+  no passthrough nothing changes, which is the right answer there.
+- Choosing "Original" is now told to the server as a deliberate choice rather
+  than looking like no choice at all.
+- The audio track no longer comes out in the wrong language when the app
+  cannot reach the server for a moment at the start of playback. Your language
+  preferences are remembered on the device and used when that happens.
+- An explicit subtitle pick no longer stops your preferred audio language from
+  being applied, and the reverse.
+- Artwork is cleaned up on a schedule instead of accumulating. Settings ->
+  This Device gains a storage limit for it and a way to clear it now.
+- Artwork downloads once instead of repeatedly on Browse, Search, Discover,
+  filmographies, episode lists and the player's episode drawer.
+
+0.9.1
+- Browse no longer jumps back to the first row while you scroll. The grid is
+  allocated to the library's full length up front and fills in as you go, so
+  the scrollbar and count describe the whole library rather than the first
+  page.
+- Pressing Back now returns to the item you opened, in every section. Opening
+  a title from Home used to leave the add-on altogether when you backed out.
+- Down from the top menu enters Browse's grid instead of its left menu.
+- Discover: a title the server does not hold now has a real detail page --
+  artwork, scores, synopsis, an "In cinemas" badge, and only the actions that
+  apply to it.
+- Detail shows four lines of synopsis instead of three.
+- The PIN can be typed on a keyboard or number pad instead of picking digits
+  one at a time.
+- Returning to playback from Kodi's own menu comes back to this add-on's
+  player rather than Kodi's.
+- Fixed a startup fault that could stop playback and delay every launch.
+
+0.9.0
+- First versioned release. Every major screen is built: Home, Browse,
+  Discover, Search, Detail, the player, and Settings.
+- Home, Browse, Discover and Search share one persistent window, so moving
+  between them keeps its place instead of rebuilding.
+- Detail: hero, episode grid with season sidebar, cast and filmography,
+  more-like-this, and per-file Edition, Options and playback actions.
+- Player: transport, scrubber with scrub thumbnails, chapter and
+  intro/outro skipping, audio and subtitle selection, Next Up, and a stats
+  overlay.
+- Settings: six pages covering account, playback, audio and subtitles,
+  appearance, privacy, and this device. Kodi's own settings dialog is no
+  longer used.
+- Playback negotiates DirectPlay/DirectFile, so Dolby Vision, TrueHD and
+  DTS-HD passthrough and refresh-rate matching reach Kodi's VideoPlayer
+  untouched.
+- Interface fonts and icons are bundled and installed into the active skin
+  at runtime, so the add-on looks the same on any skin.

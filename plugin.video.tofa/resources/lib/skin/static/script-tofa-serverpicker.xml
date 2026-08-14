@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "Pick where to watch from." server picker, consumed by
+  resources/lib/windows/serverpicker.py's ServerPickerDialog.
+
+  A SCREEN, not a dialog row. Picking where your library comes from is not
+  the same weight of choice as picking an audio track, and the real Apple TV
+  app gives it its own full page (build 17, captured 2026-08-13). This
+  replaces the PickerDialog list the switch used to borrow.
+
+  Geometry is measured off that capture, at 1920x1080, one number per line:
+
+    eyebrow      ink y 284-297, centred, accent
+    headline     ink y 342-398 (cap 53), centred
+    card         (312,487) 376x177, 2px rim, radius ~14
+      icon       ink 40x26 centred on (361,529)
+      CURRENT    ink right edge 659 (28 in from the card), cap 9
+      name       ink left 339 (27 in), cap 21, top 571
+      server id  mono, ink y 621-633, middle-ellipsised to fit
+    back pill    (800,897) 320x67, fill ~6% white
+
+  The row is LEFT-aligned at x=312, not centred per count the way
+  script-tofa-profile.xml's avatars are; the app anchors the first card
+  there whatever the server count is, so one list serves every count and a
+  long list simply scrolls.
+
+  Fonts and colours follow script-tofa-profile.xml's conventions, with one
+  deliberate departure. The app's eyebrow is small caps TRACKED wide (cap 14
+  over 190px); Kodi has no letter-spacing, so the same size set solid read as
+  too small on screen. It is set in caption/25 instead: taller than the
+  reference, and the nearest thing to the presence the tracking gives it.
+-->
+<window>
+    <defaultcontrol always="true">666</defaultcontrol>
+    <backgroundcolor>0x00000000</backgroundcolor>
+    <coordinates>
+        <system>0</system>
+    </coordinates>
+    <controls>
+        <!-- Full-bleed backdrop, shared with the sign-in and profile screens. -->
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <colordiffuse>0xFF030B10</colordiffuse>
+            <texture>white-square.png</texture>
+        </control>
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <texture>bg-stars.png</texture>
+        </control>
+
+        <control type="label">
+            <posx>0</posx>
+            <posy>275</posy>
+            <width>1920</width>
+            <height>30</height>
+            <align>center</align>
+            <aligny>center</aligny>
+            <font>tofa_font_caption</font>
+            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+            <label>$INFO[Window.Property(eyebrow)]</label>
+        </control>
+        <control type="label">
+            <posx>0</posx>
+            <posy>330</posy>
+            <width>1920</width>
+            <height>80</height>
+            <align>center</align>
+            <aligny>center</aligny>
+            <font>tofa_font_hero</font>
+            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+            <label>$INFO[Window.Property(heading)]</label>
+        </control>
+
+        <!-- One card per server. Item pitch is the 376 card plus a 32 gap;
+             the capture only ever showed one server, so the gap is this
+             skin's own number and the card is the measured one. -->
+        <control type="list" id="700">
+            <posx>312</posx>
+            <posy>487</posy>
+            <width>1528</width>
+            <height>177</height>
+            <orientation>horizontal</orientation>
+            <onup>720</onup>
+            <ondown>720</ondown>
+            <itemlayout width="408" height="177">
+                <control type="image">
+                    <posx>0</posx><posy>0</posy><width>376</width><height>177</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
+                    <texture border="14">rounded-14.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx><posy>0</posy><width>376</width><height>177</height>
+                    <colordiffuse>0x33FFFFFF</colordiffuse>
+                    <texture border="14">rounded-14-outline.png</texture>
+                </control>
+                <control type="label">
+                    <posx>25</posx><posy>18</posy><width>48</width><height>48</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>$INFO[ListItem.Property(icon_glyph)]</label>
+                </control>
+                <control type="label">
+                    <posx>176</posx><posy>23</posy><width>172</width><height>34</height>
+                    <align>right</align><aligny>center</aligny>
+                    <font>tofa_font_top_result_eyebrow</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(current_label)]</label>
+                </control>
+                <control type="label">
+                    <posx>27</posx><posy>77</posy><width>321</width><height>34</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="label">
+                    <posx>27</posx><posy>123</posy><width>321</width><height>34</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_stats_value</font>
+                    <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                    <label>$INFO[ListItem.Property(server_id)]</label>
+                </control>
+            </itemlayout>
+            <focusedlayout width="408" height="177">
+                <control type="image">
+                    <posx>0</posx><posy>0</posy><width>376</width><height>177</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
+                    <texture border="14">rounded-14.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx><posy>0</posy><width>376</width><height>177</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="14">rounded-14-outline.png</texture>
+                </control>
+                <control type="label">
+                    <posx>25</posx><posy>18</posy><width>48</width><height>48</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(icon_glyph)]</label>
+                </control>
+                <control type="label">
+                    <posx>176</posx><posy>23</posy><width>172</width><height>34</height>
+                    <align>right</align><aligny>center</aligny>
+                    <font>tofa_font_top_result_eyebrow</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(current_label)]</label>
+                </control>
+                <control type="label">
+                    <posx>27</posx><posy>77</posy><width>321</width><height>34</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="label">
+                    <posx>27</posx><posy>123</posy><width>321</width><height>34</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_stats_value</font>
+                    <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                    <label>$INFO[ListItem.Property(server_id)]</label>
+                </control>
+            </focusedlayout>
+        </control>
+
+        <!-- Back pill: same understated capsule as the profile screen's
+             Cancel, with the app's leading chevron. -->
+        <control type="group">
+            <posx>800</posx>
+            <posy>896</posy>
+            <control type="image">
+                <width>320</width><height>68</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <texture border="34">capsule-h68.png</texture>
+            </control>
+            <control type="image">
+                <width>320</width><height>68</height>
+                <colordiffuse>0xFFFFFFFF</colordiffuse>
+                <texture border="34">capsule-h68-outline.png</texture>
+                <visible>Control.HasFocus(720)</visible>
+            </control>
+            <control type="label">
+                <posx>108</posx><posy>14</posy><width>40</width><height>40</height>
+                <align>center</align><aligny>center</aligny>
+                <font>tofa_font_icons_24</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(back_glyph)]</label>
+            </control>
+            <control type="label">
+                <posx>145</posx><posy>17</posy><width>160</width><height>34</height>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(back_label)]</label>
+            </control>
+            <control type="button" id="720">
+                <posx>0</posx><posy>0</posy><width>320</width><height>68</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <onup>700</onup>
+                <ondown>700</ondown>
+                <label></label>
+            </control>
+        </control>
+
+        <!-- kodigui framework sentinel; see script-tofa-signin.xml's identical control. -->
+        <control type="label" id="666">
+            <visible>false</visible>
+            <width>1</width>
+            <height>1</height>
+        </control>
+    </controls>
+</window>

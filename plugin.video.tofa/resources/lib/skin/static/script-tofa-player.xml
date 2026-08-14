@@ -1,0 +1,3503 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  tofa's playback-control window, consumed by resources/lib/windows/player.py.
+
+  Control 9000 (videowindow) must stay the first control in paint order;
+  it's the only thing that renders live video in a plain WindowXML.
+  Everything else here is OSD chrome layered on top of it.
+
+  GEOMETRY IS MEASURED, NOT INVENTED. Every coordinate below comes from
+  internal-docs/atv-reference/player-measurements.md, which pixel-measures
+  the real Apple TV player: 20px side margins, an 11px scrubber track at
+  y=937, a 228x88 transport capsule at (20,972), a 302x72 utility capsule
+  at (1598,980), button pitch 68 left / 70 right. Do not "tidy" these to
+  rounder numbers.
+
+  AND THERE IS NO SCRIM. That was A/B tested across the chrome's own
+  auto-hide (two frames 1.1s apart, same shot): every row outside the
+  scrubber band is bit-identical with the chrome up and down. The old
+  fade-bottom.png scrim here was our invention. Text legibility over bright
+  video is carried by <shadowcolor> instead, which is the honest Kodi
+  equivalent of tvOS's soft text shadow.
+
+  Colours are literal hex or $INFO[Window.Property(...)], never a named
+  <constant>: this add-on ships its own skin directory but is never the
+  ACTIVE skin, and Kodi only loads a skin's Includes.xml when that skin is
+  active, so a bare constant name here resolves to nothing at all. This
+  screen is also still outside the resources/lib/skin/ render pipeline, so
+  it can't use tokens.py either — the literals below are annotated with
+  the token they mirror.
+-->
+<window type="dialog">
+    <defaultcontrol always="true">9001</defaultcontrol>
+    <coordinates>
+        <system>0</system>
+    </coordinates>
+    <controls>
+        <!-- NO videowindow control, and no background. This is a DIALOG that
+             overlays Kodi's own fullscreen video, so Kodi renders the picture
+             (and, crucially, composites the subtitles) underneath us. The old
+             <control type="videowindow" id="9000"> here rendered video INTO
+             this window, which on AMLogic put our window on top of the layer
+             Kodi draws subtitles in and made them invisible. See player.py's
+             module docstring. -->
+
+        <!-- The bare player surface. Focus parks here whenever the chrome is
+             hidden, so onAction() sees every key press with no focus engine
+             in the way: select toggles play/pause, left/right seek +/-10s,
+             anything else reveals the chrome (10.4). A 1x1 button rather
+             than "no focus at all" because a Kodi window with nothing
+             focusable routes directional keys to its own default control,
+             which would fight the reveal. -->
+        <control type="button" id="9001">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1</width>
+            <height>1</height>
+            <texturefocus>transparent-6px.png</texturefocus>
+            <texturenofocus>transparent-6px.png</texturenofocus>
+            <label></label>
+        </control>
+
+        <!-- ============================ transport chrome ============= -->
+        <control type="group" id="9100">
+            <visible>String.IsEqual(Window.Property(player_chrome),1)</visible>
+            <animation effect="fade" start="0" end="100" time="250">WindowOpen</animation>
+            <animation effect="fade" start="0" end="100" time="250">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="220">Hidden</animation>
+
+            <!-- Title block. Left edge 44 — deliberately NOT the 20 the
+                 scrubber uses; the reference app really does use two
+                 margins here. posy is back-solved from the measured INK
+                 top (46 / 104), since a Kodi label's box top sits above
+                 the cap by the font's own ascender slack. -->
+            <control type="label" id="9101">
+                <posx>44</posx>
+                <posy>32</posy>
+                <width>1300</width>
+                <height>60</height>
+                <font>tofa_font_player_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(player_title)]</label>
+            </control>
+            <control type="label" id="9102">
+                <posx>44</posx>
+                <posy>96</posy>
+                <width>1300</width>
+                <height>40</height>
+                <font>tofa_font_player_subtitle</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(player_subtitle)]</label>
+            </control>
+
+            <!-- ============================ scrubber ==================== -->
+            <!-- Groove: the 20px band the 11px track sits inside. Measured
+                 as a distinctly dimmer capsule around the track, not a
+                 shadow. -->
+            <control type="image">
+                <posx>20</posx>
+                <posy>932</posy>
+                <width>1880</width>
+                <height>20</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST -->
+                <texture border="10">capsule-h20.png</texture>
+            </control>
+            <!-- Track, idle 14% / focused 24% (8.2). Two images rather than
+                 one with a conditional colordiffuse: Kodi evaluates
+                 colordiffuse once at load for a literal, so the swap has to
+                 be a visibility swap. -->
+            <control type="image">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>1880</width>
+                <height>11</height>
+                <colordiffuse>0x24FFFFFF</colordiffuse>
+                <texture border="5">capsule-h11.png</texture>
+                <visible>!Control.HasFocus(9110)</visible>
+            </control>
+            <control type="image">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>1880</width>
+                <height>11</height>
+                <colordiffuse>0x3DFFFFFF</colordiffuse>
+                <texture border="5">capsule-h11.png</texture>
+                <visible>Control.HasFocus(9110)</visible>
+            </control>
+            <!-- 8.2's buffered range: "buffered range accent 20%", behind
+                 the fill so the played part still reads as the brighter
+                 one. Width comes from Kodi's Player.ProgressCache, which is
+                 how far into the FILE the cache reaches, as a percent. -->
+            <control type="image" id="9105">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>11</width>
+                <height>11</height>
+                <colordiffuse>$INFO[Window.Property(accent_buffered)]</colordiffuse>
+                <texture border="5">capsule-h11.png</texture>
+                <visible>!String.IsEmpty(Window.Property(player_buffered))</visible>
+            </control>
+            <!-- Progress fill. Deliberately NOT Kodi's <control
+                 type="progress">: that control paints 2px white bands along
+                 the top and bottom of its own rect whatever its five
+                 textures are set to (found by bisection against a
+                 debug-coloured build; deleting the control removed the
+                 bands and changed nothing else), and it ignores a
+                 colordiffuse attribute on <midtexture>. A plain image whose
+                 WIDTH player.py sets each tick gives the same thing with
+                 the capsule's own rounded caps and no surprises. -->
+            <control type="image" id="9104">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>11</width>
+                <height>11</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="5">capsule-h11.png</texture>
+                <visible>!String.IsEmpty(Window.Property(player_progress))</visible>
+            </control>
+            <!-- ==================== 8.2 scrubber markers ============= -->
+            <!-- Chapter ticks (white 35%, 2 wide) and skip-segment ticks
+                 (amber, 3 wide, NOT accent: 8.2 calls it a semantic
+                 "chapter of note"). Both widths measured off the real Apple
+                 TV app; the segment one is a TICK AT THE START, not a band
+                 covering the segment's duration. See _render_scrub_markers.
+                 Kodi cannot loop, so a fixed pool is declared here and
+                 _render_scrub_markers() places, sizes and hides them; every
+                 coordinate below is a placeholder. Painted after the fill
+                 and before the head, so a marker reads over the played part
+                 but never covers the head itself. -->
+            <control type="image" id="9860">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>3</width>
+                <height>11</height>
+                <colordiffuse>0xCCF8C518</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9861">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>3</width>
+                <height>11</height>
+                <colordiffuse>0xCCF8C518</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9862">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>3</width>
+                <height>11</height>
+                <colordiffuse>0xCCF8C518</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9863">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>3</width>
+                <height>11</height>
+                <colordiffuse>0xCCF8C518</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9864">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>3</width>
+                <height>11</height>
+                <colordiffuse>0xCCF8C518</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9865">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>3</width>
+                <height>11</height>
+                <colordiffuse>0xCCF8C518</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9820">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9821">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9822">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9823">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9824">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9825">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9826">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9827">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9828">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9829">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9830">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9831">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9832">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9833">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9834">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9835">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9836">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9837">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9838">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9839">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9840">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9841">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9842">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9843">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9844">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9845">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9846">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9847">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9848">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9849">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9850">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9851">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9852">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9853">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9854">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9855">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9856">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9857">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9858">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9859">
+                <posx>20</posx>
+                <posy>937</posy>
+                <width>2</width>
+                <height>11</height>
+                <colordiffuse>0x59FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <!-- Scrub head, 4x17 idle / 6x22 while a scrub is pending
+                 (8.2). Both are exact-size textures and BOTH are moved by
+                 player.py's setPosition() — x is the only thing that
+                 changes, so they're kept as two controls rather than one
+                 that swaps texture, which Kodi cannot resize. -->
+            <control type="image" id="9106">
+                <posx>20</posx>
+                <posy>934</posy>
+                <width>4</width>
+                <height>17</height>
+                <texture>scrub-head.png</texture>
+                <visible>Control.HasFocus(9110) + !String.IsEqual(Window.Property(player_scrubbing),1)</visible>
+            </control>
+            <control type="image" id="9107">
+                <posx>19</posx>
+                <posy>931</posy>
+                <width>6</width>
+                <height>22</height>
+                <texture>scrub-head-drag.png</texture>
+                <visible>String.IsEqual(Window.Property(player_scrubbing),1)</visible>
+            </control>
+
+            <!-- Elapsed / remaining. Left-aligned to the track's own left
+                 edge and right-aligned to its right edge (measured: the
+                 label boxes line up with the track, the ink is inset by
+                 the glyphs' own side bearing). Kodi's own Player.Time /
+                 Player.TimeRemaining tick without any Python help; the
+                 pending-scrub target replaces the elapsed slot, which is
+                 what the reference app does too. -->
+            <control type="label" id="9108">
+                <posx>20</posx>
+                <posy>894</posy>
+                <width>400</width>
+                <height>32</height>
+                <font>tofa_font_caption</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(player_elapsed)]</label>
+                <visible>!String.IsEqual(Window.Property(player_scrubbing),1)</visible>
+            </control>
+            <control type="label" id="9109">
+                <posx>20</posx>
+                <posy>894</posy>
+                <width>400</width>
+                <height>32</height>
+                <font>tofa_font_caption</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(player_scrub_time)]</label>
+                <visible>String.IsEqual(Window.Property(player_scrubbing),1)</visible>
+            </control>
+            <control type="label">
+                <posx>1900</posx>
+                <posy>894</posy>
+                <width>400</width>
+                <height>32</height>
+                <align>right</align>
+                <font>tofa_font_caption</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(player_remaining)]</label>
+            </control>
+            <!-- 8.2's thumbnail preview: a 320x180 bubble, radius 8, black
+                 85% fill and a white ~20% hairline, sitting 64 above the
+                 bar. player.py re-centres the whole cluster per tick.
+
+                 The image inside is the WHOLE 10x10 sprite sheet the server
+                 serves, deliberately far larger than the bubble and offset
+                 so the wanted cell lands in the window: Kodi has no source
+                 rectangle on a texture, but a grouplist clips its children,
+                 which is enough. The sheet is a local file, not a URL,
+                 because Kodi loads textures itself and cannot send the
+                 profile header the endpoint demands.
+
+                 Everything here is gated on the sheet being on disk;
+                 until then (and for any file the server has not run
+                 QuickView over) 8.2's timecode-only fallback below carries
+                 the scrub on its own, which is what the reference app
+                 renders too. -->
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(player_scrubbing),1) + !String.IsEmpty(Window.Property(player_preview_ready))</visible>
+                <!-- The reference app draws a real drop shadow here, and
+                     unlike 8.3's rail this bubble sits over BARE video with
+                     no scrim to swallow one. -->
+                <control type="image" id="9118">
+                    <posx>0</posx>
+                    <posy>710</posy>
+                    <width>400</width>
+                    <height>260</height>
+                    <colordiffuse>0x8C000000</colordiffuse>
+                    <texture>preview-shadow.png</texture>
+                </control>
+                <control type="image" id="9112">
+                    <posx>0</posx>
+                    <posy>750</posy>
+                    <width>320</width>
+                    <height>180</height>
+                    <colordiffuse>0xD9000000</colordiffuse>
+                    <texture border="8">rounded-8.png</texture>
+                </control>
+                <control type="group" id="9116">
+                    <posx>0</posx>
+                    <posy>750</posy>
+                <control type="grouplist">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>320</width>
+                    <height>180</height>
+                    <orientation>vertical</orientation>
+                    <control type="group">
+                        <width>320</width>
+                        <height>180</height>
+                        <!-- Two copies of the same sheet, one masked. Kodi
+                             rounds a corner only with a diffuse, and a
+                             diffuse covers the whole control, so the mask
+                             is a GRID of rounded rects, one per cell, and it
+                             only lines up when the server's grid really is
+                             the 10x10 of 320x180 it was built for. Any other
+                             track falls back to square corners rather than
+                             rounding in the wrong places. -->
+                        <control type="image" id="9114">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>3200</width>
+                            <height>1800</height>
+                            <aspectratio>stretch</aspectratio>
+                            <texture diffuse="tile-grid-mask.png">$INFO[Window.Property(player_preview_image)]</texture>
+                            <visible>!String.IsEmpty(Window.Property(player_preview_masked))</visible>
+                        </control>
+                        <control type="image" id="9117">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>3200</width>
+                            <height>1800</height>
+                            <aspectratio>stretch</aspectratio>
+                            <texture>$INFO[Window.Property(player_preview_image)]</texture>
+                            <visible>String.IsEmpty(Window.Property(player_preview_masked))</visible>
+                        </control>
+                    </control>
+                </control>
+                </control>
+                <control type="image" id="9115">
+                    <posx>0</posx>
+                    <posy>750</posy>
+                    <width>320</width>
+                    <height>180</height>
+                    <colordiffuse>0x33FFFFFF</colordiffuse>
+                    <texture border="8">rounded-8-outline.png</texture>
+                </control>
+            </control>
+            <!-- Floating scrub timecode, ~67px above the track top, centred
+                 on the head. 8.2's timecode-only fallback, and what the
+                 reference app renders on its own when there is no
+                 thumbnail: bare shadowed text, not on a pill. -->
+            <!-- 8.2's scrub timecode. Left-aligned, not centred: when
+                 there is a chapter name beside it the pair is centred as a
+                 unit by player.py, which needs both to start where it says.
+                 -->
+            <control type="label" id="9119">
+                <posx>0</posx>
+                <posy>840</posy>
+                <width>420</width>
+                <height>32</height>
+                <align>left</align>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(player_scrub_chapter)]</label>
+                <visible>String.IsEqual(Window.Property(player_scrubbing),1)</visible>
+            </control>
+            <control type="label" id="9111">
+                <posx>0</posx>
+                <posy>840</posy>
+                <width>240</width>
+                <height>32</height>
+                <align>left</align>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(player_scrub_time)]</label>
+                <visible>String.IsEqual(Window.Property(player_scrubbing),1)</visible>
+            </control>
+            <!-- The scrubber's focus target. Full track width, 32 tall
+                 (8.2's 28pt hit target), transparent: the visible state is
+                 carried by the track/head controls above keying off
+                 Control.HasFocus(9110). -->
+            <control type="button" id="9110">
+                <posx>20</posx>
+                <posy>926</posy>
+                <width>1880</width>
+                <height>32</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <ondown>9121</ondown>
+            </control>
+
+            <!-- ======================= transport capsule ================ -->
+            <control type="image">
+                <posx>20</posx>
+                <posy>972</posy>
+                <width>228</width>
+                <height>88</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST -->
+                <texture border="44">capsule-h88.png</texture>
+            </control>
+            <control type="image">
+                <posx>20</posx>
+                <posy>972</posy>
+                <width>228</width>
+                <height>88</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>   <!-- SURFACE_RAISED -->
+                <texture border="44">capsule-h88-outline.png</texture>
+            </control>
+
+            <!-- -10s. The glyph is a bare circular arrow; the "10" is its
+                 own label centred in the arc, which is how SF's
+                 gobackward.10 and the reference app both read. -->
+            <control type="image">
+                <posx>40</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9120)</visible>
+            </control>
+            <control type="image">
+                <posx>40</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9120)</visible>
+            </control>
+            <control type="label">
+                <posx>40</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(transport_prev_color)]</textcolor>
+                <label>$INFO[Window.Property(transport_prev_glyph)]</label>
+                <visible>!Control.HasFocus(9120)</visible>
+            </control>
+            <control type="label">
+                <posx>40</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(transport_prev_glyph)]</label>
+                <visible>Control.HasFocus(9120)</visible>
+            </control>
+            <control type="label">
+                <posx>40</posx>
+                <posy>992</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_skip_seconds)]</label>
+                <visible>!Control.HasFocus(9120) + String.IsEmpty(Window.Property(player_is_episode))</visible>
+            </control>
+            <control type="label">
+                <posx>40</posx>
+                <posy>992</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(player_skip_seconds)]</label>
+                <visible>Control.HasFocus(9120) + String.IsEmpty(Window.Property(player_is_episode))</visible>
+            </control>
+            <control type="button" id="9120">
+                <posx>40</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+                <onleft>9120</onleft>
+                <onright>9121</onright>
+            </control>
+
+            <!-- Play/pause: the one prominent (68) button. Rest state
+                 already carries an accent RING even unfocused — the
+                 reference app draws it that way, it is the primary
+                 transport action. -->
+            <control type="image">
+                <posx>100</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="34">capsule-h68.png</texture>
+                <visible>Control.HasFocus(9121)</visible>
+            </control>
+            <control type="image">
+                <posx>100</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="34">capsule-h68-outline.png</texture>
+                <visible>Control.HasFocus(9121)</visible>
+            </control>
+            <control type="image">
+                <posx>100</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <texture border="34">capsule-h68-outline.png</texture>
+                <visible>!Control.HasFocus(9121)</visible>
+            </control>
+            <control type="label">
+                <posx>100</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE12E;</label>
+                <visible>String.IsEqual(Window.Property(player_state),playing) + !Control.HasFocus(9121)</visible>
+            </control>
+            <control type="label">
+                <posx>100</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE12E;</label>
+                <visible>String.IsEqual(Window.Property(player_state),playing) + Control.HasFocus(9121)</visible>
+            </control>
+            <control type="label">
+                <posx>103</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>!String.IsEqual(Window.Property(player_state),playing) + !Control.HasFocus(9121)</visible>
+            </control>
+            <control type="label">
+                <posx>103</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>!String.IsEqual(Window.Property(player_state),playing) + Control.HasFocus(9121)</visible>
+            </control>
+            <control type="button" id="9121">
+                <posx>100</posx>
+                <posy>982</posy>
+                <width>68</width>
+                <height>68</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+                <onleft>9120</onleft>
+                <onright>9122</onright>
+            </control>
+
+            <!-- +10s -->
+            <control type="image">
+                <posx>176</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9122)</visible>
+            </control>
+            <control type="image">
+                <posx>176</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9122)</visible>
+            </control>
+            <control type="label">
+                <posx>176</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(transport_next_color)]</textcolor>
+                <label>$INFO[Window.Property(transport_next_glyph)]</label>
+                <visible>!Control.HasFocus(9122)</visible>
+            </control>
+            <control type="label">
+                <posx>176</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_36</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(transport_next_glyph)]</label>
+                <visible>Control.HasFocus(9122)</visible>
+            </control>
+            <control type="label">
+                <posx>176</posx>
+                <posy>992</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_skip_seconds)]</label>
+                <visible>!Control.HasFocus(9122) + String.IsEmpty(Window.Property(player_is_episode))</visible>
+            </control>
+            <control type="label">
+                <posx>176</posx>
+                <posy>992</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(player_skip_seconds)]</label>
+                <visible>Control.HasFocus(9122) + String.IsEmpty(Window.Property(player_is_episode))</visible>
+            </control>
+            <control type="button" id="9122">
+                <posx>176</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+                <onleft>9121</onleft>
+                <onright>9130</onright>
+            </control>
+
+            <!-- ======================== utility capsule ================= -->
+            <!-- Content-dependent, NOT a fixed four: the reference app shows
+                 only the buttons with a choice behind them, and the capsule
+                 sizes to fit (subtitles when subtitle tracks exist, audio
+                 when there is more than one, episodes when it is a TV
+                 episode, quality and stats always). Four captures in
+                 internal-docs/atv-reference/ show four, four, four and SIX.
+
+                 Every posx below is a PLACEHOLDER. _layout_utility_capsule()
+                 in player.py owns the real x of each control: the capsule is
+                 right-pinned at 1900 and grows leftward at pitch 70, so no
+                 coordinate here survives contact with a real title. -->
+            <control type="image" id="9145">
+                <posx>1598</posx>
+                <posy>980</posy>
+                <width>302</width>
+                <height>72</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST -->
+                <texture border="36">capsule-h72.png</texture>
+            </control>
+            <control type="image" id="9146">
+                <posx>1598</posx>
+                <posy>980</posy>
+                <width>302</width>
+                <height>72</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>   <!-- SURFACE_RAISED -->
+                <texture border="36">capsule-h72-outline.png</texture>
+            </control>
+
+            <!-- Subtitles -->
+            <control type="image" id="9150">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
+            </control>
+            <control type="image" id="9151">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
+            </control>
+            <control type="image" id="9152">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>String.IsEqual(Window.Property(player_util_9130),on)</visible>
+            </control>
+            <control type="label" id="9153">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE3A4;</label>
+                <visible>!Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
+            </control>
+            <control type="label" id="9154">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE3A4;</label>
+                <visible>Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
+            </control>
+            <control type="label" id="9155">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>&#xE3A4;</label>
+                <visible>String.IsEqual(Window.Property(player_util_9130),on)</visible>
+            </control>
+            <control type="button" id="9130">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+            </control>
+
+            <!-- Audio -->
+            <control type="image" id="9160">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9131) + !String.IsEqual(Window.Property(player_util_9131),on)</visible>
+            </control>
+            <control type="image" id="9161">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9131) + !String.IsEqual(Window.Property(player_util_9131),on)</visible>
+            </control>
+            <control type="image" id="9162">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>String.IsEqual(Window.Property(player_util_9131),on)</visible>
+            </control>
+            <control type="label" id="9163">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE1AB;</label>
+                <visible>!Control.HasFocus(9131) + !String.IsEqual(Window.Property(player_util_9131),on)</visible>
+            </control>
+            <control type="label" id="9164">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE1AB;</label>
+                <visible>Control.HasFocus(9131) + !String.IsEqual(Window.Property(player_util_9131),on)</visible>
+            </control>
+            <control type="label" id="9165">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>&#xE1AB;</label>
+                <visible>String.IsEqual(Window.Property(player_util_9131),on)</visible>
+            </control>
+            <control type="button" id="9131">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+            </control>
+
+            <!-- Episodes, 8.10. Lucide `list` -->
+            <control type="image" id="9170">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9134) + !String.IsEqual(Window.Property(player_util_9134),on)</visible>
+            </control>
+            <control type="image" id="9171">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9134) + !String.IsEqual(Window.Property(player_util_9134),on)</visible>
+            </control>
+            <control type="image" id="9172">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>String.IsEqual(Window.Property(player_util_9134),on)</visible>
+            </control>
+            <control type="label" id="9173">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE106;</label>
+                <visible>!Control.HasFocus(9134) + !String.IsEqual(Window.Property(player_util_9134),on)</visible>
+            </control>
+            <control type="label" id="9174">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE106;</label>
+                <visible>Control.HasFocus(9134) + !String.IsEqual(Window.Property(player_util_9134),on)</visible>
+            </control>
+            <control type="label" id="9175">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>&#xE106;</label>
+                <visible>String.IsEqual(Window.Property(player_util_9134),on)</visible>
+            </control>
+            <control type="button" id="9134">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+            </control>
+
+            <!-- Quality -->
+            <control type="image" id="9180">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9132) + !String.IsEqual(Window.Property(player_util_9132),on)</visible>
+            </control>
+            <control type="image" id="9181">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9132) + !String.IsEqual(Window.Property(player_util_9132),on)</visible>
+            </control>
+            <control type="image" id="9182">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>String.IsEqual(Window.Property(player_util_9132),on)</visible>
+            </control>
+            <control type="label" id="9183">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE29A;</label>
+                <visible>!Control.HasFocus(9132) + !String.IsEqual(Window.Property(player_util_9132),on)</visible>
+            </control>
+            <control type="label" id="9184">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE29A;</label>
+                <visible>Control.HasFocus(9132) + !String.IsEqual(Window.Property(player_util_9132),on)</visible>
+            </control>
+            <control type="label" id="9185">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>&#xE29A;</label>
+                <visible>String.IsEqual(Window.Property(player_util_9132),on)</visible>
+            </control>
+            <control type="button" id="9132">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+            </control>
+
+            <!-- Stats -->
+            <!-- Adjust (audio + subtitle sync). Geometry is a
+                 PLACEHOLDER: _layout_utility_capsule() owns the real
+                 x for every button in this capsule. -->
+            <control type="image" id="9136">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
+            </control>
+            <control type="image" id="9137">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
+            </control>
+            <control type="image" id="9138">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>String.IsEqual(Window.Property(player_util_9135),on)</visible>
+            </control>
+            <control type="label" id="9139">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE1B1;</label>
+                <visible>!Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
+            </control>
+            <control type="label" id="9140">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE1B1;</label>
+                <visible>Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
+            </control>
+            <control type="label" id="9141">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>&#xE1B1;</label>
+                <visible>String.IsEqual(Window.Property(player_util_9135),on)</visible>
+            </control>
+            <control type="button" id="9135">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+            </control>
+            <control type="image" id="9190">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9133) + !String.IsEqual(Window.Property(player_util_9133),on)</visible>
+            </control>
+            <control type="image" id="9191">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9133) + !String.IsEqual(Window.Property(player_util_9133),on)</visible>
+            </control>
+            <control type="image" id="9192">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>String.IsEqual(Window.Property(player_util_9133),on)</visible>
+            </control>
+            <control type="label" id="9193">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE038;</label>
+                <visible>!Control.HasFocus(9133) + !String.IsEqual(Window.Property(player_util_9133),on)</visible>
+            </control>
+            <control type="label" id="9194">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE038;</label>
+                <visible>Control.HasFocus(9133) + !String.IsEqual(Window.Property(player_util_9133),on)</visible>
+            </control>
+            <control type="label" id="9195">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>&#xE038;</label>
+                <visible>String.IsEqual(Window.Property(player_util_9133),on)</visible>
+            </control>
+            <control type="button" id="9133">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+            </control>
+        </control>
+
+        <!-- ============================ quick-seek toast ============= -->
+        <!-- 8.9: centred circle 140, black 62%, white 18% hairline, offset
+             TOWARD the seek direction (measured ~180px off centre on the
+             real app). Two whole copies rather than one control moved from
+             Python: the offset is the only difference and a visibility
+             swap costs nothing, while setPosition() on a group would race
+             the fade. -->
+        <control type="group" id="9200">
+            <visible>!String.IsEmpty(Window.Property(player_seek_toast))</visible>
+            <animation effect="fade" start="0" end="100" time="140">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="260">Hidden</animation>
+            <control type="group">
+                <posx>180</posx>
+                <visible>String.IsEqual(Window.Property(player_seek_toast),forward)</visible>
+                <control type="image">
+                    <posx>890</posx>
+                    <posy>470</posy>
+                    <width>140</width>
+                    <height>140</height>
+                    <colordiffuse>0x9E000000</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="label">
+                    <posx>890</posx>
+                    <posy>478</posy>
+                    <width>140</width>
+                    <height>80</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_icons_56</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE149;</label>
+                </control>
+                <control type="label">
+                    <posx>890</posx>
+                    <posy>545</posy>
+                    <width>140</width>
+                    <height>40</height>
+                    <align>center</align>
+                    <font>tofa_font_caption</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(player_seek_amount)]</label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>-180</posx>
+                <visible>String.IsEqual(Window.Property(player_seek_toast),back)</visible>
+                <control type="image">
+                    <posx>890</posx>
+                    <posy>470</posy>
+                    <width>140</width>
+                    <height>140</height>
+                    <colordiffuse>0x9E000000</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="label">
+                    <posx>890</posx>
+                    <posy>478</posy>
+                    <width>140</width>
+                    <height>80</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_icons_56</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE148;</label>
+                </control>
+                <control type="label">
+                    <posx>890</posx>
+                    <posy>545</posy>
+                    <width>140</width>
+                    <height>40</height>
+                    <align>center</align>
+                    <font>tofa_font_caption</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(player_seek_amount)]</label>
+                </control>
+            </control>
+        </control>
+
+        <!-- ============================== stats pill ================= -->
+        <!-- 8.11 stage one, from player-stats-overlay.png: a 38px capsule
+             centred on x=960, top edge y=44, holding one monospace line.
+
+             Its width is set from Python (player.py's _size_stats_pill), not
+             fixed here, because the capsule hugs its text in the reference
+             and the text length changes with the stream. That is cheap to do
+             correctly precisely BECAUSE the font is monospace — character
+             count times a known advance, no metrics table needed, unlike
+             textmetrics.py's per-character one for the proportional badges.
+
+             The label is drawn over the full capsule with aligny center
+             rather than at a back-solved posy: the pill is one line in one
+             box, so centring is both simpler and self-correcting if the
+             font size is ever retuned. -->
+        <control type="group" id="9600">
+            <visible>String.IsEqual(Window.Property(player_stats),pill)</visible>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
+            <control type="image" id="9601">
+                <posx>641</posx>
+                <posy>44</posy>
+                <width>639</width>
+                <height>38</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST -->
+                <texture border="19">capsule-h38.png</texture>
+            </control>
+            <control type="image" id="9602">
+                <posx>641</posx>
+                <posy>44</posy>
+                <width>639</width>
+                <height>38</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>   <!-- BORDER_REST -->
+                <texture border="19">capsule-h38-outline.png</texture>
+            </control>
+            <control type="label" id="9603">
+                <posx>641</posx>
+                <posy>44</posy>
+                <width>639</width>
+                <height>38</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_stats_value</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(stats_pill)]</label>
+            </control>
+        </control>
+
+        <!-- ============================== stats panel ================ -->
+        <!-- 8.11 stage two, from player-stats-panel.png. The panel box
+             (x 28, y 43, w 559) and the rhythm inside it are measured: rows
+             pitch 23, key column inset 16, value column inset 130, a section
+             eyebrow sitting 19 above its first row and 41 below the previous
+             section's last one.
+
+             Section y positions are NOT copied from the reference, because
+             the content differs: the reference has eight sections and we
+             have four (SYNC/PACING/HEALTH/NETWORK have no Kodi equivalent at
+             all — see playerstats.py). What is reproduced is the rhythm,
+             which is the part that is actually a design decision.
+
+             One divergence, deliberate: this paints ABOVE the transport
+             chrome, where the reference paints below it and lets the title
+             "Hugo" collide with "PLAYBACK STATS". That collision is legible
+             damage, not a design, so it is not reproduced.
+
+             Rows are fixed rather than generated, and an unavailable value
+             renders as an em dash from Python. A hidden row would leave a
+             hole mid-section, and "Kodi does not report this" is a real
+             answer for someone reading a diagnostic panel. -->
+        <control type="group" id="9610">
+            <posx>28</posx>
+            <posy>43</posy>
+            <visible>String.IsEqual(Window.Property(player_stats),panel)</visible>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
+
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>730</width>
+                <height>545</height>
+                <colordiffuse>0xCC030B10</colordiffuse>   <!-- abyss 80% -->
+                <texture border="22">panel-r22.png</texture>
+            </control>
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>730</width>
+                <height>545</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>   <!-- BORDER_FLOATING -->
+                <texture border="22">panel-r22-outline.png</texture>
+            </control>
+
+            <!-- Header: title left, delivery verdict right. -->
+            <control type="label">
+                <posx>16</posx>
+                <posy>11</posy>
+                <width>360</width>
+                <height>20</height>
+                <font>tofa_font_stats_title</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(stats_heading)]</label>
+            </control>
+            <!-- Column captions. Static: which SIDE is which never varies,
+                 only what lands in it. -->
+            <control type="label">
+                <posx>134</posx>
+                <posy>46</posy>
+                <width>280</width>
+                <height>16</height>
+                <font>tofa_font_stats_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>SOURCE</label>
+            </control>
+            <control type="label">
+                <posx>464</posx>
+                <posy>46</posy>
+                <width>250</width>
+                <height>16</height>
+                <font>tofa_font_stats_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>OUTPUT</label>
+            </control>
+
+            <!-- ONE list, three cells per row: the fact, as it ARRIVED, and
+                 as it came OUT. It used to be two lists side by side, which
+                 put unrelated readings on the same line; a pair only reads
+                 as a pair when both halves share a row.
+
+                 The row count still varies by hardware; the AMLOGIC
+                 readouts exist only on CoreELEC, and a box without them
+                 loses the row rather than showing an em dash for silicon it
+                 can never have. playerstats.rows() decides what exists; this
+                 file only says how a row looks.
+
+                 Kodi cannot vary itemheight per item, so a section heading
+                 occupies the same 21px slot as a value row and is told apart
+                 by the `header` ListItem property. 19 slots at 21px: 15 rows
+                 plus 4 headings is the worst case (a transcode, which adds
+                 the Reason row). -->
+            <control type="list" id="9620">
+                <posx>16</posx>
+                <posy>68</posy>
+                <width>698</width>
+                <height>462</height>
+                <onup>9620</onup>
+                <ondown>9620</ondown>
+                <onleft>9620</onleft>
+                <onright>9620</onright>
+                <itemlayout height="21">
+                    <control type="label">
+                        <posx>0</posx><posy>0</posy><width>110</width><height>19</height>
+                        <font>tofa_font_stats_key</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>118</posx><posy>-1</posy><width>290</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + !String.IsEmpty(ListItem.Property(out))</visible>
+                    </control>
+                    <!-- Same cell, spanning the arrow and output columns, for
+                         a row that HAS no output. It is what lets the panel be
+                         730 wide instead of 1122: everything else fits in 290
+                         (the widest measured value is a 5.1 channel list at
+                         278), and the one long string is a transcode reason at
+                         528, which is source-only. Sizing every row for the
+                         rare one wasted a third of the screen. -->
+                    <control type="label">
+                        <posx>118</posx><posy>-1</posy><width>580</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + String.IsEmpty(ListItem.Property(out))</visible>
+                    </control>
+                    <!-- The arrow is drawn only when there IS something on
+                         both sides. A one-sided row (DELIVERY has no output,
+                         SYSTEM has no source) would otherwise point at an
+                         empty cell. -->
+                    <control type="label">
+                        <posx>416</posx><posy>-1</posy><width>24</width><height>19</height>
+                        <align>center</align>
+                        <!-- The KEY font, not the value font: RobotoMono has
+                             no U+2192 and Kodi draws nothing at all for a
+                             missing glyph, so the arrow was simply absent.
+                             Verified against the bundled cmap. -->
+                        <font>tofa_font_stats_key</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>&#8594;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(paired)) + String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <!-- Amber arrow for a costly disagreement, so the row
+                         reads as one gesture rather than a grey arrow
+                         pointing into an amber word. -->
+                    <control type="label">
+                        <posx>416</posx><posy>-1</posy><width>24</width><height>19</height>
+                        <align>center</align>
+                        <font>tofa_font_stats_key</font>
+                        <textcolor>FFFCD34D</textcolor>
+                        <label>&#8594;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(paired)) + !String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>448</posx><posy>-1</posy><width>250</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(out)]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <!-- Same cell, amber, for a row whose two sides disagree
+                         in a way that COSTS something: uneven pulldown, or a
+                         downmix. Upscaling is not flagged; it is normal,
+                         and colouring it would train the eye past the ones
+                         that matter. -->
+                    <control type="label">
+                        <posx>448</posx><posy>-1</posy><width>250</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>FFFCD34D</textcolor>
+                        <label>$INFO[ListItem.Property(out)]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + !String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>3</posy><width>400</width><height>16</height>
+                        <font>tofa_font_stats_eyebrow</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(header))</visible>
+                    </control>
+                </itemlayout>
+                <focusedlayout height="21">
+                    <control type="label">
+                        <posx>0</posx><posy>0</posy><width>110</width><height>19</height>
+                        <font>tofa_font_stats_key</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>118</posx><posy>-1</posy><width>290</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + !String.IsEmpty(ListItem.Property(out))</visible>
+                    </control>
+                    <!-- Same cell, spanning the arrow and output columns, for
+                         a row that HAS no output. It is what lets the panel be
+                         730 wide instead of 1122: everything else fits in 290
+                         (the widest measured value is a 5.1 channel list at
+                         278), and the one long string is a transcode reason at
+                         528, which is source-only. Sizing every row for the
+                         rare one wasted a third of the screen. -->
+                    <control type="label">
+                        <posx>118</posx><posy>-1</posy><width>580</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + String.IsEmpty(ListItem.Property(out))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>416</posx><posy>-1</posy><width>24</width><height>19</height>
+                        <align>center</align>
+                        <!-- The KEY font, not the value font: RobotoMono has
+                             no U+2192 and Kodi draws nothing at all for a
+                             missing glyph, so the arrow was simply absent.
+                             Verified against the bundled cmap. -->
+                        <font>tofa_font_stats_key</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>&#8594;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(paired)) + String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <!-- Amber arrow for a costly disagreement, so the row
+                         reads as one gesture rather than a grey arrow
+                         pointing into an amber word. -->
+                    <control type="label">
+                        <posx>416</posx><posy>-1</posy><width>24</width><height>19</height>
+                        <align>center</align>
+                        <font>tofa_font_stats_key</font>
+                        <textcolor>FFFCD34D</textcolor>
+                        <label>&#8594;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(paired)) + !String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>448</posx><posy>-1</posy><width>250</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(out)]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>448</posx><posy>-1</posy><width>250</width><height>19</height>
+                        <font>tofa_font_stats_value</font>
+                        <textcolor>FFFCD34D</textcolor>
+                        <label>$INFO[ListItem.Property(out)]</label>
+                        <visible>String.IsEmpty(ListItem.Property(header)) + !String.IsEmpty(ListItem.Property(warn))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>3</posy><width>400</width><height>16</height>
+                        <font>tofa_font_stats_eyebrow</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(header))</visible>
+                    </control>
+                </focusedlayout>
+            </control>
+        </control>
+
+        <!-- ============================== pause card ================= -->
+        <!-- 8.8's "you're watching" takeover, which surfaces 5.0s after the
+             chrome auto-hides. The eyebrow is white/tertiary, NOT accent: 8.8 says
+             accent, the shipped Apple TV app disagrees and the app wins
+             (feedback_apple_tv_source_of_truth). -->
+        <control type="group" id="9300">
+            <!-- ...but never under 8.10's drawer, which is a panel over the
+                 video and would otherwise share the screen with a card that
+                 fills it. -->
+            <visible>String.IsEqual(Window.Property(player_pause_card),1) + String.IsEmpty(Window.Property(player_episodes))</visible>
+            <animation effect="fade" start="0" end="100" time="300">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="250">Hidden</animation>
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>1920</width>
+                <height>1080</height>
+                <colordiffuse>0x57000000</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>1200</width>
+                <height>1080</height>
+                <colordiffuse>0xE0000000</colordiffuse>
+                <texture>fade-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>1920</width>
+                <height>1080</height>
+                <colordiffuse>0x99000000</colordiffuse>
+                <texture>fade-top.png</texture>
+            </control>
+            <control type="label">
+                <posx>1848</posx>
+                <!-- 46, not the 44 this sat at under the old bold 57: measured
+                     against the app, the lighter/smaller face lands its ink 2px
+                     high, and the app's digits occupy y 65-101. -->
+                <posy>46</posy>
+                <width>380</width>
+                <height>72</height>
+                <align>right</align>
+                <font>tofa_font_player_clock</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_clock)]</label>
+            </control>
+            <control type="label">
+                <posx>1848</posx>
+                <!-- 120, not 124: the bigger face grew downward and put the
+                     ink at y 136-160 against the app's 132-156. -->
+                <posy>120</posy>
+                <width>380</width>
+                <height>40</height>
+                <align>right</align>
+                <font>tofa_font_player_timeleft</font>
+                <textcolor>$INFO[Window.Property(text_strong)]</textcolor>
+                <label>$INFO[Window.Property(player_time_left)]</label>
+            </control>
+            <control type="label">
+                <posx>80</posx>
+                <posy>556</posy>
+                <width>1000</width>
+                <height>30</height>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>$INFO[Window.Property(player_watching_label)]</label>
+            </control>
+            <control type="image">
+                <posx>80</posx>
+                <posy>596</posy>
+                <width>560</width>
+                <height>190</height>
+                <aspectratio align="left" aligny="bottom">keep</aspectratio>
+                <texture>$INFO[Window.Property(player_logo)]</texture>
+                <visible>!String.IsEmpty(Window.Property(player_logo))</visible>
+            </control>
+            <control type="label">
+                <posx>80</posx>
+                <posy>680</posy>
+                <width>1100</width>
+                <height>100</height>
+                <font>tofa_font_player_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_title)]</label>
+                <visible>String.IsEmpty(Window.Property(player_logo))</visible>
+            </control>
+            <control type="label">
+                <posx>80</posx>
+                <posy>790</posy>
+                <width>1100</width>
+                <height>40</height>
+                <font>tofa_font_player_subtitle</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(player_subtitle)]</label>
+            </control>
+            <control type="textbox">
+                <posx>80</posx>
+                <posy>834</posy>
+                <width>1030</width>
+                <height>111</height>
+                <font>tofa_font_player_subtitle</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(player_synopsis)]</label>
+            </control>
+        </control>
+
+        <!-- ============================ opening / buffering =========== -->
+        <!-- 8.6's initial load: full-screen scrim, centred title logo with
+             the 1.8s pulse, accent spinner.
+
+             The spinner is spinner-arc.png, an actual open ring. What was
+             here before was busy.gif over busy-back.png, ported from
+             plex-for-kodi and referenced nowhere else in this app: both are
+             FULLY OPAQUE blocks (90x38 and 240x150, no alpha at all), so
+             stretched into 70x70/90x90 slots and tinted with the accent
+             they drew a green square inside a dark box. That is the "box on
+             an empty screen" seen before playback starts.
+
+             8.6 also asks for an accent spinner here and there ISN'T one:
+             Kodi drew the ring at screen centre whatever posx/posy it was
+             given, under a rotate animation and without one, so rather than
+             ship a control that lands somewhere it was not put, the load
+             state is the scrim plus the pulsing logo. Left as a follow-up. -->
+        <control type="group" id="9400">
+            <visible>String.IsEqual(Window.Property(player_state),opening)</visible>
+            <!-- 8.6's initial load is "full-screen black + backdrop art".
+                 BLACK BASE, then the art on top at full brightness. There is
+                 NO scrim: this used to be one white-square at 0xB0030B10 and
+                 nothing else, i.e. a flat dark plate carrying no art at all.
+                 Measured on the real Apple TV app 2026-08-05, its backdrop is
+                 undimmed (mean brightness ~162 across the frame), and the
+                 spec asks only for black plus art. -->
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>1920</width>
+                <height>1080</height>
+                <colordiffuse>0xFF000000</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>1920</width>
+                <height>1080</height>
+                <aspectratio>scale</aspectratio>
+                <texture background="true">$INFO[Window.Property(player_backdrop)]</texture>
+                <visible>!String.IsEmpty(Window.Property(player_backdrop))</visible>
+            </control>
+            <!-- Title logo art, capped at 8.6's ~480x180. aspectratio keep
+                 so a wide logo shrinks to fit rather than distorting. -->
+            <control type="image">
+                <posx>720</posx>
+                <posy>400</posy>
+                <width>480</width>
+                <height>180</height>
+                <aspectratio>keep</aspectratio>
+                <texture>$INFO[Window.Property(player_logo)]</texture>
+                <visible>!String.IsEmpty(Window.Property(player_logo))</visible>
+                <!-- 8.6's loading pulse: "scale 1.0 to 1.045 / opacity 0.94
+                     to 1.0, 1.8s ease-in-out loop". Both halves, on one
+                     control, as two tags because Kodi has no combined
+                     effect. `time` is HALF the spec's period: pulse +
+                     reversible plays the animation out and back, so 900
+                     each way is the 1.8s loop.
+
+                     104.5 is the same figure as the card focus lift, which
+                     is 5's 1.045 by another name; center="auto" because
+                     this control is positioned in window space, so a
+                     hand-computed centre would be the window's, not the
+                     logo's. -->
+                <animation effect="zoom" start="100" end="104.5" center="auto" time="900" pulse="true" reversible="true" condition="true">Conditional</animation>
+                <animation effect="fade" start="94" end="100" time="900" pulse="true" reversible="true" condition="true">Conditional</animation>
+            </control>
+            <!-- Text fallback for a title with no logo art. -->
+            <control type="label">
+                <posx>360</posx>
+                <posy>470</posy>
+                <width>1200</width>
+                <height>70</height>
+                <align>center</align>
+                <font>tofa_font_player_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_title)]</label>
+                <visible>String.IsEmpty(Window.Property(player_logo))</visible>
+            </control>
+            <!-- Branded spinner, same arc and cadence 8.6's rebuffer badge
+                 uses. The opening state had a scrim, a logo and nothing that
+                 MOVED, so on a box slow enough to dwell here Kodi filled the
+                 gap with its own skin's busy dialog: a stock spinner over
+                 tofa's artwork. Reported from the box; not reproducible on
+                 the dev machine, where the stream opens too fast to see it.
+                 Centred on 1920: 960 minus half of 48.
+
+                 POSITION IS MEASURED, not chosen. A JetKVM capture of the
+                 real Apple TV app mid-load (2026-08-05) puts its spinner ink
+                 at x 944 to 961, y 632 to 653: centre (952,642), below the
+                 title logo. Ours is centred here to match.
+
+                 It therefore does NOT agree with 8.6's rebuffer arc at
+                 (960,538), and should not: that one is a compact chip over
+                 live video and sits near screen centre, this one belongs
+                 under the logo. Two states, two placements, both now with a
+                 reason. -->
+            <control type="image">
+                <posx>928</posx>
+                <posy>618</posy>
+                <width>48</width>
+                <height>48</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture>spinner-arc.png</texture>
+                <animation effect="rotate" start="0" end="360" center="auto" time="900" loop="true" condition="true">Conditional</animation>
+            </control>
+        </control>
+
+        <!-- ============================== 8.3 Next Up ================= -->
+        <!-- Right-anchored rail over still-playing video. 8.3 gives width
+             as 40% of screen (clamp 440-860) and padding 54; 780 is used
+             instead of a literal 768 because 780-2*54 leaves 672, which is
+             exactly 16:9 at 378, so the hero still lands on whole pixels.
+             Assets from tools/gen_nextup_assets.py.
+
+             Reveal 340ms slide+fade, out 250ms — both stated in 8.3, so
+             they are contracts rather than taste. -->
+        <control type="group" id="9700">
+            <posx>1140</posx>
+            <posy>0</posy>
+            <visible>!String.IsEmpty(Window.Property(player_next_up))</visible>
+            <animation effect="slide" start="780,0" end="0,0" time="340" tween="cubic" easing="out">Visible</animation>
+            <animation effect="fade" start="0" end="100" time="340">Visible</animation>
+            <animation effect="slide" start="0,0" end="780,0" time="250" tween="cubic" easing="in">Hidden</animation>
+            <animation effect="fade" start="100" end="0" time="250">Hidden</animation>
+
+            <!-- Edge scrim: the texture carries only the ramp, 8.3's
+                 "black 84%" is the diffuse (0xD6 = 214/255). It starts 260px
+                 LEFT of the rail so it is already at full strength where the
+                 rail begins - see tools/gen_nextup_assets.py. -->
+            <control type="image">
+                <posx>-260</posx>
+                <posy>0</posy>
+                <width>1040</width>
+                <height>1080</height>
+                <colordiffuse>0xD6000000</colordiffuse>
+                <texture>nextup-scrim.png</texture>
+            </control>
+
+            <!-- Hero still, 16:9 radius 16. Placeholder tile underneath so
+                 an episode with no still art is a muted card rather than a
+                 hole in the scrim. scalediffuse="false" on the aspectratio,
+                 or Kodi stretches the corner mask along with the image. -->
+            <control type="image">
+                <posx>54</posx>
+                <posy>190</posy>
+                <width>672</width>
+                <height>378</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>
+                <texture diffuse="nextup-still-mask.png">white-square.png</texture>
+            </control>
+            <control type="image">
+                <posx>54</posx>
+                <posy>190</posy>
+                <width>672</width>
+                <height>378</height>
+                <aspectratio scalediffuse="false">scale</aspectratio>
+                <texture diffuse="nextup-still-mask.png">$INFO[Window.Property(nextup_still)]</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_still))</visible>
+            </control>
+            <!-- 8.3's hairline, white 8%, on top of the art. -->
+            <control type="image">
+                <posx>54</posx>
+                <posy>190</posy>
+                <width>672</width>
+                <height>378</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>
+                <texture>nextup-still-outline.png</texture>
+            </control>
+
+            <control type="label">
+                <posx>54</posx>
+                <posy>596</posy>
+                <width>672</width>
+                <height>26</height>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>UP NEXT</label>
+            </control>
+            <control type="textbox">
+                <posx>54</posx>
+                <posy>634</posy>
+                <width>672</width>
+                <height>112</height>
+                <font>tofa_font_player_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(nextup_title)]</label>
+            </control>
+            <control type="label">
+                <posx>54</posx>
+                <posy>754</posy>
+                <width>672</width>
+                <height>30</height>
+                <font>tofa_font_caption</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <shadowcolor>0xB0000000</shadowcolor>
+                <label>$INFO[Window.Property(nextup_number)]</label>
+            </control>
+
+            <!-- 8.3 names Play Next as the ONE sanctioned solid-accent-fill
+                 button, so it is filled whether or not it has focus and the
+                 focus signal has to be something else: a text-coloured rim.
+                 Dismiss is the ordinary glass secondary and takes the
+                 glass_pill() focus treatment, an accent wash plus rim. -->
+            <control type="image">
+                <posx>54</posx>
+                <posy>814</posy>
+                <width>320</width>
+                <height>78</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="39">capsule-h78.png</texture>
+            </control>
+            <control type="image">
+                <posx>54</posx>
+                <posy>814</posy>
+                <width>320</width>
+                <height>78</height>
+                <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
+                <texture border="39">capsule-h78-outline.png</texture>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>54</posx>
+                <posy>814</posy>
+                <width>320</width>
+                <height>78</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>Play Next</label>
+            </control>
+            <control type="button" id="9701">
+                <posx>54</posx>
+                <posy>814</posy>
+                <width>320</width>
+                <height>78</height>
+                <texturefocus />
+                <texturenofocus />
+                <label />
+                <onright>9702</onright>
+            </control>
+
+            <!-- Dismiss focus is an accent WASH plus an accent rim, never a
+                 solid accent fill. glass_pill() is the app's one convention
+                 for this (faint rest fill+outline swapping to
+                 accent_pill_fill/accent_color on focus), and the solid fill
+                 that used to be here broke the rail: Play Next carries its
+                 solid accent permanently, so focusing Dismiss lit a second
+                 identical accent pill and the two read as one focused
+                 button. Reported from the box. The glass fill underneath
+                 stays drawn in both states so the wash layers over it. -->
+            <control type="image">
+                <posx>394</posx>
+                <posy>814</posy>
+                <width>200</width>
+                <height>78</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>
+                <texture border="39">capsule-h78.png</texture>
+            </control>
+            <control type="image">
+                <posx>394</posx>
+                <posy>814</posy>
+                <width>200</width>
+                <height>78</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="39">capsule-h78.png</texture>
+                <visible>Control.HasFocus(9702)</visible>
+            </control>
+            <control type="image">
+                <posx>394</posx>
+                <posy>814</posy>
+                <width>200</width>
+                <height>78</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <texture border="39">capsule-h78-outline.png</texture>
+                <visible>!Control.HasFocus(9702)</visible>
+            </control>
+            <control type="image">
+                <posx>394</posx>
+                <posy>814</posy>
+                <width>200</width>
+                <height>78</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="39">capsule-h78-outline.png</texture>
+                <visible>Control.HasFocus(9702)</visible>
+            </control>
+            <control type="label">
+                <posx>394</posx>
+                <posy>814</posy>
+                <width>200</width>
+                <height>78</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>Dismiss</label>
+                <visible>!Control.HasFocus(9702)</visible>
+            </control>
+            <control type="label">
+                <posx>394</posx>
+                <posy>814</posy>
+                <width>200</width>
+                <height>78</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>Dismiss</label>
+                <visible>Control.HasFocus(9702)</visible>
+            </control>
+            <control type="button" id="9702">
+                <posx>394</posx>
+                <posy>814</posy>
+                <width>200</width>
+                <height>78</height>
+                <texturefocus />
+                <texturenofocus />
+                <label />
+                <onleft>9701</onleft>
+            </control>
+
+            <!-- Countdown ring. Sits clear of both buttons, on the scrim,
+                 because 8.3's accent-on-accent-22% pairing is invisible on
+                 top of the accent-filled Play Next.
+
+                 The TRACK is bound to the same property as the sweep that
+                 fills it: with auto_play_next=ask nothing counts down, and
+                 an empty ring beside the buttons reads as a timer that has
+                 stopped rather than one that was never running. -->
+            <control type="image" id="9703">
+                <posx>678</posx>
+                <posy>829</posy>
+                <width>48</width>
+                <height>48</height>
+                <colordiffuse>$INFO[Window.Property(nextup_ring_track)]</colordiffuse>
+                <visible>!String.IsEmpty(Window.Property(nextup_ring))</visible>
+                <texture>nextup-ring-track.png</texture>
+            </control>
+            <control type="image">
+                <posx>678</posx>
+                <posy>829</posy>
+                <width>48</width>
+                <height>48</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture>$INFO[Window.Property(nextup_ring)]</texture>
+            </control>
+            <control type="label">
+                <posx>678</posx>
+                <posy>829</posy>
+                <width>48</width>
+                <height>48</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(nextup_seconds)]</label>
+            </control>
+        </control>
+
+        <!-- ============================== 8.5 skip pill ============== -->
+        <!-- Bottom-trailing, never full width: 60 tall, fully rounded, 28
+             side padding, an 18pt glyph plus its label. Right edge lines up
+             with the utility capsule's at 1900, which is where 8.5 wants it:
+             flush with the right-hand cluster on the transport bar.
+
+             8.5 also wants it LOWER while the chrome is hidden and higher
+             while it is up. That is one control at two heights, which a
+             static posy cannot express, so the resting position is the
+             chrome-hidden one and a Conditional animation lifts it clear of
+             the transport when the chrome comes up. -->
+        <control type="group" id="9750">
+            <visible>!String.IsEmpty(Window.Property(player_skip))</visible>
+            <animation effect="slide" start="0,0" end="0,-106" time="200" tween="cubic" easing="out" condition="!String.IsEmpty(Window.Property(player_chrome))">Conditional</animation>
+            <animation effect="slide" start="40,0" end="0,0" time="200" tween="cubic" easing="out">Visible</animation>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
+
+            <control type="image" id="9752">
+                <posx>1610</posx>
+                <posy>952</posy>
+                <width>290</width>
+                <height>60</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <texture border="30">capsule-h60.png</texture>
+                <visible>!Control.HasFocus(9751)</visible>
+            </control>
+            <control type="image" id="9753">
+                <posx>1610</posx>
+                <posy>952</posy>
+                <width>290</width>
+                <height>60</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>
+                <texture border="30">capsule-h60-outline.png</texture>
+                <visible>!Control.HasFocus(9751)</visible>
+            </control>
+            <control type="image" id="9754">
+                <posx>1610</posx>
+                <posy>952</posy>
+                <width>290</width>
+                <height>60</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="30">capsule-h60.png</texture>
+                <visible>Control.HasFocus(9751)</visible>
+            </control>
+            <control type="image" id="9755">
+                <posx>1610</posx>
+                <posy>952</posy>
+                <width>290</width>
+                <height>60</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="30">capsule-h60-outline.png</texture>
+                <visible>Control.HasFocus(9751)</visible>
+            </control>
+
+            <control type="label" id="9756">
+                <posx>1638</posx>
+                <posy>952</posy>
+                <width>28</width>
+                <height>60</height>
+                <align>left</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_19</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE073;</label>
+                <visible>!Control.HasFocus(9751)</visible>
+            </control>
+            <control type="label" id="9757">
+                <posx>1638</posx>
+                <posy>952</posy>
+                <width>28</width>
+                <height>60</height>
+                <align>left</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_19</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE073;</label>
+                <visible>Control.HasFocus(9751)</visible>
+            </control>
+            <control type="label" id="9758">
+                <posx>1672</posx>
+                <posy>952</posy>
+                <width>200</width>
+                <height>60</height>
+                <align>left</align>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_skip_label)]</label>
+                <visible>!Control.HasFocus(9751)</visible>
+            </control>
+            <control type="label" id="9759">
+                <posx>1672</posx>
+                <posy>952</posy>
+                <width>200</width>
+                <height>60</height>
+                <align>left</align>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(player_skip_label)]</label>
+                <visible>Control.HasFocus(9751)</visible>
+            </control>
+            <control type="button" id="9751">
+                <posx>1610</posx>
+                <posy>952</posy>
+                <width>290</width>
+                <height>60</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+            </control>
+        </control>
+
+        <!-- ============================= 8.10 episode drawer ========== -->
+        <!-- Trailing full-height panel, opened from the utility capsule's
+             list button. Geometry measured off the real Apple TV app in
+             internal-docs/atv-reference/player-episode-drawer.png: panel
+             x1248 w672, season chips 82x43 at (1268,156), rows 87 tall on a
+             pitch of 93.
+
+             An in-window GROUP rather than a dialog, for the same reason
+             8.3's rail is: Kodi's window-id pool is hard capped, and this
+             also keeps live video behind it without a transparent-window
+             dance.
+
+             One deviation, forced by Kodi: a list has ONE itemheight, so
+             the reference's taller 121pt row for the episode that is
+             playing is not expressible. That row is marked by its play
+             badge, accent progress capsule and accent title instead, and
+             the reference's third "Now playing" line is dropped. -->
+        <control type="group" id="9800">
+            <visible>!String.IsEmpty(Window.Property(player_episodes))</visible>
+            <animation effect="slide" start="672,0" end="0,0" time="250" tween="cubic" easing="out">Visible</animation>
+            <animation effect="fade" start="0" end="100" time="250">Visible</animation>
+            <animation effect="slide" start="0,0" end="672,0" time="200" tween="cubic" easing="in">Hidden</animation>
+            <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
+
+            <control type="image">
+                <posx>1248</posx>
+                <posy>0</posy>
+                <width>672</width>
+                <height>1080</height>
+                <colordiffuse>0xE6060A0F</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image">
+                <posx>1248</posx>
+                <posy>0</posy>
+                <width>2</width>
+                <height>1080</height>
+                <colordiffuse>0x1AFFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+
+            <control type="label">
+                <posx>1268</posx>
+                <posy>44</posy>
+                <width>500</width>
+                <height>26</height>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(drawer_season)]</label>
+            </control>
+            <control type="label">
+                <posx>1268</posx>
+                <posy>76</posy>
+                <width>500</width>
+                <height>58</height>
+                <font>tofa_font_heading</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>Episodes</label>
+            </control>
+
+            <!-- Season chips. Selected is solid white with dark text, which
+                 8.10 calls the same sanctioned exception as the filter
+                 pills; unselected is glass. -->
+            <control type="list" id="9801">
+                <!-- 1263, not the 1268 the chips are measured at: each chip
+                     is inset 5 inside its pitch (see below), so the list has
+                     to start half a gap earlier for the FIRST chip to land
+                     on 1268 and stay flush with the heading above it. -->
+                <posx>1263</posx>
+                <posy>156</posy>
+                <!-- 644, not 640: seven whole pitches. A list draws
+                     floor(box / step) items, so a box that is not a whole
+                     number of steps wide silently drops its last chip. -->
+                <width>644</width>
+                <height>43</height>
+                <orientation>horizontal</orientation>
+                <!-- The 10 between chips is built into the LAYOUT; it is no
+                     longer declared as an itemgap. That tag is a GROUPLIST
+                     property: on a type="list" Kodi ignores it outright and
+                     steps by the ITEMLAYOUT's own size, so the gap never
+                     reached the screen and the chips rendered flush against
+                     each other. This list is horizontal, so the size that
+                     steps is the WIDTH: a pitch of 92 carrying the 82 chip
+                     inset 5 either side.
+
+                     itemwidth/itemheight are still REQUIRED even though they
+                     do not set the step. Without them a list renders every
+                     row with an empty icon and label, which is the other
+                     half of the same trap and is what this list had.
+                     project_kodi_list_itemheight_tag has both. -->
+                <itemwidth>92</itemwidth>
+                <itemheight>43</itemheight>
+                <onup>9801</onup>
+                <ondown>9802</ondown>
+                <itemlayout width="92" height="43">
+                    <control type="image">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture border="21">capsule-h43.png</texture>
+                        <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                    <control type="image">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <colordiffuse>0xF0FFFFFF</colordiffuse>
+                        <texture border="21">capsule-h43.png</texture>
+                        <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>0xFF06090D</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="92" height="43">
+                    <control type="image">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture border="21">capsule-h43.png</texture>
+                        <visible>Control.HasFocus(9801)</visible>
+                    </control>
+                    <control type="image">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <colordiffuse>0xF0FFFFFF</colordiffuse>
+                        <texture border="21">capsule-h43.png</texture>
+                        <visible>!Control.HasFocus(9801) + !String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                    <control type="image">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture border="21">capsule-h43.png</texture>
+                        <visible>!Control.HasFocus(9801) + String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>Control.HasFocus(9801)</visible>
+                    </control>
+                    <control type="label">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>0xFF06090D</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!Control.HasFocus(9801) + !String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>5</posx>
+                        <width>82</width>
+                        <height>43</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!Control.HasFocus(9801) + String.IsEmpty(ListItem.Property(active))</visible>
+                    </control>
+                </focusedlayout>
+            </control>
+
+            <!-- Episode rows. -->
+            <control type="list" id="9802">
+                <posx>1268</posx>
+                <!-- 214, not the 217 the first row is measured at: the row
+                     is inset 3 inside its pitch (see below), so the list
+                     starts half a gap earlier and the first row's rim still
+                     lands on 217. -->
+                <posy>214</posy>
+                <width>640</width>
+                <height>837</height>
+                <orientation>vertical</orientation>
+                <!-- Pitch 93, which is the reference's own: 87 of row plus 6
+                     of gap, with the row's content inset 3 top and bottom.
+                     The 6 used to be an itemgap, and an itemgap is a
+                     GROUPLIST property that a type="list" ignores; the list
+                     steps by the ITEMLAYOUT's height instead, so the rows
+                     sat flush while the height below was budgeted as though
+                     they were not. Same fix as the 8.4 panel's list 9906 and
+                     Browse's A-Z rail; see project_kodi_list_itemheight_tag.
+
+                     837 is already 9 whole pitches, which is why the box
+                     needs no change: a list that is not a whole number of
+                     steps tall draws floor(height / step) rows and silently
+                     loses the last one. -->
+                <itemheight>93</itemheight>
+                <onup>9801</onup>
+                <ondown>9802</ondown>
+                <itemlayout width="640" height="93">
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                    </control>
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
+                        <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                    </control>
+                    <!-- Watched: 8.10's checkmark on a black 55% scrim. -->
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <colordiffuse>0x8C000000</colordiffuse>
+                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_26</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>&#xE06C;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                    <!-- Now playing: 8.10's play badge. -->
+                    <control type="label">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_26</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>&#xE080;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                    </control>
+                    <!-- Accent progress capsule, flush with the still's
+                         bottom edge, same treatment the cards use. -->
+                    <!-- Kodi does NOT evaluate $INFO inside a <width>: a bar
+                         sized from a ListItem property silently renders at
+                         the parent's full width. So the fill is a strip per
+                         even percent, picked by filename, exactly as the
+                         poster and episode cards do it. 100.png doubles as
+                         the track, already clipped to the still's corners. -->
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>80</posy>
+                        <width>140</width>
+                        <height>6</height>
+                        <colordiffuse>0x1AFFFFFF</colordiffuse>
+                        <texture>drawer-progress/100.png</texture>
+                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                    </control>
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>80</posy>
+                        <width>140</width>
+                        <height>6</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>$INFO[ListItem.Property(progress)]</texture>
+                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>164</posx>
+                        <posy>11</posy>
+                        <width>468</width>
+                        <height>28</height>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(meta)]</label>
+                    </control>
+                    <!-- One label per state rather than a colour carried on
+                         the ListItem: every other textcolor in this add-on is
+                         a Window.Property reference, and a property holding a
+                         colour silently falls back to the skin default when
+                         it is empty. 8.10 dims a watched title and the one
+                         playing takes the accent, since a Kodi list has a
+                         single itemheight and cannot give it the taller row
+                         the reference does. -->
+                    <control type="label">
+                        <posx>164</posx>
+                        <posy>43</posy>
+                        <width>468</width>
+                        <height>38</height>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>164</posx>
+                        <posy>43</posy>
+                        <width>468</width>
+                        <height>38</height>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="640" height="93">
+                    <control type="image">
+                        <posy>3</posy>
+                        <width>640</width>
+                        <height>87</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture border="14">rounded-14.png</texture>
+                        <visible>Control.HasFocus(9802)</visible>
+                    </control>
+                    <control type="image">
+                        <posy>3</posy>
+                        <width>640</width>
+                        <height>87</height>
+                        <colordiffuse>0x33FFFFFF</colordiffuse>
+                        <texture border="14">rounded-14-outline.png</texture>
+                        <visible>Control.HasFocus(9802)</visible>
+                    </control>
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                    </control>
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
+                        <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                    </control>
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <colordiffuse>0x8C000000</colordiffuse>
+                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_26</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>&#xE06C;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>6</posx>
+                        <posy>7</posy>
+                        <width>140</width>
+                        <height>79</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_26</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>&#xE080;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                    </control>
+                    <!-- Kodi does NOT evaluate $INFO inside a <width>: a bar
+                         sized from a ListItem property silently renders at
+                         the parent's full width. So the fill is a strip per
+                         even percent, picked by filename, exactly as the
+                         poster and episode cards do it. 100.png doubles as
+                         the track, already clipped to the still's corners. -->
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>80</posy>
+                        <width>140</width>
+                        <height>6</height>
+                        <colordiffuse>0x1AFFFFFF</colordiffuse>
+                        <texture>drawer-progress/100.png</texture>
+                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                    </control>
+                    <control type="image">
+                        <posx>6</posx>
+                        <posy>80</posy>
+                        <width>140</width>
+                        <height>6</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>$INFO[ListItem.Property(progress)]</texture>
+                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>164</posx>
+                        <posy>11</posy>
+                        <width>468</width>
+                        <height>28</height>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(meta)]</label>
+                    </control>
+                    <!-- One label per state rather than a colour carried on
+                         the ListItem: every other textcolor in this add-on is
+                         a Window.Property reference, and a property holding a
+                         colour silently falls back to the skin default when
+                         it is empty. 8.10 dims a watched title and the one
+                         playing takes the accent, since a Kodi list has a
+                         single itemheight and cannot give it the taller row
+                         the reference does. -->
+                    <control type="label">
+                        <posx>164</posx>
+                        <posy>43</posy>
+                        <width>468</width>
+                        <height>38</height>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>164</posx>
+                        <posy>43</posy>
+                        <width>468</width>
+                        <height>38</height>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>String.IsEmpty(ListItem.Property(watched))</visible>
+                    </control>
+                </focusedlayout>
+            </control>
+        </control>
+
+        <!-- ======================= 8.4 selection panel =============== -->
+        <!-- Trailing glass panel for Subtitles / Audio / Quality, replacing
+             the centred PickerDialog those used to borrow.
+
+             Geometry is MEASURED, not the spec's: both captures in
+             internal-docs/atv-reference/ put the panel at x1576 w287 with
+             its bottom at 872, whichever capsule button was pressed, so it
+             is fixed rather than anchored per-button. 8.4 states width 440;
+             the real app is 287, and the app wins.
+
+             Rows are two-line because our own rows already are: tracks.py
+             hands back (label, detail) pairs like ("English", "DTS-HD MA
+             7.1"), which is exactly how the reference app stacks them. A
+             Kodi list has one itemheight, so a row without a detail centres
+             its label instead of leaving a gap under it. -->
+        <control type="group" id="9900">
+            <visible>!String.IsEmpty(Window.Property(player_panel))</visible>
+            <animation effect="zoom" start="94" end="100" center="1862,872" time="200" tween="cubic" easing="out">Visible</animation>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="180">Hidden</animation>
+
+            <control type="image" id="9901">
+                <posx>1441</posx>
+                <posy>380</posy>
+                <width>462</width>
+                <height>572</height>
+                <colordiffuse>0x73000000</colordiffuse>
+                <!-- The Options dialog's recipe, verbatim: it is the one resizable
+                     panel in the app whose corners have always looked right,
+                     and it slices at 64/24 against radii of 22. The margin is
+                     the point: rounded-20.png is baked 2*r+2, so border 20
+                     is its maximum and the seam lands exactly on the arc's
+                     tangent, where a fractional GUI scale rounds it onto the
+                     curve. -->
+                <texture border="64">panel-shadow-r22.png</texture>
+            </control>
+                        <!-- 8.4's panel, sliced horizontally: a fixed-height cap at each
+                 end carrying the corners, and a flat middle stretched between
+                 them. The caps never change size, so they are 2x art; the
+                 middle has no curvature, so stretching it is free. A nine-patch
+                 here would be pinned to 1x by its border, and exact art would
+                 be stretched into ellipses by _size_panel. Geometry is a
+                 PLACEHOLDER; _size_panel() owns it. -->
+            <control type="image" id="9902">
+                <posx>1481</posx>
+                <posy>420</posy>
+                <width>382</width>
+                <height>24</height>
+                <colordiffuse>0xE6030B10</colordiffuse>
+                <texture>panel-cap-top.png</texture>
+            </control>
+            <control type="image" id="9907">
+                <posx>1481</posx>
+                <posy>444</posy>
+                <width>382</width>
+                <height>444</height>
+                <colordiffuse>0xE6030B10</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9908">
+                <posx>1481</posx>
+                <posy>888</posy>
+                <width>382</width>
+                <height>24</height>
+                <colordiffuse>0xE6030B10</colordiffuse>
+                <texture>panel-cap-bottom.png</texture>
+            </control>
+            <control type="image" id="9903">
+                <posx>1481</posx>
+                <posy>420</posy>
+                <width>382</width>
+                <height>24</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <texture>panel-cap-outline-top.png</texture>
+            </control>
+            <control type="image" id="9909">
+                <!-- the rim's two sides: a vertical line stretched vertically is
+                     still a vertical line, so there is no seam to see. -->
+                <posx>1481</posx>
+                <posy>444</posy>
+                <width>1</width>
+                <height>444</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9910">
+                <posx>1767</posx>
+                <posy>444</posy>
+                <width>1</width>
+                <height>444</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9911">
+                <posx>1481</posx>
+                <posy>888</posy>
+                <width>382</width>
+                <height>24</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <texture>panel-cap-outline-bottom.png</texture>
+            </control>
+<control type="label" id="9904">
+                <posx>1505</posx>
+                <posy>432</posy>
+                <width>60</width>
+                <height>40</height>
+                <align>left</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_24</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(player_panel_glyph)]</label>
+            </control>
+            <control type="label" id="9905">
+                <posx>1539</posx>
+                <posy>432</posy>
+                <width>248</width>
+                <height>40</height>
+                <align>left</align>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_panel_title)]</label>
+            </control>
+
+            <control type="list" id="9906">
+                <posx>1493</posx>
+                <posy>480</posy>
+                <width>358</width>
+                <height>420</height>
+                <orientation>vertical</orientation>
+                <!-- 10, not 6: the row fill is only 8% white over a near
+                     black panel, so six pixels of separation is
+                     technically there and barely visible. The
+                     Options dialog reads clearly at 6 because its
+                     rows sit on a lighter plate. Owner's eye, not
+                     arithmetic.
+
+                     That 10 is NOT an <itemgap> any more. itemgap is a
+                     GROUPLIST property: on a type="list" Kodi ignores it
+                     outright, and the list steps by the ITEMLAYOUT's own
+                     height. Declaring the gap here bought the panel ten
+                     extra pixels of height per row (_size_panel believed
+                     it) while the rows themselves stayed flush against
+                     each other. Reported 2026-08-11: "it looks like the
+                     panels got more height, but the entries still stick
+                     together vertically."
+
+                     So the pitch is the layout: 82 = 72 of row plus 10 of
+                     gap, with the fill inset 5 top and bottom, which puts
+                     10 between adjacent rows. Same fix as Browse's A-Z
+                     rail; see project_kodi_list_itemheight_tag, this is
+                     the third control to hit it. -->
+                <itemheight>82</itemheight>
+                <onup>9906</onup>
+                <ondown>9906</ondown>
+                <itemlayout width="358" height="82">
+                    <control type="image">
+                        <posy>5</posy>
+                        <width>358</width>
+                        <height>72</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST, exactly the capsules' fill -->
+                        <texture border="8">rounded-8.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>0</posy>
+                        <width>305</width>
+                        <height>82</height>
+                        <align>left</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>String.IsEmpty(ListItem.Property(detail))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>5</posy>
+                        <width>305</width>
+                        <height>30</height>
+                        <align>left</align>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(detail))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>35</posy>
+                        <width>305</width>
+                        <height>24</height>
+                        <align>left</align>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(detail)) + String.IsEmpty(ListItem.Property(stepper))</visible>
+                    </control>
+                    <!-- 8.4: selected row is an accent check plus an accent
+                         label, with NO fill unless it also has focus. -->
+                    <control type="label">
+                        <posx>12</posx>
+                        <posy>0</posy>
+                        <width>28</width>
+                        <height>82</height>
+                        <align>left</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                        <label>&#xE06C;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(picked))</visible>
+                    </control>
+                    <!-- Stepper rows (the Adjust panel). The value is
+                         MONOSPACE so a changing digit cannot shuffle it
+                         sideways, and the chevrons say out loud that
+                         left/right do something here: without them the
+                         row looked inert. Same reasoning as 8.11's
+                         monospace readout. -->
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>35</posy>
+                        <width>22</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>&#xE06E;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(stepper))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>66</posx>
+                        <posy>35</posy>
+                        <width>222</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(stepper))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>292</posx>
+                        <posy>35</posy>
+                        <width>22</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>&#xE06F;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(stepper))</visible>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="358" height="82">
+                    <control type="image">
+                        <posy>5</posy>
+                        <width>358</width>
+                        <height>72</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture border="8">rounded-8.png</texture>
+                        <visible>Control.HasFocus(9906)</visible>
+                    </control>
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>0</posy>
+                        <width>305</width>
+                        <height>82</height>
+                        <align>left</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <scroll>true</scroll>
+                        <visible>Control.HasFocus(9906) + String.IsEmpty(ListItem.Property(detail))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>5</posy>
+                        <width>305</width>
+                        <height>30</height>
+                        <align>left</align>
+                        <font>tofa_font_caption</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                        <scroll>true</scroll>
+                        <visible>Control.HasFocus(9906) + !String.IsEmpty(ListItem.Property(detail))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>35</posy>
+                        <width>305</width>
+                        <height>24</height>
+                        <align>left</align>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                        <visible>Control.HasFocus(9906) + !String.IsEmpty(ListItem.Property(detail)) + String.IsEmpty(ListItem.Property(stepper))</visible>
+                    </control>
+                    <control type="label">
+                        <posx>12</posx>
+                        <posy>0</posy>
+                        <width>28</width>
+                        <height>82</height>
+                        <align>left</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>&#xE06C;</label>
+                        <visible>Control.HasFocus(9906) + !String.IsEmpty(ListItem.Property(picked))</visible>
+                    </control>
+                    <!-- Stepper rows (the Adjust panel). The value is
+                         MONOSPACE so a changing digit cannot shuffle it
+                         sideways, and the chevrons say out loud that
+                         left/right do something here: without them the
+                         row looked inert. Same reasoning as 8.11's
+                         monospace readout. -->
+                    <control type="label">
+                        <posx>44</posx>
+                        <posy>35</posy>
+                        <width>22</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>&#xE06E;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(stepper)) + Control.HasFocus(9906)</visible>
+                    </control>
+                    <control type="label">
+                        <posx>66</posx>
+                        <posy>35</posy>
+                        <width>222</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                        <visible>!String.IsEmpty(ListItem.Property(stepper)) + Control.HasFocus(9906)</visible>
+                    </control>
+                    <control type="label">
+                        <posx>292</posx>
+                        <posy>35</posy>
+                        <width>22</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>&#xE06F;</label>
+                        <visible>!String.IsEmpty(ListItem.Property(stepper)) + Control.HasFocus(9906)</visible>
+                    </control>
+                </focusedlayout>
+            </control>
+        </control>
+
+        <!-- ======================= 8.7 terminal failure ============== -->
+        <!-- Centred, PERSISTENT (8.7 gives it no auto-dismiss): max width
+             560, radius 20, black 75%, padding 28. This is the only surface
+             that leans on red as its dominant note, and 2's status triad
+             says red is semantic only, so it stays on the mark and never on
+             the text.
+
+             Before this, a stream that failed simply closed the window and
+             dropped the viewer back where they came from with no
+             explanation at all. -->
+        <control type="group" id="9950">
+            <visible>!String.IsEmpty(Window.Property(player_error))</visible>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="180">Hidden</animation>
+
+            <control type="image">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>1920</width>
+                <height>1080</height>
+                <colordiffuse>0xB0030B10</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+
+            <control type="image">
+                <posx>680</posx>
+                <posy>376</posy>
+                <width>560</width>
+                <height>328</height>
+                <colordiffuse>0xBF000000</colordiffuse>
+                <texture border="20">rounded-20.png</texture>
+            </control>
+            <control type="image">
+                <posx>680</posx>
+                <posy>376</posy>
+                <width>560</width>
+                <height>328</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>   <!-- BORDER_FLOATING -->
+                <texture border="20">rounded-20-outline.png</texture>
+            </control>
+
+            <control type="label">
+                <posx>708</posx>
+                <posy>404</posy>
+                <width>504</width>
+                <height>64</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_56</font>
+                <textcolor>0xFFF87171</textcolor>   <!-- STATUS_RED -->
+                <label>&#xE193;</label>
+            </control>
+            <control type="label">
+                <posx>708</posx>
+                <posy>480</posy>
+                <width>504</width>
+                <height>44</height>
+                <align>center</align>
+                <font>tofa_font_dialog_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(player_error_title)]</label>
+            </control>
+            <control type="textbox">
+                <posx>708</posx>
+                <posy>530</posy>
+                <width>504</width>
+                <height>72</height>
+                <align>center</align>
+                <font>tofa_font_body</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(player_error_body)]</label>
+            </control>
+
+            <!-- 8.7's accent-outline CTA: an outline, not a fill. The one
+                 sanctioned solid accent fill is 8.3's Play Next. -->
+            <control type="image">
+                <posx>860</posx>
+                <posy>614</posy>
+                <width>200</width>
+                <height>60</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="30">capsule-h60.png</texture>
+                <visible>Control.HasFocus(9951)</visible>
+            </control>
+            <control type="image">
+                <posx>860</posx>
+                <posy>614</posy>
+                <width>200</width>
+                <height>60</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="30">capsule-h60-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>860</posx>
+                <posy>614</posy>
+                <width>200</width>
+                <height>60</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(player_error_cta)]</label>
+            </control>
+            <control type="button" id="9951">
+                <posx>860</posx>
+                <posy>614</posy>
+                <width>200</width>
+                <height>60</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+            </control>
+        </control>
+
+        <!-- 8.6 mid-playback rebuffer. A small centred chip, NOT the
+             full-screen initial-load overlay: playback is already up and
+             the frame behind it should stay visible. Delayed 300ms by
+             player.py, which 8.6 marks a hard rule so a sub-300ms stall
+             never flashes UI. -->
+        <control type="group" id="9410">
+            <visible>!String.IsEmpty(Window.Property(player_rebuffer))</visible>
+            <animation effect="fade" start="0" end="100" time="180">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="180">Hidden</animation>
+            <control type="image">
+                <posx>896</posx>
+                <posy>496</posy>
+                <width>128</width>
+                <height>88</height>
+                <colordiffuse>0x73000000</colordiffuse>
+                <texture border="20">rounded-20.png</texture>
+            </control>
+            <!-- 8.6 gives two variants. The spinner is the indeterminate
+                 one, used while the engine reports no usable cache figure;
+                 the ring is the determinate one, driven by
+                 Player.CacheLevel. -->
+            <control type="image">
+                <posx>936</posx>
+                <posy>514</posy>
+                <width>48</width>
+                <height>48</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture>spinner-arc.png</texture>
+                <animation effect="rotate" start="0" end="360" center="auto" time="900" loop="true" condition="true">Conditional</animation>
+                <visible>String.IsEmpty(Window.Property(player_rebuffer_ring))</visible>
+            </control>
+            <control type="image">
+                <posx>937</posx>
+                <posy>515</posy>
+                <width>46</width>
+                <height>46</height>
+                <colordiffuse>$INFO[Window.Property(nextup_ring_track)]</colordiffuse>
+                <texture>rebuffer-ring/20.png</texture>
+                <visible>!String.IsEmpty(Window.Property(player_rebuffer_ring))</visible>
+            </control>
+            <control type="image">
+                <posx>937</posx>
+                <posy>515</posy>
+                <width>46</width>
+                <height>46</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture>$INFO[Window.Property(player_rebuffer_ring)]</texture>
+                <visible>!String.IsEmpty(Window.Property(player_rebuffer_ring))</visible>
+            </control>
+        </control>
+
+        <!-- 8.9's toast, LAST so it draws over the chrome and every panel.
+
+             HAND-WRITTEN COPY of skin/fragments.py:toast(). This screen is
+             static, so it cannot call the fragment; tests/test_toast_surface.py
+             asserts the two agree on the property, the geometry, the capsule
+             and the fade timings, so the copy cannot drift silently.
+
+             The messages it carries come from the background SERVICE (a
+             stall, an opening timeout), which is a different process from
+             this window: hence Window(10000), the one store both can reach,
+             named explicitly because an unqualified Window.Property() would
+             resolve against this dialog instead. -->
+        <control type="group">
+            <visible>!String.IsEmpty(Window(10000).Property(tofa_toast))</visible>
+            <animation effect="fade" start="0" end="100" time="180">Visible</animation>
+            <animation effect="fade" start="100" end="0" time="250">Hidden</animation>
+            <control type="image">
+                <posx>410</posx>
+                <posy>40</posy>
+                <width>1100</width>
+                <height>52</height>
+                <colordiffuse>0x99000000</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+            </control>
+            <control type="label">
+                <posx>428</posx>
+                <posy>40</posy>
+                <width>1064</width>
+                <height>52</height>
+                <align>center</align>
+                <valign>center</valign>
+                <font>tofa_font_button</font>
+                <textcolor>0xFFFFFFFF</textcolor>
+                <scroll>true</scroll>
+                <scrollsuffix>   </scrollsuffix>
+                <label>$INFO[Window(10000).Property(tofa_toast)]</label>
+            </control>
+        </control>
+
+        <!-- kodigui framework sentinel: BaseWindow.onInit polls for control 666
+             to know the XML finished loading. Must exist in every window XML. -->
+        <control type="label" id="666">
+            <visible>false</visible>
+            <width>1</width>
+            <height>1</height>
+        </control>
+    </controls>
+</window>

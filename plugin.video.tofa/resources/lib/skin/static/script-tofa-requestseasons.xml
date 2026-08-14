@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  7.6's Request season-picker, consumed by
+  resources/lib/windows/requestseasons.py (kodigui.BaseDialog).
+
+  Panel 760 wide, radius 24, 40 padding, over a black 62% scrim. From the
+  top down: the HD/4K quality pills (only for a 4K-eligible title, and only
+  where the viewer may ask for it), then the season list; "All Seasons"
+  first when there is more than one; then the footer.
+
+  The quality row is NOT always present, and Kodi cannot size a panel to its
+  content, so requestseasons.py shifts the list and footer up and shortens
+  the panel when the pills are hidden (see _layout_for_quality). The layout
+  below is the WITH-pills case.
+
+  Control 666 is the probe kodigui.XMLBase.onInit polls to learn the XML has
+  loaded; a window without it declares its own XML broken after 2s.
+
+  Fonts (tofa_font_*) are injected into the active skin's Font.xml by
+  fontinstall.py at runtime, not defined here.
+-->
+<window>
+    <defaultcontrol always="true">100</defaultcontrol>
+    <backgroundcolor>0x00000000</backgroundcolor>
+    <coordinates>
+        <system>0</system>
+    </coordinates>
+    <controls>
+        <!-- 7.6: black 62% scrim. -->
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <colordiffuse>0x9E000000</colordiffuse>
+            <texture>white-square.png</texture>
+        </control>
+
+        <control type="group">
+            <posx>580</posx>
+            <posy>150</posy>
+
+            <control type="image" id="90">
+                <width>760</width>
+                <height>800</height>
+                <colordiffuse>0xF2030B10</colordiffuse>
+                <texture border="24">panel-fill.png</texture>
+            </control>
+            <control type="image" id="91">
+                <width>760</width>
+                <height>800</height>
+                <colordiffuse>0x1EFFFFFF</colordiffuse>
+                <texture border="24">panel-outline.png</texture>
+            </control>
+
+            <!-- Eyebrow + title, as the app draws them. -->
+            <control type="label">
+                <posx>40</posx>
+                <posy>36</posy>
+                <width>680</width>
+                <height>28</height>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>$INFO[Window.Property(eyebrow)]</label>
+            </control>
+            <control type="label">
+                <posx>40</posx>
+                <posy>66</posy>
+                <width>680</width>
+                <height>48</height>
+                <font>tofa_font_heading</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(heading)]</label>
+            </control>
+
+            <!-- Quality pills. 7.6 shows them only where the title can be
+                 had in 4K, and draws the picked one as a solid fill with
+                 its text over the top. -->
+            <control type="group" id="112">
+                <posx>40</posx>
+                <posy>130</posy>
+                <visible>!String.IsEmpty(Window.Property(show_quality))</visible>
+
+                <control type="button" id="110">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>130</width>
+                    <height>64</height>
+                    <onup>110</onup>
+                    <ondown>100</ondown>
+                    <onleft>110</onleft>
+                    <onright>111</onright>
+                    <texturefocus border="32">capsule-h64.png</texturefocus>
+                    <texturenofocus border="32">capsule-h64.png</texturenofocus>
+                    <label></label>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>130</width>
+                    <height>64</height>
+                    <visible>String.IsEqual(Window.Property(quality),hd)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="32">capsule-h64.png</texture>
+                </control>
+                <control type="label">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>130</width>
+                    <height>64</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(hd_text)]</textcolor>
+                    <label>HD</label>
+                </control>
+
+                <control type="button" id="111">
+                    <posx>146</posx>
+                    <posy>0</posy>
+                    <width>130</width>
+                    <height>64</height>
+                    <onup>111</onup>
+                    <ondown>100</ondown>
+                    <onleft>110</onleft>
+                    <onright>111</onright>
+                    <texturefocus border="32">capsule-h64.png</texturefocus>
+                    <texturenofocus border="32">capsule-h64.png</texturenofocus>
+                    <label></label>
+                </control>
+                <control type="image">
+                    <posx>146</posx>
+                    <posy>0</posy>
+                    <width>130</width>
+                    <height>64</height>
+                    <visible>String.IsEqual(Window.Property(quality),4k)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="32">capsule-h64.png</texture>
+                </control>
+                <control type="label">
+                    <posx>146</posx>
+                    <posy>0</posy>
+                    <width>130</width>
+                    <height>64</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(fourk_text)]</textcolor>
+                    <label>4K</label>
+                </control>
+            </control>
+
+            <!-- Season rows. Scrolls internally; 7.6 caps the list at 520 and
+                 asks for inner padding so a focused row's scale is not
+                 clipped. -->
+            <control type="list" id="100">
+                <posx>40</posx>
+                <posy>214</posy>
+                <width>680</width>
+                <height>440</height>
+                <onup>100</onup>
+                <onleft>100</onleft>
+                <onright>100</onright>
+                <ondown>120</ondown>
+                <orientation>vertical</orientation>
+                <itemwidth>680</itemwidth>
+                <itemheight>76</itemheight>
+                <itemlayout width="680" height="76">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>680</width>
+                        <height>68</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture border="14">rounded-14.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>22</posx>
+                        <posy>4</posy>
+                        <width>44</width>
+                        <height>68</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>78</posx>
+                        <posy>4</posy>
+                        <width>360</width>
+                        <height>68</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <posx>446</posx>
+                        <posy>4</posy>
+                        <width>212</width>
+                        <height>68</height>
+                        <align>right</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="680" height="76">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>680</width>
+                        <height>68</height>
+                        <colordiffuse>$INFO[Window.Property(accent_wash)]</colordiffuse>
+                        <texture border="14">rounded-14.png</texture>
+                    </control>
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>680</width>
+                        <height>68</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture border="14">rounded-14-outline.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>22</posx>
+                        <posy>4</posy>
+                        <width>44</width>
+                        <height>68</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>78</posx>
+                        <posy>4</posy>
+                        <width>360</width>
+                        <height>68</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <posx>446</posx>
+                        <posy>4</posy>
+                        <width>212</width>
+                        <height>68</height>
+                        <align>right</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                    </control>
+                </focusedlayout>
+            </control>
+
+            <!-- Quality profile. Only where the viewer may actually pick one
+                 (an admin, a service with more than one profile, and not a 4K
+                 request, which always takes its own instance's default). The
+                 row itself is a button that opens the shared PickerDialog;
+                 requestseasons.py positions the group under the list. -->
+            <control type="group" id="130">
+                <posx>40</posx>
+                <posy>676</posy>
+                <visible>!String.IsEmpty(Window.Property(show_profile))</visible>
+
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>680</width>
+                    <height>68</height>
+                    <colordiffuse>0x14FFFFFF</colordiffuse>
+                    <texture border="14">rounded-14.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>680</width>
+                    <height>68</height>
+                    <visible>Control.HasFocus(131)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_wash)]</colordiffuse>
+                    <texture border="14">rounded-14.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>680</width>
+                    <height>68</height>
+                    <visible>Control.HasFocus(131)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="14">rounded-14-outline.png</texture>
+                </control>
+                <control type="label">
+                    <posx>22</posx>
+                    <posy>0</posy>
+                    <width>300</width>
+                    <height>68</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_row_title</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>Quality profile</label>
+                </control>
+                <!-- align=right on a WINDOW label anchors the RIGHT edge at
+                     posx and runs width leftwards, so this ends at 628, just
+                     clear of the chevron. A list item's label is the other
+                     way round; see reference_kodi_layout_traps. -->
+                <control type="label">
+                    <posx>628</posx>
+                    <posy>0</posy>
+                    <width>340</width>
+                    <height>68</height>
+                    <align>right</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_metadata</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(profile_name)]</label>
+                </control>
+                <control type="label">
+                    <posx>644</posx>
+                    <posy>0</posy>
+                    <width>24</width>
+                    <height>68</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                    <label>$INFO[Window.Property(profile_chevron)]</label>
+                </control>
+                <control type="button" id="131">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>680</width>
+                    <height>68</height>
+                    <onup>100</onup>
+                    <ondown>120</ondown>
+                    <onleft>131</onleft>
+                    <onright>131</onright>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+
+            <!-- Footer. 7.6 pairs "Request N Season(s)" with Cancel; each is
+                 a glass pill that washes accent under focus, and the request
+                 button is dimmed while nothing is ticked. -->
+            <control type="group" id="122">
+                <posx>40</posx>
+                <posy>676</posy>
+
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>420</width>
+                    <height>68</height>
+                    <colordiffuse>0x14FFFFFF</colordiffuse>
+                    <texture border="34">capsule-h68.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>420</width>
+                    <height>68</height>
+                    <visible>Control.HasFocus(120)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_wash)]</colordiffuse>
+                    <texture border="34">capsule-h68.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>420</width>
+                    <height>68</height>
+                    <visible>Control.HasFocus(120)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="34">capsule-h68-outline.png</texture>
+                </control>
+                <control type="button" id="120">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>420</width>
+                    <height>68</height>
+                    <onup>100</onup>
+                    <ondown>120</ondown>
+                    <onleft>120</onleft>
+                    <onright>121</onright>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                    <label></label>
+                </control>
+                <control type="label">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>420</width>
+                    <height>68</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(request_text)]</textcolor>
+                    <label>$INFO[Window.Property(request_label)]</label>
+                </control>
+
+                <control type="image">
+                    <posx>436</posx>
+                    <posy>0</posy>
+                    <width>244</width>
+                    <height>68</height>
+                    <colordiffuse>0x14FFFFFF</colordiffuse>
+                    <texture border="34">capsule-h68.png</texture>
+                </control>
+                <control type="image">
+                    <posx>436</posx>
+                    <posy>0</posy>
+                    <width>244</width>
+                    <height>68</height>
+                    <visible>Control.HasFocus(121)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_wash)]</colordiffuse>
+                    <texture border="34">capsule-h68.png</texture>
+                </control>
+                <control type="image">
+                    <posx>436</posx>
+                    <posy>0</posy>
+                    <width>244</width>
+                    <height>68</height>
+                    <visible>Control.HasFocus(121)</visible>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="34">capsule-h68-outline.png</texture>
+                </control>
+                <control type="button" id="121">
+                    <posx>436</posx>
+                    <posy>0</posy>
+                    <width>244</width>
+                    <height>68</height>
+                    <onup>100</onup>
+                    <ondown>121</ondown>
+                    <onleft>120</onleft>
+                    <onright>121</onright>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                    <label></label>
+                </control>
+                <control type="label">
+                    <posx>436</posx>
+                    <posy>0</posy>
+                    <width>244</width>
+                    <height>68</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>Cancel</label>
+                </control>
+            </control>
+        </control>
+
+        <control type="label" id="666">
+            <visible>false</visible>
+            <width>1</width>
+            <height>1</height>
+        </control>
+    </controls>
+</window>

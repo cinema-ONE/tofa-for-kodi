@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Adapted from plex-for-kodi (https://github.com/plexinc/plex-for-kodi), GPL-2.0. -->
+<skin>
+    <defaultresolution>1080i</defaultresolution>
+    <defaultresolutionwide>1080i</defaultresolutionwide>
+    <version>1.0</version>
+
+    <zoom>0</zoom>
+
+    <credits>
+        <skinname>Main</skinname>
+        <name>tofa</name>
+    </credits>
+</skin>

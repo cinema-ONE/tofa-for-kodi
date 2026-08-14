@@ -1,0 +1,22 @@
+# Copied to the new repo as `.gitignore`. It is named without the dot HERE
+# so that it applies to the new repo rather than to this staging folder.
+
+__pycache__/
+*.pyc
+.tofa-probe/
+*tokens.json
+dist/
+
+# Kodi's addons directory symlinks tools/script.tofa.harness/ into the repo,
+# so any throwaway script dropped there to run *inside* Kodi silently lands in
+# git (a benchmark did, once). Only the two real files belong.
+/tools/script.tofa.harness/*
+!/tools/script.tofa.harness/addon.xml
+!/tools/script.tofa.harness/harness.py
+
+# The private sibling checkout, if anyone ever clones it INSIDE this tree
+# instead of beside it. Nothing under it is distributable.
+/internal-docs/
+
+# macOS Finder droppings, all over the tree.
+.DS_Store

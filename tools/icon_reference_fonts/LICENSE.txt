@@ -1,0 +1,12 @@
+Fonts in this directory are used only to render tools/icon_reference.html
+(a dev-only reference page, not shipped with the add-on) -- unrelated to
+resources/skins/Main/fonts/, which are the real fonts the add-on itself
+bundles and injects into Kodi at runtime (see fontinstall.py).
+
+SourceCodePro-Black.otf, SourceCodePro-Regular.otf
+    Source Code Pro, Adobe -- SIL Open Font License 1.1.
+    https://github.com/adobe-fonts/source-code-pro
+
+OpenSans-Regular.ttf
+    Open Sans, Google -- Apache License 2.0.
+    https://github.com/googlefonts/opensans

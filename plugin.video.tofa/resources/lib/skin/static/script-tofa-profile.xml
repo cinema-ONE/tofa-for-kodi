@@ -1,0 +1,1553 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "Who's watching?" profile picker + PIN entry dialog, consumed by
+  resources/lib/windows/profile_select.py's ProfileDialog (kodigui.BaseDialog).
+  Matched against tofa's real Apple TV app, sharing the star-flecked dark
+  backdrop from script-tofa-signin.xml.
+
+  Two states toggled by Window.Property(state): "picker" and "pin".
+
+  Avatar priority: custom photo (masked circular, diffuse="circle.png") >
+  its preset avatar, fetched from the server (avatar_texture) >
+  initials. All three use
+  the same fixed translucent circle fill (0x29FFFFFF), matching tofa's web
+  app, which renders every preset/initial avatar on one fixed background
+  rather than per-profile color.
+
+  Profile picker: one pre-sized, pre-centered list per profile count (1-5)
+  since Kodi's static XML can't position a control from a runtime property;
+  a 6th+ profile reuses the 5-wide list and just scrolls.
+
+  PIN entry: a 3x4 numeric keypad (1-9, then blank/0/backspace), each key
+  its own focusable circle button since Kodi's remote-driven focus has no
+  tap-anywhere equivalent.
+
+  Fonts/positions follow script-tofa-signin.xml's conventions.
+-->
+<window>
+    <defaultcontrol always="true">666</defaultcontrol>
+    <backgroundcolor>0x00000000</backgroundcolor>
+    <coordinates>
+        <system>0</system>
+    </coordinates>
+    <controls>
+        <!-- Full-bleed backdrop, matching script-tofa-signin.xml. -->
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <colordiffuse>0xFF030B10</colordiffuse>
+            <texture>white-square.png</texture>
+        </control>
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <texture>bg-stars.png</texture>
+        </control>
+
+        <!-- ================= Picker state ================= -->
+
+        <control type="label">
+            <posx>0</posx>
+            <posy>280</posy>
+            <width>1920</width>
+            <height>50</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_heading</font>
+            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+            <label>$INFO[Window.Property(heading)]</label>
+            <visible>String.IsEqual(Window.Property(state),picker)</visible>
+        </control>
+        <control type="label">
+            <posx>0</posx>
+            <posy>360</posy>
+            <width>1920</width>
+            <height>28</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_body</font>
+            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+            <label>$INFO[Window.Property(subheading)]</label>
+            <visible>String.IsEqual(Window.Property(state),picker)</visible>
+        </control>
+
+        <!-- One pre-sized, pre-centered list per profile count (1-5); itemlayout/focusedlayout content is identical across all 5, only posx/width differ. -->
+        <control type="list" id="800">
+            <posx>810</posx>
+            <posy>430</posy>
+            <width>300</width>
+            <height>360</height>
+            <orientation>horizontal</orientation>
+            <itemlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </itemlayout>
+            <focusedlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </focusedlayout>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),1)</visible>
+        </control>
+
+        <control type="list" id="801">
+            <posx>660</posx>
+            <posy>430</posy>
+            <width>600</width>
+            <height>360</height>
+            <orientation>horizontal</orientation>
+            <itemlayout width="300" height="360">
+                <description>see id=800 for the shared item content</description>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </itemlayout>
+            <focusedlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </focusedlayout>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),2)</visible>
+        </control>
+
+        <control type="list" id="802">
+            <posx>510</posx>
+            <posy>430</posy>
+            <width>900</width>
+            <height>360</height>
+            <orientation>horizontal</orientation>
+            <itemlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </itemlayout>
+            <focusedlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </focusedlayout>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),3)</visible>
+        </control>
+
+        <control type="list" id="803">
+            <posx>360</posx>
+            <posy>430</posy>
+            <width>1200</width>
+            <height>360</height>
+            <orientation>horizontal</orientation>
+            <itemlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </itemlayout>
+            <focusedlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </focusedlayout>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),4)</visible>
+        </control>
+
+        <control type="list" id="804">
+            <posx>210</posx>
+            <posy>430</posy>
+            <width>1500</width>
+            <height>360</height>
+            <orientation>horizontal</orientation>
+            <itemlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </itemlayout>
+            <focusedlayout width="300" height="360">
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>0x29FFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
+                </control>
+                <control type="image">
+                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="label">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[ListItem.Property(initial)]</label>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                </control>
+                <control type="image">
+                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_19</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE10B;</label>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[ListItem.Property(name)]</label>
+                </control>
+                <control type="group">
+                    <posx>115</posx><posy>250</posy>
+                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
+                    <control type="image">
+                        <width>70</width><height>26</height>
+                        <colordiffuse>0x1FFFFFFF</colordiffuse>
+                        <texture border="13">tag-pill.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
+                        <align>center</align><valign>center</valign>
+                        <font>tofa_font_micro</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(kids_label)]</label>
+                    </control>
+                </control>
+            </focusedlayout>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),5)</visible>
+        </control>
+
+        <!-- Cancel pill: plain translucent capsule (no accent), matching the reference's understated style. -->
+        <control type="group">
+            <posx>810</posx>
+            <posy>880</posy>
+            <visible>String.IsEqual(Window.Property(state),picker)</visible>
+            <control type="image">
+                <width>300</width><height>76</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <texture border="38">capsule-h76.png</texture>
+            </control>
+            <control type="image">
+                <width>300</width><height>76</height>
+                <colordiffuse>0xFFFFFFFF</colordiffuse>
+                <texture border="38">capsule-h76-outline.png</texture>
+                <visible>Control.HasFocus(820)</visible>
+            </control>
+            <control type="label">
+                <posx>0</posx><posy>18</posy><width>300</width><height>40</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_button</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(cancel_label)]</label>
+            </control>
+            <control type="button" id="820">
+                <posx>0</posx><posy>0</posy><width>300</width><height>76</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+            </control>
+        </control>
+
+        <!-- ================= PIN state ================= -->
+        <!-- Everything below shakes as ONE pane on a wrong PIN (9.2), which
+             is what both reference clients do: the Apple TV oscillates the
+             pane ~13px over ~270ms, the Android app shifts the whole block.
+
+             ONE wrapper group, not an animation per control. The keypad is
+             TWELVE separate key groups, one per key, so the obvious reading
+             of "put it on the keypad group" lands on a single key: the first
+             attempt at this shook the "1" button alone and nothing else.
+
+             The children keep their absolute coordinates; the group sits at
+             0,0 and exists purely to carry the animation.
+
+             Kodi has no shake effect and no keyframes. A conditional slide
+             runs start to end while the condition holds and reverses when it
+             drops, so _reject_pin() flips pin_shake to drive each leg of the
+             oscillation. -->
+        <control type="group">
+            <posx>0</posx><posy>0</posy>
+            <animation effect="slide" start="0,0" end="13,0" time="45" tween="sine" condition="!String.IsEmpty(Window.Property(pin_shake))">Conditional</animation>
+            <control type="image">
+                <posx>890</posx><posy>80</posy><width>140</width><height>140</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <texture>circle.png</texture>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+            </control>
+            <control type="image">
+                <posx>890</posx><posy>80</posy><width>140</width><height>140</height>
+                <aspectratio>scale</aspectratio>
+                <texture diffuse="circle.png">$INFO[Window.Property(pin_avatar_photo_url)]</texture>
+                <visible>String.IsEqual(Window.Property(state),pin) + !String.IsEmpty(Window.Property(pin_avatar_photo_url))</visible>
+            </control>
+            <control type="image">
+                <posx>895</posx><posy>85</posy><width>129</width><height>129</height>
+                <aspectratio>scale</aspectratio>
+                <texture diffuse="circle.png">$INFO[Window.Property(pin_avatar_texture)]</texture>
+                <visible>String.IsEqual(Window.Property(state),pin) + String.IsEmpty(Window.Property(pin_avatar_photo_url)) + !String.IsEmpty(Window.Property(pin_avatar_texture))</visible>
+            </control>
+            <control type="label">
+                <posx>890</posx><posy>80</posy><width>140</width><height>140</height>
+                <align>center</align><aligny>center</aligny>
+                <font>tofa_font_heading</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(pin_avatar_initial)]</label>
+                <visible>String.IsEqual(Window.Property(state),pin) + String.IsEmpty(Window.Property(pin_avatar_photo_url)) + String.IsEmpty(Window.Property(pin_avatar_texture))</visible>
+            </control>
+
+            <control type="label">
+                <posx>0</posx><posy>250</posy><width>1920</width><height>44</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_heading</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(pin_heading)]</label>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+            </control>
+
+            <!-- 4-dot progress row, centered. The group is a leftover of an
+                 earlier shake attempt that wrapped this row alone; the pane
+                 now shakes as a whole from the group above, so this one only
+                 keeps the dots together. -->
+            <control type="group">
+                <posx>0</posx><posy>0</posy>
+                <control type="image">
+                    <posx>892</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>white</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + String.IsEqual(Window.Property(pin_dot_0),1)</visible>
+                </control>
+                <control type="image">
+                    <posx>892</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + !String.IsEqual(Window.Property(pin_dot_0),1)</visible>
+                </control>
+                <control type="image">
+                    <posx>932</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>white</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + String.IsEqual(Window.Property(pin_dot_1),1)</visible>
+                </control>
+                <control type="image">
+                    <posx>932</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + !String.IsEqual(Window.Property(pin_dot_1),1)</visible>
+                </control>
+                <control type="image">
+                    <posx>972</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>white</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + String.IsEqual(Window.Property(pin_dot_2),1)</visible>
+                </control>
+                <control type="image">
+                    <posx>972</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + !String.IsEqual(Window.Property(pin_dot_2),1)</visible>
+                </control>
+                <control type="image">
+                    <posx>1012</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>white</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + String.IsEqual(Window.Property(pin_dot_3),1)</visible>
+                </control>
+                <control type="image">
+                    <posx>1012</posx><posy>340</posy><width>16</width><height>16</height>
+                    <colordiffuse>0x40FFFFFF</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>String.IsEqual(Window.Property(state),pin) + !String.IsEqual(Window.Property(pin_dot_3),1)</visible>
+                </control>
+            </control>
+
+            <!-- 9.2 wants the error reported inline, in status red, and
+                 never as a modal.
+
+                 BELOW the keypad, which is where the Apple TV puts it. Adrian
+                 recorded the reject in the JetKVM browser UI and the line reads
+                 "Incorrect PIN." under the number pad, still up 3.3s later.
+
+                 Three earlier placements were guesses and all three were wrong:
+                 y386 drew over the "1 2 3" row, y300 crowded the heading, and
+                 swapping with the heading hid the prompt for no reason. Our
+                 keypad ends at y800 and the "Back to profiles" pill starts at
+                 y921, so y845 sits in that gap the way the reference's does
+                 between its own keypad (ends y810) and pill (starts y898). -->
+            <control type="label">
+                <posx>0</posx><posy>845</posy><width>1920</width><height>40</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_caption</font>
+                <textcolor>0xFFF87171</textcolor>
+                <label>$INFO[Window.Property(pin_error)]</label>
+                <visible>String.IsEqual(Window.Property(state),pin) + !String.IsEmpty(Window.Property(pin_error))</visible>
+                <animation effect="fade" start="0" end="100" time="140">Visible</animation>
+            </control>
+
+            <!-- Keypad: 3x4 grid of circular buttons (1-9, then blank/0/backspace); each key is a fill+outline+label group with a transparent id-bearing button overlay, same technique as script-tofa-signin.xml's retry button. -->
+
+            <!-- Row 1: 1 2 3 -->
+            <control type="group">
+                <posx>794</posx><posy>380</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(901)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(901)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(901)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_1)]</label>
+                    <visible>!Control.HasFocus(901)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_1)]</label>
+                    <visible>Control.HasFocus(901)</visible>
+                </control>
+                <control type="button" id="901">
+                    <width>100</width><height>100</height>
+                    <onright>902</onright>
+                    <ondown>904</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>910</posx><posy>380</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(902)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(902)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(902)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_2)]</label>
+                    <visible>!Control.HasFocus(902)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_2)]</label>
+                    <visible>Control.HasFocus(902)</visible>
+                </control>
+                <control type="button" id="902">
+                    <width>100</width><height>100</height>
+                    <onleft>901</onleft>
+                    <onright>903</onright>
+                    <ondown>905</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>1026</posx><posy>380</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(903)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(903)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(903)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_3)]</label>
+                    <visible>!Control.HasFocus(903)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_3)]</label>
+                    <visible>Control.HasFocus(903)</visible>
+                </control>
+                <control type="button" id="903">
+                    <width>100</width><height>100</height>
+                    <onleft>902</onleft>
+                    <ondown>906</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+
+            <!-- Row 2: 4 5 6 -->
+            <control type="group">
+                <posx>794</posx><posy>496</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(904)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(904)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(904)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_4)]</label>
+                    <visible>!Control.HasFocus(904)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_4)]</label>
+                    <visible>Control.HasFocus(904)</visible>
+                </control>
+                <control type="button" id="904">
+                    <width>100</width><height>100</height>
+                    <onup>901</onup>
+                    <onright>905</onright>
+                    <ondown>907</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>910</posx><posy>496</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(905)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(905)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(905)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_5)]</label>
+                    <visible>!Control.HasFocus(905)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_5)]</label>
+                    <visible>Control.HasFocus(905)</visible>
+                </control>
+                <control type="button" id="905">
+                    <width>100</width><height>100</height>
+                    <onup>902</onup>
+                    <onleft>904</onleft>
+                    <onright>906</onright>
+                    <ondown>908</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>1026</posx><posy>496</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(906)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(906)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(906)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_6)]</label>
+                    <visible>!Control.HasFocus(906)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_6)]</label>
+                    <visible>Control.HasFocus(906)</visible>
+                </control>
+                <control type="button" id="906">
+                    <width>100</width><height>100</height>
+                    <onup>903</onup>
+                    <onleft>905</onleft>
+                    <ondown>909</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+
+            <!-- Row 3: 7 8 9 -->
+            <control type="group">
+                <posx>794</posx><posy>612</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(907)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(907)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(907)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_7)]</label>
+                    <visible>!Control.HasFocus(907)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_7)]</label>
+                    <visible>Control.HasFocus(907)</visible>
+                </control>
+                <control type="button" id="907">
+                    <width>100</width><height>100</height>
+                    <onup>904</onup>
+                    <onright>908</onright>
+                    <ondown>900</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>910</posx><posy>612</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(908)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(908)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(908)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_8)]</label>
+                    <visible>!Control.HasFocus(908)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_8)]</label>
+                    <visible>Control.HasFocus(908)</visible>
+                </control>
+                <control type="button" id="908">
+                    <width>100</width><height>100</height>
+                    <onup>905</onup>
+                    <onleft>907</onleft>
+                    <onright>909</onright>
+                    <ondown>900</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>1026</posx><posy>612</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(909)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(909)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(909)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_9)]</label>
+                    <visible>!Control.HasFocus(909)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_9)]</label>
+                    <visible>Control.HasFocus(909)</visible>
+                </control>
+                <control type="button" id="909">
+                    <width>100</width><height>100</height>
+                    <onup>906</onup>
+                    <onleft>908</onleft>
+                    <ondown>910</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+
+            <!-- Row 4: (blank) 0 backspace -->
+            <control type="group">
+                <posx>910</posx><posy>728</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(900)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(900)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(900)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(digit_0)]</label>
+                    <visible>!Control.HasFocus(900)</visible>
+                </control>
+                <control type="label">
+                    <posy>8</posy><width>100</width><height>70</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_heading</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(digit_0)]</label>
+                    <visible>Control.HasFocus(900)</visible>
+                </control>
+                <control type="button" id="900">
+                    <width>100</width><height>100</height>
+                    <onup>908</onup>
+                    <onright>910</onright>
+                    <ondown>920</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+            <control type="group">
+                <posx>1026</posx><posy>728</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>!Control.HasFocus(910)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>Control.HasFocus(910)</visible>
+                </control>
+                <control type="image">
+                    <width>100</width><height>100</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>Control.HasFocus(910)</visible>
+                </control>
+                <control type="label">
+                    <posy>32</posy><width>100</width><height>44</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_36</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>&#xE0AE;</label>
+                    <visible>!Control.HasFocus(910)</visible>
+                </control>
+                <control type="label">
+                    <posy>32</posy><width>100</width><height>44</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_icons_36</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>&#xE0AE;</label>
+                    <visible>Control.HasFocus(910)</visible>
+                </control>
+                <control type="button" id="910">
+                    <width>100</width><height>100</height>
+                    <onup>909</onup>
+                    <onleft>900</onleft>
+                    <ondown>920</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+
+            <!-- "Back to profiles" pill: same understated style as Cancel. Reads
+                 "Cancel" instead when the dialog opened straight onto the PIN pad,
+                 because then no picker was ever shown and there is nothing behind
+                 this screen to go back to. It stays on screen either way: the PIN
+                 pane would otherwise have no visible way out at all, only the
+                 remote's Back. -->
+            <control type="group">
+                <posx>790</posx>
+                <posy>894</posy>
+                <visible>String.IsEqual(Window.Property(state),pin)</visible>
+                <control type="image">
+                    <width>340</width><height>76</height>
+                    <colordiffuse>0x1FFFFFFF</colordiffuse>
+                    <texture border="38">capsule-h76.png</texture>
+                </control>
+                <control type="image">
+                    <width>340</width><height>76</height>
+                    <colordiffuse>0xFFFFFFFF</colordiffuse>
+                    <texture border="38">capsule-h76-outline.png</texture>
+                    <visible>Control.HasFocus(920)</visible>
+                </control>
+                <control type="label">
+                    <posx>0</posx><posy>18</posy><width>340</width><height>40</height>
+                    <align>center</align><valign>center</valign>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(pin_exit_label)]</label>
+                </control>
+                <control type="button" id="920">
+                    <posx>0</posx><posy>0</posy><width>340</width><height>76</height>
+                    <onup>900</onup>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+        </control>
+
+        <!-- kodigui framework sentinel; see script-tofa-signin.xml's identical control. -->
+        <control type="label" id="666">
+            <visible>false</visible>
+            <width>1</width>
+            <height>1</height>
+        </control>
+    </controls>
+</window>

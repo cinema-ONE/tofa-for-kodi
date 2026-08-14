@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- COPIED from resources/lib/skin/static/script-tofa-picker.xml and processed.
+     hash=8de2b0cce27a. DO NOT HAND-EDIT: edit the file under static/,
+     which keeps every comment; this copy has them stripped and its
+     capsules and rounded rects swapped for resolution-free art. -->
+<window>
+    <defaultcontrol always="true">100</defaultcontrol>
+    <backgroundcolor>0x00000000</backgroundcolor>
+    <coordinates>
+        <system>0</system>
+    </coordinates>
+    <controls>
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <colordiffuse>0x9E000000</colordiffuse>
+            <texture>white-square.png</texture>
+        </control>
+        <control type="group">
+            <posx>650</posx>
+            <posy>210</posy>
+            <control type="image">
+                <width>620</width>
+                <height>760</height>
+                <colordiffuse>0xF2030B10</colordiffuse>
+                <texture border="24">panel-fill.png</texture>
+            </control>
+            <control type="image">
+                <width>620</width>
+                <height>760</height>
+                <colordiffuse>0x1EFFFFFF</colordiffuse>
+                <texture border="24">panel-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>24</posx>
+                <posy>32</posy>
+                <width>572</width>
+                <height>44</height>
+                <font>tofa_font_section_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(heading)]</label>
+            </control>
+            <control type="list" id="100">
+                <visible>String.IsEqual(Window.Property(mode),single)</visible>
+                <posx>24</posx>
+                <posy>95</posy>
+                <width>572</width>
+                <height>560</height>
+                <onup>9999</onup>
+                <onleft>9999</onleft>
+                <onright>9999</onright>
+                <ondown>9999</ondown>
+                <orientation>vertical</orientation>
+                <itemwidth>572</itemwidth>
+                <itemheight>70</itemheight>
+                <itemlayout width="572" height="70">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>62</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture>exact-rounded-14-572x62.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>24</posx>
+                        <posy>4</posy>
+                        <width>34</width>
+                        <height>62</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <visible>String.IsEmpty(ListItem.Property(detail))</visible>
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>442</width>
+                        <height>62</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <visible>!String.IsEmpty(ListItem.Property(detail))</visible>
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>268</width>
+                        <height>62</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <posx>352</posx>
+                        <posy>4</posy>
+                        <width>150</width>
+                        <height>62</height>
+                        <align>right</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>514</posx>
+                        <posy>4</posy>
+                        <width>34</width>
+                        <height>62</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(direction_glyph)]</label>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="572" height="70">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>62</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>exact-rounded-14-572x62.png</texture>
+                    </control>
+                    <control type="image">
+                        <visible>Control.HasFocus(100)</visible>
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>62</height>
+                        <colordiffuse>white</colordiffuse>
+                        <texture>exact-rounded-14-outline-572x62.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>24</posx>
+                        <posy>4</posy>
+                        <width>34</width>
+                        <height>62</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <visible>String.IsEmpty(ListItem.Property(detail))</visible>
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>442</width>
+                        <height>62</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <visible>!String.IsEmpty(ListItem.Property(detail))</visible>
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>268</width>
+                        <height>62</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <posx>352</posx>
+                        <posy>4</posy>
+                        <width>150</width>
+                        <height>62</height>
+                        <align>right</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_metadata</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(detail)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>514</posx>
+                        <posy>4</posy>
+                        <width>34</width>
+                        <height>62</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_19</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(direction_glyph)]</label>
+                    </control>
+                </focusedlayout>
+            </control>
+            <control type="label">
+                <posx>24</posx>
+                <posy>723</posy>
+                <width>572</width>
+                <height>26</height>
+                <font>tofa_font_micro</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>$INFO[Window.Property(hint)]</label>
+                <visible>String.IsEqual(Window.Property(mode),single) + String.IsEqual(Window.Property(has_hint),1)</visible>
+            </control>
+            <control type="label">
+                <visible>String.IsEqual(Window.Property(mode),multi)</visible>
+                <posx>24</posx>
+                <posy>84</posy>
+                <width>572</width>
+                <height>24</height>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>$INFO[Window.Property(eyebrow_101)]</label>
+            </control>
+            <control type="list" id="101">
+                <visible>String.IsEqual(Window.Property(mode),multi)</visible>
+                <posx>24</posx>
+                <posy>112</posy>
+                <width>572</width>
+                <height>270</height>
+                <onup>9999</onup>
+                <onleft>9999</onleft>
+                <onright>9999</onright>
+                <ondown>102</ondown>
+                <orientation>vertical</orientation>
+                <itemwidth>572</itemwidth>
+                <itemheight>54</itemheight>
+                <itemlayout width="572" height="54">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>46</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture>exact-rounded-14-572x46.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>24</posx>
+                        <posy>4</posy>
+                        <width>32</width>
+                        <height>46</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>452</width>
+                        <height>46</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="572" height="54">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>46</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>exact-rounded-14-572x46.png</texture>
+                    </control>
+                    <control type="image">
+                        <visible>Control.HasFocus(101)</visible>
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>46</height>
+                        <colordiffuse>white</colordiffuse>
+                        <texture>exact-rounded-14-outline-572x46.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>24</posx>
+                        <posy>4</posy>
+                        <width>32</width>
+                        <height>46</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>452</width>
+                        <height>46</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                </focusedlayout>
+            </control>
+            <control type="label">
+                <visible>String.IsEqual(Window.Property(mode),multi)</visible>
+                <posx>24</posx>
+                <posy>398</posy>
+                <width>572</width>
+                <height>24</height>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>$INFO[Window.Property(eyebrow_102)]</label>
+            </control>
+            <control type="list" id="102">
+                <visible>String.IsEqual(Window.Property(mode),multi)</visible>
+                <posx>24</posx>
+                <posy>430</posy>
+                <width>572</width>
+                <height>216</height>
+                <onup>101</onup>
+                <onleft>9999</onleft>
+                <onright>9999</onright>
+                <ondown>103</ondown>
+                <orientation>vertical</orientation>
+                <itemwidth>572</itemwidth>
+                <itemheight>54</itemheight>
+                <itemlayout width="572" height="54">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>46</height>
+                        <colordiffuse>0x14FFFFFF</colordiffuse>
+                        <texture>exact-rounded-14-572x46.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>24</posx>
+                        <posy>4</posy>
+                        <width>32</width>
+                        <height>46</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>452</width>
+                        <height>46</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="572" height="54">
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>46</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>exact-rounded-14-572x46.png</texture>
+                    </control>
+                    <control type="image">
+                        <visible>Control.HasFocus(102)</visible>
+                        <posx>0</posx>
+                        <posy>4</posy>
+                        <width>572</width>
+                        <height>46</height>
+                        <colordiffuse>white</colordiffuse>
+                        <texture>exact-rounded-14-outline-572x46.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>24</posx>
+                        <posy>4</posy>
+                        <width>32</width>
+                        <height>46</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>tofa_font_icons_24</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Property(check_glyph)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>72</posx>
+                        <posy>4</posy>
+                        <width>452</width>
+                        <height>46</height>
+                        <aligny>center</aligny>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                </focusedlayout>
+            </control>
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(mode),multi)</visible>
+                <posx>24</posx>
+                <posy>672</posy>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>32</width>
+                    <height>64</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>pill-cap-left.png</texture>
+                </control>
+                <control type="image">
+                    <posx>32</posx>
+                    <posy>0</posy>
+                    <width>508</width>
+                    <height>64</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>pill-mid.png</texture>
+                </control>
+                <control type="image">
+                    <posx>540</posx>
+                    <posy>0</posy>
+                    <width>32</width>
+                    <height>64</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>pill-cap-right.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>572</width>
+                    <height>64</height>
+                    <visible>Control.HasFocus(103)</visible>
+                    <colordiffuse>white</colordiffuse>
+                    <texture>pill-outline-572x64.png</texture>
+                </control>
+                <control type="label">
+                    <width>572</width>
+                    <height>64</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_row_title</font>
+                    <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                    <label>Done</label>
+                </control>
+                <control type="button" id="103">
+                    <width>572</width>
+                    <height>64</height>
+                    <onup>102</onup>
+                    <onleft>103</onleft>
+                    <onright>103</onright>
+                    <ondown>103</ondown>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>
+        </control>
+        <control type="label" id="666">
+            <visible>false</visible>
+            <width>1</width>
+            <height>1</height>
+        </control>
+    </controls>
+</window>

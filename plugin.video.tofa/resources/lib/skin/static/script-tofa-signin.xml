@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sign-in dialog skin XML, consumed by resources/lib/signin.py's
+  SignInDialog (kodigui.BaseDialog).
+
+  Fonts (tofa_font_caption/body/heading/link/code) are real Inter Tight /
+  Roboto Mono, injected into the active skin's own Font.xml by
+  fontinstall.ensure_tofa_fonts_installed() at runtime (Kodi's
+  GUIFontManager never loads Font.xml from an add-on's own bundle
+  directly). Until that has run and Kodi has restarted, these ids
+  silently fall back to Kodi's own defaults; that's expected, not a bug.
+
+  Positions use <coordinates><system>0</system></coordinates> resolution
+  scaling, same as every other window in this add-on; a bare
+  xbmcgui.WindowDialog would use raw screen pixels and break on anything
+  other than 1920x1080.
+-->
+<window>
+    <defaultcontrol always="true">666</defaultcontrol>
+    <backgroundcolor>0x00000000</backgroundcolor>
+    <coordinates>
+        <system>0</system>
+    </coordinates>
+    <controls>
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <colordiffuse>0xFF030B10</colordiffuse>
+            <texture>white-square.png</texture>
+        </control>
+        <control type="image">
+            <posx>0</posx>
+            <posy>0</posy>
+            <width>1920</width>
+            <height>1080</height>
+            <texture>bg-stars.png</texture>
+        </control>
+
+        <control type="image">
+            <posx>925</posx>
+            <posy>96</posy>
+            <width>70</width>
+            <height>84</height>
+            <texture>tofa-logo.png</texture>
+            <visible>String.IsEqual(Window.Property(state),waiting)</visible>
+        </control>
+
+        <control type="label">
+            <posx>0</posx>
+            <posy>180</posy>
+            <width>1920</width>
+            <height>28</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_caption</font>
+            <textcolor>0xFF2DD4BF</textcolor>
+            <label>$INFO[Window.Property(heading)]</label>
+            <visible>String.IsEqual(Window.Property(state),waiting)</visible>
+        </control>
+
+        <control type="label">
+            <posx>0</posx>
+            <posy>226</posy>
+            <width>1920</width>
+            <height>28</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_body</font>
+            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+            <label>$INFO[Window.Property(instruction_line)]</label>
+            <visible>String.IsEqual(Window.Property(state),waiting)</visible>
+        </control>
+
+        <!-- link-icon.png: Google Material Icons "Filled.Link" (Apache-2.0), not a tofa-original asset. -->
+        <control type="group">
+            <posx>752</posx>
+            <posy>278</posy>
+            <visible>String.IsEqual(Window.Property(state),waiting)</visible>
+            <control type="image">
+                <width>416</width>
+                <height>66</height>
+                <colordiffuse>0xFF2A3043</colordiffuse>
+                <texture border="33">capsule-h66.png</texture>
+            </control>
+            <control type="image">
+                <width>416</width>
+                <height>66</height>
+                <colordiffuse>0x33FFFFFF</colordiffuse>
+                <texture border="33">capsule-h66-outline.png</texture>
+            </control>
+            <control type="image">
+                <posx>17</posx>
+                <posy>13</posy>
+                <width>41</width>
+                <height>41</height>
+                <colordiffuse>0xFF2DD4BF</colordiffuse>
+                <texture>link-icon.png</texture>
+            </control>
+            <control type="label">
+                <posx>81</posx>
+                <posy>10</posy>
+                <width>500</width>
+                <height>66</height>
+                <align>left</align>
+                <valign>center</valign>
+                <font>tofa_font_link</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(link_url)]</label>
+            </control>
+        </control>
+
+        <!-- 8 boxed code characters, grouped 4+4 with a dash graphic, mirroring DeviceCodeResponse.user_code format "XXXX-XXXX". -->
+        <control type="group">
+            <posx>496</posx>
+            <posy>377</posy>
+            <visible>String.IsEqual(Window.Property(state),waiting)</visible>
+            <control type="image">
+                <posx>0</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>0</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>0</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_0)]</label>
+            </control>
+
+            <control type="image">
+                <posx>107</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>107</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>107</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_1)]</label>
+            </control>
+
+            <control type="image">
+                <posx>214</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>214</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>214</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_2)]</label>
+            </control>
+
+            <control type="image">
+                <posx>321</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>321</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>321</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_3)]</label>
+            </control>
+
+            <!-- Plain bar, not a font glyph, so it can't be thrown off by font metrics. -->
+            <control type="image">
+                <posx>421</posx>
+                <posy>59</posy>
+                <width>76</width>
+                <height>9</height>
+                <colordiffuse>0x99FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+
+            <control type="image">
+                <posx>505</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>505</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>505</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_4)]</label>
+            </control>
+
+            <control type="image">
+                <posx>612</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>612</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>612</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_5)]</label>
+            </control>
+
+            <control type="image">
+                <posx>719</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>719</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>719</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_6)]</label>
+            </control>
+
+            <control type="image">
+                <posx>826</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xFF14262E</colordiffuse>
+                <texture border="13">tag-pill.png</texture>
+            </control>
+            <control type="image">
+                <posx>826</posx><posy>0</posy><width>93</width><height>127</height>
+                <colordiffuse>0xAA2A7A72</colordiffuse>
+                <texture border="13">tag-pill-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>826</posx><posy>21</posy><width>93</width><height>127</height>
+                <align>center</align><valign>center</valign>
+                <font>tofa_font_code</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(code_char_7)]</label>
+            </control>
+        </control>
+
+        <!-- Rules and text explicitly share the same vertical center; not each control's own default. -->
+        <control type="image">
+            <posx>496</posx>
+            <posy>556</posy>
+            <width>340</width>
+            <height>2</height>
+            <colordiffuse>0x40FFFFFF</colordiffuse>
+            <texture>white-square-1px.png</texture>
+            <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(qr_image))</visible>
+        </control>
+        <control type="label">
+            <posx>860</posx>
+            <posy>539</posy>
+            <width>200</width>
+            <height>26</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_caption</font>
+            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+            <label>$INFO[Window.Property(qr_hint)]</label>
+            <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(qr_image))</visible>
+        </control>
+        <control type="image">
+            <posx>1084</posx>
+            <posy>556</posy>
+            <width>340</width>
+            <height>2</height>
+            <colordiffuse>0x40FFFFFF</colordiffuse>
+            <texture>white-square-1px.png</texture>
+            <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(qr_image))</visible>
+        </control>
+
+        <!-- Card color matches the QR PNG's own baked-in quiet-zone background exactly, so there's no visible seam (see _qr_svg_to_png). -->
+        <control type="image">
+            <posx>814</posx>
+            <posy>591</posy>
+            <width>292</width>
+            <height>292</height>
+            <colordiffuse>0xFFFFFFFF</colordiffuse>
+            <texture border="13">tag-pill.png</texture>
+            <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(qr_image))</visible>
+        </control>
+        <control type="image">
+            <posx>835</posx>
+            <posy>612</posy>
+            <width>250</width>
+            <height>250</height>
+            <texture>$INFO[Window.Property(qr_image)]</texture>
+            <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(qr_image))</visible>
+        </control>
+
+        <!-- countdown_text is ticked once a second by signin.py's poll
+             loop. The label is centered on the full width so it stays
+             correct regardless of digit count, but the icon next to it is
+             a fixed offset tuned for the common case: Kodi's static XML
+             can't dynamically re-center an icon+text pair as one unit. -->
+        <control type="label">
+            <posx>866</posx>
+            <posy>931</posy>
+            <width>28</width>
+            <height>28</height>
+            <align>center</align>
+            <aligny>center</aligny>
+            <font>tofa_font_icons_19</font>
+            <textcolor>0x99FFFFFF</textcolor>
+            <label>&#xE087;</label>
+            <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(countdown_text))</visible>
+        </control>
+        <control type="label">
+            <posx>13</posx>
+            <posy>933</posy>
+            <width>1920</width>
+            <height>22</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_micro</font>
+            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+            <label>$INFO[Window.Property(countdown_label)]</label>
+            <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(countdown_text))</visible>
+        </control>
+
+        <!-- Expired state mirrors the app's "That code timed out" screen
+             rather than closing silently.
+
+             The clock and the retry pill's arrow were PIL-drawn stand-ins
+             (clock-icon.png, refresh-icon.png) from before this add-on had
+             an icon font at all; they are Lucide glyphs now, which is what
+             every other icon in the UI already was.
+
+             The mark is a flat dark disc with a hairline ring, measured off
+             the real Apple TV app: disc fill rgb(56,58,61), ring
+             rgb(97,93,67), 175px across, clock glyph rgb(233,179,27) at
+             roughly half the disc. It used to be a 300px orange radial
+             bloom over a glow-circle.png texture. That glow came from the
+             Android app and has no counterpart on Apple TV, which is this
+             client's reference; deleting it also retired the last asset on
+             issue 6 that nobody could supply, since a disc and a ring are
+             assets we already generate. -->
+        <control type="image">
+            <posx>872</posx>
+            <posy>224</posy>
+            <width>176</width>
+            <height>176</height>
+            <colordiffuse>0xFF383A3D</colordiffuse>
+            <texture>circle.png</texture>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+        </control>
+        <control type="image">
+            <posx>872</posx>
+            <posy>224</posy>
+            <width>176</width>
+            <height>176</height>
+            <colordiffuse>0xFF615D43</colordiffuse>
+            <texture>circle-outline.png</texture>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+        </control>
+        <control type="label">
+            <posx>900</posx>
+            <posy>262</posy>
+            <width>120</width>
+            <height>100</height>
+            <align>center</align>
+            <aligny>center</aligny>
+            <font>tofa_font_icons_80</font>
+            <textcolor>0xFFE9B31B</textcolor>
+            <label>&#xE087;</label>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+        </control>
+        <control type="label">
+            <posx>0</posx>
+            <posy>427</posy>
+            <width>1920</width>
+            <height>28</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_caption</font>
+            <textcolor>0xFFE9B31B</textcolor>
+            <label>$INFO[Window.Property(expired_caption)]</label>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+        </control>
+        <control type="label">
+            <posx>0</posx>
+            <posy>485</posy>
+            <width>1920</width>
+            <height>50</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_heading</font>
+            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+            <label>$INFO[Window.Property(expired_headline)]</label>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+        </control>
+        <control type="label">
+            <posx>0</posx>
+            <posy>592</posy>
+            <width>1920</width>
+            <height>30</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_body</font>
+            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+            <label>$INFO[Window.Property(expired_subtext)]</label>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+        </control>
+        <!-- Kodi's <texture border="N"> 9-slice crops an NxN square
+             straight from the source's own corner, UNSCALED, so it only
+             reads as a true radius-N corner when the source's baked radius
+             equals N exactly. Too small a source radius clips the curve
+             early (flatter corner); too large leaves flat filler past the
+             curve. This rule was written here and nowhere else, while the
+             shared capsule generator's docstring claimed one 80x80 texture
+             worked at any "border=height/2", which is how every other
+             capsule in the app ended up subtly wrong. Every capsule now
+             uses capsule-h<height>.png with border=height/2, one asset per
+             height, checked by gen_capsule_pill_assets.py:verify(). -->
+        <control type="group">
+            <posx>777</posx>
+            <posy>680</posy>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+            <control type="image">
+                <width>366</width>
+                <height>76</height>
+                <colordiffuse>0x332DD4BF</colordiffuse>
+                <texture border="38">capsule-h76.png</texture>
+                <visible>!Control.HasFocus(700)</visible>
+            </control>
+            <control type="image">
+                <width>366</width>
+                <height>76</height>
+                <colordiffuse>0x552DD4BF</colordiffuse>
+                <texture border="38">capsule-h76.png</texture>
+                <visible>Control.HasFocus(700)</visible>
+            </control>
+            <control type="image">
+                <width>366</width>
+                <height>76</height>
+                <colordiffuse>0xFF2DD4BF</colordiffuse>
+                <texture border="38">capsule-h76-outline.png</texture>
+            </control>
+            <control type="label">
+                <posx>31</posx>
+                <posy>23</posy>
+                <width>30</width>
+                <height>30</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_19</font>
+                <textcolor>0xFF2DD4BF</textcolor>
+                <label>&#xE145;</label>
+            </control>
+            <control type="label">
+                <posx>77</posx>
+                <posy>19</posy>
+                <width>280</width>
+                <height>76</height>
+                <align>left</align>
+                <valign>center</valign>
+                <font>tofa_font_button</font>
+                <textcolor>0xFF2DD4BF</textcolor>
+                <label>$INFO[Window.Property(retry_label)]</label>
+            </control>
+            <control type="button" id="700">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>366</width>
+                <height>76</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+            </control>
+        </control>
+
+        <control type="label">
+            <posx>0</posx>
+            <posy>916</posy>
+            <width>1920</width>
+            <height>26</height>
+            <align>center</align>
+            <valign>center</valign>
+            <font>tofa_font_micro</font>
+            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+            <label>$INFO[Window.Property(expired_footnote)]</label>
+            <visible>String.IsEqual(Window.Property(state),expired)</visible>
+        </control>
+
+        <!-- kodigui framework sentinel: BaseWindow/BaseDialog onInit polls for
+             control 666 to know the XML finished loading. Must exist in every
+             window/dialog XML; also doubles as the default focus target since
+             this dialog has no focusable controls (dismissed via Back only). -->
+        <control type="label" id="666">
+            <visible>false</visible>
+            <width>1</width>
+            <height>1</height>
+        </control>
+    </controls>
+</window>

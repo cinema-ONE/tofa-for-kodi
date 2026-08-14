@@ -1,0 +1,468 @@
+# Kodi Media Center language file
+# Addon Name: tofa
+# Addon id: plugin.video.tofa
+# Addon Provider: adrian
+msgid ""
+msgstr ""
+
+msgctxt "#30000"
+msgid "General"
+msgstr ""
+
+msgctxt "#30003"
+msgid "Sign in"
+msgstr ""
+
+msgctxt "#30004"
+msgid "Start the device-flow sign-in and pick your server."
+msgstr ""
+
+msgctxt "#30005"
+msgid "Sign out"
+msgstr ""
+
+msgctxt "#30006"
+msgid "Forget the stored tokens for this server."
+msgstr ""
+
+msgctxt "#30007"
+msgid "Status"
+msgstr ""
+
+msgctxt "#30008"
+msgid "Current sign-in status for Server URL."
+msgstr ""
+
+msgctxt "#30009"
+msgid "Switch profile"
+msgstr ""
+
+msgctxt "#30010"
+msgid "Choose which profile to use, entering its PIN if it has one."
+msgstr ""
+
+msgctxt "#30030"
+msgid "Appearance"
+msgstr ""
+
+msgctxt "#30031"
+msgid "Accent color"
+msgstr ""
+
+msgctxt "#30032"
+msgid "Used for focus/selection highlights on the Home screen (nav pills, progress bars, card focus border)."
+msgstr ""
+
+msgctxt "#30033"
+msgid "Install tofa fonts"
+msgstr ""
+
+msgctxt "#30034"
+msgid "tofa's screens are designed around their own fonts. Installing them copies font files into your current Kodi skin and adds entries to that skin's font list; nothing else in the skin is changed, and reinstalling the skin undoes it. Kodi loads fonts only at startup, so a restart is needed afterwards. Use this if you declined the prompt earlier, or after switching skins."
+msgstr ""
+
+msgctxt "#30035"
+msgid "Declined font set version (internal)"
+msgstr ""
+
+msgctxt "#30036"
+msgid "Direct connections only (internal)"
+msgstr ""
+
+msgctxt "#30020"
+msgid "Advanced"
+msgstr ""
+
+msgctxt "#30021"
+msgid "Device ID"
+msgstr ""
+
+msgctxt "#30022"
+msgid "Stable X-Tofa-Device-Id sent with every request. Generated automatically on first sign-in."
+msgstr ""
+
+# Root menu
+
+msgctxt "#31000"
+msgid "Continue Watching"
+msgstr ""
+
+msgctxt "#31001"
+msgid "Movies"
+msgstr ""
+
+msgctxt "#31002"
+msgid "TV Shows"
+msgstr ""
+
+msgctxt "#31003"
+msgid "Search"
+msgstr ""
+
+msgctxt "#31060"
+msgid "Recently Added Movies"
+msgstr ""
+
+msgctxt "#31061"
+msgid "Recently Added TV Shows"
+msgstr ""
+
+msgctxt "#31062"
+msgid "Top Rated Movies"
+msgstr ""
+
+msgctxt "#31063"
+msgid "Top Rated TV Shows"
+msgstr ""
+
+msgctxt "#31064"
+msgid "Suggested for You"
+msgstr ""
+
+msgctxt "#31065"
+msgid "Not enough watch history yet."
+msgstr ""
+
+msgctxt "#31066"
+msgid "Discover"
+msgstr ""
+
+msgctxt "#31067"
+msgid "My Watchlist"
+msgstr ""
+
+msgctxt "#31068"
+msgid "Genres"
+msgstr ""
+
+msgctxt "#31069"
+msgid "Add to Watchlist"
+msgstr ""
+
+msgctxt "#31070"
+msgid "Remove from Watchlist"
+msgstr ""
+
+msgctxt "#31071"
+msgid "Added to your watchlist."
+msgstr ""
+
+msgctxt "#31072"
+msgid "Removed from your watchlist."
+msgstr ""
+
+# Discover categories
+
+msgctxt "#31080"
+msgid "Trending Movies"
+msgstr ""
+
+msgctxt "#31081"
+msgid "Trending TV Shows"
+msgstr ""
+
+msgctxt "#31082"
+msgid "Popular Movies"
+msgstr ""
+
+msgctxt "#31083"
+msgid "Popular TV Shows"
+msgstr ""
+
+msgctxt "#31084"
+msgid "Upcoming Movies"
+msgstr ""
+
+msgctxt "#31085"
+msgid "Libraries"
+msgstr ""
+
+msgctxt "#31086"
+msgid "More"
+msgstr ""
+
+# Sign-in dialog
+
+msgctxt "#31010"
+msgid "Sign in to tofa"
+msgstr ""
+
+msgctxt "#31014"
+msgid "Signed in."
+msgstr ""
+
+msgctxt "#31015"
+msgid "Sign-in failed: %s"
+msgstr ""
+
+msgctxt "#31016"
+msgid "Not signed in"
+msgstr ""
+
+msgctxt "#31017"
+msgid "Signed in as %s"
+msgstr ""
+
+msgctxt "#31018"
+msgid "No server on your account is online yet. Start your tofa media server and try again."
+msgstr ""
+
+msgctxt "#31019"
+msgid "Sign-in cancelled."
+msgstr ""
+
+msgctxt "#31020"
+msgid "Signed out."
+msgstr ""
+
+msgctxt "#31021"
+msgid "Please sign in from Add-on settings before browsing."
+msgstr ""
+
+msgctxt "#31022"
+msgid "Choose a server"
+msgstr ""
+
+msgctxt "#31023"
+msgid "Or scan"
+msgstr ""
+
+msgctxt "#31024"
+msgid "Pair this TV"
+msgstr ""
+
+msgctxt "#31025"
+msgid "Open this link on any device, then enter the code"
+msgstr ""
+
+msgctxt "#31026"
+msgid "Pairing code expired"
+msgstr ""
+
+msgctxt "#31027"
+msgid "That code timed out."
+msgstr ""
+
+msgctxt "#31028"
+msgid "No worries. We'll generate a new one and start over."
+msgstr ""
+
+msgctxt "#31029"
+msgid "Generate new code"
+msgstr ""
+
+# Playback
+
+msgctxt "#31030"
+msgid "This title cannot play as DirectPlay/DirectFile on your current profile."
+msgstr ""
+
+msgctxt "#31031"
+msgid "Server reason: %s"
+msgstr ""
+
+msgctxt "#31032"
+msgid "Play anyway (will transcode)"
+msgstr ""
+
+msgctxt "#31033"
+msgid "The server took too long to respond."
+msgstr ""
+
+msgctxt "#31034"
+msgid "Playback took too long to start."
+msgstr ""
+
+msgctxt "#31035"
+msgid "Playback stalled and couldn't recover."
+msgstr ""
+
+# Fonts
+
+# Completes 31036. Which one depends on whether the platform brings Kodi
+# back by itself (CoreELEC/LibreELEC do; a desktop install does not).
+msgctxt "#31037"
+msgid "Kodi will restart automatically."
+msgstr ""
+
+msgctxt "#31038"
+msgid "Kodi will close, and you'll need to reopen it yourself."
+msgstr ""
+
+# "Install", not "Install and restart": on a desktop install Kodi closes
+# and stays closed, so naming the restart in the button is wrong there.
+msgctxt "#31039"
+msgid "Install"
+msgstr ""
+
+msgctxt "#31042"
+msgid "Cancel"
+msgstr ""
+
+msgctxt "#31043"
+msgid "tofa's fonts are already installed in your current Kodi skin."
+msgstr ""
+
+# Search
+
+msgctxt "#31040"
+msgid "Search tofa"
+msgstr ""
+
+msgctxt "#31041"
+msgid "No results."
+msgstr ""
+
+# Errors
+
+msgctxt "#31050"
+msgid "tofa server error: %s"
+msgstr ""
+
+msgctxt "#31051"
+msgid "Could not reach the tofa server."
+msgstr ""
+
+# Sign-in dialog (cont'd)
+
+msgctxt "#31052"
+msgid "Codes expire after a few minutes for your security."
+msgstr ""
+
+msgctxt "#31053"
+msgid "Code refreshes in %s"
+msgstr ""
+
+# Switch server (Settings > Account)
+
+msgctxt "#31054"
+msgid "Current"
+msgstr ""
+
+# Unused since the switch got its own screen (#31117 is the headline there).
+# Kept because a string id is a contract with the translations already made
+# against it; reusing 31055 for different copy would silently mistranslate.
+msgctxt "#31055"
+msgid "Pick which of your servers this device plays from."
+msgstr ""
+
+msgctxt "#31056"
+msgid "Connected to %s"
+msgstr ""
+
+# Profile select / PIN entry
+
+msgctxt "#31090"
+msgid "Who's watching?"
+msgstr ""
+
+msgctxt "#31091"
+msgid "Choose a profile to switch to"
+msgstr ""
+
+msgctxt "#31092"
+msgid "Cancel"
+msgstr ""
+
+msgctxt "#31093"
+msgid "Enter %s's PIN"
+msgstr ""
+
+msgctxt "#31094"
+msgid "Back to profiles"
+msgstr ""
+
+# The reference app says exactly this, below the keypad -- read off a
+# screen recording of the real Apple TV rejecting a PIN, 2026-08-11.
+# It used to add "Try again.", which the reference does not.
+msgctxt "#31095"
+msgid "Incorrect PIN."
+msgstr ""
+
+msgctxt "#31096"
+msgid "Kids"
+msgstr ""
+
+msgctxt "#31097"
+msgid "YOU'RE WATCHING"
+msgstr ""
+
+# Terminal failure card (TV-DESIGN 8.7)
+
+msgctxt "#31098"
+msgid "Can't play this"
+msgstr ""
+
+msgctxt "#31099"
+msgid "Close"
+msgstr ""
+
+msgctxt "#31100"
+msgid "Something went wrong starting this title. It may help to try again."
+msgstr ""
+
+msgctxt "#31101"
+msgid "Playback stopped unexpectedly."
+msgstr ""
+
+msgctxt "#31102"
+msgid "This title has no playable version on the server."
+msgstr ""
+
+
+msgctxt "#31106"
+msgid "Apply"
+msgstr ""
+
+msgctxt "#31107"
+msgid "Recently Released"
+msgstr ""
+
+msgctxt "#31108"
+msgid "tofa needs to make these changes to Kodi:"
+msgstr ""
+
+msgctxt "#31109"
+msgid "Add tofa's fonts to your current skin"
+msgstr ""
+
+msgctxt "#31110"
+msgid "Raise Kodi's cached-image limit, for sharper artwork"
+msgstr ""
+
+msgctxt "#31111"
+msgid "Stop your skin's seek bar appearing over tofa's player"
+msgstr ""
+
+msgctxt "#31112"
+msgid "Recently Released Movies"
+msgstr ""
+
+msgctxt "#31113"
+msgid "Recently Released TV Shows"
+msgstr ""
+
+msgctxt "#31114"
+msgid "This server is version {0}. tofa for Kodi needs {1} or newer -- some screens will be missing or wrong until it is updated."
+msgstr ""
+
+msgctxt "#31115"
+msgid "Server needs updating"
+msgstr ""
+
+# Server picker screen (Settings > Account > Switch Server). Shown in caps
+# on screen; stored in sentence case so a translation can say what its own
+# language capitalises.
+
+msgctxt "#31116"
+msgid "Switch server"
+msgstr ""
+
+msgctxt "#31117"
+msgid "Pick where to watch from."
+msgstr ""
+
+msgctxt "#31118"
+msgid "Back"
+msgstr ""
+
