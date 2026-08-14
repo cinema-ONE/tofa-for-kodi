@@ -114,10 +114,30 @@ def _write_cache(data: dict) -> None:
         handle.close()
 
 
+#: Where the web app lives when the connected server does not serve it.
+#:
+#: The scraper's original assumption -- that the media server hands out the
+#: web app at its own root -- holds for a direct connection and breaks on the
+#: cloud PROXY, whose root is a bare 404: it forwards the API and nothing
+#: else. Measured against tofa's demo server 2026-08-14, where every profile
+#: fell back to initials because of it.
+#:
+#: This host is the right answer rather than a workaround: the preset
+#: catalogue is tofa-wide and cloud-side, the assets are public, tokenless
+#: and `immutable`, and app.tofa.tv is the build every other client reads. It
+#: is also the address the sign-in screen already puts on the television.
+_WEB_APP_BASE = "https://app.tofa.tv"
+
+
 def _fetch(session, url: str) -> Optional[str]:
     try:
         response = session.get(url, timeout=15)
         if response.status_code != 200:
+            # Logged, because a SILENT None here is what made the proxy case
+            # take an afternoon to find: no catalogue, no avatars, and not
+            # one line anywhere saying why.
+            log.debug("avatar_presets: %s answered %d"
+                      % (url, response.status_code))
             return None
         return response.text
     except Exception as exc:                       # network, DNS, TLS, ...
@@ -130,19 +150,30 @@ def _refresh(session, server: str, cache: dict) -> dict:
 
     Cheap in the common case: one 5KB page, and the ~230KB bundle only when
     its hash has actually moved."""
-    index = _fetch(session, server + "/")
-    if not index:
+    # The connected server first -- a direct LAN connection reads this off
+    # the box itself, no internet needed -- then tofa's own web app, which is
+    # the only source when the server is reached through the cloud proxy.
+    root, chunk = None, None
+    for candidate in (server, _WEB_APP_BASE):
+        index = _fetch(session, candidate + "/")
+        if not index:
+            continue
+        found = _ENTRY_CHUNK.search(index)
+        if not found:
+            log.warning("avatar_presets: no entry chunk in the web app index "
+                        "at %s" % candidate)
+            continue
+        root, chunk = candidate, found.group(1)
+        break
+    if not chunk:
         return cache
-    found = _ENTRY_CHUNK.search(index)
-    if not found:
-        log.warning("avatar_presets: no entry chunk in the web app index")
-        return cache
-    chunk = found.group(1)
+
     cache["checked_at"] = time.time()
-    if cache.get("chunk") == chunk and cache.get("presets"):
+    if cache.get("chunk") == chunk and cache.get("presets") \
+            and cache.get("root") == root:
         _write_cache(cache)
         return cache
-    bundle = _fetch(session, server + chunk)
+    bundle = _fetch(session, root + chunk)
     if not bundle:
         return cache
     presets = {name: src for name, src in _ENTRY.findall(bundle)}
@@ -153,8 +184,10 @@ def _refresh(session, server: str, cache: dict) -> dict:
                     "bundle shape again; keeping the previous catalogue")
         _write_cache(cache)
         return cache
-    log.info(f"avatar_presets: {len(presets)} presets from {chunk}")
-    cache = {"chunk": chunk, "presets": presets, "checked_at": time.time()}
+    log.info("avatar_presets: %d presets from %s%s"
+             % (len(presets), root, chunk))
+    cache = {"root": root, "chunk": chunk, "presets": presets,
+             "checked_at": time.time()}
     _write_cache(cache)
     return cache
 
@@ -186,7 +219,12 @@ def url_for(session, server: Optional[str], avatar_ref: Optional[str]) -> str:
         cache = _refresh(session, server, cache)
         presets = cache.get("presets") or {}
     src = presets.get(name)
-    return server + src if src else ""
+    if not src:
+        return ""
+    # Against the ROOT the catalogue came from, which is not always the
+    # server: a cache written before that was recorded predates the proxy
+    # and can only have come from the server.
+    return (cache.get("root") or server) + src
 
 
 def clear() -> None:

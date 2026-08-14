@@ -58,14 +58,24 @@ Two things are worth knowing before reading much of it.
 generated file digests every skin input, so one source edit rotates the stamp
 in all of them.
 
-**`internal-docs/` is not here.** Comments across the code cite a design spec
-by section ("9.4's fox tile") and occasionally an
-`internal-docs/atv-reference/*.png` capture. Those are pointers into tofa's
-internal TV design document and our reference captures, which are
-confidential and live in a private sibling checkout. The section numbers are
-kept because they are what makes the code navigable; nothing quoted from that
-document survives in this repository, and `tools/check_public_set.py` is
-what keeps it that way.
+**The documents these comments cite are not here, and never will be.**
+Comments across the code point at a design spec by section ("9.4's fox
+tile"), and at several documents by name: `TV-DESIGN.md`, `ANIMATION.md`,
+`DIVERGENCES.md`, `tofa UX/styleguide.md`, `addon-tofa-brief.md`, the
+vendored OpenAPI spec, and `internal-docs/atv-reference/*.png` captures.
+They are tofa's internal TV design document, the reference captures taken
+from tofa's own apps, and our working notes on both. All of them are
+confidential and live in a private sibling checkout. A missing file is the
+intended state, not an incomplete clone.
+
+The pointers stay because they are what makes the code navigable. What may
+not travel is a private document's *prose*, and `tools/check_public_set.py`
+gates on exactly that: it indexes every eight-token run of each private
+source and sweeps this file set. A handful of short lines do survive
+deliberately, with tofa's agreement -- "A collection is a set, not a title",
+a founder decision on rating iconography, two or three measurements -- and
+each is quote-marked and credited to its section where it appears. Nothing
+longer than a line, and nothing passed off as ours.
 
 ## Development
 

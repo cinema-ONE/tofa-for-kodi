@@ -489,10 +489,18 @@
                                 <label>$INFO[Window.Property(primary_glyph)]</label>
                             </control>
                             <control type="label" id="5212">
-                                <posx>173</posx>
+                                <!-- posx/width are set at runtime by
+                                     detail.py:_layout_primary_pill, which is
+                                     also what decides whether an icon is
+                                     taking room on the left. CENTRED, like
+                                     every other action pill's label: this
+                                     one holds anything from "Play" to
+                                     "Resume S2 E2" to "Coming to library". -->
+                                <posx>78</posx>
                                 <posy>0</posy>
-                                <width>187</width>
+                                <width>242</width>
                                 <height>78</height>
+                                <align>center</align>
                                 <aligny>center</aligny>
                                 <font>tofa_font_button</font>
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>

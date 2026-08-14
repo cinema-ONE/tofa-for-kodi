@@ -28,6 +28,10 @@ from .. import playbackprefs
 from .. import episodes as episodes_fmt
 from .. import prefs, progress, regional, textmetrics, toast, tracks
 from ..api import MediaServerClient
+# Module level, not the local import a few methods use: PILL_LAYOUT below is
+# evaluated when the class is defined. skin.fragments pulls in only
+# icon_glyphs and tokens, so there is no cycle back to here.
+from ..skin import fragments
 from ..profile import CapabilityProfile
 from ..skin import icon_glyphs
 from ..skin import tokens as T
@@ -345,6 +349,28 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         try:
             self._render_hero(client, self.media)
             self._render_actions(client, self.media)
+            # PACK THE ROW HERE, not only in the finally below.
+            #
+            # Everything the row is made of is known by now: _render_actions
+            # has set show_watchlist, show_rewatch, the primary's label and,
+            # through _render_version_pill, show_version. What follows is
+            # PAGE 2 -- cast, crew, episodes -- and a separate request for
+            # More Like This, none of which the viewer can see yet, and all
+            # of which the action row used to wait behind.
+            #
+            # Measured on a fast Mac over the LAN: hero 28ms, actions 45ms,
+            # page2 4ms, more-like-this 322ms -- so the row sat unpacked for
+            # 327ms after it could have been drawn, on the one screen where
+            # the viewer is deciding whether to press Play. Adrian reports
+            # the slower boxes showing the primary pill alone and the rest
+            # arriving visibly later, which is this.
+            #
+            # Still packed again in the finally, and deliberately: page 2 can
+            # move the next-up episode, which changes which file the hero
+            # offers and therefore the edition pill. Repacking is idempotent
+            # -- positions, an enable, and nav links -- so the second call
+            # costs nothing and corrects anything page 2 moved.
+            self._wire_pill_navigation()
             self._render_page2(client, self.media)
             self._render_more_like_this(client, media_id)
         finally:
@@ -1755,15 +1781,20 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # ------------------------------------------------------------------
 
     #: pill id -> (its wrapping group's id, width, the gap that precedes it).
-    #: Widths and gaps are the template's own numbers, so a row showing all
-    #: four lands exactly where the reference put it.
+    #:
+    #: Every pill but the primary is one width now (fragments.ACTION_PILL_W),
+    #: and every gap is one gap. The per-pill numbers this used to hold were
+    #: the reference app's, and they only worked while every label was known
+    #: at build time -- see that constant for why they stopped. This table is
+    #: what packs the row at runtime, so it has to agree with the template or
+    #: every pill after the first mismatch lands in the wrong place.
     PILL_LAYOUT = {
         5210: (5219, 360, 0),
-        5225: (5226, 271, 13),
-        5220: (5221, 270, 14),
-        5230: (5231, 244, 20),
-        5240: (5241, 250, 20),
-        5250: (5251, 310, 20),
+        5225: (5226, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
+        5220: (5221, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
+        5230: (5231, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
+        5240: (5241, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
+        5250: (5251, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
     }
 
     def _layout_action_row(self, pills: list):
@@ -2260,27 +2291,31 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._layout_primary_pill(label, bool(icon))
 
     def _layout_primary_pill(self, label: str, with_icon: bool = True) -> None:
-        """Re-centre the primary pill's icon+label group for the label it is
-        actually showing.
+        """Point the primary pill's label at the room its icon leaves.
 
-        Kodi cannot centre two sibling controls as a unit, and the label
-        flips Play <-> Resume, so the group's width changes at runtime. Same
-        technique as _layout_format_badges() next door."""
-        from ..skin import fragments
+        It used to RE-CENTRE the icon+label group for whatever label was
+        showing, because Kodi cannot centre two siblings as a unit and this
+        label changes at runtime (Play / Resume / Resume S2 E2 / Requested).
+        That measured the label to place it.
 
-        icon_x, label_x, _ = fragments.action_pill_layout(360, label)
+        Nothing is measured now. The icon is anchored at the pill's inset
+        like every other pill's (fragments.action_pill_layout), the label is
+        centred in the span beside it by the XML, and the only thing left
+        that varies is WHETHER there is an icon -- with none, the label takes
+        the whole inner width instead of starting after one.
+
+        `label` is kept in the signature: callers read better for it, and it
+        is what the docstring above is about."""
+        icon_x, label_x, label_w, _trailing = fragments.action_pill_layout(
+            self.PILL_LAYOUT[self.PILL_PRIMARY][1])
         if not with_icon:
-            # No icon to make room for, so the LABEL alone gets centred.
-            # 5212 is left-aligned (the group centring is what normally
-            # positions it), so this has to be a real x, not 0 -- at 0 the
-            # text would sit against the pill's left edge.
-            text_w = fragments.ACTION_LABEL_W.get(label, len(label) * 14)
-            label_x = max(0, (360 - text_w) // 2)
+            label_x = fragments.ACTION_PILL_INSET
+            label_w = self.PILL_LAYOUT[self.PILL_PRIMARY][1] - 2 * label_x
         try:
             self.getControl(self.PRIMARY_ICON).setPosition(icon_x, 0)
             lbl = self.getControl(self.PRIMARY_LABEL)
             lbl.setPosition(label_x, 0)
-            lbl.setWidth(360 - label_x)
+            lbl.setWidth(label_w)
         except Exception:
             pass
 
@@ -2583,7 +2618,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             audio.get("label") or "",
             audio.get("channels_label") or "",
         ) if x)
-        resolution = fmt.get("resolution_label") or f.get("resolution") or ""
+        # Never the raw `resolution` ("1920x1080"): the badge row, the pill
+        # and this list all name the same file, and only this one was
+        # spelling it in dimensions. `_resolution_fallback` is what the badge
+        # uses.
+        resolution = fmt.get("resolution_label") or self._resolution_fallback(f)
         dynamic_range = (video.get("label")
                          if video.get("dynamic_range") not in (None, "sdr") else "")
         # 7.7's order, which is also least-to-most disposable: a truncated
@@ -2617,11 +2656,31 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("show_version", "1")
         current = next((f for f in available if f.get("id") == self.play_file_id),
                        available[0])
-        fmt = current.get("format") or {}
-        self.setProperty(
-            "version_label",
-            (current.get("edition") or fmt.get("resolution_label")
-             or current.get("resolution") or "Version"))
+        self.setProperty("version_label", self._version_pill_label(current))
+
+    @classmethod
+    def _version_pill_label(cls, f: dict) -> str:
+        """What the edition pill says: a NAME, or the resolution said short.
+
+        The pill is laid out around a label the width of "1080p" -- the
+        action row packs four pills at fixed positions, and
+        `action_pill_content` measures `label_text` to centre the group. A
+        longer string is Kodi's to clip.
+
+        So `resolution` must never reach it. It is raw dimensions
+        ("1920x1080"), which clipped to "192..." -- a label that says less
+        than nothing, on a title whose format badge said "1080p" two lines
+        above. Seen on the demo server's Big Buck Bunny, which has two files
+        and no edition names, while taking the add-on's screenshots.
+
+        `_resolution_fallback` is the same derivation that badge uses, so the
+        pill and the badge now agree by construction rather than by luck.
+        A real edition NAME still leads: "Director's Cut" is what the viewer
+        is choosing between, and 1080p vs 4K only becomes the distinguishing
+        fact when nobody has named the files."""
+        fmt = f.get("format") or {}
+        return (f.get("edition") or fmt.get("resolution_label")
+                or cls._resolution_fallback(f) or "Version")
 
     def _version_clicked(self):
         """Pick which of the title's own FILES plays.

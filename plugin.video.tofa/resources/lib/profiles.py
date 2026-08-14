@@ -70,9 +70,12 @@ def list_profiles(session, server: str, access_token: str, device_id: str,
         items = _fetch(server)
     except http.ApiError as exc:
         # Same gate as api._request: "Direct connections only" means the
-        # relay is not an option even as a last resort.
-        from . import auth
-        if (exc.error not in ("connection_error", "timeout") or not fallback
+        # relay is not an option even as a last resort. And the same retry
+        # rule, which is what this call was missing -- a 503
+        # `server_relay_not_connected` left it raising with a fallback
+        # sitting unused, so the profile gate could not be drawn at all.
+        from . import api, auth
+        if (not api._worth_retrying(exc) or not fallback
                 or (auth.direct_only() and auth.is_relay_url(fallback))):
             raise
         items = _fetch(fallback)

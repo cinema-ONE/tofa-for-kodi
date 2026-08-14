@@ -370,26 +370,68 @@ def interactive_sign_in() -> bool:
     return True
 
 
+def _reachable(session, base: str, timeout: float = 3.0) -> bool:
+    """Does this address answer AS A SERVER right now?
+
+    A 401 counts: `/auth/status` is unauthenticated, but any answer with a
+    status code came from something speaking the API, and this runs before
+    there is a token to speak with. What does NOT count is a transport
+    failure or the cloud's own 503 `server_relay_not_connected`, which is
+    the proxy saying the server is not on the other end of it."""
+    try:
+        http.request_json(session, "GET", f"{base}/api/v1/auth/status", timeout=timeout)
+        return True
+    except http.ApiError as exc:
+        return exc.status not in (0, 502, 503, 504)
+
+
 def _pick_server_address(session, chosen: dict) -> tuple[str, str | None]:
-    """A signed-in-as-owner/admin caller's `GET /servers` entry can carry a
-    `connection.local_ip`/`port` alongside the public `connect_url`. Prefer
-    the LAN address when it's actually reachable -- many consumer routers
-    don't support NAT hairpinning back to their own public address from the
-    same LAN, even though it's reachable from outside.
-    Returns (primary, fallback) -- fallback is used by MediaServerClient if
-    primary later starts failing."""
+    """(primary, fallback) -- the two addresses stored for this server.
+
+    THREE candidates exist, and each is the only one that works in some
+    real setup:
+
+      * the LAN address, from a signed-in-as-owner/admin caller's
+        `GET /servers` entry (`connection.local_ip`/`port`). Preferred when
+        it answers -- many consumer routers don't support NAT hairpinning
+        back to their own public address from the same LAN.
+      * `connect_url`, the `<uuid>.connect.tofa.tv` relay host.
+      * the cloud PROXY, `<connect_url>/servers/<uuid>/relay`.
+
+    The proxy is here because the first two can both be dead while the
+    server is perfectly well: measured 2026-08-14 against tofa's own demo
+    server, where the relay host answers 503 `server_relay_not_connected`
+    and the LAN address belongs to somebody else's network entirely. tofa's
+    web app takes exactly this route in that case; we did not, so every
+    screen came up empty with nothing on it to say why.
+
+    Probing rather than ordering blindly, because the old code stored the
+    relay as primary WITHOUT ever asking whether it worked -- which is how a
+    server that only answers on the proxy ends up looking like a server with
+    no content. The probes are 3s each and only run at pairing or a server
+    switch."""
     remote_url = chosen["connect_url"].rstrip("/")
+    proxy = auth.proxy_url(cloud.CLOUD_BASE_URL, chosen["id"])
     connection = chosen.get("connection") or {}
     local_ip, port = connection.get("local_ip"), connection.get("port")
-    if not local_ip or not port:
-        return remote_url, None
+    local_url = f"http://{local_ip}:{port}" if local_ip and port else None
 
-    local_url = f"http://{local_ip}:{port}"
-    try:
-        http.request_json(session, "GET", f"{local_url}/api/v1/auth/status", timeout=3.0)
-        return local_url, remote_url
-    except http.ApiError:
-        return remote_url, local_url
+    # Order of preference, best first: straight to the box, then the relay
+    # host, then everything-through-the-cloud.
+    candidates = [c for c in (local_url, remote_url, proxy) if c]
+    working = [c for c in candidates if _reachable(session, c)]
+    if not working:
+        # Nothing answered. Keep the old shape rather than invent one: the
+        # relay is what pairing has always stored, and a transient failure
+        # here should not permanently demote it.
+        return remote_url, local_url or proxy
+
+    primary = working[0]
+    # The fallback is the best OTHER address that answered, or the proxy --
+    # which is the one most likely to still be there later, since it does not
+    # depend on this box staying on this network.
+    rest = [c for c in working if c != primary] or [c for c in (proxy,) if c != primary]
+    return primary, (rest[0] if rest else None)
 
 
 def _alert_api_error(heading: str, exc: http.ApiError) -> None:

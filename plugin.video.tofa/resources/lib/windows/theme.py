@@ -84,9 +84,10 @@ TEXT_TERTIARY = "0x6BFFFFFF"    # eyebrows, "no art" placeholder glyphs -- measu
 # "change all or none": these three values may only move together with the
 # other clients, never unilaterally.
 #
-# Deliberately NOT the status triad (success/warning/error): a score is a
-# quality reading, not an alarm, so it stays softer -- and retuning the
-# status palette must never silently retune ratings.
+# Deliberately NOT the status triad (success/warning/error). The spec's own
+# reasoning, quoted because it is the whole argument: "a score is a quality
+# reading, not an alarm, so it stays softer" -- and retuning the status
+# palette must never silently retune ratings.
 _RATING_GOOD = "5FD38A"    # >= 75
 _RATING_MIXED = "F2C14E"   # 60-74
 _RATING_LOW = "F56B5C"     # <= 59
@@ -200,7 +201,15 @@ def _fetch_server_accent_hex():
     """Best-effort fetch of the signed-in account's own accent_color
     preference. Returns None on any failure (signed out, network down,
     malformed response) -- this must never block a window from opening,
-    so callers always fall back to the local `accent_color` setting."""
+    so callers always fall back to the local `accent_color` setting.
+
+    An account with NO accent set is not a failure, and must not be treated
+    as one: it answers DEFAULT_ACCENT. Both used to come back None, so the
+    local setting won -- and the local setting is the LAST account's colour.
+    Measured 2026-08-14 on tofa's demo server, whose account sets no accent:
+    the whole app, fox included, wore the amber left behind by a different
+    server on a different network. A colour that survives a re-pair to an
+    unrelated account is not a fallback, it is a leak."""
     try:
         from .. import api, auth, http
         session = http.new_session()
@@ -213,8 +222,13 @@ def _fetch_server_accent_hex():
         # best-effort failure (network down, signed out, ...).
         client = api.client_for(session, tok)
         me = client.whoami()
+        if me is None:
+            return None
         value = (me or {}).get("preferences", {}).get("accent_color")
-        return value if isinstance(value, str) and value else None
+        if isinstance(value, str) and value:
+            return value
+        # Answered, and the answer is "no preference" -> the default fox.
+        return DEFAULT_ACCENT
     except Exception:
         return None
 

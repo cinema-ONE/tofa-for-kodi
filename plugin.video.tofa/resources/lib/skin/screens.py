@@ -178,8 +178,7 @@ def render_main() -> str:
         6260, group_id=6261, x=1526, width=346, height=64, ondown=6200, onleft=6100,
         visible="!String.IsEmpty(Window.Property(browse_heading))",
         label_xml=fragments.action_pill_content(
-            346, "All Collections", "&#xE06E;", height=64,
-            label_text="All Collections"),
+            346, "All Collections", "&#xE06E;", height=64),
     )
 
     # ------------------------------------------------------------ settings
@@ -565,14 +564,28 @@ def render_detail() -> str:
     # Resume, Options, Rewatch, Watchlist -- Rewatch sits AFTER Options
     # there, not before it as this screen used to have it.
     #
+    # THE WIDTHS ARE NO LONGER THOSE. Every pill except the primary is 325
+    # now (PILL_W), a deliberate divergence recorded in DIVERGENCES.md. The
+    # app sizes each pill to its own content at runtime; a Kodi window's
+    # geometry is resolved once at load, so we cannot. Matching its numbers
+    # therefore only worked while every label was known at build time -- and
+    # the edition pill's is a name the SERVER chooses, which is what broke
+    # it: at the measured 250 a real name clipped to "192...". One width for
+    # all of them holds the longest name in the reference library and ends
+    # the 271-vs-270 kind of accident that a per-pill number invites.
+    #
+    # 325 rather than 330: five pills at 330 need 1747px and the row has
+    # 1740 (origin 100, content margin 1840). Measured, not guessed.
+    #
     # onleft/onright below are the all-visible defaults only. Rewatch and
     # Watchlist are both conditionally visible, so a hidden one would strand
     # focus mid-row; DetailWindow._wire_action_row() re-points the chain over
     # whatever is actually showing, the same runtime-rewire MainWindow uses
     # for its per-section Down targets.
     PILL_H = 78
+    PILL_W = fragments.ACTION_PILL_W
     options_pill = fragments.glass_pill(
-        5225, group_id=5226, x=373, width=271, height=PILL_H, ondown=6110, onleft=5210, onright=5220,
+        5225, group_id=5226, x=717, width=PILL_W, height=PILL_H, ondown=6110, onleft=5210, onright=5220,
         # Hidden for a title this server does not hold: there is nothing to
         # pick a quality, audio track or subtitle for. The Apple TV app shows
         # exactly two pills there, Not in library and Watchlist
@@ -580,16 +593,16 @@ def render_detail() -> str:
         # hide_options on that path only, so every owned title is unchanged.
         visible="String.IsEmpty(Window.Property(hide_options)) + !String.IsEmpty(Window.Property(pills_packed))",
         label_xml=fragments.action_pill_content(
-            271, "Options", "&#xE29A;", height=PILL_H, label_text="Options",
+            PILL_W, "Options", "&#xE29A;", height=PILL_H,
             trailing_glyph="&#xE211;"),
     )
     rewatch_pill = fragments.glass_pill(
-        5220, group_id=5221, x=658, width=270, height=PILL_H, ondown=6110, onleft=5225, onright=5230,
+        5220, group_id=5221, x=1058, width=PILL_W, height=PILL_H, ondown=6110, onleft=5225, onright=5230,
         visible="!String.IsEmpty(Window.Property(show_rewatch)) + !String.IsEmpty(Window.Property(pills_packed))",
         # 11: rewatch is `arrow.counterclockwise` / Replay. It had no icon
         # at all before.
         label_xml=fragments.action_pill_content(
-            270, "Rewatch", "&#xE18B;", height=PILL_H, label_text="Rewatch"),
+            PILL_W, "Rewatch", "&#xE18B;", height=PILL_H),
     )
     # Fourth pill: the EDITION/version selector, matching the real app's
     # action row (Play / Options / Watchlist / [box] 4K). File selection used
@@ -598,12 +611,29 @@ def render_detail() -> str:
     # Quality/Audio/Subtitles and gives the file picker its own surface.
     # Only drawn when the title actually has more than one available file,
     # which is the minority; detail.py sets show_version.
+    # 330, and measured on "Theatrical Cut" rather than "1080p". The pill
+    # was sized for a resolution token, which is what the real app shows --
+    # but the app's own libraries are not ours to design for. Every
+    # multi-edition title in the reference library is NAMED, and in five of
+    # six both editions share a resolution ("1408" is 2160 twice, "1941"
+    # 1080 twice), so a resolution token would print the same word on both
+    # and answer nothing. Measured across those six: 168px for "Theatrical
+    # Cut" and "Director's Cut", 174 for "Special Edition", and two outliers
+    # at 209 and 291 that marquee. 330 covers the pattern that repeats;
+    # sizing for the longest would make this pill wider than Play.
     version_pill = fragments.glass_pill(
-        5240, group_id=5241, x=1212, width=250, height=PILL_H, ondown=6110, onleft=5230,
+        5240, group_id=5241, x=376, width=PILL_W, height=PILL_H, ondown=6110, onleft=5230,
         visible="!String.IsEmpty(Window.Property(show_version)) + !String.IsEmpty(Window.Property(pills_packed))",
         label_xml=fragments.action_pill_content(
-            250, "$INFO[Window.Property(version_label)]", "&#xE529;",
-            height=PILL_H, label_text="1080p", trailing_glyph="&#xE211;"),
+            PILL_W, "$INFO[Window.Property(version_label)]", "&#xE529;",
+            height=PILL_H, trailing_glyph="&#xE211;",
+            # The one action pill whose text is the SERVER's to choose. An
+            # edition name runs as long as whoever named the file wanted
+            # ("Director's Cut Extended Remastered"), and no width that also
+            # leaves room for Play, Options and Watchlist will hold that. It
+            # scrolls while focused instead; "1080p" and "4K" do not move,
+            # because Kodi only marquees text that overruns its box.
+            marquee_focus_id=5240),
     )
     # The out-of-library page's second action, and the only one that UNDOES
     # something: withdraw a request this viewer already made. Its own pill
@@ -613,14 +643,14 @@ def render_detail() -> str:
     # captures the before; pressing Request turns it into
     # "Requested" + this). CIRCLE_X is the app's own glyph here.
     cancel_request_pill = fragments.glass_pill(
-        5250, group_id=5251, x=470, width=310, height=PILL_H, ondown=6110, onleft=5210,
+        5250, group_id=5251, x=376, width=PILL_W, height=PILL_H, ondown=6110, onleft=5210,
         visible="!String.IsEmpty(Window.Property(show_cancel_request)) + !String.IsEmpty(Window.Property(pills_packed))",
         label_xml=fragments.action_pill_content(
-            310, "Cancel request", "&#xE084;",
-            height=PILL_H, label_text="Cancel request"),
+            PILL_W, "Cancel request", "&#xE084;",
+            height=PILL_H),
     )
     watchlist_pill = fragments.glass_pill(
-        5230, group_id=5231, x=948, width=244, height=PILL_H, ondown=6110, onleft=5220,
+        5230, group_id=5231, x=1399, width=PILL_W, height=PILL_H, ondown=6110, onleft=5220,
         visible="!String.IsEmpty(Window.Property(show_watchlist)) + !String.IsEmpty(Window.Property(pills_packed))",
         # The +/- was baked into the LABEL TEXT ("+ Watchlist"), which is why
         # this pill could never align with the others -- its glyph was a
@@ -630,8 +660,8 @@ def render_detail() -> str:
         # inconsistency (bookmark vs plus/check); this follows the live app's
         # detail hero, which shows the plus.
         label_xml=fragments.action_pill_content(
-            244, "Watchlist", "$INFO[Window.Property(watchlist_glyph)]",
-            height=PILL_H, label_text="Watchlist"),
+            PILL_W, "Watchlist", "$INFO[Window.Property(watchlist_glyph)]",
+            height=PILL_H),
     )
 
     return _load("detail.xml.tpl").format(
@@ -734,7 +764,7 @@ def render_playoptions() -> str:
 
 def render_editions() -> str:
     """Detail's Edition picker (windows/playoptions.py:EditionDialog)."""
-    return _render_options_window(fragments.PLAYOPT_PANEL_W, fragments.EDITION_DETAIL_W)
+    return _render_options_window(fragments.EDITION_PANEL_W, fragments.EDITION_DETAIL_W)
 
 
 

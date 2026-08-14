@@ -14,6 +14,25 @@ import requests
 from . import artcache, auth, http
 from .profile import CapabilityProfile
 
+#: The cloud proxy's own way of saying "the server is not on the other end
+#: of me": HTTP 503, `server_relay_not_connected`. It is an ANSWER, not a
+#: transport failure, so a retry rule written around requests' exceptions
+#: alone never fired on it -- and the whole point of holding a second
+#: address is to survive exactly this. 502/504 are the same shape from a
+#: gateway that phrases it differently.
+_RELAY_DOWN = ("server_relay_not_connected", "server_offline")
+
+
+def _worth_retrying(exc: http.ApiError) -> bool:
+    """Should this failure be re-tried against the other address?
+
+    Not a 4xx: the server answered and would answer the same way twice.
+    Not a 500 from the server itself, which is a bug and not an address
+    problem."""
+    if exc.error in ("connection_error", "timeout"):
+        return True
+    return exc.status in (502, 503, 504) or exc.error in _RELAY_DOWN
+
 
 class MediaServerClient:
     def __init__(
@@ -71,8 +90,26 @@ class MediaServerClient:
     def resolve_url(self, url: str) -> str:
         """stream_url is server-relative (e.g.
         `/api/v1/stream/{id}/direct?st=...`), despite the API spec calling
-        it a "ready-to-use URL"."""
-        return urllib.parse.urljoin(self.base_url + "/", url)
+        it a "ready-to-use URL".
+
+        NOT urljoin, which is wrong the moment a base URL has a path of its
+        own: RFC 3986 says an absolute-path reference REPLACES the base's
+        path, so joining `/cache/images/x.jpg` onto the cloud proxy's
+        `https://api.tofa.tv/servers/<uuid>/relay` produced
+        `https://api.tofa.tv/cache/images/x.jpg` -- the proxy prefix gone,
+        and a 404 for every poster on screen. It went unnoticed for as long
+        as every base was a bare scheme+host, where join and concatenate
+        agree. Measured against the demo server 2026-08-14: text and ratings
+        loaded, not one image did.
+
+        An ABSOLUTE url is still returned untouched -- discovery items point
+        at tofa's public metadata CDN, and prefixing those would be
+        nonsense."""
+        if not url:
+            return url
+        if urllib.parse.urlparse(url).scheme:
+            return url
+        return "{0}/{1}".format(self.base_url.rstrip("/"), url.lstrip("/"))
 
     def _headers(self, *, include_bearer: bool = True) -> dict[str, str]:
         headers = {"X-Tofa-Device-Id": self.device_id}
@@ -122,7 +159,7 @@ class MediaServerClient:
             # relay when pairing handed us one. Read per call rather than
             # cached at construction, since each plugin action is a fresh
             # process anyway and a viewer who just flipped it means now.
-            if exc.error not in ("connection_error", "timeout") or not self.fallback_base_url \
+            if not _worth_retrying(exc) or not self.fallback_base_url \
                     or not try_fallback or auth.direct_only():
                 raise
             result = http.request_json(self.session, method, f"{self.fallback_base_url}{path}", **kwargs)
@@ -309,11 +346,30 @@ class MediaServerClient:
             own.add(urllib.parse.urlparse(self.fallback_base_url).netloc)
         return {host for host in own if host}
 
+    def own_url_prefixes(self) -> set:
+        """Every address that IS this media server, host AND path.
+
+        The host alone stopped being enough when the cloud proxy became an
+        address: there, the host is `api.tofa.tv`, which serves the whole
+        cloud -- every account, every server, and the public metadata CDN.
+        Treating all of it as "ours" would append this profile's image token
+        to URLs that never asked for one, which is the precise thing
+        image_url_uncached refuses to do."""
+        bases = [self.base_url] + ([self.fallback_base_url]
+                                   if self.fallback_base_url else [])
+        return {b.rstrip("/") for b in bases if b}
+
     def _is_own_host(self, url: str) -> bool:
         """Whether an absolute URL points at the media server we're talking
-        to (either address, since base/fallback swap on connection error)."""
-        host = urllib.parse.urlparse(url).netloc
-        return bool(host) and host in self.own_hosts()
+        to (either address, since base/fallback swap on connection error).
+
+        Prefix, not hostname -- see own_url_prefixes. The trailing boundary
+        matters: `.../relay` must not match `.../relay-something-else`."""
+        for prefix in self.own_url_prefixes():
+            if url == prefix or url.startswith(prefix + "/") \
+                    or url.startswith(prefix + "?"):
+                return True
+        return False
 
     def search(self, q: str, **kwargs: Any) -> Any:
         return self._get("/api/v1/search", params={"q": q, **kwargs})
@@ -487,10 +543,10 @@ class MediaServerClient:
     def collection(self, collection_id: str) -> Any:
         """One collection and its members.
 
-        `id` is an all-digits TMDB franchise id or a curated slug. Members
-        come back as AnnotatedDiscoveryItem -- the same shape Discover's
-        shelves use, so the same card builder renders them, owned and
-        requestable alike."""
+        Takes either a TMDB franchise id (digits throughout) or the slug of
+        a curated one. Members come back as AnnotatedDiscoveryItem -- the
+        same shape Discover's shelves use, so the same card builder renders
+        them, owned and requestable alike."""
         return self._get(f"/api/v1/collections/{collection_id}")
 
     def collections(self, curated: Optional[bool] = None) -> Any:

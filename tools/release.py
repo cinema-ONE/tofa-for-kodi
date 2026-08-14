@@ -522,6 +522,29 @@ def do_package() -> int:
 # ---------------------------------------------------------------- publish --
 
 
+def declared_assets(xml: str) -> list[tuple[str, str]]:
+    """(source on disk, path relative to the add-on) for every <assets> entry.
+
+    Which artwork exists is addon.xml's to say, not this file's to assume --
+    the fanart moved from .jpg to .png once already, and a hardcoded name
+    would have published the old one. So every child of <assets> travels,
+    whatever Kodi adds next.
+
+    The RELATIVE PATH is kept, not the basename. Kodi resolves a repository's
+    artwork as `<datadir>/<addon-id>/<the path written in addon.xml>`, so a
+    screenshot declared at `resources/screenshots/01-home.jpg` has to be
+    staged at exactly that path; flattening it publishes a file Kodi will
+    never ask for and an entry whose screenshots silently do not load. It
+    went unnoticed while the only assets were `icon.png` and `fanart.png`,
+    which sit at the root, where the basename IS the relative path.
+    """
+    block = re.search(r"<assets>(.*?)</assets>", xml, re.S)
+    if not block:
+        return []
+    found = re.findall(r"<(\w+)>\s*([^<]+?)\s*</\1>", block.group(1))
+    return [(os.path.join(ADDON_DIR, rel), rel) for _tag, rel in found]
+
+
 def _digest(path: str) -> str:
     """The hex digest Kodi will compare against, for a file on disk."""
     h = hashlib.new(HASH_ALGO)
@@ -614,8 +637,11 @@ def _stage(out_dir: str, addon_id: str, zip_path: str,
         _write_with_digest(os.path.join(folder, name), handle.read())
     for source, target in art:
         if os.path.exists(source):
-            with open(source, "rb") as src, \
-                    open(os.path.join(folder, target), "wb") as dst:
+            destination = os.path.join(folder, target)
+            # `target` can be nested now (screenshots live under
+            # resources/), and Kodi asks for it at exactly that path.
+            os.makedirs(os.path.dirname(destination), exist_ok=True)
+            with open(source, "rb") as src, open(destination, "wb") as dst:
                 dst.write(src.read())
     if changelog:
         with open(os.path.join(folder, "changelog-%s.txt" % current_version()),
@@ -645,12 +671,7 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
     os.makedirs(out_dir, exist_ok=True)
     entries = []
 
-    # The add-on itself. Which artwork exists is addon.xml's <assets> to say,
-    # not this file's to assume -- the fanart moved from .jpg to .png once
-    # already, and a hardcoded name would have published the old one.
-    art = [(os.path.join(ADDON_DIR, name), os.path.basename(name))
-           for name in re.findall(r"<(?:icon|fanart)>([^<]+)</(?:icon|fanart)>",
-                                  read_addon_xml())]
+    art = declared_assets(read_addon_xml())
     if not art:
         print("addon.xml declares no <assets>; the repository entry will have "
               "no icon in Kodi's browser")

@@ -3184,6 +3184,25 @@ PLAYOPT_DETAIL_W = 285
 # be different sizes.
 EDITION_DETAIL_W = 600
 
+#: ...and a wider PANEL to put it in, so the NAME column is not the thing
+#: that pays for it.
+#:
+#: At the shared 1030 the name column comes out 254px, and the reference
+#: library's edition names do not fit it: "Black and White Version" measures
+#: 270. The name is the whole point of the row -- it is what the viewer is
+#: choosing between, and in five of that library's six multi-edition titles
+#: BOTH editions share a resolution, so the detail column cannot tell them
+#: apart either.
+#:
+#: The 70px does not come out of the detail column, which has none to give:
+#: measured across those same titles with 7.7's full grammar, the widest row
+#: is "4K . Dolby Vision . HEVC . TrueHD Atmos 7.1 . 69.2 GB" at 555 of its
+#: 600. So the panel grows instead, which is the one thing here that is
+#: free. It leaves this dialog 70px wider than the options panel it is a
+#: keypress away from -- a deliberate exception to their matching sizes,
+#: bought for the only column whose content is chosen by a stranger.
+EDITION_PANEL_W = PLAYOPT_PANEL_W + 70
+
 
 def playoptions_geometry(row_count: int, panel_w: int = PLAYOPT_PANEL_W,
                          has_hint: bool = True) -> dict[str, int]:
@@ -3459,42 +3478,114 @@ ACTION_ICON_GAP = 10
 # PIL.ImageFont.truetype(...).getlength(). Same convention as
 # home_rows.DISCOVER_TABS' pill widths: static labels, so measure once
 # rather than guess. Recompute if the font or its size changes.
-ACTION_LABEL_W = {
-    "Play": 53, "Resume": 102, "Options": 99, "Rewatch": 110, "Watchlist": 118,
-    "Not in library": 197,
-}
+#: Every Detail action pill except the primary one, which stays 360.
+#:
+#: The app sizes each pill to its own content; Kodi resolves a window's
+#: geometry once at load, so we cannot. Per-pill numbers copied from it
+#: therefore only held while every label was known at build time, and the
+#: edition pill's is a name the SERVER chooses -- which is exactly where it
+#: broke. One width holds the longest name in the reference library and
+#: retires the 271-vs-270 kind of accident a hand-tuned number invites.
+#:
+#: 325, not 330: five pills at 330 want 1747px and the row has 1740 (origin
+#: 100, content margin 1840). Recorded in DIVERGENCES.md.
+ACTION_PILL_W = 325
+
+#: The uniform gap between them, replacing 20/13/14/20.
+ACTION_PILL_GAP = 16
+
+#: There was a table of measured label widths here -- Play 53, Options 99,
+#: Watchlist 118 and so on -- because the layout centred icon+label+chevron
+#: as a group and could not do that without knowing how wide the label was.
+#: Nothing measures a label any more (see action_pill_layout), so the table
+#: is gone rather than left to rot: every entry in it was a number that had
+#: to be re-measured by hand whenever a word changed, and the one label it
+#: could never hold was the only one that actually varied.
 
 
-def action_pill_layout(pill_width: int, label: str,
-                       *, trailing: bool = False) -> tuple[int, int, int]:
-    """(icon_x, label_x, trailing_x) laying the pill's contents out as ONE
-    group, centred, so the left and right insets come out equal.
+#: How far the icon and the chevron sit from their pill's ends.
+#:
+#: The app's own number is 40, measured off atv-reference/
+#: detail-watchlist-pill-crop.png at 2x: its Options icon starts 82 from the
+#: left and its chevron ends 80 from the right, symmetrically, inside a
+#: 258-wide pill.
+#:
+#: Ours is 24, and the reason is the width we already diverged on. 40 in a
+#: 258 pill is 15% of it; the same 40 in our 325 leaves the icon marooned
+#: with the text a long way off, which is what "move them closer to the
+#: border" is describing. It also buys the label 32px it needs: at 40 the
+#: symmetric box below is 169 wide and "Cancel request" (197) does not fit
+#: in it.
+ACTION_PILL_INSET = 24
 
-    A trailing chevron has to be part of that group, not pinned to the right
-    edge: centring only the icon+label and then hanging the chevron off the
-    edge is what left Options with a 67px inset on the left and 9px on the
-    right. The real app pads symmetrically -- measured on the live detail
-    screen, its Options content spans x=40 to 218 inside a 258-wide pill,
-    i.e. 40 either side."""
-    text_w = ACTION_LABEL_W.get(label, len(label) * 14)
-    group = ACTION_ICON_W + ACTION_ICON_GAP + text_w
-    if trailing:
-        group += ACTION_ICON_GAP + ACTION_ICON_W
-    icon_x = max(0, (pill_width - group) // 2)
+
+def action_pill_layout(pill_width: int,
+                       *, trailing: bool = False) -> tuple[int, int, int, int]:
+    """(icon_x, label_x, label_w, trailing_x) for one Detail action pill.
+
+    ANCHORED, not group-centred: the icon sits at the left inset, the chevron
+    at the right one, and the label is centred in whatever is between. It
+    used to lay the three out as one centred GROUP, which is what the app
+    does -- and which needs the label's width, which needs the label.
+
+    That was fine while every label was a literal in this file. It stopped
+    being fine when the edition pill started showing a name the SERVER
+    chooses: the group could only be centred for a measured SAMPLE, so the
+    common case drifted off-centre ("1080p" in a box cut for "Theatrical
+    Cut" left 94px of dead space on one side), and a name longer than the
+    sample overhung the pill.
+
+    Anchoring removes the measurement from the problem entirely. It also
+    lines the icons up down the row, which centring never did -- at a uniform
+    325 the icons landed at 75, 88, 84, 26 and 45, and the odd one out was
+    visible without measuring anything (Adrian spotted Watchlist).
+
+    The cost, stated where it is paid: a short label no longer sits in the
+    middle of its PILL, but in the middle of the room the icon and chevron
+    leave it. That is the same trade the app avoids by resizing pills at
+    runtime, which Kodi cannot do."""
+    icon_x = ACTION_PILL_INSET
     label_x = icon_x + ACTION_ICON_W + ACTION_ICON_GAP
-    return icon_x, label_x, label_x + text_w + ACTION_ICON_GAP
+    trailing_x = pill_width - ACTION_PILL_INSET - ACTION_ICON_W
+    # SYMMETRIC, whether or not there is a chevron: the label box reserves as
+    # much on the right as the icon takes on the left, so its centre is the
+    # PILL's centre and centred text lands where the eye expects it.
+    #
+    # It used to run to the right inset when no chevron followed, which put
+    # 38 more px on the right of the box than the left and pushed the text
+    # that far off-centre -- visible without measuring, on exactly the pills
+    # that have no chevron to explain it. A chevron pill was already
+    # symmetric by accident, the chevron mirroring the icon.
+    #
+    # The room given up is real but unused: 201px holds every label in the
+    # row, "Cancel request" (197) included.
+    label_right = pill_width - label_x
+    return icon_x, label_x, max(0, label_right - label_x), trailing_x
 
 
 def action_pill_content(pill_width: int, label_xml_label: str, glyph: str,
-                        *, height: int, label_text: str,
-                        trailing_glyph: str | None = None) -> str:
-    """Leading icon + label for one Detail action pill, centred as a group.
+                        *, height: int,
+                        trailing_glyph: str | None = None,
+                        marquee_focus_id: int | None = None) -> str:
+    """Icon at the left inset, chevron at the right, label centred between.
 
-    `label_xml_label` is what goes inside <label> (a literal or an $INFO);
-    `label_text` is the string to MEASURE, which for a property-driven label
-    is its longest expected value."""
-    icon_x, label_x, trailing_x = action_pill_layout(
-        pill_width, label_text, trailing=bool(trailing_glyph))
+    `label_xml_label` is what goes inside <label> (a literal or an $INFO).
+    There is no longer a string to MEASURE: see action_pill_layout for why
+    that stopped working and what replaced it.
+
+    `marquee_focus_id` is for the one pill whose label is not ours to keep
+    short: the EDITION pill, which shows a name the server chose. "Director's
+    Cut Extended Remastered" is an ordinary edition name, and no pill width
+    that also leaves room for Play, Options and Watchlist will hold it. So
+    that pill's label scrolls while its pill has focus, in the two-copy form
+    the cards use -- see poster_visual for why it is two controls with
+    complementary gates and not one with <scroll>, and for why the suffix is
+    EM SPACE.
+
+    Kodi only marqueees a label that overruns its box, so a short one
+    ("1080p", "4K") is unaffected and does not move."""
+    icon_x, label_x, label_w, trailing_x = action_pill_layout(
+        pill_width, trailing=bool(trailing_glyph))
     trailing_xml = "" if not trailing_glyph else f"""
                             <control type="label">
                                 <posx>{trailing_x}</posx>
@@ -3518,16 +3609,47 @@ def action_pill_content(pill_width: int, label_xml_label: str, glyph: str,
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                                 <label>{glyph}</label>
                             </control>
-                            <control type="label">
-                                <posx>{label_x}</posx>
+{_action_pill_label(label_x, label_w, height, label_xml_label, marquee_focus_id)}{trailing_xml}"""
+
+
+def _action_pill_label(label_x: int, label_w: int, height: int,
+                       label_xml_label: str, marquee_focus_id: int | None) -> str:
+    """The pill's text: one control, or two complementary ones to marquee.
+
+    ALWAYS centred, because the box is no longer cut to the string: every
+    label now gets the whole span between the icon and the chevron (see
+    action_pill_layout), and left-aligning in that would push "4K" hard
+    against the icon with 150px of nothing after it.
+
+    Centring is safe next to <scroll>: Kodi only scrolls a label that
+    overruns its box, and a label that overruns has no slack left to centre
+    within. So the two never apply at once."""
+    body = """
+                                <align>center</align>
                                 <posy>0</posy>
-                                <width>{(trailing_x - label_x) if trailing_glyph else (pill_width - label_x)}</width>
-                                <height>{height}</height>
+                                <width>{w}</width>
+                                <height>{h}</height>
                                 <aligny>center</aligny>
-                                <font>{T.FONT_BUTTON}</font>
-                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <font>{font}</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>""".format(
+        w=label_w, h=height, font=T.FONT_BUTTON)
+    if marquee_focus_id is None:
+        return f"""                            <control type="label">
+                                <posx>{label_x}</posx>{body}
                                 <label>{label_xml_label}</label>
-                            </control>{trailing_xml}"""
+                            </control>"""
+    return f"""                            <control type="label">
+                                <visible>Control.HasFocus({marquee_focus_id})</visible>
+                                <posx>{label_x}</posx>{body}
+                                <scroll>true</scroll>
+                                <scrollsuffix>   </scrollsuffix>
+                                <label>{label_xml_label}</label>
+                            </control>
+                            <control type="label">
+                                <visible>!Control.HasFocus({marquee_focus_id})</visible>
+                                <posx>{label_x}</posx>{body}
+                                <label>{label_xml_label}</label>
+                            </control>"""
 
 
 def collection_card(list_id: int) -> tuple[str, str]:

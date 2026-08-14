@@ -10,6 +10,7 @@ import dataclasses
 import json
 import os
 import time
+import re
 import urllib.parse
 import uuid
 from typing import Any
@@ -245,18 +246,38 @@ def get_or_create_device_id() -> str:
 #: `<server-uuid>.connect.tofa.tv`; a LAN address is an IP.
 _RELAY_HOST_SUFFIX = ".connect.tofa.tv"
 
+#: The cloud's own PROXY of the same server: `<connect_url>/servers/<uuid>/
+#: relay`, with the ordinary API path appended. It is a third way in,
+#: alongside a LAN address and the `<uuid>.connect.tofa.tv` relay host, and
+#: the one tofa's web app uses when the relay host answers 503
+#: `server_relay_not_connected` -- which is what the demo server does.
+#:
+#: It matters here rather than only in signin because EVERY byte of it goes
+#: through tofa's cloud. "Direct connections only" has to refuse it for the
+#: same reason it refuses the relay host, and a check written against the
+#: hostname alone would have waved it through: the host is api.tofa.tv.
+_PROXY_PATH_RE = re.compile(r"^/servers/[^/]+/relay(/|$)")
+
+
+def proxy_url(connect_url: str, server_id: str) -> str:
+    """Where the cloud will proxy this server, as a base URL."""
+    return "{0}/servers/{1}/relay".format(connect_url.rstrip("/"), server_id)
+
 
 def is_relay_url(url: str | None) -> bool:
     """Does this address go through tofa's relay rather than straight to the
     server? Host-shaped rather than flagged, because a pairing made before
-    this existed stored no flag to read."""
+    this existed stored no flag to read -- and PATH-shaped as well, since
+    the cloud proxy wears the cloud's own hostname."""
     if not url:
         return False
     try:
-        host = urllib.parse.urlparse(url).hostname or ""
+        parsed = urllib.parse.urlparse(url)
     except Exception:                                        # noqa: BLE001
         return False
-    return host.lower().endswith(_RELAY_HOST_SUFFIX)
+    if (parsed.hostname or "").lower().endswith(_RELAY_HOST_SUFFIX):
+        return True
+    return bool(_PROXY_PATH_RE.match(parsed.path or ""))
 
 
 def direct_only() -> bool:

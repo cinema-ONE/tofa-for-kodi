@@ -43,7 +43,13 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     </news>
     <assets>
       <icon>icon.png</icon>
-      <fanart>fanart.png</fanart>
+      <fanart>fanart.jpg</fanart>
+      <screenshot>resources/screenshots/01-home.jpg</screenshot>
+      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
+      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
+      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
+      <screenshot>resources/screenshots/05-player.jpg</screenshot>
+      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
   </extension>
 </addon>

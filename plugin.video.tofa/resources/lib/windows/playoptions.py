@@ -491,12 +491,22 @@ class EditionDialog(PlaybackOptionsDialog):
     string rather than the common one.
 
     Its own XML rather than a reflowed one: a Kodi <itemlayout> resolves its
-    column positions at load. The PANEL width is the same as the options
-    panel's -- two dialogs one keypress apart on the same action row should
-    not be different sizes -- so only the column split differs, which is why
-    PANEL_W is inherited unchanged. The flat mode itself is generic."""
+    column positions at load. The flat mode itself is generic.
+
+    The panel is 70px WIDER than the options panel, which those two dialogs
+    being a keypress apart argues against and the content requires anyway.
+    At the shared width the NAME column came out 254px and the reference
+    library's names did not fit it -- "Black and White Version" is 270 --
+    while the detail column, measured across the same titles, was already
+    within 45px of its own limit. Something had to give and the panel is the
+    only part of this that costs nothing. See fragments.EDITION_PANEL_W.
+
+    PANEL_W must match the width its xmlFile was RENDERED at: _resize()
+    computes the runtime geometry from it, and a mismatch sizes the plate to
+    one window and the rows to another."""
 
     xmlFile = "script-tofa-editions.xml"
+    PANEL_W = fragments.EDITION_PANEL_W
 
 
 def show_choice(*, title: str, subtitle: str, rows: list[dict[str, Any]],
