@@ -17,9 +17,15 @@ for the handful of profiles that exist.
 Two useful consequences:
 
 * The add-on ships no avatar artwork at all, so it redistributes none. The
-  set this replaces was Microsoft's Fluent Emoji path for path, and the
-  provenance of the new one is undocumented; not shipping it makes the
-  question moot for the public release (issue #5).
+  set this replaces was Microsoft's Fluent Emoji path for path; not shipping
+  anything made that question moot for the public release (issue #5).
+
+  The new set's provenance is no longer unknown, as this used to say: tofa
+  answered it on issue #5 (2026-08-12). The 44 current avatars are
+  first-party pixel art generated in-house with no third-party licence, the
+  Fluent twelve are retired fleet-wide, and a profile still holding a dropped
+  Fluent id falls back to initials -- which is what the code below already
+  does, so nothing here needs changing for it.
 * An avatar changed server-side appears on the next launch.
 
 THE URL IS NOT DISCOVERABLE FROM THE API. There is no catalogue endpoint --
