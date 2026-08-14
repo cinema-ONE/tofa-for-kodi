@@ -1,0 +1,66 @@
+# Every check this repository can run on its own.
+#
+# Deliberately no `pip install`: the suites, the XML checkers and the marker
+# sweep are stdlib-only. The `gen_*` tools are the only things needing Pillow,
+# cairosvg, resvg_py and segno, and regenerating assets is not CI's job --
+# text rasterisation is not byte-identical across platforms, so a runner
+# would "fix" artwork into a diff nobody wants.
+#
+# WHAT IS NOT HERE, and cannot be: the quotation half of check_public_set.
+# It compares this file set against tofa's private documents, which are not
+# in this repository and must never reach a runner. It is run from the
+# private vault, where those documents live. `--markers` needs no sources --
+# its patterns are in the script -- so the identifier sweep does gate here,
+# and that is the check that catches a hostname or an address typed into a
+# comment next year.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Test suites
+        run: python3 tests/run.py
+
+      - name: Byte-compile the add-on
+        run: python3 -m compileall -q plugin.video.tofa
+
+      - name: Skin XML against the assets and fonts it names
+        run: python3 tools/check_xml.py
+
+      - name: No illegal XML comments
+        run: python3 tools/check_xml_comments.py
+
+      - name: Settings layout
+        run: python3 tools/check_settings_layout.py
+
+      - name: Release metadata
+        run: python3 tools/release.py check
+
+      - name: Private identifiers (hostnames, addresses, personal details)
+        run: python3 tools/check_public_set.py --markers
+
+      - name: The skin re-renders to exactly what is committed
+        run: |
+          cd tests
+          PYTHONPATH="$PWD:$PWD/../plugin.video.tofa" python3 -c \
+            "import kodi_stubs; from resources.lib.skin import build; \
+             build.render_all(force=True)"
+          cd ..
+          git diff --exit-code -- plugin.video.tofa/resources/skins/Main/1080i/

@@ -60,9 +60,17 @@ files were fixed. IPs are checked against an ALLOWLIST rather than a
 denylist: a new address typed into a docstring next year is the case that
 matters, and it cannot be on a list of the ones we already knew about.
 
-A private source that is not in this checkout is not an error -- the whole
-point is that they are absent from the public repo, where this still runs
-and reports what it could check.
+A private source of OURS that is not in this checkout is not an error. One of
+TOFA's is: the run then compared the public set against nothing, and a pass
+would mean "nothing was compared" rather than "nothing was quoted". So QUOTES
+fails in the public checkout, by design -- every private document is absent
+there. Run the quote gate from the vault (this repo), where the sources live;
+run `--markers` anywhere, since its patterns are in this file and need no
+sources at all. That split is why CI on the public repo runs `--markers`.
+
+That distinction is not academic. It went unnoticed until 2026-08-14, when the
+same command exited 0 in both checkouts -- having actually checked in one and
+checked nothing in the other.
 """
 from __future__ import annotations
 
@@ -119,7 +127,10 @@ CURATED_TREES = ("plugin.video.tofa", "tests", "public-release")
 #: pair, and for the same reason, as gen_logo_assets._svg_dir().
 CURATED_ART = (os.path.join("art", "logo-svgs"),
                os.path.join("tofa UX", "android-tv", "logo-svgs"))
-TEXT_SUFFIXES = (".py", ".xml", ".txt", ".md", ".html", ".svg", ".json")
+#: `.yml` is here for the CI workflow, which travels as `.github/workflows/`
+#: and is as capable of naming a box as any comment is.
+TEXT_SUFFIXES = (".py", ".xml", ".txt", ".md", ".html", ".svg", ".json",
+                 ".yml")
 
 #: The only IPv4 literals allowed to appear. Everything else is reported,
 #: including addresses nobody has seen yet -- which is the case a denylist of
@@ -254,7 +265,7 @@ def scan_quotes(n: int) -> tuple[list[tuple], list[str]]:
         loaded.append((rel, whose,
                        {tuple(tokens[i:i + n])
                         for i in range(len(tokens) - n + 1)}))
-    missing = [rel for rel, _w, _why in PRIVATE_SOURCES
+    missing = [(rel, whose) for rel, whose, _why in PRIVATE_SOURCES
                if not any(rel == got for got, _, _ in loaded)]
 
     hits = []
@@ -354,9 +365,26 @@ def main() -> int:
             ours = sum(1 for h in hits if h[1] == "ours" and h[5])
             print("    %d hit(s) against OUR OWN private documents, which do "
                   "not gate (--ours)" % ours)
-        for rel in missing:
-            print("    not in this checkout, so unchecked: %s" % rel)
+        for rel, whose in missing:
+            print("    not in this checkout, so unchecked: %s%s"
+                  % (rel, "  <-- CANNOT VERIFY" if whose == "tofa" else ""))
         problems += len(gating)
+
+        # A source that is not here was not checked, and a run that checked
+        # nothing must not report success. Only tofa's gate, for the same
+        # reason they are the only ones that gate a hit: ours are informational.
+        # This is what makes `--quotes` refuse to pass in the PUBLIC checkout,
+        # where every private document is absent by design -- run it from the
+        # vault, or run `--markers`, which needs no sources and is what CI uses.
+        blind = [rel for rel, whose in missing if whose == "tofa"]
+        if blind:
+            print("\n    CANNOT VERIFY QUOTATIONS: %d of tofa's %d source(s) "
+                  "are absent." % (len(blind), sum(1 for _r, w, _y
+                                                   in PRIVATE_SOURCES
+                                                   if w == "tofa")))
+            print("    A pass here would mean 'nothing was compared', not "
+                  "'nothing was quoted'.")
+        problems += len(blind)
 
     if do_markers:
         found = scan_markers()
