@@ -2074,6 +2074,23 @@
                 <font>tofa_font_player_subtitle</font>
                 <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                 <label>$INFO[Window.Property(player_synopsis)]</label>
+                <!-- Marquee the rest, on the same 2000/4000/6000 as Home's
+                     hero and Detail's synopsis. The shipped Apple TV app
+                     truncates here with an ellipsis instead, but scrolling
+                     rather than truncating is an accepted divergence across
+                     this client, and the house rule that bounds it (only the
+                     focused item marquees) is satisfied trivially here: the
+                     card is a passive takeover carrying exactly one text
+                     block, so nothing else on screen competes with it.
+
+                     Gated on the card's own visibility rather than left
+                     unconditional. Kodi takes a condition here, not just a
+                     boolean, and this card is raised 5s after the chrome
+                     hides and can then sit untouched for a long time; a
+                     synopsis crawling inside a hidden group is motion nobody
+                     can even see. Same reasoning as main.xml.tpl's
+                     hero_scroll_when. -->
+                <autoscroll delay="2000" time="4000" repeat="6000">String.IsEqual(Window.Property(player_pause_card),1)</autoscroll>
             </control>
         </control>
 
