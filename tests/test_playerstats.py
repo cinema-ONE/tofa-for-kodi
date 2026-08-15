@@ -124,6 +124,26 @@ check("a missing ratio is blank, not 0.00:1", ps._aspect(None) == "")
 check("a zero ratio is blank", ps._aspect(0) == "")
 check("a string ratio still parses", ps._aspect("2.39") == "2.39:1")
 
+# ...and the decimal mark is the REGION's, not a point. Every check above
+# passes in a point region whether or not that is true, so on their own they
+# would go on passing the day a hardcoded "%.2f" came back. `_region()`
+# answers (thousands, grouping, decimal) and caches it in `_cached`.
+from resources.lib import regional  # noqa: E402
+
+_was = regional._cached
+try:
+    regional._cached = (".", (3,), ",")
+    check("a comma region writes 2,39:1", ps._aspect(2.39) == "2,39:1",
+          ps._aspect(2.39))
+    check("...and rounds there too", ps._aspect(1.7777) == "1,78:1",
+          ps._aspect(1.7777))
+    check("blank stays blank whatever the region", ps._aspect(0) == "")
+    regional._cached = ("'", (3,), ".")
+    check("a point region with another thousands mark is unaffected",
+          ps._aspect(2.39) == "2.39:1", ps._aspect(2.39))
+finally:
+    regional._cached = _was
+
 print()
 failed = [n for n, ok in RESULTS if not ok]
 print(f"{len(RESULTS) - len(failed)}/{len(RESULTS)} passed")

@@ -298,17 +298,24 @@ def _row(key: str, value: str, kind: str = CORE):
 
 
 def _aspect(value) -> str:
-    """A display aspect as the trade writes it: 2.39:1, 1.78:1.
+    """A display aspect the way this region writes one: 2.39:1, or 2,39:1.
 
     The server sends a float (presented width / presented height). Two
     decimals because that is what distinguishes the ratios anyone cares about
     -- 2.35 from 2.39, 1.85 from 1.78 -- and no more, because the third is
-    encoder noise."""
+    encoder noise.
+
+    The decimal mark goes through regional like every other one on screen.
+    This used to hardcode a point, on the grounds that the trade writes
+    2.39:1 -- but German writes 2,39:1, and "the trade" here means an English
+    convention rather than a notation that survives translation. A resolution
+    stays untouched (1920x1080 is a pair of integers, not a decimal); this is
+    a decimal, so it does not. Settled 2026-08-15."""
     try:
         ratio = float(value)
     except (TypeError, ValueError):
         return ""
-    return f"{ratio:.2f}:1" if ratio > 0 else ""
+    return f"{regional.decimal(ratio, 2)}:1" if ratio > 0 else ""
 
 
 def _pair(key: str, source: str, output: str, kind: str = CORE, warn: bool = False):
