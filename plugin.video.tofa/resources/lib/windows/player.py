@@ -657,11 +657,18 @@ class PlayerWindow(kodigui.ControlledDialog):
 
     EPISODES_ID = 9134
     ADJUST_ID = 9135
+    STEREO_ID = 9142
     # Adjust sits between Quality and Stats deliberately. Everything to its
     # left CHANGES what plays; Stats only describes it, and the reference
     # app keeps that one last (rightmost).
-    UTILITY_IDS = (SUBTITLES_ID, AUDIO_ID, EPISODES_ID, QUALITY_ID,
-                   ADJUST_ID, STATS_ID)
+    #
+    # 3D goes directly after Subtitles and Audio (owner's call, 2026-08-15)
+    # because it is the same KIND of choice as those two -- which version of
+    # this stream to watch -- rather than a correction applied to whatever
+    # is already playing, which is what every remaining Adjust row is. It
+    # appears only on a stereoscopic file, so no other capsule changes.
+    UTILITY_IDS = (SUBTITLES_ID, AUDIO_ID, STEREO_ID, EPISODES_ID,
+                   QUALITY_ID, ADJUST_ID, STATS_ID)
 
     # The capsule's own background, and the six visuals behind each button
     # (focus fill, focus rim, on fill, then the idle/focused/on glyphs).
@@ -675,6 +682,11 @@ class PlayerWindow(kodigui.ControlledDialog):
         # already the quick-seek toast, and Kodi resolves a duplicate id by
         # silently returning the FIRST control with it.
         ADJUST_ID: 9136,
+        # 9210..9215. By the time 3D was added the 91xx band had no run of
+        # six left -- 9142..9144 and 9147..9149 are what remains, split by
+        # the capsule backgrounds. Same rule as ADJUST above: the block has
+        # to be free, not adjacent.
+        STEREO_ID: 9210,
     }
 
     @classmethod
@@ -1663,6 +1675,28 @@ class PlayerWindow(kodigui.ControlledDialog):
         if not self._stereo_pending:
             return
         self._stereo_pending = False
+        self._open_stereo_panel(start_on_current=False)
+
+    def open_stereo_panel(self):
+        """The 3D button in the utility capsule: the same question, on demand.
+
+        Deliberately the same panel the start of playback raises rather than
+        a control of its own (owner's call, 2026-08-15). What it replaces was
+        a 3D STEPPER in the Adjust panel, and a stepper applied each mode the
+        moment it was stepped onto -- so walking from one end of the list to
+        the other made the display renegotiate HDMI once per press. A panel
+        is asked once and answered once, which is one handshake.
+
+        Opened here it starts on the mode in force rather than on Preferred:
+        mid-film the viewer is correcting an answer, not giving a first one.
+        """
+        self._open_stereo_panel(start_on_current=True)
+
+    def _stereo_panel_rows(self):
+        """The 3D panel's rows, and the mode each row would apply.
+
+        `None` in picks is "leave it to Kodi's preferred mode", which is not
+        a mode name and so cannot be carried in the same list as one."""
         rows, picks = [], []
         # The preferred mode's NAME goes on the row's second line, not in a
         # parenthetical: "Preferred mode (Same as movie)" measures 325px and
@@ -1682,6 +1716,17 @@ class PlayerWindow(kodigui.ControlledDialog):
                 continue
             rows.append((label, False, None, ""))
             picks.append(mode)
+        return rows, picks
+
+    def _open_stereo_panel(self, *, start_on_current: bool):
+        rows, picks = self._stereo_panel_rows()
+        selected = 0
+        if start_on_current:
+            current = (stereoscopic.current_mode() or {}).get("mode")
+            # Not `if current` -- a mode named "" would fall through to 0
+            # anyway, and `in` on a list holding None is safe either way.
+            if current in picks:
+                selected = picks.index(current)
 
         def apply(index):
             if index is None or not (0 <= index < len(picks)):
@@ -1694,8 +1739,11 @@ class PlayerWindow(kodigui.ControlledDialog):
                 return
             stereoscopic.set_mode(mode)
 
-        self._open_panel(title="3D", glyph="\uE529", rows=rows,
-                         selected=0, apply=apply)
+        # glasses, the same mark the capsule's own button carries. It was
+        # `layers` until 2026-08-15, which is what Collections means
+        # everywhere else in the app -- one mark, two meanings.
+        self._open_panel(title="3D", glyph="\uE20D", rows=rows,
+                         selected=selected, apply=apply)
 
     def _adjust_rows(self) -> list:
         """The stepper rows that apply to what is playing.
@@ -1723,41 +1771,18 @@ class PlayerWindow(kodigui.ControlledDialog):
             "value": self._audio_sync_label,
             "nudge": self._nudge_audio_sync,
         })
-        # 3D last, and only for a stereoscopic file. A STEPPER rather than a
-        # picker, which suits the case it exists for: the viewer answered the
-        # start-of-playback question wrong and wants to flip through modes
-        # until the picture looks right. Each press applies live, so the
-        # screen IS the feedback -- a picker would make them commit blind.
-        if xbmc.getCondVisibility("VideoPlayer.IsStereoscopic"):
-            modes = stereoscopic.modes()
-            if modes:
-                rows.append({
-                    "label": "3D mode",
-                    "value": self._stereo_mode_label,
-                    "nudge": lambda forward: self._cycle_stereo_mode(modes, forward),
-                })
+        # 3D used to be a third row here, and is now its own button in the
+        # utility capsule -- see open_stereo_panel(). It was a STEPPER, and
+        # a stepper applies as it steps: every press was a live mode change,
+        # and on real hardware each one costs an HDMI renegotiation. Walking
+        # a four-mode list to compare two of them meant four handshakes.
+        # Owner's call, 2026-08-15.
+        #
+        # Every row left in here shifts something in TIME again, which is
+        # what `timer` used to say before the 3D row arrived. The mark stays
+        # `wrench` regardless: it is what the button has looked like for a
+        # while and it is not wrong for a panel of corrections.
         return rows
-
-    def _stereo_mode_label(self) -> str:
-        current = stereoscopic.current_mode()
-        return (current or {}).get("label") or u"\u2014"
-
-    def _cycle_stereo_mode(self, modes: list, forward: bool):
-        """Step to the next mode this hardware can output, wrapping.
-
-        Wrapping is right here and wrong almost everywhere else in this app
-        (project_wrap_stop_mechanism): a list of choices you are cycling
-        THROUGH to compare has no natural end, and stopping at one would
-        strand the viewer one press from the mode they want."""
-        names = [m.get("mode") for m in modes if m.get("mode")]
-        if not names:
-            return
-        current = (stereoscopic.current_mode() or {}).get("mode")
-        try:
-            index = names.index(current)
-        except ValueError:
-            index = 0
-        stereoscopic.set_mode(names[(index + (1 if forward else -1)) % len(names)])
 
     def _audio_sync_label(self) -> str:
         offset = playbacksync.audio_offset()
@@ -2710,6 +2735,11 @@ class PlayerWindow(kodigui.ControlledDialog):
             buttons.append(self.SUBTITLES_ID)
         if len(self._audio_tracks) > 1:
             buttons.append(self.AUDIO_ID)
+        # Only for a file Kodi has actually detected as stereoscopic --
+        # the same test the start-of-playback question uses, so the button
+        # is present exactly when there is a question worth re-asking.
+        if xbmc.getCondVisibility("VideoPlayer.IsStereoscopic"):
+            buttons.append(self.STEREO_ID)
         if self.getProperty("player_is_episode"):
             buttons.append(self.EPISODES_ID)
         buttons.append(self.QUALITY_ID)
@@ -2774,6 +2804,21 @@ class PlayerWindow(kodigui.ControlledDialog):
             self.getControl(self.FWD10_ID).controlRight(self.getControl(buttons[0]))
         except (RuntimeError, IndexError):
             pass
+        # This can run WHILE the chrome is up -- on_playback_started calls it
+        # once the stream can answer what it is. Kodi leaves focus sitting on
+        # a control that has just been hidden, and every key from there is
+        # dead, which is the same dead end close_panel's docstring describes
+        # reached from a different direction. Nothing is hidden on the
+        # playback-started pass today; the guard is here so that stays true
+        # of whoever calls this next.
+        try:
+            focused = self.getFocusId()
+        except RuntimeError:
+            return
+        if focused in self.UTILITY_IDS and focused not in buttons:
+            log.debug(f"player: capsule hid focused button {focused}, "
+                      "moving focus to play/pause")
+            self.setFocusId(self.PLAYPAUSE_ID)
 
     def _apply_transport_mode(self, *, episode: bool):
         """Swap the transport's outer pair between seek and episode.
@@ -3167,6 +3212,12 @@ class PlayerWindow(kodigui.ControlledDialog):
         if (stereoscopic.should_ask() or self._stereo_saved) and \
                 xbmc.getCondVisibility("VideoPlayer.IsStereoscopic"):
             self._stereo_pending = True
+        # ...and the capsule gains its 3D button at this same moment, for the
+        # same reason the question can only be asked now: onInit laid the
+        # capsule out before there was a stream, so VideoPlayer.IsStereoscopic
+        # was still false and the button was left out of a 3D film's chrome.
+        # Measured on Hugo, 2026-08-15 -- five buttons, no glasses.
+        self._layout_utility_capsule()
         self._duration_ms = self._resolve_duration_ms()
         # The markers need the duration to scale against, and this is the
         # first moment it exists.
@@ -4482,6 +4533,8 @@ class PlayerWindow(kodigui.ControlledDialog):
             self._pick_stream(subtitles=True)
         elif controlID == self.AUDIO_ID:
             self._pick_stream(subtitles=False)
+        elif controlID == self.STEREO_ID:
+            self.open_stereo_panel()
         elif controlID == self.QUALITY_ID:
             self._pick_quality()
         elif controlID == self.ADJUST_ID:

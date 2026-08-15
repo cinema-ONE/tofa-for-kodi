@@ -152,7 +152,23 @@ ACTIVITY = 0xE038
 # A wrench is a simple silhouette at 26px (unlike monitor-cog, whose gear
 # mushes) and says "something here is off and can be corrected", which is
 # what every row in the panel does. Verified present in the shipped subset.
+#
+# The 3D row left again on 2026-08-15 -- it is its own button now, see
+# GLASSES -- so `timer` would be honest here once more. The mark stays a
+# wrench anyway: it is not wrong for a panel of corrections, and swapping a
+# familiar button's face back and forth costs more than it settles.
 WRENCH = 0xE1B1
+# 3D. Its own button in the utility capsule since 2026-08-15, and the header
+# of the panel that button opens -- the same panel the start of a 3D film
+# raises. That panel used to borrow LAYERS, which is what Collections means
+# on three other surfaces: the one-mark-two-meanings problem LIST_FILTER
+# above exists to undo.
+#
+# Spectacles are the one mark for stereoscopic video that reads at 26px
+# without a legend. Lucide has no 3D glyph as such, and its `box`/`layers`
+# solids are marks a viewer would have to be TOLD the meaning of.
+# Verified present in the shipped subset.
+GLASSES = 0xE20D
 
 # 8.1's transport capsule on a TV EPISODE. The reference app swaps the
 # -10s/+10s pair for previous/next EPISODE there (see
