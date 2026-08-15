@@ -25,7 +25,11 @@ Add the repository once and Kodi keeps the add-on updated on its own:
    empty one — call it **tofa**.
 3. Settings → Add-ons → Install from zip file → **tofa** →
    `repository.tofa-1.0.1.zip`
-4. Install from repository → tofa Add-on Repository → Video add-ons → tofa
+4. Install from repository → tofa Add-on Repository → Video add-ons →
+   **tofa for Kodi**
+5. Start it from **Program add-ons → tofa for Kodi**. That is the
+   television interface; the Videos entry is the plain directory listing,
+   which works under any skin but is not the same thing.
 
 A zip installed by hand works too and never updates itself, which is the
 whole reason the repository exists.
