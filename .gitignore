@@ -20,3 +20,6 @@ dist/
 
 # macOS Finder droppings, all over the tree.
 .DS_Store
+
+# Local Claude Code settings: machine paths, per-checkout hooks.
+.claude/
