@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addons>
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.2" provider-name="cinemaONE">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="script.module.requests" version="2.31.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="addon.py">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.python.script" library="launch_home.py">
+    <provides>executable</provides>
+  </extension>
+  <extension point="xbmc.service" library="service.py" start="startup"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
+    <description lang="en_GB">An unofficial client for the tofa media server (api.tofa.tv), in two parts.
+
+Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
+
+Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
+
+Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
+    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
+    <platform>all</platform>
+    <license>GPL-2.0-only</license>
+    <website>https://tofa.tv</website>
+    <news>
+      - Forcing a quality below Original no longer costs you surround. The server
+        was being asked for its default stereo AAC; it now delivers E-AC-3 5.1 where
+        your audio output can take it, at the same bitrate. On a stereo output with
+        no passthrough nothing changes, which is the right answer there.
+      - Choosing "Original" is now told to the server as a deliberate choice rather
+        than looking like no choice at all.
+      - The audio track no longer comes out in the wrong language when the app
+        cannot reach the server for a moment at the start of playback. Your language
+        preferences are remembered on the device and used when that happens.
+      - An explicit subtitle pick no longer stops your preferred audio language from
+        being applied, and the reverse.
+      - Artwork is cleaned up on a schedule instead of accumulating. Settings ->
+        This Device gains a storage limit for it and a way to clear it now.
+      - Artwork downloads once instead of repeatedly on Browse, Search, Discover,
+        filmographies, episode lists and the player's episode drawer.
+    </news>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
+      <screenshot>resources/screenshots/01-home.jpg</screenshot>
+      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
+      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
+      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
+      <screenshot>resources/screenshots/05-player.jpg</screenshot>
+      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
+    </assets>
+  <size>9188357</size><path>plugin.video.tofa/plugin.video.tofa-0.9.2.zip</path></extension>
+</addon>
+<addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.0" provider-name="cinemaONE">
+  <requires>
+    <import addon="xbmc.addon" version="12.0.0"/>
+  </requires>
+  <extension point="xbmc.addon.repository" name="tofa">
+    <dir>
+      <info>https://kodi.cinemaone.ch/addons.xml</info>
+      <checksum verify="sha256">https://kodi.cinemaone.ch/addons.xml.sha256</checksum>
+      <datadir>https://kodi.cinemaone.ch</datadir>
+      <artdir>https://kodi.cinemaone.ch</artdir>
+      <hashes>sha256</hashes>
+    </dir>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+    <license>GPL-2.0-only</license>
+    <summary lang="en_GB">Install and update the tofa add-on</summary>
+    <description lang="en_GB">The update channel for tofa's Kodi add-on. Installing this repository lets Kodi fetch the add-on and every later release on its own.</description>
+    <assets>
+      <icon>icon.png</icon>
+    </assets>
+  <size>69643</size><path>repository.tofa/repository.tofa-1.0.0.zip</path></extension>
+</addon>
+</addons>
