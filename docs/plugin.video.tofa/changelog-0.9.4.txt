@@ -1,0 +1,11 @@
+- 3D films get their own button in the player controls. On a 3D file it sits
+  beside subtitles and audio, and asks the same question the film asks when it
+  starts, so you can change your mind part way through. It replaces the 3D row
+  under Adjust, which applied every mode as you stepped past it and made the
+  television renegotiate the picture on each press.
+- The Adjust panel is easier to read: a value and its arrows no longer sit
+  tight under the label above them.
+- "Report a problem" under Settings -> Privacy & About no longer runs off the
+  end of its card. The part that was cut off said where account and server
+  trouble goes instead; the issue page the code opens says it now, where it is
+  a link rather than an address to copy off a television.
