@@ -44,7 +44,15 @@ from PIL import Image, ImageDraw
 # phone that has scanned one lands in the same place from either client.
 QR_URLS: dict[str, str] = {
     "account": "https://app.tofa.tv/account",
-    "support": "https://accounts.tofa.tv/support",
+    # DELIBERATELY NOT the Apple TV app's `accounts.tofa.tv/support`. A problem
+    # with THIS add-on is not something tofa's support desk can fix, and the
+    # reports were arriving where nobody could act on them. Ours goes to the
+    # issue tracker of the repository the add-on is built from. Account and
+    # server problems still belong to tofa, which is what the caption says.
+    #
+    # 50 bytes against version 6's 58-byte budget at error correction H, so
+    # the card keeps the measured geometry below rather than growing a version.
+    "support": "https://github.com/cinema-ONE/tofa-for-kodi/issues",
 }
 
 # See the module docstring -- every one of these is measured, not chosen.

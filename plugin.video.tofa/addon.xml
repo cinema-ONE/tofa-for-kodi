@@ -25,6 +25,10 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
+      - Report a problem now reaches the people who can fix it. The QR code under
+        Settings -&gt; Privacy &amp; About opens this add-on's own issue tracker instead of
+        tofa's support desk, which cannot act on a Kodi bug. Account and server
+        trouble still goes to tofa, and the caption says which is which.
       - A profile unlocked with a PIN no longer locks itself again while you are
         still watching. The unlock now extends as playback continues, so a long
         film no longer ends with the episode unticked and your place forgotten.
