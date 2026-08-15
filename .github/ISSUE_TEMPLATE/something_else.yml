@@ -1,0 +1,12 @@
+name: Something else
+description: An idea, a question, or anything that is not a bug.
+body:
+  - type: textarea
+    id: body
+    attributes:
+      label: What is on your mind
+      description: >
+        No structure required. If it concerns a specific screen, saying which
+        one saves a round trip.
+    validations:
+      required: true

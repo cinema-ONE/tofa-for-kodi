@@ -1,0 +1,11 @@
+# Blank issues stay OFF so the two forms above are the way in -- the version
+# fields they ask for are what makes a report actionable, and a blank box
+# reliably produces "it does not work" instead.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Account, sign-in, or the server itself
+    url: https://accounts.tofa.tv/support
+    about: >
+      Anything about your tofa account, a sign-in problem, or the server not
+      running. This add-on cannot fix those, and tofa's support can.
