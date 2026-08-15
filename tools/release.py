@@ -260,12 +260,36 @@ def _set_version(xml: str, version: str) -> str:
                   lambda m: m.group(1) + version + m.group(3), xml, count=1, flags=re.S)
 
 
+def _xml_escape(text: str) -> str:
+    """The three characters that cannot appear as themselves in element text.
+
+    Ampersand FIRST, or the escapes escape each other."""
+    return (text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;"))
+
+
+def _xml_unescape(text: str) -> str:
+    """The inverse. Ampersand LAST, for the same reason."""
+    return (text.replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&"))
+
+
 def _set_news(xml: str, news: str) -> str:
     """Replace <news> if present, otherwise add it before <assets>.
 
     The body is indented to sit under the tag rather than jammed against it,
-    which is how every other block in this file is written."""
-    body = "\n" + "\n".join("      " + line if line else ""
+    which is how every other block in this file is written.
+
+    ESCAPED, because the changelog is prose and `<news>` is XML. A release note
+    naming a settings page -- "Privacy & About", "Audio & Subtitles" -- carries
+    a bare `&`, which makes addon.xml not well-formed. That is not a quiet
+    failure (check_xml and every suite that parses addon.xml stop dead) but it
+    IS a confusing one, because the bad character came from a text file nobody
+    thinks of as markup. news_in_xml unescapes on the way back so the
+    staleness comparison still sees the changelog's own text."""
+    body = "\n" + "\n".join("      " + _xml_escape(line) if line else ""
                             for line in news.splitlines()) + "\n    "
     if re.search(r"<news>.*?</news>", xml, re.S):
         return re.sub(r"<news>.*?</news>", lambda m: "<news>" + body + "</news>",
@@ -312,7 +336,7 @@ def news_in_xml(xml: str) -> str | None:
     match = re.search(r"<news>(.*?)</news>", xml, re.S)
     if not match:
         return None
-    return textwrap.dedent(match.group(1).strip("\n")).strip()
+    return _xml_unescape(textwrap.dedent(match.group(1).strip("\n")).strip())
 
 
 # ------------------------------------------------------------------ actions --
