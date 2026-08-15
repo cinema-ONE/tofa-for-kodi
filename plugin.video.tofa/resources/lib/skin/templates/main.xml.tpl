@@ -227,8 +227,23 @@
                          mirrors whichever card is focused, so when focus is up on
                          the nav bar it is describing something the viewer is not
                          looking at, and a synopsis crawling by itself on an
-                         untouched Home is motion nobody asked for. House rule:
-                         only the focused item marquees; toasts are the exception. -->
+                         untouched Home is motion nobody asked for.
+
+                         HOUSE RULE (2026-08-15): a screen may run at most ONE
+                         vertical marquee, for a long synopsis, and at most ONE
+                         horizontal marquee, for the focused card or option
+                         title. Toasts are the exception. The two axes are the
+                         point: a synopsis scrolling up while the title under
+                         the cursor scrolls sideways stays readable, where two
+                         of either does not. This control is Home's vertical
+                         one; the horizontal one is the focused card title in
+                         fragments.py, gated on Control.HasFocus of the same
+                         list. They run together, and that is intended.
+
+                         The rule used to read "only the focused item
+                         marquees", which does not survive contact: the hero is
+                         never itself focused, so that reading would silence it
+                         entirely. -->
                     <autoscroll delay="2000" time="4000" repeat="6000">{hero_scroll_when}</autoscroll>
                 </control>
             </control>
