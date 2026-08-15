@@ -15,6 +15,7 @@ would write a CNAME for an IP address.
 """
 import hashlib
 import os
+import re
 import pathlib
 import sys
 import tempfile
@@ -78,6 +79,25 @@ def main():
           release.BASE_URL)
     check("BASE_URL has no trailing slash",
           not release.BASE_URL.endswith("/"), release.BASE_URL)
+
+    # --- the browser page. Kodi never asks for it; a person typing the
+    # address does, and Pages' own 404 reads as "this is broken" when it
+    # simply is not a website. Generated, so a rebuild cannot drop it.
+    with tempfile.TemporaryDirectory() as tmp:
+        release._write_index(tmp, "https://kodi.example.ch", "9.9.9")
+        html = open(os.path.join(tmp, "index.html"), encoding="utf-8").read()
+        check("publish writes an index page", bool(html))
+        check("...naming the address to add as a source",
+              "https://kodi.example.ch" in html)
+        check("...and the version it is serving", "9.9.9" in html)
+        check("...and the repository zip by name",
+              "%s-%s.zip" % (release.REPO_ID, release.REPO_VERSION) in html)
+        # A page that pulls a font or a script from elsewhere is a page that
+        # breaks on the network it is most needed on.
+        external = re.findall(r'(?:src|href)="(https?://[^"]+)"', html)
+        check("no external asset, only the project link",
+              all(u.startswith(release.PROJECT_URL) for u in external),
+              str(external))
 
     # --- verify_repo refuses a tree that would unbind the domain
     with tempfile.TemporaryDirectory() as tmp:

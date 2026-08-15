@@ -705,6 +705,86 @@ def _stage(out_dir: str, addon_id: str, zip_path: str,
     return "%s/%s" % (addon_id, name), os.path.getsize(zip_path)
 
 
+#: The page a BROWSER gets at the channel root. Kodi never asks for it.
+#:
+#: Without one, Pages answers its own 404 to anyone who types the address --
+#: which is what a viewer does with a URL they were told to "add as a source",
+#: and what anyone does who finds the address in a log or a settings screen.
+#: A 404 says "this is broken"; it is not, it is simply not a website.
+#:
+#: GENERATED, like CNAME and .nojekyll, for the same reason: `publish` rebuilds
+#: this tree wholesale, so a hand-written file here would survive exactly until
+#: the next release. It carries no external asset -- no font, no script, no
+#: image -- so it renders the same on a phone in a hotel as it does here.
+_INDEX = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>tofa for Kodi — add-on repository</title>
+<style>
+  :root {{ color-scheme: dark light; }}
+  body {{ margin: 0; padding: 2.5rem 1.25rem; background: #0b1116; color: #e8eef2;
+         font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+         Helvetica, Arial, sans-serif; }}
+  main {{ max-width: 40rem; margin: 0 auto; }}
+  h1 {{ font-size: 1.5rem; margin: 0 0 .25rem; }}
+  p.sub {{ color: #8fa3b0; margin: 0 0 2rem; }}
+  code {{ background: #16212a; border-radius: 6px; padding: .15rem .4rem;
+          font-size: .9em; word-break: break-all; }}
+  pre {{ background: #16212a; border-radius: 10px; padding: 1rem;
+         overflow-x: auto; }}
+  ol {{ padding-left: 1.2rem; }} li {{ margin: .4rem 0; }}
+  a {{ color: #35d6c3; }}
+  footer {{ margin-top: 2.5rem; color: #8fa3b0; font-size: .9rem; }}
+</style>
+</head>
+<body>
+<main>
+  <h1>tofa for Kodi</h1>
+  <p class="sub">This address is an add-on repository for Kodi, not a website.
+     Kodi reads it; a browser has nothing to show.</p>
+
+  <p>To install, add this as a source in Kodi:</p>
+  <pre><code>{base_url}</code></pre>
+
+  <ol>
+    <li>Settings → File manager → Add source → paste the address above</li>
+    <li>Settings → Add-ons → Install from zip file → that source →
+        <code>{repo_id}/{repo_id}-{repo_version}.zip</code></li>
+    <li>Install from repository → tofa Add-on Repository → Video add-ons → tofa</li>
+  </ol>
+
+  <p>Kodi keeps the add-on updated from here afterwards. The current add-on
+     version is <code>{version}</code>, and it needs a tofa server on
+     <code>{floor}</code> or newer.</p>
+
+  <footer>
+    Source, releases and issues:
+    <a href="{project_url}">{project_label}</a>.
+    Licensed GPL-2.0-only.
+  </footer>
+</main>
+</body>
+</html>
+"""
+
+#: Where a human goes from that page. Not derived from BASE_URL: the channel
+#: and the source repository are different things and may not stay on one host.
+PROJECT_URL = "https://github.com/cinema-ONE/tofa-for-kodi"
+
+
+def _write_index(out_dir: str, base_url: str, version: str) -> None:
+    floor = server_floor() or "the version in README.txt"
+    html = _INDEX.format(
+        base_url=base_url, repo_id=REPO_ID, repo_version=REPO_VERSION,
+        version=version, floor=floor, project_url=PROJECT_URL,
+        project_label=PROJECT_URL.split("//", 1)[-1])
+    with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as fh:
+        fh.write(html)
+
+
 def custom_domain(base_url: str) -> str | None:
     """The host to write into CNAME, or None if this tree must not carry one.
 
@@ -798,6 +878,7 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
     # would drop a file from the channel.
     with open(os.path.join(out_dir, ".nojekyll"), "w", encoding="utf-8") as fh:
         fh.write("")
+    _write_index(out_dir, base_url, version)
 
     problems = verify_repo(out_dir, base_url)
     for line in problems:
