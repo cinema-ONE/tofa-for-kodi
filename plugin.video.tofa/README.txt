@@ -74,7 +74,7 @@ The update channel is a repository add-on you install once:
      Kodi cannot guess a name for an https source and will not accept an
      empty one. Call it "tofa".
   3. Settings -> Add-ons -> Install from zip file -> tofa ->
-     repository.tofa-1.0.0.zip
+     repository.tofa-1.0.1.zip
   4. Settings -> Add-ons -> Install from repository ->
      tofa Add-on Repository -> Video add-ons -> tofa
 

@@ -24,7 +24,7 @@ Add the repository once and Kodi keeps the add-on updated on its own:
    Kodi cannot guess a name for an `https` source and will not accept an
    empty one — call it **tofa**.
 3. Settings → Add-ons → Install from zip file → **tofa** →
-   `repository.tofa-1.0.0.zip`
+   `repository.tofa-1.0.1.zip`
 4. Install from repository → tofa Add-on Repository → Video add-ons → tofa
 
 A zip installed by hand works too and never updates itself, which is the
