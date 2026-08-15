@@ -63,11 +63,13 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import ipaddress
 import json
 import os
 import re
 import sys
 import textwrap
+import urllib.parse
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -100,9 +102,15 @@ EXCLUDE_NAMES = {".DS_Store", "Thumbs.db", "desktop.ini"}
 # whole job is to tell Kodi where to look.
 REPO_ID = "repository.tofa"
 REPO_NAME = "tofa Add-on Repository"
-# Bump when the URLs change, and ONLY then. Existing installs update
-# themselves from the old URL, so a URL change reaches them exactly once --
-# if the version does not move, it never reaches them at all.
+# Bump when ANYTHING in the repository add-on changes -- Kodi re-downloads it
+# only when this version moves, so an unbumped change reaches nobody who has
+# already installed. That is the URLs below, and equally the name, summary,
+# description, icon and any <dir> gating. It is NOT the add-on's own version:
+# shipping code, fonts or artwork bumps plugin.video.tofa/addon.xml and leaves
+# this alone, which is the ordinary case every release.
+#
+# For scale: Team Kodi's own repository.xbmc.org is at 3.5.0, plex-for-kodi's
+# repository.dontpanic at 0.2.10 (pm4k.eu). Nobody freezes it.
 REPO_VERSION = "1.0.0"
 REPO_SUMMARY = "Install and update the tofa add-on"
 REPO_DESCRIPTION = (
@@ -111,15 +119,27 @@ REPO_DESCRIPTION = (
 )
 #: Where the tree below will be served from, no trailing slash.
 #:
-#: Settled 2026-08-12 (issue #5): the update channel is OUR GitHub Pages, not
-#: a tofa.tv URL -- tofa would rather not put their domain in front of a
-#: channel they do not operate. Pages lowercases the org, so `cinema-ONE`
-#: serves at `cinema-one.github.io`; the repo is `tofa-for-kodi`, and the
-#: tree below goes in its `docs/` folder, which Pages serves at this root.
+#: Settled 2026-08-12 (issue #5): the update channel is OURS, not a tofa.tv
+#: URL -- tofa would rather not put their domain in front of a channel they
+#: do not operate. The bits come from GitHub Pages out of this repo's `docs/`
+#: folder; the hostname is only a DNS CNAME pointing at `cinema-one.github.io`.
+#:
+#: A domain we own rather than `cinema-one.github.io/tofa-for-kodi`, decided
+#: 2026-08-15 before the first publish, and the reason is portability rather
+#: than looks: this string is baked into every repository zip a box installs,
+#: so a `github.io` URL would tie the channel to GitHub Pages permanently.
+#: Behind a domain we control, the host can move by repointing DNS and no
+#: install notices. It is the one part of this that cannot be retrofitted
+#: cheaply. plex-for-kodi does the same thing with pm4k.eu.
+#:
+#: The cost is a renewal obligation: if the domain ever lapses, every install's
+#: update channel dies and whoever registers it next can serve code to those
+#: boxes. Keep it, and keep it verified on the GitHub account so a dangling
+#: CNAME cannot be claimed by another user.
 #:
 #: Changing this later means every existing user has to remove and re-add the
 #: repository, so bump REPO_VERSION with it (see the module docstring).
-BASE_URL = "https://cinema-one.github.io/tofa-for-kodi"
+BASE_URL = "https://kodi.cinemaone.ch"
 #: What Kodi hashes. `true` means md5, which current Kodi logs as broken.
 HASH_ALGO = "sha256"
 REPO_OUT = os.path.join(DIST, "repo")
@@ -669,12 +689,35 @@ def _stage(out_dir: str, addon_id: str, zip_path: str,
     return "%s/%s" % (addon_id, name), os.path.getsize(zip_path)
 
 
+def custom_domain(base_url: str) -> str | None:
+    """The host to write into CNAME, or None if this tree must not carry one.
+
+    GitHub Pages binds a hostname to a REPOSITORY by the `CNAME` file in the
+    served tree, not by DNS. Every custom subdomain's DNS record points at the
+    same `<user>.github.io`, because DNS has no notion of a path -- so the file
+    is the only thing saying which repo answers for which host. Publish a tree
+    without it and the domain silently unbinds: the channel goes down for every
+    install, and nothing fails locally to tell you.
+
+    Returns None for a `github.io` URL, which needs no file, and for a LAN test
+    build (`--base-url http://<ip>:8000`), which must never claim a domain.
+    """
+    host = urllib.parse.urlsplit(base_url).hostname or ""
+    if not host or host == "localhost" or host.endswith(".github.io"):
+        return None
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return host
+    return None
+
+
 def do_publish(base_url: str | None, out_dir: str) -> int:
     base_url = (base_url or BASE_URL or "").rstrip("/")
     if not base_url:
         print("publish needs the URL this tree will be served from, e.g.\n"
               "    python3 tools/release.py publish --base-url "
-              "https://cinema-one.github.io/tofa-for-kodi\n"
+              "https://kodi.cinemaone.ch\n"
               "It is baked into the repository add-on users install, so there "
               "is no safe default to guess. BASE_URL is normally set.")
         return 1
@@ -726,7 +769,21 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
     _write_with_digest(os.path.join(out_dir, "addons.xml"),
                        index.encode("utf-8"))
 
-    problems = verify_repo(out_dir)
+    # Emitted from BASE_URL rather than kept by hand in docs/, so the file and
+    # the URL baked into the repository zip cannot drift apart -- and so a
+    # rebuild that replaces the tree cannot quietly drop it.
+    domain = custom_domain(base_url)
+    if domain:
+        with open(os.path.join(out_dir, "CNAME"), "w", encoding="utf-8") as fh:
+            fh.write(domain + "\n")
+    # Jekyll is Pages' default and would treat this as a site to build rather
+    # than a tree to serve. Nothing here starts with `_` today, so it happens
+    # to survive, but the add-on decides its own filenames and one underscore
+    # would drop a file from the channel.
+    with open(os.path.join(out_dir, ".nojekyll"), "w", encoding="utf-8") as fh:
+        fh.write("")
+
+    problems = verify_repo(out_dir, base_url)
     for line in problems:
         print("PROBLEM: %s" % line)
     print("\n%s" % os.path.relpath(out_dir, ROOT))
@@ -742,16 +799,30 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
     return 1 if problems else 0
 
 
-def verify_repo(out_dir: str) -> list[str]:
+def verify_repo(out_dir: str, base_url: str | None = None) -> list[str]:
     """Read the tree back the way Kodi will, and say what would break.
 
     Publishing is the one step with no feedback loop -- a wrong path or a
     stale hash looks fine locally and fails on a stranger's box, days later,
     as "could not connect to repository"."""
     problems = []
+
+    domain = custom_domain(base_url) if base_url else None
+    if domain:
+        cname = os.path.join(out_dir, "CNAME")
+        if not os.path.exists(cname):
+            problems.append(
+                "CNAME is missing, so serving this tree would unbind %s and "
+                "take the channel down for every install" % domain)
+        else:
+            with open(cname, encoding="utf-8") as handle:
+                written = handle.read().strip()
+            if written != domain:
+                problems.append("CNAME says %r but the tree is built for %s"
+                                % (written, domain))
     index = os.path.join(out_dir, "addons.xml")
     if not os.path.exists(index):
-        return ["addons.xml is missing"]
+        return problems + ["addons.xml is missing"]
     with open(index, "rb") as handle:
         raw = handle.read()
 
