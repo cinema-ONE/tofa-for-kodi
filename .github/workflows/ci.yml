@@ -53,6 +53,28 @@ jobs:
       - name: Settings layout
         run: python3 tools/check_settings_layout.py
 
+      # Static linters over the add-on's own source. They sat in the private
+      # vault until 2026-08-15 for no better reason than being filed with the
+      # live-box probes -- none of them opens a socket or names a machine, and
+      # CONTRIBUTING documents the rules they enforce, so a contributor could
+      # read a rule and had no way to check it.
+      #
+      # check_numbers.py is NOT here yet, and deliberately: it reports one
+      # finding, `playerstats._aspect()` writing "2.39:1" with a hardcoded
+      # decimal point. That is an open question rather than a bug -- the
+      # docstring says "as the trade writes it", and a resolution is on
+      # CONTRIBUTING's leave-alone list for the same reason, while German
+      # genuinely writes 2,39:1. Settle it, then add the step; wiring in a
+      # step that fails on day one teaches everyone to ignore a red run.
+      - name: Language-code equivalence and track picking
+        run: python3 tools/check_langcodes.py
+
+      - name: Card badges, including labels no server has sent yet
+        run: python3 tools/check_badges.py
+
+      - name: Episode numbering, including multi-episode files
+        run: python3 tools/check_episodes.py
+
       - name: Release metadata
         run: python3 tools/release.py check
 
