@@ -18,16 +18,19 @@ though it is built with the tofa team and against their design.
 
 Add the repository once and Kodi keeps the add-on updated on its own:
 
-1. Settings → File manager → Add source
-   `https://kodi.cinemaone.ch`
-2. Settings → Add-ons → Install from zip file → that source →
-   `repository.tofa/repository.tofa-1.0.0.zip`
-3. Install from repository → tofa Add-on Repository → Video add-ons → tofa
+1. Settings → System → Add-ons → turn on **Unknown sources**. Kodi refuses
+   to install from a zip without it, and only says so when you try.
+2. Settings → File manager → Add source → `https://tofa.cinemaone.ch`
+   Kodi cannot guess a name for an `https` source and will not accept an
+   empty one — call it **tofa**.
+3. Settings → Add-ons → Install from zip file → **tofa** →
+   `repository.tofa-1.0.0.zip`
+4. Install from repository → tofa Add-on Repository → Video add-ons → tofa
 
 A zip installed by hand works too and never updates itself, which is the
 whole reason the repository exists.
 
-**Requirements.** A tofa media server at **0.9.29** or newer -- older servers
+**Requirements.** A tofa media server at **0.9.30** or newer -- older servers
 are not refused, but this add-on carries no backward-compatibility paths, so
 some screens will be missing or wrong rather than degrading gracefully. It
 says so once per session when it sees one. `addon.xml` declares

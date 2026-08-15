@@ -50,7 +50,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/05-player.jpg</screenshot>
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
-  <size>9191549</size><path>plugin.video.tofa/plugin.video.tofa-0.9.3.zip</path></extension>
+  <size>9191627</size><path>plugin.video.tofa/plugin.video.tofa-0.9.3.zip</path></extension>
 </addon>
 <addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.0" provider-name="cinemaONE">
   <requires>
@@ -58,10 +58,10 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
   </requires>
   <extension point="xbmc.addon.repository" name="tofa">
     <dir>
-      <info>https://kodi.cinemaone.ch/addons.xml</info>
-      <checksum verify="sha256">https://kodi.cinemaone.ch/addons.xml.sha256</checksum>
-      <datadir>https://kodi.cinemaone.ch</datadir>
-      <artdir>https://kodi.cinemaone.ch</artdir>
+      <info>https://tofa.cinemaone.ch/addons.xml</info>
+      <checksum verify="sha256">https://tofa.cinemaone.ch/addons.xml.sha256</checksum>
+      <datadir>https://tofa.cinemaone.ch</datadir>
+      <artdir>https://tofa.cinemaone.ch</artdir>
       <hashes>sha256</hashes>
     </dir>
   </extension>
@@ -73,6 +73,6 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <assets>
       <icon>icon.png</icon>
     </assets>
-  <size>69643</size><path>repository.tofa/repository.tofa-1.0.0.zip</path></extension>
+  <size>69642</size><path>repository.tofa/repository.tofa-1.0.0.zip</path></extension>
 </addon>
 </addons>

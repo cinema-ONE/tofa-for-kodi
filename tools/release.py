@@ -67,6 +67,7 @@ import ipaddress
 import json
 import os
 import re
+import shutil
 import sys
 import textwrap
 import urllib.parse
@@ -142,7 +143,7 @@ REPO_DESCRIPTION = (
 #:
 #: Changing this later means every existing user has to remove and re-add the
 #: repository, so bump REPO_VERSION with it (see the module docstring).
-BASE_URL = "https://kodi.cinemaone.ch"
+BASE_URL = "https://tofa.cinemaone.ch"
 #: What Kodi hashes. `true` means md5, which current Kodi logs as broken.
 HASH_ALGO = "sha256"
 REPO_OUT = os.path.join(DIST, "repo")
@@ -776,13 +777,16 @@ _INDEX = """<!doctype html>
   <ol>
     <li>Settings → File manager → Add source → paste the address above</li>
     <li>Settings → Add-ons → Install from zip file → that source →
-        <code>{repo_id}/{repo_id}-{repo_version}.zip</code></li>
+        <code>{repo_zip}</code></li>
     <li>Install from repository → tofa Add-on Repository → Video add-ons → tofa</li>
   </ol>
 
   <p>Kodi keeps the add-on updated from here afterwards. The current add-on
      version is <code>{version}</code>, and it needs a tofa server on
      <code>{floor}</code> or newer.</p>
+
+  <p>Or download it directly:
+     <a href="{repo_zip}">{repo_zip}</a></p>
 
   <footer>
     Source, releases and issues:
@@ -803,6 +807,7 @@ def _write_index(out_dir: str, base_url: str, version: str) -> None:
     floor = server_floor() or "the version in README.txt"
     html = _INDEX.format(
         base_url=base_url, repo_id=REPO_ID, repo_version=REPO_VERSION,
+        repo_zip="%s-%s.zip" % (REPO_ID, REPO_VERSION),
         version=version, floor=floor, project_url=PROJECT_URL,
         project_label=PROJECT_URL.split("//", 1)[-1])
     with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as fh:
@@ -837,7 +842,7 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
     if not base_url:
         print("publish needs the URL this tree will be served from, e.g.\n"
               "    python3 tools/release.py publish --base-url "
-              "https://kodi.cinemaone.ch\n"
+              "https://tofa.cinemaone.ch\n"
               "It is baked into the repository add-on users install, so there "
               "is no safe default to guess. BASE_URL is normally set.")
         return 1
@@ -902,6 +907,18 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
     # would drop a file from the channel.
     with open(os.path.join(out_dir, ".nojekyll"), "w", encoding="utf-8") as fh:
         fh.write("")
+    # A COPY of the repository zip at the root, which is the only thing a
+    # person ever installs by hand. Kodi's "Install from zip file" browses an
+    # HTTP source by parsing links out of whatever the server returns, and
+    # Pages generates no directory index -- so a zip one level down is
+    # unreachable: browsing INTO repository.tofa/ just gets Pages' 404.
+    # Every working GitHub-Pages-hosted Kodi repo does it this way.
+    #
+    # The nested copy stays. addons.xml points Kodi at it by URL, and Kodi
+    # fetches that itself rather than browsing to it.
+    shutil.copy2(os.path.join(out_dir, REPO_ID,
+                              "%s-%s.zip" % (REPO_ID, REPO_VERSION)),
+                 os.path.join(out_dir, "%s-%s.zip" % (REPO_ID, REPO_VERSION)))
     _write_index(out_dir, base_url, version)
 
     problems = verify_repo(out_dir, base_url)
@@ -914,9 +931,9 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
             print("  %-58s %8.1f KB" % (os.path.relpath(path, out_dir),
                                         os.path.getsize(path) / 1024.0))
     print("\nserve that directory at %s" % base_url)
-    print("users install %s/%s/%s-%s.zip once; "
+    print("users install %s/%s-%s.zip once; "
           "%s follows on its own."
-          % (base_url, REPO_ID, REPO_ID, REPO_VERSION, "plugin.video.tofa"))
+          % (base_url, REPO_ID, REPO_VERSION, "plugin.video.tofa"))
     return 1 if problems else 0
 
 
