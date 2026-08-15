@@ -88,6 +88,12 @@ VALID_CHARS = set("abcdefghijklmnopqrstuvwxyz"
 # disagrees with the XML next to it.
 EXCLUDE_DIRS = {"__pycache__", ".git", ".tofa-probe"}
 EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".orig", ".rej")
+# Matched on the BASENAME, because these have no suffix to match on. The zip
+# is built by walking the working tree, so UNTRACKED files ship as readily as
+# tracked ones -- and `.DS_Store` is gitignored, so git will never warn about
+# one. Opening a media folder in Finder once is enough to put a Mac's desktop
+# database into a stranger's download.
+EXCLUDE_NAMES = {".DS_Store", "Thumbs.db", "desktop.ini"}
 
 # --- the repository add-on -------------------------------------------------
 # The one-time install. It carries no code, only the three URLs below, so its
@@ -489,7 +495,28 @@ def do_set(version: str) -> int:
 def _should_skip(rel: str) -> bool:
     parts = rel.split(os.sep)
     return (any(p in EXCLUDE_DIRS for p in parts)
+            or os.path.basename(rel) in EXCLUDE_NAMES
             or rel.endswith(EXCLUDE_SUFFIXES))
+
+
+def package_files() -> list[tuple[str, str]]:
+    """(path on disk, path inside the zip) for everything that ships.
+
+    Split out of do_package so a test can assert what WOULD ship without
+    building a nine-megabyte zip to look inside it.
+    """
+    out = []
+    for base, dirs, files in os.walk(ADDON_DIR):
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+        for name in sorted(files):
+            path = os.path.join(base, name)
+            rel = os.path.relpath(path, ADDON_DIR)
+            if _should_skip(rel):
+                continue
+            # Kodi requires everything to sit under a directory named for
+            # the add-on id, NOT at the zip root.
+            out.append((path, os.path.join("plugin.video.tofa", rel)))
+    return out
 
 
 def do_package() -> int:
@@ -502,17 +529,9 @@ def do_package() -> int:
 
     count = 0
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
-        for base, dirs, files in os.walk(ADDON_DIR):
-            dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
-            for name in sorted(files):
-                path = os.path.join(base, name)
-                rel = os.path.relpath(path, ADDON_DIR)
-                if _should_skip(rel):
-                    continue
-                # Kodi requires everything to sit under a directory named for
-                # the add-on id, NOT at the zip root.
-                archive.write(path, os.path.join("plugin.video.tofa", rel))
-                count += 1
+        for path, arcname in package_files():
+            archive.write(path, arcname)
+            count += 1
     size = os.path.getsize(target)
     print("%s  (%d files, %.1f MB)"
           % (os.path.relpath(target, ROOT), count, size / 1024.0 / 1024.0))
@@ -665,7 +684,16 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
 
     version = current_version()
     addon_zip = os.path.join(DIST, "plugin.video.tofa-%s.zip" % version)
-    if not os.path.exists(addon_zip) and do_package():
+    # ALWAYS repackage. The version string does not move during development,
+    # so `dist/` reliably holds a zip of this same name built at some earlier
+    # point in the version's life -- and reusing it published a fresh mtime
+    # over stale contents, with nothing in the output admitting it. Caught
+    # 2026-08-15, hours before the first real publish: dist/ held a 0.9.2 from
+    # before the uniform action row and the retaken screenshot landed, so the
+    # update channel would have served an add-on that matched neither the
+    # v0.9.2 tag nor the repo serving it. `dist/` is gitignored, so nothing
+    # else was ever going to notice.
+    if do_package():
         return 1
 
     os.makedirs(out_dir, exist_ok=True)
