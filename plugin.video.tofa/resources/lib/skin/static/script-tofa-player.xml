@@ -1184,6 +1184,83 @@
                 <onup>9110</onup>
             </control>
 
+            <!-- 3D, stereoscopic files only. Lucide `glasses`. Shown and
+                 placed by _layout_utility_capsule() like every other button
+                 here, so these coordinates are placeholders. -->
+            <control type="image" id="9210">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>Control.HasFocus(9142) + !String.IsEqual(Window.Property(player_util_9142),on)</visible>
+            </control>
+            <control type="image" id="9211">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52-outline.png</texture>
+                <visible>Control.HasFocus(9142) + !String.IsEqual(Window.Property(player_util_9142),on)</visible>
+            </control>
+            <control type="image" id="9212">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <texture border="26">capsule-h52.png</texture>
+                <visible>String.IsEqual(Window.Property(player_util_9142),on)</visible>
+            </control>
+            <control type="label" id="9213">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE20D;</label>
+                <visible>!Control.HasFocus(9142) + !String.IsEqual(Window.Property(player_util_9142),on)</visible>
+            </control>
+            <control type="label" id="9214">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE20D;</label>
+                <visible>Control.HasFocus(9142) + !String.IsEqual(Window.Property(player_util_9142),on)</visible>
+            </control>
+            <control type="label" id="9215">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <label>&#xE20D;</label>
+                <visible>String.IsEqual(Window.Property(player_util_9142),on)</visible>
+            </control>
+            <control type="button" id="9142">
+                <posx>1618</posx>
+                <posy>990</posy>
+                <width>52</width>
+                <height>52</height>
+                <texturefocus>transparent-6px.png</texturefocus>
+                <texturenofocus>transparent-6px.png</texturenofocus>
+                <label></label>
+                <onup>9110</onup>
+            </control>
+
             <!-- Episodes, 8.10. Lucide `list` -->
             <control type="image" id="9170">
                 <posx>1618</posx>
@@ -3147,10 +3224,23 @@
                          sideways, and the chevrons say out loud that
                          left/right do something here: without them the
                          row looked inert. Same reasoning as 8.11's
-                         monospace readout. -->
+                         monospace readout.
+
+                         posy 41, not the 35 the caption line above uses.
+                         Measured off a live shot, 2026-08-15: at 35 the
+                         title's ink ran to row 33 and this line began at
+                         39, so the descender of "Subtitle sync" all but
+                         touched "0.0 s" (five pixels) while 22 sat empty
+                         under it. +6 buys a legible gap and moves the
+                         slack from 9/22 to 9/16.
+
+                         The plain caption second line STAYS at 35, and
+                         should: that one is a subtitle belonging to the
+                         title above it, where tight is right. This is a
+                         separate control the viewer acts on. -->
                     <control type="label">
                         <posx>44</posx>
-                        <posy>35</posy>
+                        <posy>41</posy>
                         <width>22</width>
                         <height>24</height>
                         <align>center</align>
@@ -3162,7 +3252,7 @@
                     </control>
                     <control type="label">
                         <posx>66</posx>
-                        <posy>35</posy>
+                        <posy>41</posy>
                         <width>222</width>
                         <height>24</height>
                         <align>center</align>
@@ -3174,7 +3264,7 @@
                     </control>
                     <control type="label">
                         <posx>292</posx>
-                        <posy>35</posy>
+                        <posy>41</posy>
                         <width>22</width>
                         <height>24</height>
                         <align>center</align>
@@ -3247,10 +3337,23 @@
                          sideways, and the chevrons say out loud that
                          left/right do something here: without them the
                          row looked inert. Same reasoning as 8.11's
-                         monospace readout. -->
+                         monospace readout.
+
+                         posy 41, not the 35 the caption line above uses.
+                         Measured off a live shot, 2026-08-15: at 35 the
+                         title's ink ran to row 33 and this line began at
+                         39, so the descender of "Subtitle sync" all but
+                         touched "0.0 s" (five pixels) while 22 sat empty
+                         under it. +6 buys a legible gap and moves the
+                         slack from 9/22 to 9/16.
+
+                         The plain caption second line STAYS at 35, and
+                         should: that one is a subtitle belonging to the
+                         title above it, where tight is right. This is a
+                         separate control the viewer acts on. -->
                     <control type="label">
                         <posx>44</posx>
-                        <posy>35</posy>
+                        <posy>41</posy>
                         <width>22</width>
                         <height>24</height>
                         <align>center</align>
@@ -3262,7 +3365,7 @@
                     </control>
                     <control type="label">
                         <posx>66</posx>
-                        <posy>35</posy>
+                        <posy>41</posy>
                         <width>222</width>
                         <height>24</height>
                         <align>center</align>
@@ -3274,7 +3377,7 @@
                     </control>
                     <control type="label">
                         <posx>292</posx>
-                        <posy>35</posy>
+                        <posy>41</posy>
                         <width>22</width>
                         <height>24</height>
                         <align>center</align>

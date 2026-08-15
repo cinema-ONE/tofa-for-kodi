@@ -135,8 +135,12 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("ROTATE_CW", "+10s button and the forward quick-seek toast (SF goforward.10)"),
         ("CAPTIONS", "Subtitles button, utility capsule slot 1 (SF captions.bubble)"),
         ("VOLUME_2", "Audio button, utility capsule slot 2 (SF speaker.wave.2.fill)"),
+        ("GLASSES", "3D button, straight after Audio — stereoscopic files only —\n"
+                    "            and the header of the panel it opens, which is the same\n"
+                    "            panel a 3D film raises when it starts"),
         ("ACTIVITY", "Stats overlay toggle, utility capsule slot 4 (SF waveform.path.ecg)"),
-        ("WRENCH", "Adjust panel: audio sync, subtitle sync, 3D mode"),
+        ("WRENCH", "Adjust panel: audio sync and subtitle sync. 3D was a third row\n"
+                   "            here until it became its own button — see GLASSES"),
         ("CHEVRONS_RIGHT", "8.5's skip-segment pill; deliberately NOT skip-forward, which\n"
                            "            already means “next episode” on the transport"),
     ]),

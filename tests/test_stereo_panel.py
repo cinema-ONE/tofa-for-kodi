@@ -1,14 +1,17 @@
-"""The Adjust panel's 3D row: a stepper through the modes this box can output.
+"""The 3D question's own panel: the focus traps, and the restore marker.
 
-It exists for one case -- the viewer answered the start-of-playback question
-wrong and wants to change it. That is why it steps rather than picks: each
-press applies live, so the screen is the feedback. A picker would make them
-commit blind.
+The panel is raised two ways -- once by a 3D film starting, and on demand by
+the utility capsule's 3D button. WHICH rows it offers and which one it starts
+on is test_player_3d_button.py's job; what is here is the machinery
+underneath, which is where every bug in this feature has actually been.
 
-Run:  python3 test_stereo_row.py
+This file used to lead with the Adjust panel's 3D STEPPER. That row is gone
+(2026-08-15): a stepper applies each mode as it is stepped onto, so comparing
+two modes several apart cost an HDMI renegotiation per press.
+
+Run:  python3 test_stereo_panel.py
 """
 import kodi_stubs  # noqa: F401  -- installs the Kodi stubs
-from resources.lib import stereoscopic
 from resources.lib.windows.player import PlayerWindow
 
 RESULTS = []
@@ -16,65 +19,6 @@ def check(name, ok, detail=""):
     RESULTS.append((name, ok))
     print(f"{'PASS' if ok else 'FAIL'}  {name}{('  -- ' + detail) if detail and not ok else ''}")
 
-
-MODES = [{"label": "Disabled", "mode": "off"},
-         {"label": "Over / Under", "mode": "split_horizontal"},
-         {"label": "Side by side", "mode": "split_vertical"},
-         {"label": "Hardware based", "mode": "hardware_based"}]
-
-state = {"mode": "off"}
-stereoscopic.modes = lambda: MODES
-stereoscopic.current_mode = lambda: next(
-    (m for m in MODES if m["mode"] == state["mode"]), None)
-def _set(mode):
-    state["mode"] = mode
-    return True
-stereoscopic.set_mode = _set
-
-
-class Fake:
-    _cycle_stereo_mode = PlayerWindow._cycle_stereo_mode
-    _stereo_mode_label = PlayerWindow._stereo_mode_label
-
-
-win = Fake()
-check("reads the mode it is on", win._stereo_mode_label() == "Disabled",
-      win._stereo_mode_label())
-
-win._cycle_stereo_mode(MODES, True)
-check("forward steps to the next mode", state["mode"] == "split_horizontal", state["mode"])
-check("...and the label follows", win._stereo_mode_label() == "Over / Under",
-      win._stereo_mode_label())
-
-win._cycle_stereo_mode(MODES, False)
-check("back steps to the previous", state["mode"] == "off", state["mode"])
-
-# Wrapping: a list you are cycling through to COMPARE has no natural end,
-# unlike every navigable list in this app (project_wrap_stop_mechanism).
-win._cycle_stereo_mode(MODES, False)
-check("stepping back from the first wraps to the last",
-      state["mode"] == "hardware_based", state["mode"])
-win._cycle_stereo_mode(MODES, True)
-check("and forward from the last wraps to the first", state["mode"] == "off",
-      state["mode"])
-
-# A mode Kodi reports that is not in the list must not crash the step.
-state["mode"] = "anaglyph_cyan_red"
-win._cycle_stereo_mode(MODES, True)
-check("an unknown current mode falls back to the first",
-      state["mode"] == "split_horizontal", state["mode"])
-
-# Nothing to offer: no hardware modes at all.
-state["mode"] = "off"
-win._cycle_stereo_mode([], True)
-check("an empty mode list is a no-op", state["mode"] == "off", state["mode"])
-
-# The label when Kodi will not answer.
-stereoscopic.current_mode = lambda: None
-check("no answer shows an em dash", win._stereo_mode_label() == "—",
-      win._stereo_mode_label())
-
-failed = [n for n, ok in RESULTS if not ok]
 
 # --- the self-raised panel must not strand focus -------------------------
 # 2026-08-10: BACK/SELECT/ESC closed our 3D prompt and then nothing could be
@@ -232,6 +176,12 @@ handle = __import__("xbmcvfs").File(st._saved_path(), "w")
 handle.write("not a number"); handle.close()
 check("a corrupt marker is discarded", st._read_saved() is None)
 check("...and does not linger", st._read_saved() is None)
+
+# Collected HERE, not halfway up the file. It used to be computed right after
+# the stepper section, which meant every check below it -- the focus traps and
+# the whole marker section, the two things this file exists for -- could fail
+# and the suite would still exit 0.
+failed = [n for n, ok in RESULTS if not ok]
 
 print("\n" + "=" * 60)
 print(f"FAILED: {', '.join(failed)}" if failed
