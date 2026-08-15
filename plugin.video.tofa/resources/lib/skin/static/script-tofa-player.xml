@@ -2051,11 +2051,26 @@
                 <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                 <label>$INFO[Window.Property(player_subtitle)]</label>
             </control>
+            <!-- 116, not the 111 that is exactly three lines: the box has to
+                 outlast the LAST line's descender, and at 111 it did not.
+                 Kodi lays this font out at 37/line, so 111 ends at
+                 834+111=945 and the third baseline's descent ends at
+                 937+8=945, so there is no headroom at all. Lines 1 and 2 are fine
+                 either way, because their descenders bleed into the next
+                 line's cell and are still inside the box; only the last line
+                 meets the edge. Measured: tofa_font_player_subtitle is Inter
+                 Tight Regular 30, cell 38 (ascent 30 + descent 8), and
+                 p/g/y/j all reach baseline+7. Flat-bottomed p survived;
+                 round-bottomed g/y/j lost their antialiased last row and
+                 read as sheared off. 116 still shows three lines (a fourth
+                 needs 148) and leaves four rows of headroom. Nothing sits
+                 below this control in the card, so the extra height is
+                 free. -->
             <control type="textbox">
                 <posx>80</posx>
                 <posy>834</posy>
                 <width>1030</width>
-                <height>111</height>
+                <height>116</height>
                 <font>tofa_font_player_subtitle</font>
                 <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                 <label>$INFO[Window.Property(player_synopsis)]</label>
