@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.2" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.3" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -26,21 +26,19 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Forcing a quality below Original no longer costs you surround. The server
-        was being asked for its default stereo AAC; it now delivers E-AC-3 5.1 where
-        your audio output can take it, at the same bitrate. On a stereo output with
-        no passthrough nothing changes, which is the right answer there.
-      - Choosing "Original" is now told to the server as a deliberate choice rather
-        than looking like no choice at all.
-      - The audio track no longer comes out in the wrong language when the app
-        cannot reach the server for a moment at the start of playback. Your language
-        preferences are remembered on the device and used when that happens.
-      - An explicit subtitle pick no longer stops your preferred audio language from
-        being applied, and the reverse.
-      - Artwork is cleaned up on a schedule instead of accumulating. Settings ->
-        This Device gains a storage limit for it and a way to clear it now.
-      - Artwork downloads once instead of repeatedly on Browse, Search, Discover,
-        filmographies, episode lists and the player's episode drawer.
+      - Report a problem now reaches the people who can fix it. The QR code under
+        Settings -&gt; Privacy &amp; About opens this add-on's own issue tracker instead of
+        tofa's support desk, which cannot act on a Kodi bug. Account and server
+        trouble still goes to tofa, and the caption says which is which.
+      - A profile unlocked with a PIN no longer locks itself again while you are
+        still watching. The unlock now extends as playback continues, so a long
+        film no longer ends with the episode unticked and your place forgotten.
+      - Profile pictures now load however you are connected. Reached through tofa's
+        relay rather than over your own network, every profile fell back to its
+        initials; the artwork comes from your own server now, which works either
+        way, and a picture changed on the web appears here without an update.
+      - Needs tofa server 0.9.30 or later. Older servers still work, and still say
+        so once per Kodi session, but these two fixes are not there.
     </news>
     <assets>
       <icon>icon.png</icon>
@@ -52,7 +50,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/05-player.jpg</screenshot>
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
-  <size>9188357</size><path>plugin.video.tofa/plugin.video.tofa-0.9.2.zip</path></extension>
+  <size>9191549</size><path>plugin.video.tofa/plugin.video.tofa-0.9.3.zip</path></extension>
 </addon>
 <addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.0" provider-name="cinemaONE">
   <requires>
