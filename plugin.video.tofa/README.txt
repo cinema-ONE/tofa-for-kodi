@@ -67,7 +67,7 @@ discovering a year later on a version that predates half this file.
 The update channel is a repository add-on you install once:
 
   1. Settings -> File manager -> Add source
-         https://cinema-one.github.io/tofa-for-kodi
+         https://kodi.cinemaone.ch
   2. Settings -> Add-ons -> Install from zip file -> that source ->
      the repository.tofa folder -> the zip inside it
   3. Settings -> Add-ons -> Install from repository ->

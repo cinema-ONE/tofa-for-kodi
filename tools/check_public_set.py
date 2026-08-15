@@ -142,6 +142,22 @@ ALLOWED_IPS = {
 }
 IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 
+#: Hostnames on a private domain that are deliberately public, checked the
+#: same allowlist way as the addresses above: a new subdomain has to be named
+#: here to travel, so it is a decision rather than an oversight.
+#:
+#: `kodi.cinemaone.ch` is the add-on's update channel, settled 2026-08-15. The
+#: domain it sits on is also the personal email domain below, so the marker
+#: rule still has to fire on `adrian.betschart@cinemaone.ch` and on any other
+#: host -- only these exact names are exempt.
+ALLOWED_HOSTS = {
+    "kodi.cinemaone.ch",
+}
+#: A private-domain hit is only ever allowed as part of one of those names.
+ALLOWED_HOST_RE = re.compile(
+    r"\b(?:%s)\b" % "|".join(re.escape(h) for h in sorted(ALLOWED_HOSTS)),
+    re.I)
+
 #: (pattern, what it is). Hardware MODEL names are deliberately absent --
 #: "UGOOS AM6B" is a product, and naming the box a measurement was taken on
 #: is what makes the measurement worth anything.
@@ -314,9 +330,17 @@ def scan_markers() -> list[tuple[str, int, str, str]]:
                 if address not in ALLOWED_IPS:
                     found.append((rel, line_no, address,
                                   "an IPv4 address not on the allowlist"))
+            # A hit that falls INSIDE an allowed hostname is that hostname,
+            # not a leak -- `kodi.cinemaone.ch` contains the private domain by
+            # construction. Matched by span rather than by substring so that
+            # `adrian.betschart@cinemaone.ch` on the same line still fires.
+            allowed = [m.span() for m in ALLOWED_HOST_RE.finditer(line)]
             for pattern, why in MARKER_PATTERNS:
-                for hit in pattern.findall(line):
-                    found.append((rel, line_no, hit, why))
+                for match in pattern.finditer(line):
+                    start, end = match.span()
+                    if any(a <= start and end <= b for a, b in allowed):
+                        continue
+                    found.append((rel, line_no, match.group(0), why))
     return found
 
 

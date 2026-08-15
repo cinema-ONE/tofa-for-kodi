@@ -169,8 +169,15 @@ box.
 
 `publish` builds `dist/repo/` and reads it back the way Kodi will, reporting
 what would break. Copy that tree into `docs/` on `main` and GitHub Pages
-serves it at `https://cinema-one.github.io/tofa-for-kodi`, which is
-`release.py`'s `BASE_URL`.
+serves it at `https://kodi.cinemaone.ch`, which is `release.py`'s `BASE_URL`.
+
+That hostname is a DNS `CNAME` onto `cinema-one.github.io`; the bits still
+come from Pages out of `docs/`. What binds the name to THIS repository is the
+`CNAME` file in the served tree, which `publish` writes from `BASE_URL` --
+Pages cannot tell repos apart by DNS, since every custom subdomain points at
+the same `cinema-one.github.io`. Publishing a tree without that file unbinds
+the domain and takes the channel down for every install, so `publish` refuses
+to call a tree good if it is missing or names another host.
 
 That URL is baked into the repository add-on users install, so changing it
 means every existing user has to remove and re-add the repository. If it ever

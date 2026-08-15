@@ -19,7 +19,7 @@ though it is built with the tofa team and against their design.
 Add the repository once and Kodi keeps the add-on updated on its own:
 
 1. Settings → File manager → Add source
-   `https://cinema-one.github.io/tofa-for-kodi`
+   `https://kodi.cinemaone.ch`
 2. Settings → Add-ons → Install from zip file → that source →
    `repository.tofa/repository.tofa-1.0.0.zip`
 3. Install from repository → tofa Add-on Repository → Video add-ons → tofa
