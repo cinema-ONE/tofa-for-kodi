@@ -107,7 +107,7 @@ def new_session() -> requests.Session:
     return session
 
 
-def request_json(
+def request_response(
     session: requests.Session,
     method: str,
     url: str,
@@ -117,7 +117,16 @@ def request_json(
     form_body: dict[str, Any] | None = None,
     headers: dict[str, str] | None = None,
     timeout: float = 15.0,
-) -> Any:
+) -> requests.Response:
+    """The checked Response, for the callers that need its HEADERS.
+
+    Split out of request_json rather than copied, so there is exactly one
+    place that turns a transport failure or a non-2xx into an ApiError. The
+    reason it exists: the session heartbeat's 204 carries the ROTATED profile
+    token in its response headers, and a function that returns `resp.json()`
+    throws that away before any caller can see it -- which is what blocked
+    the sliding-unlock work (issue #7) until 0.9.30 shipped the rotation.
+    """
     if params:
         params = {k: v for k, v in params.items() if v is not None}
     try:
@@ -132,9 +141,30 @@ def request_json(
     if not resp.ok:
         error, message = _parse_error_body(resp)
         raise ApiError(resp.status_code, error, message)
-    if not resp.content:
+    return resp
+
+
+def body_of(resp: requests.Response) -> Any:
+    """The decoded body, or None for the empty ones (204, mostly)."""
+    if resp is None or not resp.content:
         return None
     return resp.json()
+
+
+def request_json(
+    session: requests.Session,
+    method: str,
+    url: str,
+    *,
+    params: dict[str, Any] | None = None,
+    json_body: dict[str, Any] | None = None,
+    form_body: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    timeout: float = 15.0,
+) -> Any:
+    return body_of(request_response(
+        session, method, url, params=params, json_body=json_body,
+        form_body=form_body, headers=headers, timeout=timeout))
 
 
 def raw_range_request(

@@ -81,6 +81,15 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import checkouts  # noqa: E402  (sibling module in tools/)
+
+#: Where tofa's confidential documents are. This checkout while the add-on
+#: and the vault are one tree; the sibling vault once they are not. None when
+#: there is no vault anywhere, which is a FAILURE rather than a skip -- see
+#: the CANNOT VERIFY path in main().
+VAULT = checkouts.vault(ROOT)
+
 #: A run this long is a quotation rather than two people phrasing the same
 #: constraint the same way.
 DEFAULT_N = 8
@@ -91,7 +100,12 @@ PRIVATE_SOURCES = [
      "tofa's internal TV design document"),
     (os.path.join("internal-docs", "api", "tofa-media-server-api.yaml"), "tofa",
      "the vendored OpenAPI spec, which tofa considers internal"),
-    (os.path.join("internal-docs", "api", "tofa-media-server-api.txt"), "tofa",
+    # The guide tofa writes for AI consumers. It arrived as `.txt` and was
+    # renamed to `.md` at 0.9.30. A RENAME is the quietest way this list stops
+    # gating: the new name is simply not here, and the old one goes absent.
+    # MOVE the entry, never keep both -- an absent source is a hard failure
+    # now ("CANNOT VERIFY"), so a stale spelling left behind fails every run.
+    (os.path.join("internal-docs", "api", "tofa-media-server-api.md"), "tofa",
      "the API guide that ships beside the spec"),
     # OURS despite the name: the brief is our own living reference, and most
     # of its prose was written by reading this code -- so a match against it
@@ -274,7 +288,11 @@ def scan_quotes(n: int) -> tuple[list[tuple], list[str]]:
     files = candidates()
     loaded = []
     for rel, whose, _why in PRIVATE_SOURCES:
-        text = read(os.path.join(ROOT, rel))
+        # From the VAULT, not from ROOT. Once the add-on moves to its own
+        # public repo, this tool travels with it and the documents do not --
+        # so it has to look next door. Resolving to None here is not a pass:
+        # `missing` below turns it into the CANNOT VERIFY failure.
+        text = read(os.path.join(VAULT, rel)) if VAULT else None
         if text is None:
             continue
         tokens, _ = words_with_lines(text)
@@ -363,7 +381,14 @@ def main() -> int:
 
     problems = 0
     files = candidates()
-    print("checking the %d file(s) in the public set\n" % len(files))
+    print("checking the %d file(s) in the public set" % len(files))
+    if do_quotes:
+        # Said out loud on every run. "The gate passed" and "the gate passed
+        # against a checkout you had forgotten was there" are otherwise the
+        # same output, and the second one is how a stale vault would quietly
+        # verify nothing for months.
+        print(checkouts.describe(ROOT, VAULT, "private sources"))
+    print()
 
     if do_quotes:
         hits, missing = scan_quotes(args.n)
@@ -390,7 +415,7 @@ def main() -> int:
             print("    %d hit(s) against OUR OWN private documents, which do "
                   "not gate (--ours)" % ours)
         for rel, whose in missing:
-            print("    not in this checkout, so unchecked: %s%s"
+            print("    not in the vault, so unchecked: %s%s"
                   % (rel, "  <-- CANNOT VERIFY" if whose == "tofa" else ""))
         problems += len(gating)
 

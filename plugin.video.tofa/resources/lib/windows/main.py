@@ -5057,7 +5057,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if client is None:
             return ""
         return avatar_presets.url_for(
-            client.session, client.base_url, profile.avatar_ref)
+            client.session, client.base_url, profile.avatar_ref,
+            client.access_token)
 
     def _settings_avatar_photo(self, profile) -> str:
         """An uploaded profile picture's URL, straight through.

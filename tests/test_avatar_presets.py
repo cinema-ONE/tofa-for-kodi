@@ -1,16 +1,30 @@
 # -*- coding: utf-8 -*-
-"""Avatar presets are resolved from the server, not bundled.
+"""Avatar presets come from the server's own catalogue, and are STAGED.
 
-The set changed under us once already -- twelve Fluent Emoji icons became
-44 pixel-art ones, six ids retired, and the delivery changed from inline
-SVG data URIs to PNG files, all in server 0.9.29. Bundling meant going
-stale on every such change, so nothing is bundled now.
+The set changed under us once already -- twelve Fluent Emoji icons became 44
+pixel-art ones, six ids retired, and delivery changed from inline SVG data
+URIs to PNG files, all in server 0.9.29. Bundling meant going stale on every
+such change, so nothing is bundled.
+
+0.9.30 finally gave us `GET /api/v1/profiles/avatars` and
+`/api/v1/profiles/avatars/<id>.png`, replacing the scrape of the web app's JS
+bundle. The subtle part, and what most of this file is about, is that the
+PNG is only tokenless on a DIRECT connection -- measured 2026-08-15, the
+cloud relay answers 401 without a bearer. Kodi's texture loader sends none of
+our headers, so handing it the URL would work at home and break on the relay,
+back to initials for every profile, silently. We fetch it ourselves and hand
+Kodi a local path instead.
+
+That is why "the request carried the token" is asserted here as hard as the
+resolution itself: it is the difference between working everywhere and
+working only where we happen to test.
 """
 import json
+import os
 import pathlib
 
 import kodi_stubs  # noqa: F401
-import xbmcvfs
+import xbmcvfs  # noqa: F401
 
 from resources.lib import avatar_presets
 
@@ -18,10 +32,8 @@ CHECKS = FAILED = 0
 MEDIA = (pathlib.Path(__file__).resolve().parent.parent
          / "plugin.video.tofa/resources/skins/Main/media")
 
-INDEX = '<html><script src="/assets/index-AAAA1111.js"></script></html>'
-BUNDLE = ("junk{id:`knight`,label:`Knight`,src:`/assets/knight-B8.png`,"
-          "pixel:!0},{id:`robot`,label:`Robot`,src:`/assets/robot-Bg.png`,"
-          "pixel:!0}junk")
+IDS = ["fox", "knight", "robot"]
+TOKEN = "test-access-token"
 
 
 def check(name, ok, detail=""):
@@ -35,100 +47,164 @@ def check(name, ok, detail=""):
 
 
 class Response:
-    def __init__(self, text, status=200):
-        self.text, self.status_code = text, status
+    def __init__(self, status=200, payload=None, content=b"", headers=None):
+        self.status_code = status
+        self._payload = payload
+        self.content = content
+        self.headers = headers or {}
+
+    def json(self):
+        if self._payload is None:
+            raise ValueError("not json")
+        return self._payload
 
 
 class Session:
-    """Counts requests, because the whole caching design is about how many."""
+    """Records every request, because the caching design is about how many."""
 
-    def __init__(self, index=INDEX, bundle=BUNDLE):
-        self.index, self.bundle, self.urls = index, bundle, []
+    def __init__(self, ids=None, png=b"\x89PNG-bytes", etag='"v1"',
+                 png_status=200):
+        self.ids = IDS if ids is None else ids
+        self.png, self.etag, self.png_status = png, etag, png_status
+        self.calls = []                       # (url, headers)
 
-    def get(self, url, timeout=None):
-        self.urls.append(url)
-        if url.endswith("/"):
-            return Response(self.index)
-        if url.endswith(".js"):
-            return Response(self.bundle)
-        return Response("", 404)
+    def get(self, url, headers=None, timeout=None):
+        self.calls.append((url, dict(headers or {})))
+        if url.endswith("/profiles/avatars"):
+            return Response(payload={"ids": self.ids})
+        if url.endswith(".png"):
+            if (headers or {}).get("If-None-Match") == self.etag:
+                return Response(304)
+            if self.png_status != 200:
+                return Response(self.png_status)
+            return Response(content=self.png, headers={"ETag": self.etag})
+        return Response(404)
+
+    def urls(self):
+        return [u for u, _h in self.calls]
+
+    def png_calls(self):
+        return [u for u, _h in self.calls if u.endswith(".png")]
 
 
-# No avatar art may ship. A stray file means someone re-bundled the set.
+SERVER = "http://box:33333"
+RELAY = "https://api.tofa.tv/servers/7d2a19c4/relay"
+
+# --- nothing may ship. A stray file means someone re-bundled the set.
 stray = sorted(p.name for p in MEDIA.glob("avatar-*.png")
                if p.name != "avatar-shadow.png")
 check("no bundled avatar artwork", not stray, str(stray))
 check("...but the nav drop shadow is still there, it is not a preset",
       (MEDIA / "avatar-shadow.png").exists())
 
+# --- the resolution itself
 avatar_presets.clear()
 s = Session()
-url = avatar_presets.url_for(s, "http://box:33333", "preset:knight")
-check("a preset resolves to a URL on the server",
-      url == "http://box:33333/assets/knight-B8.png", url)
+path = avatar_presets.url_for(s, SERVER, "preset:knight", TOKEN)
+check("a preset resolves to a LOCAL path, not a URL",
+      bool(path) and not path.startswith("http"), path)
+check("...and the file is really on disk", bool(path) and os.path.exists(path))
+check("...with the server's bytes in it",
+      bool(path) and open(path, "rb").read() == b"\x89PNG-bytes")
 
-# The point of the cache: a second lookup must not re-read anything.
-before = len(s.urls)
-avatar_presets.url_for(s, "http://box:33333", "preset:robot")
-check("a second lookup costs no requests", len(s.urls) == before,
-      str(s.urls[before:]))
+# The EXACT paths, pinned against what a real 0.9.30 answered on 2026-08-15:
+#   GET /api/v1/profiles/avatars          -> {"ids": [...44...]}
+#   GET /api/v1/profiles/avatars/fox.png  -> 200 image/png
+# A fake session will happily agree with whatever this module invents, so the
+# one thing it cannot check for itself is written down here.
+check("the catalogue path is the one the server serves",
+      s.urls()[0] == SERVER + "/api/v1/profiles/avatars", s.urls()[0])
+check("the PNG path is the one the server serves",
+      s.png_calls() == [SERVER + "/api/v1/profiles/avatars/knight.png"],
+      str(s.png_calls()))
 
-# A NEW preset appearing server-side, which is the entire reason this
-# module exists. It always arrives with a REBUILT web app, so the entry
-# chunk's hash moves -- that is the signal, not the unknown id on its own.
-s2 = Session(index='<html><script src="/assets/index-CCCC3333.js"></script></html>',
-             bundle=BUNDLE.replace("junk{id:`knight`",
-                                   "{id:`newface`,label:`New`,"
-                                   "src:`/assets/newface-Z9.png`,pixel:!0},"
-                                   "{id:`knight`"))
-avatar_presets._memory["checked_at"] = 0        # allow a re-check
-url = avatar_presets.url_for(s2, "http://box:33333", "preset:newface")
-check("a rebuilt web app brings new presets with it",
-      url == "http://box:33333/assets/newface-Z9.png", url)
+# --- the relay case, which is the whole reason we stage
+auth = [h.get("Authorization") for _u, h in s.calls]
+check("every request carried the bearer token",
+      auth and all(a == "Bearer " + TOKEN for a in auth), str(auth))
 
-# ...and the cheap case: an unknown id under the SAME build reads the index
-# (5KB) but never the bundle. Same chunk as the cache now holds (CCCC3333),
-# which is what "unchanged build" means.
-s5 = Session(index='<html><script src="/assets/index-CCCC3333.js"></script></html>')
-avatar_presets._memory["checked_at"] = 0
-avatar_presets.url_for(s5, "http://box:33333", "preset:nonesuch")
-check("an unknown id under an unchanged build costs only the index",
-      all(not u.endswith(".js") for u in s5.urls), str(s5.urls))
+# Checked HERE, before anything calls clear(): the cache this asserts on is
+# the one the lookup above built, and clear() legitimately drops it.
+before = len(s.calls)
+avatar_presets.url_for(s, SERVER, "preset:knight", TOKEN)
+check("a repeat lookup costs no requests", len(s.calls) == before,
+      str(s.urls()[before:]))
 
-# Everything that can go wrong falls through to the monogram rather than
-# raising: a retired preset, an unreachable server, a non-preset ref.
 avatar_presets.clear()
+s_relay = Session()
+path_relay = avatar_presets.url_for(s_relay, RELAY, "preset:fox", TOKEN)
+check("a relay connection resolves the same way",
+      bool(path_relay) and os.path.exists(path_relay), path_relay)
+check("...and asked the relay, not some other host",
+      all(u.startswith(RELAY) for u in s_relay.urls()), str(s_relay.urls()))
+
+# --- an id the server does not publish draws initials, and costs no PNG
+avatar_presets.clear()
+s2 = Session()
 check("a retired preset falls through",
-      avatar_presets.url_for(Session(), "http://box:33333",
-                             "preset:octopus") == "")
+      avatar_presets.url_for(s2, SERVER, "preset:octopus", TOKEN) == "")
+check("...without asking for its PNG", not s2.png_calls(), str(s2.png_calls()))
 
+# --- a new preset appears once the catalogue is re-read
+avatar_presets.clear()
+s3 = Session()
+avatar_presets.url_for(s3, SERVER, "preset:knight", TOKEN)
+avatar_presets._memory["checked_at"] = 0          # allow a re-check
+s4 = Session(ids=IDS + ["newface"])
+fresh = avatar_presets.url_for(s4, SERVER, "preset:newface", TOKEN)
+check("a new server-side preset is picked up", bool(fresh), fresh)
 
+# --- revalidation keeps the staged file rather than re-downloading it
+avatar_presets._memory["validated_at"]["knight"] = 0
+s5 = Session()
+again = avatar_presets.url_for(s5, SERVER, "preset:knight", TOKEN)
+sent = [h.get("If-None-Match") for u, h in s5.calls if u.endswith(".png")]
+check("a stale staged file is revalidated with If-None-Match",
+      sent == ['"v1"'], str(sent))
+check("...and a 304 keeps it", bool(again) and os.path.exists(again), again)
+
+# --- everything that can go wrong draws the monogram instead of raising
 class Dead:
-    def get(self, url, timeout=None):
+    def get(self, url, headers=None, timeout=None):
         raise OSError("no route to host")
 
 
 avatar_presets.clear()
 check("an unreachable server falls through, it does not raise",
-      avatar_presets.url_for(Dead(), "http://box:33333", "preset:knight") == "")
-check("a photo/None ref falls through",
-      avatar_presets.url_for(Session(), "http://box:33333", None) == ""
-      and avatar_presets.url_for(Session(), "http://box:33333",
-                                 "https://x/pic.png") == "")
-check("no server at all falls through",
-      avatar_presets.url_for(Session(), None, "preset:knight") == "")
+      avatar_presets.url_for(Dead(), SERVER, "preset:knight", TOKEN) == "")
 
-# tofa changed the bundle shape once. If it happens again, a working
-# catalogue must survive rather than be wiped by an empty parse.
 avatar_presets.clear()
-s3 = Session()
-avatar_presets.url_for(s3, "http://box:33333", "preset:knight")
+check("a photo/None ref is not this module's business",
+      avatar_presets.url_for(Session(), SERVER, None, TOKEN) == ""
+      and avatar_presets.url_for(Session(), SERVER,
+                                 "https://x/pic.png", TOKEN) == "")
+check("no server at all falls through",
+      avatar_presets.url_for(Session(), None, "preset:knight", TOKEN) == "")
+
+# --- a ref is a NAME, never a path. It comes from the server, but the file
+# it would write is on this machine.
+avatar_presets.clear()
+escapes = [avatar_presets.url_for(Session(ids=["../../etc/passwd", ".", "a/b"]),
+                                  SERVER, "preset:" + bad, TOKEN)
+           for bad in ("../../etc/passwd", ".", "a/b")]
+check("a ref that names a path is refused", escapes == ["", "", ""],
+      str(escapes))
+
+# --- a catalogue we cannot use must not wipe a working one
+avatar_presets.clear()
+s6 = Session()
+good = avatar_presets.url_for(s6, SERVER, "preset:knight", TOKEN)
 avatar_presets._memory["checked_at"] = 0
-s4 = Session(index='<html><script src="/assets/index-BBBB2222.js"></script></html>',
-             bundle="totally different shape")
-kept = avatar_presets.url_for(s4, "http://box:33333", "preset:knight")
-check("a bundle we cannot parse keeps the previous catalogue",
-      kept == "http://box:33333/assets/knight-B8.png", kept)
+kept = avatar_presets.url_for(Session(ids=[]), SERVER, "preset:knight", TOKEN)
+check("an empty catalogue keeps the previous one", kept == good,
+      f"{kept!r} != {good!r}")
+
+# --- clear() takes the staged art with it, or a server switch would show
+# the previous household's avatars
+staged = avatar_presets.url_for(Session(), SERVER, "preset:robot", TOKEN)
+check("staged art exists before the clear", os.path.exists(staged))
+avatar_presets.clear()
+check("clear() removes the staged art too", not os.path.exists(staged))
 
 print("\n" + "=" * 60)
 if FAILED:

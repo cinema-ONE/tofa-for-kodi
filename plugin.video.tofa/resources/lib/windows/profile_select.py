@@ -60,7 +60,8 @@ def _resolve_preset_urls(session, tok: auth.Tokens, profiles: list) -> dict:
     unreachable server alike."""
     urls: dict = {}
     for profile in profiles:
-        url = avatar_presets.url_for(session, tok.server, profile.avatar_ref)
+        url = avatar_presets.url_for(session, tok.server, profile.avatar_ref,
+                                     tok.access_token)
         if url:
             urls[profile.id] = url
     return urls

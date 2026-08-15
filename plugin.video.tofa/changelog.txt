@@ -1,3 +1,14 @@
+0.9.3
+- A profile unlocked with a PIN no longer locks itself again while you are
+  still watching. The unlock now extends as playback continues, so a long
+  film no longer ends with the episode unticked and your place forgotten.
+- Profile pictures now load however you are connected. Reached through tofa's
+  relay rather than over your own network, every profile fell back to its
+  initials; the artwork comes from your own server now, which works either
+  way, and a picture changed on the web appears here without an update.
+- Needs tofa server 0.9.30 or later. Older servers still work, and still say
+  so once per Kodi session, but these two fixes are not there.
+
 0.9.2
 - Forcing a quality below Original no longer costs you surround. The server
   was being asked for its default stereo AAC; it now delivers E-AC-3 5.1 where

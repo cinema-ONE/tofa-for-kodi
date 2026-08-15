@@ -39,6 +39,10 @@ Close the window, or restart Kodi, before believing a change did nothing.
 Comments across the code cite a design document by section ("9.4's fox tile")
 and sometimes a reference capture (`internal-docs/atv-reference/*.png`).
 **`internal-docs/` is a private sibling checkout and is not distributed.**
+The tools that need it find that checkout by content rather than by name --
+see `tools/checkouts.py`, and `TOFA_VAULT` if yours lives somewhere
+unguessable. Without one, `check_public_set.py` refuses to pass rather than
+reporting a clean run it never performed.
 tofa's TV design document and our captures of the shipped apps are
 confidential; the section numbers stay because they are what makes the code
 navigable, and they are opaque on their own.

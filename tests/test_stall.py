@@ -123,10 +123,14 @@ import resources.lib.http as http_mod                                # noqa: E40
 from resources.lib.api import MediaServerClient                      # noqa: E402
 
 attempts = []
-def fake_request_json(session, method, url, **kw):
+def fake_request(session, method, url, **kw):
     attempts.append((url, kw.get("timeout")))
     raise http_mod.ApiError(0, "connection_error", "refused")
-http_mod.request_json = fake_request_json
+# `request_response`, not `request_json`: the heartbeat needs the response
+# headers now (the server rotates the profile token in them), so _request
+# goes through the response-returning seam and hands the body back itself.
+# Patching the old name here passed a NoneType session straight to requests.
+http_mod.request_response = fake_request
 import resources.lib.auth as auth_mod                                # noqa: E402
 auth_mod.update_server = lambda *a, **k: None
 
