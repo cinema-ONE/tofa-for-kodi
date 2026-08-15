@@ -6097,13 +6097,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_version", kodigui.ADDON.getAddonInfo("version"))
         # Routed to THIS add-on's issue tracker, not tofa's support desk: a
         # bug in the Kodi client is not something they can act on, and it is
-        # the kind of problem this screen gets reached for. Account and server
-        # trouble still belongs to tofa, so the caption says which is which
-        # rather than leaving the viewer to guess from one address.
+        # the kind of problem this screen gets reached for.
+        #
+        # It used to carry a second sentence sending account and server
+        # trouble to accounts.tofa.tv/support. That ran past the rail's
+        # three-line caption box and was CLIPPED, so it was not doing the
+        # job it was there for. The routing is not lost: the issue form this
+        # QR lands on carries the same hand-off as its own contact link
+        # (.github/ISSUE_TEMPLATE/config.yml), where it is one tap on the
+        # phone already in the viewer's hand rather than an address to copy
+        # off a television.
         self.setProperty("settings_support_caption",
-                         "Scan to report a problem with this add-on. Account "
-                         "or server trouble goes to tofa instead, at "
-                         "accounts.tofa.tv/support.")
+                         "Scan to report a problem with this add-on.")
 
     def _settings_licences_clicked(self):
         """The attribution the bundled licences require, not their full text.
