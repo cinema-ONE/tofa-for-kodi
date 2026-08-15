@@ -80,6 +80,34 @@ def main():
     check("BASE_URL has no trailing slash",
           not release.BASE_URL.endswith("/"), release.BASE_URL)
 
+    # --- publishing the same version with different contents.
+    # plugin.video.tofa-0.9.3.zip went out three times in one day with
+    # different bytes, because a doc fix INSIDE the add-on shipped without the
+    # version moving. Kodi decides whether to update by comparing versions, so
+    # nobody holding an earlier 0.9.3 would ever be offered a later one.
+    with tempfile.TemporaryDirectory() as tmp:
+        real = release.PUBLISHED_DIR
+        try:
+            release.PUBLISHED_DIR = tmp
+            # Nothing published at this version yet: nothing to clash with.
+            check("an unpublished version does not clash",
+                  release.republish_problems("9.9.9") == [])
+
+            # Publish a zip whose contents disagree with the working tree.
+            d = os.path.join(tmp, "plugin.video.tofa")
+            os.makedirs(d)
+            import zipfile as _zf
+            with _zf.ZipFile(os.path.join(d, "plugin.video.tofa-9.9.9.zip"),
+                             "w") as z:
+                z.writestr("plugin.video.tofa/addon.xml", "not what is here")
+            problems = release.republish_problems("9.9.9")
+            check("a changed file under a published version is refused",
+                  bool(problems), str(problems))
+            check("...and the message names the file",
+                  problems and "addon.xml" in problems[0], str(problems))
+        finally:
+            release.PUBLISHED_DIR = real
+
     # --- the repository manifest Kodi reads. `verify="sha256"` on <checksum>
     # makes Kodi 21.3 refuse the repository outright -- "Could not connect to
     # repository", and the log shows a failed read in the same millisecond

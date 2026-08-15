@@ -72,6 +72,7 @@ import sys
 import textwrap
 import urllib.parse
 import zipfile
+import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -902,7 +903,59 @@ def custom_domain(base_url: str) -> str | None:
     return None
 
 
-def do_publish(base_url: str | None, out_dir: str) -> int:
+#: Where the built tree is committed and served from. `publish` writes to
+#: dist/repo and that gets copied here, so this is "what is already public".
+PUBLISHED_DIR = os.path.join(ROOT, "docs")
+
+
+def republish_problems(version: str) -> list[str]:
+    """Would this publish change an ALREADY-PUBLISHED version's contents?
+
+    On 2026-08-15 plugin.video.tofa-0.9.3.zip went out three times with
+    different bytes, because a doc fix inside the add-on shipped without the
+    version moving. The differences were real but invisible: same name, same
+    version, 848 files, one of them changed. Kodi decides whether to update
+    by comparing VERSIONS, so nobody holding an earlier 0.9.3 would ever be
+    offered a later one -- "0.9.3" quietly stops naming one thing.
+
+    Compared by per-file CRC against the published zip rather than by
+    building a second nine-megabyte archive and diffing bytes: zip CRCs are
+    of the uncompressed content, which is exactly the question, and it avoids
+    a false positive from compression or timestamps differing.
+
+    THIS LIVES IN publish, NOT check. In `check` it would fail every change
+    made after a release until somebody bumped, which is the opposite of how
+    this project versions -- addon.xml carries the version being worked
+    TOWARDS, and only publishing makes an artifact public.
+    """
+    zip_name = "plugin.video.tofa-%s.zip" % version
+    published = os.path.join(PUBLISHED_DIR, "plugin.video.tofa", zip_name)
+    if not os.path.exists(published):
+        return []          # never published at this version: nothing to clash
+
+    try:
+        with zipfile.ZipFile(published) as archive:
+            was = {i.filename: i.CRC for i in archive.infolist()}
+    except (OSError, zipfile.BadZipFile) as exc:
+        return ["cannot read the published %s (%s)" % (zip_name, exc)]
+
+    now = {}
+    for path, arcname in package_files():
+        with open(path, "rb") as handle:
+            now[arcname] = zlib.crc32(handle.read()) & 0xFFFFFFFF
+
+    changed = sorted(k for k in set(was) | set(now) if was.get(k) != now.get(k))
+    if not changed:
+        return []
+    shown = ", ".join(changed[:4]) + ("" if len(changed) <= 4 else
+                                      " and %d more" % (len(changed) - 4))
+    return ["%s is already published with DIFFERENT contents (%d file(s): %s). "
+            "Bump the version, or pass --republish if replacing it is "
+            "deliberate." % (zip_name, len(changed), shown)]
+
+
+def do_publish(base_url: str | None, out_dir: str,
+               republish: bool = False) -> int:
     base_url = (base_url or BASE_URL or "").rstrip("/")
     if not base_url:
         print("publish needs the URL this tree will be served from, e.g.\n"
@@ -916,6 +969,12 @@ def do_publish(base_url: str | None, out_dir: str) -> int:
         return 1
 
     version = current_version()
+    if not republish:
+        clash = republish_problems(version)
+        for line in clash:
+            print("PROBLEM: %s" % line)
+        if clash:
+            return 1
     addon_zip = os.path.join(DIST, "plugin.video.tofa-%s.zip" % version)
     # ALWAYS repackage. The version string does not move during development,
     # so `dist/` reliably holds a zip of this same name built at some earlier
@@ -1082,6 +1141,9 @@ def main() -> int:
     pub.add_argument("--base-url", default=None,
                      help="URL the tree will be served from, no trailing slash")
     pub.add_argument("--out", default=REPO_OUT, help="output directory")
+    pub.add_argument("--republish", action="store_true",
+                     help="replace an already-published version whose "
+                          "contents have changed (normally refused)")
     setter = sub.add_parser("set", help="set the version")
     setter.add_argument("version")
     server = sub.add_parser(
@@ -1101,7 +1163,7 @@ def main() -> int:
     if args.command == "package":
         return do_package()
     if args.command == "publish":
-        return do_publish(args.base_url, args.out)
+        return do_publish(args.base_url, args.out, args.republish)
     return do_check()
 
 
