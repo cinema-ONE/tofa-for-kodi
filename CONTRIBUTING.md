@@ -179,6 +179,19 @@ box.
 what would break. Copy that tree into `docs/` on `main` and GitHub Pages
 serves it at `https://tofa.cinemaone.ch`, which is `release.py`'s `BASE_URL`.
 
+**`rm -rf dist/repo` first.** `publish` creates its output directory but
+never clears it, so the previous version's zip is still sitting there from
+the last release. Sync that as-is and the channel serves a 9MB orphan
+alongside the current version, carried in git for good. Caught on 0.9.4, one
+step before it shipped.
+
+**Leave `repository.tofa`'s zip alone unless its version moved.** Rebuilding
+it produces entries that are byte-for-byte identical -- every CRC matches --
+with different embedded timestamps, so committing it changes the bytes of an
+already-published version for nothing. Restore both copies and the `.sha256`
+from `HEAD` before committing. This is the same rule `publish` enforces for
+the add-on when it refuses to republish a version whose contents changed.
+
 That hostname is a DNS `CNAME` onto `cinema-one.github.io`; the bits still
 come from Pages out of `docs/`. What binds the name to THIS repository is the
 `CNAME` file in the served tree, which `publish` writes from `BASE_URL` --
@@ -211,6 +224,24 @@ done, so a tag there would have pointed at a tree missing a third of it.
 Tagging is cheap and does not promise anything shipped. Tag when a version is
 *potentially* shippable; if hardware testing then turns up a problem, fix it
 and release 0.9.1.
+
+**If a version was published more than once, tag what shipped LAST.** A tag
+should identify the tree users actually ran. 0.9.3 went out four times in one
+day under the same version string with different bytes each time, so the
+publish PR's merge points at a zip nobody ended up with. Find the right
+commit with:
+
+```
+git log -- docs/plugin.video.tofa/plugin.video.tofa-<version>.zip
+```
+
+`publish` now refuses to republish a version whose contents changed, so this
+should not recur -- but the tags from before that guard need reading this way.
+
+**A GitHub Release is titled with the bare version** (`0.9.4`), not
+`tofa for Kodi 0.9.4`: the page already shows the repository name above the
+list and the tag beside each row. Nothing reads the title -- Kodi installs
+from `addons.xml` and never sees the releases page.
 
 Merges to `main` keep their history (`--ff-only`, or `--no-ff` if `main` has
 moved on). Do not squash: the commit messages here carry reasoning that is
