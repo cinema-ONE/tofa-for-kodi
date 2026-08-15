@@ -70,6 +70,20 @@ from . import log
 _CACHE_FILE = "avatar_presets.json"
 _ASSET_DIR = "avatars"
 
+#: Bump when the cache's SHAPE changes. A file written by an older version is
+#: discarded whole rather than half-read, which costs one catalogue request
+#: and closes a class of bug: the 0.9.30 rewrite replaced a scraped
+#: `{chunk, presets, root}` cache with `{ids, etags}` and, because it updated
+#: the loaded dict in place, left the old three keys in the file for ever --
+#: inert, but stale data naming a host this module no longer talks to, in
+#: front of anyone who opened the file to see what it does.
+_CACHE_VERSION = 2
+
+#: Every key the current shape uses. Anything else is dropped on write, so a
+#: key cannot outlive the code that put it there.
+_CACHE_KEYS = ("version", "server", "ids", "checked_at", "etags",
+               "validated_at")
+
 #: Don't re-check the catalogue, or revalidate a staged PNG, more often than
 #: this. The profile picker and the nav avatar both ask, and a switch between
 #: them should not cost a request each time.
@@ -109,8 +123,13 @@ def _read_cache() -> dict:
         try:
             loaded = json.loads(raw or "{}")
             if isinstance(loaded, dict):
-                _memory = loaded
-                return _memory
+                if loaded.get("version") == _CACHE_VERSION:
+                    _memory = loaded
+                    return _memory
+                # An older shape. Dropping it costs one catalogue request and
+                # one staged PNG revalidation; keeping it risks reading a key
+                # that meant something else.
+                log.debug("avatar_presets: cache is an older shape, rebuilding")
         except ValueError:
             log.debug("avatar_presets: cache unreadable, rebuilding")
     _memory = {}
@@ -118,7 +137,20 @@ def _read_cache() -> dict:
 
 
 def _write_cache(data: dict) -> None:
+    """Persist, keeping only the keys this shape defines.
+
+    Filtered rather than written wholesale so a key from a previous shape
+    cannot survive in the file: callers mutate the dict they were handed, and
+    that dict was loaded from disk.
+    """
     global _memory
+    data["version"] = _CACHE_VERSION
+    # IN PLACE, not a filtered copy. Callers hold the dict they were handed
+    # and keep mutating it after a write -- _catalogue writes, then _stage
+    # adds an etag to the same object -- so swapping _memory for a new dict
+    # would leave them updating an orphan the next read cannot see.
+    for stale in [k for k in data if k not in _CACHE_KEYS]:
+        del data[stale]
     _memory = data
     handle = xbmcvfs.File(_cache_path(), "w")
     try:
