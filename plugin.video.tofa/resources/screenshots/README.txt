@@ -47,3 +47,16 @@ replaced because the icon is already the fox, so the splash frame said
 nothing the icon had not: a backdrop of the app in use tells a reader more
 than the logo twice. tools/gen_fanart.py, which assembled that frame from
 the shipped splash strips, was retired with it.
+
+Audited again on 2026-08-15 and deliberately NOT retaken. Nothing in them is
+stale for layout: 03-detail.jpg diffs against a live shot at 0.81/255 mean,
+which is JPEG noise. What is stale is the profile picture in the three shots
+that show the top bar -- 01, 02 and 06. It is one of the avatars the add-on
+used to draw for itself, and profile pictures now come from the server.
+
+That one cannot be reshot yet. The demo library's server is a version behind
+the floor this add-on asks for, so it serves no picture catalogue, and both of
+its profiles carry no picture at all. A retake today would put INITIALS where
+an avatar is now, which is worse rather than better. Retake when that server
+is current and its profile has a picture; that also clears the "server needs
+updating" notice from any shot taken on it.
