@@ -66,11 +66,16 @@ discovering a year later on a version that predates half this file.
 
 The update channel is a repository add-on you install once:
 
-  1. Settings -> File manager -> Add source
-         https://kodi.cinemaone.ch
-  2. Settings -> Add-ons -> Install from zip file -> that source ->
-     the repository.tofa folder -> the zip inside it
-  3. Settings -> Add-ons -> Install from repository ->
+  1. Settings -> System -> Add-ons -> turn ON "Unknown sources". Kodi
+     refuses to install from a zip without it, and says so only when you
+     try.
+  2. Settings -> File manager -> Add source
+         https://tofa.cinemaone.ch
+     Kodi cannot guess a name for an https source and will not accept an
+     empty one. Call it "tofa".
+  3. Settings -> Add-ons -> Install from zip file -> tofa ->
+     repository.tofa-1.0.0.zip
+  4. Settings -> Add-ons -> Install from repository ->
      tofa Add-on Repository -> Video add-ons -> tofa
 
 Kodi then keeps this add-on current on its own. Installing the repository

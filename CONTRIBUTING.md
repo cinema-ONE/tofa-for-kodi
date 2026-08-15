@@ -177,7 +177,7 @@ box.
 
 `publish` builds `dist/repo/` and reads it back the way Kodi will, reporting
 what would break. Copy that tree into `docs/` on `main` and GitHub Pages
-serves it at `https://kodi.cinemaone.ch`, which is `release.py`'s `BASE_URL`.
+serves it at `https://tofa.cinemaone.ch`, which is `release.py`'s `BASE_URL`.
 
 That hostname is a DNS `CNAME` onto `cinema-one.github.io`; the bits still
 come from Pages out of `docs/`. What binds the name to THIS repository is the

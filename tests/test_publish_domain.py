@@ -4,7 +4,7 @@
 GitHub Pages resolves a custom hostname to a REPO by the `CNAME` file in the
 served tree, not by DNS -- every custom subdomain points at the same
 `<user>.github.io`, because DNS has no notion of a path. So publishing a tree
-without that file unbinds the domain: `kodi.cinemaone.ch` stops answering and
+without that file unbinds the domain: `tofa.cinemaone.ch` stops answering and
 every install's update channel goes down, with nothing failing locally to say
 so. It is generated from BASE_URL for exactly that reason, and checked here
 because the failure is invisible until it is a stranger's problem.
@@ -56,11 +56,11 @@ def _tree(tmp, cname=None):
 def main():
     # --- which URLs want a CNAME at all
     check("a domain we own yields its host",
-          release.custom_domain("https://kodi.cinemaone.ch")
-          == "kodi.cinemaone.ch")
+          release.custom_domain("https://tofa.cinemaone.ch")
+          == "tofa.cinemaone.ch")
     check("...and a path on it does not confuse the host",
-          release.custom_domain("https://kodi.cinemaone.ch/repo")
-          == "kodi.cinemaone.ch")
+          release.custom_domain("https://tofa.cinemaone.ch/repo")
+          == "tofa.cinemaone.ch")
     check("a github.io URL wants no CNAME",
           release.custom_domain("https://cinema-one.github.io/tofa-for-kodi")
           is None)
@@ -102,19 +102,19 @@ def main():
     # --- verify_repo refuses a tree that would unbind the domain
     with tempfile.TemporaryDirectory() as tmp:
         _tree(tmp)
-        problems = release.verify_repo(tmp, "https://kodi.cinemaone.ch")
+        problems = release.verify_repo(tmp, "https://tofa.cinemaone.ch")
         check("a missing CNAME is a PROBLEM, not a shrug",
               any("CNAME" in p for p in problems), str(problems))
 
     with tempfile.TemporaryDirectory() as tmp:
         _tree(tmp, cname="kodi.example.org")
-        problems = release.verify_repo(tmp, "https://kodi.cinemaone.ch")
+        problems = release.verify_repo(tmp, "https://tofa.cinemaone.ch")
         check("a CNAME for the wrong host is caught",
               any("CNAME" in p for p in problems), str(problems))
 
     with tempfile.TemporaryDirectory() as tmp:
-        _tree(tmp, cname="kodi.cinemaone.ch")
-        problems = release.verify_repo(tmp, "https://kodi.cinemaone.ch")
+        _tree(tmp, cname="tofa.cinemaone.ch")
+        problems = release.verify_repo(tmp, "https://tofa.cinemaone.ch")
         check("a matching CNAME passes",
               not any("CNAME" in p for p in problems), str(problems))
 
@@ -126,7 +126,7 @@ def main():
 
     # The early return for a missing index used to drop what was found first.
     with tempfile.TemporaryDirectory() as tmp:
-        problems = release.verify_repo(tmp, "https://kodi.cinemaone.ch")
+        problems = release.verify_repo(tmp, "https://tofa.cinemaone.ch")
         check("a CNAME problem survives an unreadable tree",
               any("CNAME" in p for p in problems), str(problems))
 

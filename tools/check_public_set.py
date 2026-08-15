@@ -160,12 +160,12 @@ IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 #: same allowlist way as the addresses above: a new subdomain has to be named
 #: here to travel, so it is a decision rather than an oversight.
 #:
-#: `kodi.cinemaone.ch` is the add-on's update channel, settled 2026-08-15. The
+#: `tofa.cinemaone.ch` is the add-on's update channel, settled 2026-08-15. The
 #: domain it sits on is also the personal email domain below, so the marker
 #: rule still has to fire on `adrian.betschart@cinemaone.ch` and on any other
 #: host -- only these exact names are exempt.
 ALLOWED_HOSTS = {
-    "kodi.cinemaone.ch",
+    "tofa.cinemaone.ch",
 }
 #: A private-domain hit is only ever allowed as part of one of those names.
 ALLOWED_HOST_RE = re.compile(
@@ -386,7 +386,7 @@ def scan_markers() -> list[tuple[str, int, str, str]]:
                     found.append((rel, line_no, address,
                                   "an IPv4 address not on the allowlist"))
             # A hit that falls INSIDE an allowed hostname is that hostname,
-            # not a leak -- `kodi.cinemaone.ch` contains the private domain by
+            # not a leak -- `tofa.cinemaone.ch` contains the private domain by
             # construction. Matched by span rather than by substring so that
             # `adrian.betschart@cinemaone.ch` on the same line still fires.
             allowed = [m.span() for m in ALLOWED_HOST_RE.finditer(line)]
