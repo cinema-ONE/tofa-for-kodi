@@ -5,13 +5,14 @@ session_token as `?st=`, not just Bearer auth (see end_session).
 """
 from __future__ import annotations
 
+import datetime
 import time
 import urllib.parse
 from typing import Any, Optional
 
 import requests
 
-from . import artcache, auth, http
+from . import artcache, auth, http, log
 from .profile import CapabilityProfile
 
 #: The cloud proxy's own way of saying "the server is not on the other end
@@ -21,6 +22,27 @@ from .profile import CapabilityProfile
 #: address is to survive exactly this. 502/504 are the same shape from a
 #: gateway that phrases it differently.
 _RELAY_DOWN = ("server_relay_not_connected", "server_offline")
+
+
+def _rfc3339_epoch(value: Optional[str]) -> Optional[float]:
+    """`"2026-08-15T12:34:56Z"` -> a POSIX timestamp, or None.
+
+    `fromisoformat` accepts the `Z` suffix only from Python 3.11, and the
+    boxes this runs on are not all on the same one -- so the suffix is
+    rewritten rather than relied upon. None for anything unparseable: the
+    caller stores an expiry it cannot read as "unknown", which its own
+    expiry check already treats as "ask again", and a wrong timestamp would
+    be worse than no timestamp.
+    """
+    if not value:
+        return None
+    try:
+        text = value.strip()
+        if text.endswith(("Z", "z")):
+            text = text[:-1] + "+00:00"
+        return datetime.datetime.fromisoformat(text).timestamp()
+    except (ValueError, TypeError, OverflowError):
+        return None
 
 
 def _worth_retrying(exc: http.ApiError) -> bool:
@@ -130,6 +152,7 @@ class MediaServerClient:
         json_body: dict[str, Any] | None = None,
         timeout: float | None = None,
         try_fallback: bool = True,
+        want_response: bool = False,
     ) -> Any:
         """`timeout` overrides http.py's default for callers that cannot
         afford to wait for it -- see monitor.PROGRESS_TIMEOUT_SECONDS.
@@ -138,6 +161,11 @@ class MediaServerClient:
         fallback_base_url. Worth knowing that the fallback DOUBLES a caller's
         worst case, which matters most to callers on a timer: it is the
         difference between one timeout and two.
+
+        `want_response=True` answers the raw Response instead of its body,
+        for the one caller that needs a RESPONSE HEADER (the heartbeat's
+        rotated profile token). It goes through the same fallback and the
+        same error handling; only the last line differs.
         """
         if auth.direct_only() and auth.is_relay_url(self.base_url):
             # Nothing direct to fall back TO -- see direct_only_addresses.
@@ -152,7 +180,8 @@ class MediaServerClient:
         if timeout is not None:
             kwargs["timeout"] = timeout
         try:
-            return http.request_json(self.session, method, f"{self.base_url}{path}", **kwargs)
+            resp = http.request_response(self.session, method, f"{self.base_url}{path}", **kwargs)
+            return resp if want_response else http.body_of(resp)
         except http.ApiError as exc:
             # "Direct connections only" (Settings > Account > CONNECTION) is
             # exactly a refusal to take this fallback: the fallback IS the
@@ -162,10 +191,10 @@ class MediaServerClient:
             if not _worth_retrying(exc) or not self.fallback_base_url \
                     or not try_fallback or auth.direct_only():
                 raise
-            result = http.request_json(self.session, method, f"{self.fallback_base_url}{path}", **kwargs)
+            resp = http.request_response(self.session, method, f"{self.fallback_base_url}{path}", **kwargs)
             self.base_url, self.fallback_base_url = self.fallback_base_url, self.base_url
             auth.update_server(self.base_url, self.fallback_base_url)
-            return result
+            return resp if want_response else http.body_of(resp)
 
     def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         return self._request("GET", path, params=params)
@@ -832,7 +861,7 @@ class MediaServerClient:
         Resume was never affected, which is why this hid: that is the OTHER
         endpoint, it really does take milliseconds, and it was always correct.
         """
-        return self._post(
+        response = self._post(
             f"/api/v1/stream/s/{session_id}/progress",
             # The literal, not playback.TICKS_PER_MS: playback imports THIS
             # module, so naming it here would be a cycle. seek_stream above
@@ -842,7 +871,43 @@ class MediaServerClient:
             params={"st": session_token},
             timeout=timeout,
             try_fallback=timeout is None,
+            want_response=True,
         )
+        self._absorb_rotated_profile_token(response)
+        return http.body_of(response)
+
+    def _absorb_rotated_profile_token(self, response: Any) -> None:
+        """Take the slid profile token out of a heartbeat's response headers.
+
+        Server 0.9.30: when a request to this endpoint carries an
+        `X-Profile-Token` that is nearing expiry, the 204 answers with a
+        replacement in `X-Profile-Token` plus its RFC 3339 expiry in
+        `X-Profile-Token-Expires-At`. The sliding is not unlimited -- a day
+        after the PIN was first typed it stops, and the pad comes back.
+        Headers are absent otherwise, which is the common case: this costs a
+        dict lookup on every heartbeat and does nothing.
+
+        Why it matters: a profile token lasts ~4h with no refresh endpoint,
+        and the failure when it lapses is not an error the viewer can read.
+        The server answers 401 and the screens that ask "what has this
+        profile watched" render as though the answer were "nothing". Sliding
+        it while someone is demonstrably still watching is exactly the fix.
+
+        Never raises. A heartbeat that fails to bank a rotation must still
+        count as a heartbeat -- the position matters more than the token, and
+        the token gets another chance in fifteen seconds.
+        """
+        try:
+            headers = getattr(response, "headers", None) or {}
+            rotated = headers.get("X-Profile-Token")
+            if not rotated:
+                return
+            expires_at = _rfc3339_epoch(headers.get("X-Profile-Token-Expires-At"))
+            self.profile_token = rotated
+            auth.save_rotated_profile_token(rotated, expires_at)
+            log.info("api: profile token rotated by the server, unlock slid")
+        except Exception as exc:                                # noqa: BLE001
+            log.debug(f"api: could not bank a rotated profile token: {exc!r}")
 
     def report_stopped(self, session_id: str, session_token: str) -> Any:
         return self._post(f"/api/v1/stream/s/{session_id}/stopped", params={"st": session_token})

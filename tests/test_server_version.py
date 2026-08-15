@@ -32,9 +32,18 @@ check("a build suffix is ignored", sv.parse("0.9.30+build7") == (0, 9, 30))
 for junk in (None, "", "unknown", "v-next", "  "):
     check(f"unparseable {junk!r} is not treated as old", sv.is_supported(junk))
 
-check("the exact minimum is supported", sv.is_supported("0.9.29"))
-check("newer is supported", sv.is_supported("0.9.30"))
-check("older is NOT supported", not sv.is_supported("0.9.28"))
+# Derived from the module, not typed in. This suite is about the COMPARISON;
+# whether the floor is right is test_server_floor's job, and hardcoding it
+# here just means a floor bump breaks a suite that has nothing to say about
+# it. (It did, when the floor went to 0.9.30.)
+FLOOR = sv.format_version(sv.MIN_SERVER_VERSION)
+_major, _minor, _patch = sv.MIN_SERVER_VERSION
+ONE_OLDER = sv.format_version((_major, _minor, _patch - 1))
+ONE_NEWER = sv.format_version((_major, _minor, _patch + 1))
+
+check("the exact minimum is supported", sv.is_supported(FLOOR))
+check("newer is supported", sv.is_supported(ONE_NEWER))
+check("older is NOT supported", not sv.is_supported(ONE_OLDER))
 check("much older is NOT supported", not sv.is_supported("0.9.21"))
 
 # Tuple comparison, not string. "0.10.0" > "0.9.29" numerically but sorts
@@ -63,15 +72,15 @@ xbmcgui.Window(10000).clearProperty("tofa.server_version_warned")
 
 d = Dialogs()
 check("a current server warns about nothing",
-      sv.warn_if_old("0.9.29", alert=d.alert, localize=localize) is False
+      sv.warn_if_old(FLOOR, alert=d.alert, localize=localize) is False
       and not d.shown)
 
 d = Dialogs()
-shown = sv.warn_if_old("0.9.28", alert=d.alert, localize=localize)
+shown = sv.warn_if_old(ONE_OLDER, alert=d.alert, localize=localize)
 check("an old server warns", shown is True and len(d.shown) == 1)
 check("...as an error, with both versions named",
-      d.shown[0][2] is True and "0.9.28" in d.shown[0][1]
-      and "0.9.29" in d.shown[0][1], str(d.shown))
+      d.shown[0][2] is True and ONE_OLDER in d.shown[0][1]
+      and FLOOR in d.shown[0][1], str(d.shown))
 
 # Once per Kodi session. The add-on relaunches constantly -- Programs tile,
 # profile switch, Back at the top level -- and a dialog on each would nag.

@@ -73,6 +73,9 @@ import urllib.parse
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import checkouts  # noqa: E402  (sibling module in tools/)
 ADDON_DIR = os.path.join(ROOT, "plugin.video.tofa")
 ADDON_XML = os.path.join(ADDON_DIR, "addon.xml")
 CHANGELOG = os.path.join(ADDON_DIR, "changelog.txt")
@@ -328,7 +331,12 @@ def news_in_xml(xml: str) -> str | None:
 SERVERVERSION_PY = os.path.join(
     ADDON_DIR, "resources", "lib", "serverversion.py")
 README = os.path.join(ADDON_DIR, "README.txt")
-SPEC_DIR = os.path.join(ROOT, "internal-docs", "api")
+#: The vault holds the vendored spec, and travels nowhere. In one tree that
+#: is this checkout; after the split it is the sibling. None when there is no
+#: vault to read -- which the public repo's CI legitimately is, so this is
+#: reported rather than fatal. See spec_version().
+_VAULT = checkouts.vault(ROOT)
+SPEC_DIR = os.path.join(_VAULT, "internal-docs", "api") if _VAULT else None
 
 _FLOOR_RE = re.compile(
     r"^MIN_SERVER_VERSION.*?=\s*\((\d+),\s*(\d+),\s*(\d+)\)", re.M)
@@ -363,9 +371,12 @@ def spec_version() -> str | None:
     reported. A spec NEWER than the floor is the interesting case: it means
     we vendored a contract we have not declared support for.
 
-    internal-docs/ is not in the public repository, so a missing spec is
-    fine and silent."""
-    if not os.path.isdir(SPEC_DIR):
+    internal-docs/ is not in the public repository and never will be, so a
+    missing spec is not an error. It is no longer SILENT, though: do_check
+    says which of the two it did, because "floor checked against the spec"
+    and "floor checked against nothing" printed the same line before, and the
+    second is what a CI run without a vault actually does."""
+    if not SPEC_DIR or not os.path.isdir(SPEC_DIR):
         return None
     for name in sorted(os.listdir(SPEC_DIR)):
         if not name.endswith(".json"):
@@ -461,8 +472,13 @@ def do_check() -> int:
     floor = server_floor()
     if floor:
         spec = spec_version()
-        print("server floor %s%s"
-              % (floor, "  (vendored spec %s)" % spec if spec else ""))
+        if spec:
+            note = "  (vendored spec %s)" % spec
+        elif _VAULT:
+            note = "  (no spec in the vault, floor NOT compared)"
+        else:
+            note = "  (no vault here, floor NOT compared against any spec)"
+        print("server floor %s%s" % (floor, note))
     for problem in problems:
         print("    " + problem)
     print("%d problem(s)" % len(problems))

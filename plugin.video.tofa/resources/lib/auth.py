@@ -413,6 +413,30 @@ def save_profile_selection(profile_id: str, profile_token: str | None, profile_t
     ))
 
 
+def save_rotated_profile_token(profile_token: str,
+                               profile_token_expires_at: float | None) -> None:
+    """Store a profile token the SERVER rotated while viewing continued.
+
+    Separate from save_profile_selection because nothing was re-selected:
+    the profile, and the PIN entry behind it, are the same ones. Only the
+    token changed, and only because the heartbeat happened to carry one that
+    was nearing expiry (see MediaServerClient.report_progress).
+
+    Ignored when no profile token is held. The server only rotates a token a
+    request carried, so a rotation arriving for a profile we have since left
+    is stale by definition, and writing it would re-lock nothing and unlock
+    nothing -- it would just put a stranger's token in our file.
+    """
+    tok = load()
+    if not tok.profile_token:
+        return
+    save(dataclasses.replace(
+        tok,
+        profile_token=profile_token,
+        profile_token_expires_at=profile_token_expires_at,
+    ))
+
+
 def ensure_fresh(session, margin_seconds: float = 6 * 3600) -> Tokens:
     """Load tokens, transparently refreshing (and persisting the rotated
     pair) if the access token is within `margin_seconds` of expiry. The new
