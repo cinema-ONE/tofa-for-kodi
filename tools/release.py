@@ -831,10 +831,19 @@ _INDEX = """<!doctype html>
   <pre><code>{base_url}</code></pre>
 
   <ol>
-    <li>Settings → File manager → Add source → paste the address above</li>
+    <li>Settings → System → Add-ons → turn on <strong>Unknown sources</strong>.
+        Kodi refuses to install from a zip without it, and only says so when
+        you try.</li>
+    <li>Settings → File manager → Add source → paste the address above. Kodi
+        cannot guess a name for an <code>https</code> source and will not
+        accept an empty one — call it <strong>tofa</strong>.</li>
     <li>Settings → Add-ons → Install from zip file → that source →
         <code>{repo_zip}</code></li>
-    <li>Install from repository → tofa Add-on Repository → Video add-ons → tofa</li>
+    <li>Install from repository → tofa Add-on Repository → Video add-ons →
+        <strong>tofa for Kodi</strong></li>
+    <li>Start it from <strong>Program add-ons → tofa for Kodi</strong>. That is
+        the television interface; the Videos entry is the plain directory
+        listing, which works under any skin but is not the same thing.</li>
   </ol>
 
   <p>Kodi keeps the add-on updated from here afterwards. The current add-on
