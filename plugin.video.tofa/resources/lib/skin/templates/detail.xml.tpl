@@ -346,11 +346,38 @@
                          art on the right, which is what the real app does.
                          The 4th line used to collide with "Plays as"; the
                          whole stack above now sits 35 higher, so it does
-                         not (detail.py: HERO_STACK). -->
+                         not (detail.py: HERO_STACK).
+
+                         129 is FOUR CELLS PLUS ONE, and both halves of that
+                         matter. Kodi lays tofa_font_row_title out at 32/line
+                         here, measured off the render at rest: line 4's ink
+                         runs y=832 to 858, line 5's would start at 862.
+
+                         The old 141 was four cells (128) plus 13px of
+                         leftover, and Kodi draws a PARTIAL line into leftover
+                         space, so the top of a 5th line showed as a row of
+                         sheared-off ascenders under the block. Adrian spotted
+                         it as "the top pixels of a 4th line".
+
+                         So the bottom edge has to land in the gap BETWEEN
+                         line 4's ink and line 5's, i.e. 859..861. Four exact
+                         cells (128) puts it at 859, one pixel off line 4's
+                         descenders; 129 puts it at 860, two clear either
+                         way. That margin is the whole point: the pause card
+                         in script-tofa-player.xml had none and clipped its
+                         descenders on a 4K box while looking perfect at
+                         1080p, because the control scales x2 but the font is
+                         rendered natively and the line-height rounding does
+                         not follow.
+
+                         Do not "tidy" this to a multiple of the nominal
+                         35.25 line height; that number was wrong and is what
+                         produced 141 in the first place. -->
+                    <!-- (four cells is 128; the +1 is descender headroom) -->
                     <control type="textbox" id="5104">
                         <posy>231</posy>
                         <width>1264</width>
-                        <height>141</height>
+                        <height>132</height>
                         <font>tofa_font_row_title</font>
                         <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                         <label>$INFO[Window.Property(hero_synopsis)]</label>
