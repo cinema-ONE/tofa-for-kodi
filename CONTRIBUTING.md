@@ -126,6 +126,10 @@ things are worth knowing first:
 
 Anything numeric that reaches the screen goes through
 `resources/lib/regional.py`, which follows Kodi's own regional settings.
+`python3 tools/check_numbers.py` guards it: it flags a hardcoded `strftime`
+format and a float formatted to fixed decimals, and leaves everything else to
+review, because deciding whether an integer is a count or a year needs intent
+rather than syntax.
 
 The trap is OVER-application, not under: a year must never be grouped
 (`2,026`), nor a resolution (`1,920x1,080`), nor an episode number. Format by

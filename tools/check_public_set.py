@@ -220,8 +220,45 @@ def words_with_lines(text: str) -> tuple[list[str], list[int]]:
     return tokens, lines
 
 
+#: Never scanned, in either layout: build output, caches, local settings, and
+#: the published update channel (which is a COPY of the add-on, so scanning it
+#: reports every finding twice).
+SKIP_DIRS = {".git", "__pycache__", "dist", ".claude", "docs", ".venv",
+             "node_modules"}
+
+
+def _whole_repo() -> list[str]:
+    """Every text file in this checkout.
+
+    What "the public set" means once the copy has happened: this repository
+    IS the published set, so there is no curated subset to keep in step. The
+    curated lists below only ever described what to COPY, and copying is over.
+
+    This exists because the lists drifted the first time they were asked to
+    hold something new. Four static linters were moved here and the gate
+    reported a clean run over a file set that did not include them -- a pass
+    that had checked nothing, which is the exact failure this tool is built
+    to refuse.
+    """
+    found = []
+    for base, dirs, files in os.walk(ROOT):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        found += [os.path.join(base, n) for n in files
+                  if n.endswith(TEXT_SUFFIXES)]
+    return sorted(set(found))
+
+
 def candidates() -> list[str]:
-    """Every file that would be copied into the public repository."""
+    """Every file that is public.
+
+    In a checkout holding `internal-docs/`, that is the curated subset the
+    lists below describe -- the tool is being run somewhere that also holds
+    material which must NOT travel, so it has to know the difference.
+    Anywhere else, everything here is public by construction.
+    """
+    if not os.path.isdir(os.path.join(ROOT, "internal-docs")):
+        return _whole_repo()
+
     found = []
     for top in CURATED_TREES:
         for base, dirs, files in os.walk(os.path.join(ROOT, top)):
