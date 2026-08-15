@@ -1,0 +1,40 @@
+# What GitHub's Linguist should ignore when it decides what this project is,
+# and what a reviewer should not have to scroll past.
+#
+# Both markers earn their place twice: `linguist-generated` drops a file out
+# of the language statistics AND collapses it in a pull request diff. The
+# generated skin XML is the case that matters for the second one -- addon.xml
+# is an input to its hash, so a version bump alone rewrites the stamp in all
+# fourteen files and buries the real change.
+#
+# Before this, the bar read HTML 4.6 MB / Python 2.6 MB / Smarty 246 KB. Not
+# one of those three was true: the HTML is two generated reference pages, the
+# "Smarty" is Linguist guessing at the skin's own template syntax, and the
+# thing anybody actually writes here is Python.
+
+# --- generated reference pages, built by tools/gen_*.py -------------------
+tools/design_language.html   linguist-generated=true
+tools/icon_reference.html    linguist-generated=true
+
+# --- generated skin XML, built by resources/lib/skin/build.py -------------
+# Edit the fragments/screens/templates, never these.
+plugin.video.tofa/resources/skins/Main/1080i/*.xml   linguist-generated=true
+
+# --- skin templates ------------------------------------------------------
+# `.tpl` here is Kodi window XML with placeholders, not Smarty. Marked as XML
+# so Linguist stops guessing, which also excludes it: XML is a data language
+# and is left out of the bar either way.
+plugin.video.tofa/resources/lib/skin/templates/*.tpl   linguist-language=XML
+
+# --- the published update channel ----------------------------------------
+# docs/ is build output served by Pages, not source. release.py publish
+# rewrites the whole tree on every release.
+docs/**   linguist-generated=true
+
+# --- keep line endings sane across platforms ------------------------------
+# The skin XML is compared byte-for-byte by CI's re-render check, so a
+# checkout that rewrote its endings would fail for a reason nobody would
+# guess from the diff.
+*.xml    text eol=lf
+*.py     text eol=lf
+*.tpl    text eol=lf
