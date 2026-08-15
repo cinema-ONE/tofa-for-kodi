@@ -80,6 +80,19 @@ def main():
     check("BASE_URL has no trailing slash",
           not release.BASE_URL.endswith("/"), release.BASE_URL)
 
+    # --- the repository manifest Kodi reads. `verify="sha256"` on <checksum>
+    # makes Kodi 21.3 refuse the repository outright -- "Could not connect to
+    # repository", and the log shows a failed read in the same millisecond
+    # the job starts, with no request ever made. Diagnosed on a real install
+    # 2026-08-15; removing the attribute fixed it with nothing else changed.
+    manifest = release._repository_addon_xml("https://tofa.example.ch").decode()
+    check("the checksum element carries no verify attribute",
+          "<checksum>" in manifest and "verify=" not in manifest,
+          [l.strip() for l in manifest.splitlines() if "checksum" in l])
+    check("...and still points at the digest beside the index",
+          "https://tofa.example.ch/addons.xml.sha256" in manifest)
+    check("the zip hashes declaration stays", "<hashes>sha256</hashes>" in manifest)
+
     # --- the browser page. Kodi never asks for it; a person typing the
     # address does, and Pages' own 404 reads as "this is broken" when it
     # simply is not a website. Generated, so a rebuild cannot drop it.

@@ -52,14 +52,14 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     </assets>
   <size>9191627</size><path>plugin.video.tofa/plugin.video.tofa-0.9.3.zip</path></extension>
 </addon>
-<addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.0" provider-name="cinemaONE">
+<addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.1" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.addon" version="12.0.0"/>
   </requires>
   <extension point="xbmc.addon.repository" name="tofa">
     <dir>
       <info>https://tofa.cinemaone.ch/addons.xml</info>
-      <checksum verify="sha256">https://tofa.cinemaone.ch/addons.xml.sha256</checksum>
+      <checksum>https://tofa.cinemaone.ch/addons.xml.sha256</checksum>
       <datadir>https://tofa.cinemaone.ch</datadir>
       <artdir>https://tofa.cinemaone.ch</artdir>
       <hashes>sha256</hashes>
@@ -73,6 +73,6 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <assets>
       <icon>icon.png</icon>
     </assets>
-  <size>69642</size><path>repository.tofa/repository.tofa-1.0.0.zip</path></extension>
+  <size>69637</size><path>repository.tofa/repository.tofa-1.0.1.zip</path></extension>
 </addon>
 </addons>

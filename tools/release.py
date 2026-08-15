@@ -115,7 +115,13 @@ REPO_NAME = "tofa Add-on Repository"
 #
 # For scale: Team Kodi's own repository.xbmc.org is at 3.5.0, plex-for-kodi's
 # repository.dontpanic at 0.2.10 (pm4k.eu). Nobody freezes it.
-REPO_VERSION = "1.0.0"
+#
+# 1.0.0 -> 1.0.1 on 2026-08-15: 1.0.0 shipped `<checksum verify="sha256">`,
+# which Kodi 21.3 refuses, so that build could never reach its own index. An
+# install stuck on it cannot learn about this one either -- it has to be
+# reinstalled by hand -- but the bump is what lets every install that CAN
+# read the index replace 1.0.0 without being asked.
+REPO_VERSION = "1.0.1"
 REPO_SUMMARY = "Install and update the tofa add-on"
 REPO_DESCRIPTION = (
     "The update channel for tofa's Kodi add-on. Installing this repository "
@@ -462,6 +468,35 @@ def do_server(version: str) -> int:
     return 0
 
 
+def repo_zip_problems() -> list[str]:
+    """The install instructions must name the repository zip that exists.
+
+    Both READMEs spell the filename out, because a reader is going to look for
+    it in a list on a television. That makes it a version stated in prose, and
+    prose does not follow a constant on its own: REPO_VERSION went to 1.0.1
+    and both files still said 1.0.0, which would have sent every new installer
+    hunting for a file that is not there. Same shape as the server floor,
+    which drifted the same way earlier the same day.
+    """
+    wanted = "%s-%s.zip" % (REPO_ID, REPO_VERSION)
+    stale = re.compile(re.escape(REPO_ID) + r"-\d+\.\d+\.\d+\.zip")
+    problems = []
+    for rel in ("README.md", os.path.join("plugin.video.tofa", "README.txt")):
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf8") as handle:
+            text = handle.read()
+        named = set(stale.findall(text))
+        if not named:
+            continue
+        wrong = sorted(n for n in named if n != wanted)
+        if wrong:
+            problems.append("%s names %s; REPO_VERSION is %s (%s)"
+                            % (rel, ", ".join(wrong), REPO_VERSION, wanted))
+    return problems
+
+
 def do_check() -> int:
     xml = read_addon_xml()
     version = current_version(xml)
@@ -492,6 +527,7 @@ def do_check() -> int:
             problems.append("addon.xml's <news> is stale (run: release.py sync)")
 
     problems.extend(server_problems())
+    problems.extend(repo_zip_problems())
 
     print("version %s" % version)
     floor = server_floor()
@@ -651,7 +687,27 @@ def _repository_addon_xml(base_url: str) -> bytes:
 
     Generated rather than kept as a file with a placeholder in it: a
     half-configured addon.xml sitting in the tree is one somebody eventually
-    ships."""
+    ships.
+
+    NO `verify` ATTRIBUTE ON <checksum>, and this is not a style choice.
+    Kodi 21.3 rejects `<checksum verify="sha256">` outright: the repository
+    fails with "Could not connect to repository", and the log shows
+
+        CRepository: failed read 'https://.../addons.xml.sha256'
+
+    in the same millisecond the update job starts, with NO CurlFile::Open
+    line -- it never makes the request. Removing the attribute and changing
+    nothing else, the very next run fetches addons.xml.sha256 and then
+    addons.xml, and the repository resolves.
+
+    Kodi's OWN repository.xbmc.org ships `verify="sha256"` and works, which
+    is what made this hard to believe and worth writing down. Whatever the
+    difference is, it is not something a third-party repository can rely on.
+    Diagnosed on a real install, 2026-08-15, by patching the installed
+    manifest and ageing the `repo` row in Addons33.db to force a recheck.
+
+    <hashes>sha256</hashes> STAYS -- that is about the digests beside the
+    add-on zips, which we ship, and it is not what broke."""
     return (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
         '<addon id="{id}" name="{name}" version="{version}" '
@@ -662,7 +718,7 @@ def _repository_addon_xml(base_url: str) -> bytes:
         '  <extension point="xbmc.addon.repository" name="tofa">\n'
         '    <dir>\n'
         '      <info>{base}/addons.xml</info>\n'
-        '      <checksum verify="{algo}">{base}/addons.xml.{algo}</checksum>\n'
+        '      <checksum>{base}/addons.xml.{algo}</checksum>\n'
         '      <datadir>{base}</datadir>\n'
         '      <artdir>{base}</artdir>\n'
         '      <hashes>{algo}</hashes>\n'
