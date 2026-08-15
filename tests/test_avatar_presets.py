@@ -199,6 +199,35 @@ kept = avatar_presets.url_for(Session(ids=[]), SERVER, "preset:knight", TOKEN)
 check("an empty catalogue keeps the previous one", kept == good,
       f"{kept!r} != {good!r}")
 
+# --- the file on disk carries only what this shape defines
+avatar_presets.clear()
+s7 = Session()
+avatar_presets.url_for(s7, SERVER, "preset:knight", TOKEN)
+written = json.load(open(avatar_presets._cache_path()))
+check("the cache is stamped with its shape version",
+      written.get("version") == avatar_presets._CACHE_VERSION,
+      str(written.get("version")))
+check("...and holds no key this shape does not define",
+      set(written) <= set(avatar_presets._CACHE_KEYS),
+      str(sorted(set(written) - set(avatar_presets._CACHE_KEYS))))
+
+# A file from the OLD scraper shape must be DROPPED, not half-read. Its three
+# keys survived in the real cache on this machine for exactly that reason:
+# the rewrite updated the loaded dict in place and wrote it back whole.
+avatar_presets._memory = None
+with open(avatar_presets._cache_path(), "w") as handle:
+    json.dump({"chunk": "index-AAAA.js", "root": "https://app.example",
+               "presets": {"knight": "/assets/knight-B8.png"},
+               "checked_at": 9e9}, handle)
+s8 = Session()
+again2 = avatar_presets.url_for(s8, SERVER, "preset:knight", TOKEN)
+check("an older cache shape is discarded, not trusted",
+      bool(again2) and any(u.endswith("/profiles/avatars") for u in s8.urls()),
+      str(s8.urls()))
+after = json.load(open(avatar_presets._cache_path()))
+check("...and none of its keys survive the rewrite",
+      not ({"chunk", "root", "presets"} & set(after)), str(sorted(after)))
+
 # --- clear() takes the staged art with it, or a server switch would show
 # the previous household's avatars
 staged = avatar_presets.url_for(Session(), SERVER, "preset:robot", TOKEN)
