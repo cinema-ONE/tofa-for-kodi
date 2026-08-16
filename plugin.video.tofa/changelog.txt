@@ -1,3 +1,17 @@
+0.9.7
+- More Windows fixes, following 0.9.6. tofa could sign in but then forgot
+  everything it was told: the profile you picked was never saved, so it asked
+  again on every screen and your library came back empty. It could not hold on
+  to your sign-in either, which would eventually have logged the device out on
+  its own.
+- On Windows, tofa's icons and fonts now install. They were silently refused
+  before, so the interface fell back to Kodi's own font, every icon showed as
+  an empty box, and tofa kept asking permission for something that had already
+  failed. Kodi's own seek bar no longer appears over tofa's player there.
+- Installing from the repository no longer fails the first time. Adding tofa's
+  address to Kodi taught it that part of the update channel did not exist, so
+  the add-on could not be found until Kodi was restarted.
+
 0.9.6
 - tofa now works on Windows. It would pair with your account and then stop
   there: nothing after that opened, and nothing on screen said why. Only
