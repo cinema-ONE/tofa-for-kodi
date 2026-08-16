@@ -33,7 +33,6 @@ import pathlib
 import re
 import sys
 import xml.etree.ElementTree as ET
-import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -53,18 +52,14 @@ def check(name, ok, detail=""):
 
 
 def _repo_addon_xml() -> str:
-    """The repository add-on's addon.xml, from the built zip if there is one,
-    else from the source tree."""
-    zip_path = ROOT / "dist" / f"{release.REPO_ID}-{release.REPO_VERSION}.zip"
-    if zip_path.exists():
-        with zipfile.ZipFile(zip_path) as zf:
-            return zf.read(f"{release.REPO_ID}/addon.xml").decode("utf-8")
-    src = ROOT / release.REPO_ID / "addon.xml"
-    if src.exists():
-        return src.read_text(encoding="utf-8")
-    for cand in ROOT.rglob(f"{release.REPO_ID}/addon.xml"):
-        return cand.read_text(encoding="utf-8")
-    raise SystemExit("cannot find the repository add-on's addon.xml")
+    """The repository add-on's addon.xml.
+
+    It has no source file -- release.py GENERATES it from a template, so ask
+    the generator. That also means this test compares one generated artefact
+    against the other, which is the pairing that has to stay in step: the
+    page Kodi lists and the URLs the repo asks for.
+    """
+    return release._repository_addon_xml(release.BASE_URL).decode("utf-8")
 
 
 def main():
