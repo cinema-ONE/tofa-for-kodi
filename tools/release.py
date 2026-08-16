@@ -854,6 +854,22 @@ _INDEX = """<!doctype html>
   <p>Or download it directly:
      <a href="{repo_zip}">{repo_zip}</a></p>
 
+  <!-- These two links are LOAD-BEARING, not decoration. Kodi's HTTP
+       "directory" for this host is literally the <a href> list on this page,
+       and CFile::Open consults g_directoryCache BEFORE it opens a socket:
+       if the directory is cached and the file is not in that listing, the
+       open fails instantly, with no request and no log line.
+
+       Our own install steps have the user add this host as a Kodi source and
+       browse it ("Install from zip file"), which caches exactly that listing.
+       While these were missing, the repository could not read its own index
+       afterwards -- "Could not connect to repository", until a Kodi restart
+       cleared the cache. That was the first bug an outside user ever
+       reported. See tests/test_channel_index_links.py. -->
+  <p class="repo-files">The repository's own index, for Kodi:
+     <a href="addons.xml">addons.xml</a> and
+     <a href="addons.xml.sha256">addons.xml.sha256</a>.</p>
+
   <footer>
     Source, releases and issues:
     <a href="{project_url}">{project_label}</a>.
