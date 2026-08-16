@@ -14,6 +14,10 @@ refresh-rate matching reach it untouched.
 Unofficial means it is not a tofa product and carries no guarantee from them,
 though it is built with the tofa team and against their design.
 
+**This is beta software.** It is in active development, still short of a 1.0,
+and things do change between releases. Expect the occasional rough edge, and
+please report what you find -- the issue tracker is below.
+
 ## Install
 
 Add the repository once and Kodi keeps the add-on updated on its own:
@@ -34,7 +38,7 @@ Add the repository once and Kodi keeps the add-on updated on its own:
 A zip installed by hand works too and never updates itself, which is the
 whole reason the repository exists.
 
-**Requirements.** A tofa media server at **0.9.30** or newer -- older servers
+**Requirements.** A tofa media server at **0.9.31** or newer -- older servers
 are not refused, but this add-on carries no backward-compatibility paths, so
 some screens will be missing or wrong rather than degrading gracefully. It
 says so once per session when it sees one. `addon.xml` declares
