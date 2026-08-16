@@ -1014,6 +1014,18 @@ class PlayerWindow(kodigui.ControlledDialog):
         except playback.NegotiateTimeout:
             self.fail(kodigui.ADDON.getLocalizedString(31033))
             return
+        except http.ApiError as exc:
+            # Anything the server says here used to escape onFirstInit
+            # entirely, and the window sat on its spinner for ever with
+            # nothing said. Back still got the viewer out, so this read as
+            # "it just doesn't play" -- the state the renamed Bob's Burgers
+            # files were found in. 404 is the one worth naming: the library
+            # row is fine and only the file moved, so a scan really does fix
+            # it, and saying so beats another shrug.
+            log.warning(f"player: negotiate failed: {exc!r}")
+            self.fail(kodigui.ADDON.getLocalizedString(
+                31119 if exc.status == 404 else 31120))
+            return
 
         if not playback.is_direct(resp):
             # Deliberately NOT a prompt any more. It used to ask before
