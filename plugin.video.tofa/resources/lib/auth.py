@@ -28,6 +28,7 @@ except ImportError:                                         # Windows
 import xbmcaddon
 import xbmcvfs
 
+from . import atomicwrite
 from . import cloud
 from . import log
 
@@ -146,15 +147,10 @@ def load() -> Tokens:
 
 def save(tok: Tokens) -> None:
     path = token_file_path()
-    tmp = path + ".tmp"
-    f = xbmcvfs.File(tmp, "w")
-    try:
-        f.write(json.dumps(tok.to_json(), indent=2))
-    finally:
-        f.close()
-    # xbmcvfs.rename is an atomic POSIX rename -- never a window where
-    # tokens.json is half-written or missing.
-    xbmcvfs.rename(tmp, path)
+    # Atomic replace, and it must work on Windows too: the old
+    # xbmcvfs.rename() silently failed there whenever tokens.json already
+    # existed, so nothing this function wrote was ever kept.
+    atomicwrite.write_json(path, tok.to_json())
     # Best-effort 0600. On Windows os.chmod only toggles read-only, not
     # real ACLs -- never let this failure break sign-in.
     try:
@@ -276,13 +272,7 @@ def save_image_token(token: str, expires_at: float) -> None:
     token and URL for the same image, and Kodi's URL-keyed texture cache
     never hits."""
     path = _image_token_file_path()
-    tmp = path + ".tmp"
-    f = xbmcvfs.File(tmp, "w")
-    try:
-        f.write(json.dumps({"token": token, "expires_at": expires_at}))
-    finally:
-        f.close()
-    xbmcvfs.rename(tmp, path)
+    atomicwrite.write_json(path, {"token": token, "expires_at": expires_at})
     # Lower sensitivity than tokens.json (image-scoped, cache-GET only per
     # the endpoint's own description) but free to protect the same way.
     try:

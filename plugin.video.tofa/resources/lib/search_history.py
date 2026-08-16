@@ -14,6 +14,8 @@ import os
 import xbmcaddon
 import xbmcvfs
 
+from . import atomicwrite
+
 MAX_ENTRIES = 10
 
 
@@ -52,15 +54,9 @@ def _load_all() -> dict:
 def _save_all(data: dict) -> None:
     path = _history_file_path()
     tmp = path + ".tmp"
-    f = xbmcvfs.File(tmp, "w")
-    try:
-        f.write(json.dumps(data, indent=2))
-    finally:
-        f.close()
-    # Same atomic-replace convention as auth.save() -- xbmcvfs.rename maps
-    # to a native rename() on local paths, so there's never a window where
-    # the file is half-written or missing.
-    xbmcvfs.rename(tmp, path)
+    # Same atomic-replace convention as auth.save(); see atomicwrite for why
+    # xbmcvfs.rename could not be it.
+    atomicwrite.write_json(path, data)
 
 
 def get(profile_id: str) -> list:
