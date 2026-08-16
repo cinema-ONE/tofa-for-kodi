@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.4" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.5" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,17 +25,31 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - 3D films get their own button in the player controls. On a 3D file it sits
-        beside subtitles and audio, and asks the same question the film asks when it
-        starts, so you can change your mind part way through. It replaces the 3D row
-        under Adjust, which applied every mode as you stepped past it and made the
-        television renegotiate the picture on each press.
-      - The Adjust panel is easier to read: a value and its arrows no longer sit
-        tight under the label above them.
-      - "Report a problem" under Settings -&gt; Privacy &amp; About no longer runs off the
-        end of its card. The part that was cut off said where account and server
-        trouble goes instead; the issue page the code opens says it now, where it is
-        a link rather than an address to copy off a television.
+      - The title page no longer keeps you waiting. The artwork and logo used to
+        appear at once and the Play row a moment later, which on a television is the
+        gap where you are already reaching for the remote. For a series it asked the
+        server for the same watch progress three times over and built the whole
+        episode grid before drawing the buttons; it now asks once and draws the
+        buttons first.
+      - Skip Intro and Skip Credits no longer trap the remote. While one of those
+        buttons was showing you could not reach the progress bar or the transport
+        controls at all, and only Back or a press of the button itself got you out.
+        Up now goes to the progress bar and down to play/pause.
+      - Up Next opens when the credits actually start, instead of thirty seconds
+        before the file ends. On a film or an episode whose credits tofa has
+        detected, that is the moment the rail is for. Skip Credits no longer appears
+        alongside it offering the same thing a few seconds earlier; it stays for the
+        last episode of a series, where nothing else offers to move on.
+      - Pausing now holds the Up Next countdown. It used to keep running while the
+        film was stopped, so a pause with the rail up could return to find the next
+        episode already playing. It carries on from where it was when you resume.
+      - The pause screen's synopsis keeps the bottom of its letters, and scrolls
+        when it is too long to fit rather than stopping mid-sentence.
+      - The title page's synopsis no longer shows the top of a fifth line it has no
+        room for.
+      - This version needs tofa server 0.9.31 or newer. 0.9.30 was withdrawn by
+        tofa; its Windows update could leave a server refusing to start, and on
+        Linux it would not install at all.
     </news>
     <assets>
       <icon>icon.png</icon>
