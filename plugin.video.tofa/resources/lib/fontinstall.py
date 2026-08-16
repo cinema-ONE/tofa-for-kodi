@@ -28,12 +28,20 @@ CoreELEC's bundled skin.estuary lives on a read-only squashfs `/`, so
 `Font.xml` can't be edited in place there. Fix: copy the whole skin into
 the writable `special://home/addons/` first (Kodi prefers a userdata copy
 over the read-only original by id match), then patch that copy instead.
+
+**Windows is the same shape for a different reason**: Kodi installs under
+`C:\\Program Files\\Kodi`, and no ordinary user may write there. It went
+unnoticed until 2026-08-16 because the writability probe was
+`os.access(..., W_OK)`, which on Windows reports the read-only ATTRIBUTE and
+never the ACL -- so it answered True, the copy never happened, and both
+callers failed on the write. See `_is_writable`.
 """
 from __future__ import annotations
 
 import os
 import re
 import shutil
+import uuid
 from typing import Optional
 
 import xbmc
@@ -204,7 +212,36 @@ def _font_entry_xml(name: str, filename: str, size: int, style: str) -> str:
 
 
 def _is_writable(path: str) -> bool:
-    return os.access(path, os.W_OK)
+    """Can we actually create a file in this directory?
+
+    This used to be `os.access(path, os.W_OK)`, which **lies on Windows**:
+    there it reports only the read-only file ATTRIBUTE and never consults
+    ACLs, so `C:\\Program Files\\Kodi\\addons\\skin.estuary` -- which no
+    ordinary user may write -- came back True. The copy-to-a-writable-place
+    fallback below therefore never ran, and both callers died on the write
+    itself with `[Errno 13] Permission denied`: no fonts (so every Lucide
+    glyph rendered as tofu) and an unpatched seek bar. Worse, the consent
+    dialog re-asked on EVERY launch, because nothing it promised had
+    happened.
+
+    The only portable answer is to try it. Create a uniquely-named file and
+    delete it again -- `os.access` cannot be fixed, only avoided.
+    """
+    probe = os.path.join(path, f".tofa-write-probe-{uuid.uuid4().hex}")
+    try:
+        with open(probe, "w"):
+            pass
+    except OSError:
+        return False
+    finally:
+        # The probe must never outlive this call, even if the write raced
+        # something else away: a stray dotfile inside a SKIN is the kind of
+        # litter nobody goes looking for.
+        try:
+            os.remove(probe)
+        except OSError:
+            pass
+    return True
 
 
 def _find_font_xml_files(skin_path: str) -> list[str]:
