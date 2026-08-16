@@ -15,11 +15,29 @@ import urllib.parse
 import uuid
 from typing import Any
 
+try:                                                        # POSIX
+    import fcntl
+    msvcrt = None
+except ImportError:                                         # Windows
+    fcntl = None
+    try:
+        import msvcrt
+    except ImportError:                                     # neither: run unlocked
+        msvcrt = None
+
 import xbmcaddon
 import xbmcvfs
 
 from . import cloud
 from . import log
+
+
+# How long to wait for the other process to finish its refresh before giving
+# up and going ahead unlocked. Only reachable on the msvcrt path; flock waits.
+# A refresh is one HTTP round trip, so 10s is already a pathological case --
+# and this is time the user spends staring at a screen that hasn't drawn.
+_LOCK_WAIT_SECONDS = 10
+_LOCK_POLL_SECONDS = 0.1
 
 
 class NotSignedIn(Exception):
@@ -145,20 +163,64 @@ def save(tok: Tokens) -> None:
         pass
 
 
+def _lock_exclusive(fd: int) -> None:
+    """Block until this process holds the lock, or give up quietly.
+
+    fcntl is POSIX-only -- importing it on Windows raises ModuleNotFoundError
+    and took the whole add-on down on the first action there (0.9.5).
+    msvcrt.locking is the Windows equivalent, but it locks a byte range from
+    the current file position rather than the whole file. Poll with LK_NBLCK
+    rather than LK_LOCK: LK_LOCK blocks for an implementation-defined spell
+    (~10s) before raising, which makes the wait here neither predictable nor
+    interruptible."""
+    if fcntl is not None:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        return
+    if msvcrt is None:
+        return
+    os.lseek(fd, 0, os.SEEK_SET)
+    deadline = time.time() + _LOCK_WAIT_SECONDS
+    while True:
+        try:
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            return
+        except OSError:
+            if time.time() >= deadline:
+                # Better to refresh unlocked than to refuse to sign in: the
+                # race this guards is rare, being locked out is not.
+                log.warning(f"auth: token lock unavailable after "
+                            f"{_LOCK_WAIT_SECONDS}s -- refreshing without it")
+                return
+            time.sleep(_LOCK_POLL_SECONDS)
+            os.lseek(fd, 0, os.SEEK_SET)
+
+
+def _unlock(fd: int) -> None:
+    if fcntl is not None:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return
+    if msvcrt is None:
+        return
+    os.lseek(fd, 0, os.SEEK_SET)
+    try:
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    except OSError:
+        # We may never have taken it (see above); unlocking is best-effort.
+        pass
+
+
 @contextlib.contextmanager
 def _refresh_lock():
     """Advisory file lock so a foreground call and service.py's background
     refresher can never both refresh at once and race each other into
     revoking the session."""
-    import fcntl
-
     lock_path = _lock_file_path()
     fd = os.open(lock_path, os.O_CREAT | os.O_RDWR)
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        _lock_exclusive(fd)
         yield
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        _unlock(fd)
         os.close(fd)
 
 
