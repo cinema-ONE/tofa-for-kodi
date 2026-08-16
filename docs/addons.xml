@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.6" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.7" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -26,14 +26,18 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - tofa now works on Windows. It would pair with your account and then stop
-        there: nothing after that opened, and nothing on screen said why. Only
-        Windows was affected, and only once you had signed in -- which is why
-        pairing itself always looked fine.
-      - When something will not play, tofa now tells you instead of leaving you on
-        a spinner that never finishes. The usual reason is that the file has been
-        moved or renamed since your server last scanned its library, and it says
-        so, because a fresh scan is what brings it back.
+      - More Windows fixes, following 0.9.6. tofa could sign in but then forgot
+        everything it was told: the profile you picked was never saved, so it asked
+        again on every screen and your library came back empty. It could not hold on
+        to your sign-in either, which would eventually have logged the device out on
+        its own.
+      - On Windows, tofa's icons and fonts now install. They were silently refused
+        before, so the interface fell back to Kodi's own font, every icon showed as
+        an empty box, and tofa kept asking permission for something that had already
+        failed. Kodi's own seek bar no longer appears over tofa's player there.
+      - Installing from the repository no longer fails the first time. Adding tofa's
+        address to Kodi taught it that part of the update channel did not exist, so
+        the add-on could not be found until Kodi was restarted.
     </news>
     <assets>
       <icon>icon.png</icon>
@@ -45,7 +49,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/05-player.jpg</screenshot>
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
-  <size>9201971</size><path>plugin.video.tofa/plugin.video.tofa-0.9.6.zip</path></extension>
+  <size>9204412</size><path>plugin.video.tofa/plugin.video.tofa-0.9.7.zip</path></extension>
 </addon>
 <addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.1" provider-name="cinemaONE">
   <requires>
