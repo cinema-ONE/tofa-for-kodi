@@ -410,6 +410,7 @@ class _PlayerUIPlayer(xbmc.Player):
 
     def onPlayBackResumed(self) -> None:
         self.window.setProperty("player_state", PlayerWindow.STATE_PLAYING)
+        self.window._release_next_up()
         self.window.hide_pause_card()
 
     def onPlayBackSeek(self, time: int, seekOffset: int) -> None:
@@ -875,6 +876,11 @@ class PlayerWindow(kodigui.ControlledDialog):
         # no longer answer "is the rail open".
         self._next_up_open = False
         self._next_up_deadline = 0.0   # monotonic; 0 = no countdown running
+        #: Seconds left on a countdown parked by a pause; 0 = not held. The
+        #: deadline is cleared while this is set, so the tick's countdown
+        #: block simply does not run and the ring and label stay where they
+        #: were. See _hold_next_up and _release_next_up.
+        self._next_up_hold = 0.0
         #: playback.auto_play_next, resolved once -- see _auto_play_next_mode
         self._auto_play_mode: Optional[str] = None
         self._next_up_focus_at = 0.0
@@ -2959,6 +2965,13 @@ class PlayerWindow(kodigui.ControlledDialog):
             self._next_up_deadline = 0.0
             self.setProperty("nextup_seconds", "")
             self.setProperty("nextup_ring", "")
+        # Opening onto an already-paused stream: park the countdown at once
+        # rather than wait for a pause event that has already been and gone.
+        # Rare, because the rail is armed by POSITION and that does not move
+        # while paused -- but reachable by pausing in the instant it arms,
+        # and it would otherwise spend the full 20s against a still frame.
+        if self._paused():
+            self._hold_next_up()
         # Before the reveal, not after: the token the URL was staged with
         # may have expired during the episode. See _refresh_nextup_still.
         self._refresh_nextup_still()
@@ -3005,6 +3018,9 @@ class PlayerWindow(kodigui.ControlledDialog):
             return
         self._next_up_open = False
         self._next_up_deadline = 0.0
+        # A rail that closes while paused must not leave a parked countdown
+        # behind for the next resume to hand back to a rail that has gone.
+        self._next_up_hold = 0.0
         self._next_up_focus_at = 0.0
         self._next_up_dismissed = True
         self.setProperty("player_next_up", "")
@@ -3127,6 +3143,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._prev_episode = None
         self._next_up_open = False
         self._next_up_deadline = 0.0
+        # A rail that closes while paused must not leave a parked countdown
+        # behind for the next resume to hand back to a rail that has gone.
+        self._next_up_hold = 0.0
         self._next_up_focus_at = 0.0
         self._next_up_dismissed = False
         self.setProperty("player_next_up", "")
@@ -3695,6 +3714,10 @@ class PlayerWindow(kodigui.ControlledDialog):
 
         With the chrome already down there is no chrome-hide to wait for, so
         the same delay is measured from the pause itself."""
+        # BEFORE the early return below: the countdown has to stop whether or
+        # not the chrome happens to be up, and that return is only about
+        # which thing arms the pause card.
+        self._hold_next_up()
         if self._chrome_deadline:
             return          # chrome is up -- hide_chrome() arms it as usual
         if self.getProperty("player_state") == self.STATE_PAUSED:
@@ -4452,6 +4475,34 @@ class PlayerWindow(kodigui.ControlledDialog):
             return
         if self._position_ms() >= self._next_up_reveal_ms():
             self.show_next_up()
+
+    def _hold_next_up(self):
+        """Park the countdown for the duration of a pause.
+
+        8.3 calls the 20,000ms a hard contract, and this window used to read
+        that as "run it by wall clock whatever playback is doing" -- so
+        pausing under an open rail still advanced the next episode, and you
+        came back to find it already playing. The contract is about how LONG
+        the countdown is, not about ignoring the one key whose entire meaning
+        is "hold everything". The spec says nothing either way; this is the
+        behaviour Adrian expected without having read it.
+
+        The old worry was a timer frozen into a rail that never resolves.
+        That is not reachable: a hold only exists while Kodi reports the
+        stream paused, and the very next resume re-arms it."""
+        if self._next_up_open and self._next_up_deadline and not self._next_up_hold:
+            self._next_up_hold = max(
+                0.0, self._next_up_deadline - time.monotonic())
+            self._next_up_deadline = 0.0
+
+    def _release_next_up(self):
+        """Give back exactly what was left, not a fresh 20s."""
+        if self._next_up_hold:
+            self._next_up_deadline = time.monotonic() + self._next_up_hold
+            self._next_up_hold = 0.0
+
+    def _paused(self) -> bool:
+        return self.getProperty("player_state") == self.STATE_PAUSED
 
     def _outro_start_ms(self):
         """Where the credits start, or None if nothing detected them.

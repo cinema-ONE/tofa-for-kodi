@@ -29,7 +29,7 @@ from . import log
 #: 0.9.29: the 44 pixel-art profile avatars (the six emoji-only presets are
 #: gone), uploaded profile photos, and the split Recently Released Movies /
 #: TV Shows home rows.
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 30)
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 31)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,

@@ -353,9 +353,17 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._wire_pill_navigation()
             return
 
+        # TIME TO PILLS is the number this screen is judged by: the hero draws
+        # from a payload already in hand, so the viewer sees backdrop and logo
+        # at once and then waits for the action row. Logged in the same shape
+        # as Home and the episode grid, and split, because a slow fetch and a
+        # slow build want opposite fixes.
+        t_start = time.monotonic()
         try:
             self._render_hero(client, self.media)
+            t_hero = time.monotonic()
             self._render_actions(client, self.media)
+            t_actions = time.monotonic()
             # PACK THE ROW HERE, not only in the finally below.
             #
             # Everything the row is made of is known by now: _render_actions
@@ -378,6 +386,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # -- positions, an enable, and nav links -- so the second call
             # costs nothing and corrects anything page 2 moved.
             self._wire_pill_navigation()
+            t_pills = time.monotonic()
+            log.info(
+                "detail: pills in {0:.2f}s (hero {1:.2f}, actions {2:.2f}, "
+                "pack {3:.2f})".format(
+                    t_pills - t_start, t_hero - t_start,
+                    t_actions - t_hero, t_pills - t_actions))
             # Everything from here on is behind the pack, so none of it can
             # hold the action row off the screen.
             if self.media.get("media_type") == "tv":
@@ -387,6 +401,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     progress_map=self._nextup_progress)
             self._render_page2(client, self.media)
             self._render_more_like_this(client, media_id)
+            log.info("detail: page 2 done {0:.2f}s after the pills".format(
+                time.monotonic() - t_pills))
         finally:
             # In a finally so a throwing render pass above still leaves the
             # tab bar navigable -- and, since pills_packed gates their
