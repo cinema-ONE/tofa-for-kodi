@@ -1,8 +1,0 @@
-- tofa now works on Windows. It would pair with your account and then stop
-  there: nothing after that opened, and nothing on screen said why. Only
-  Windows was affected, and only once you had signed in -- which is why
-  pairing itself always looked fine.
-- When something will not play, tofa now tells you instead of leaving you on
-  a spinner that never finishes. The usual reason is that the file has been
-  moved or renamed since your server last scanned its library, and it says
-  so, because a fresh scan is what brings it back.

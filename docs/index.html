@@ -48,11 +48,27 @@
   </ol>
 
   <p>Kodi keeps the add-on updated from here afterwards. The current add-on
-     version is <code>0.9.6</code>, and it needs a tofa server on
+     version is <code>0.9.7</code>, and it needs a tofa server on
      <code>0.9.31</code> or newer.</p>
 
   <p>Or download it directly:
      <a href="repository.tofa-1.0.1.zip">repository.tofa-1.0.1.zip</a></p>
+
+  <!-- These two links are LOAD-BEARING, not decoration. Kodi's HTTP
+       "directory" for this host is literally the <a href> list on this page,
+       and CFile::Open consults g_directoryCache BEFORE it opens a socket:
+       if the directory is cached and the file is not in that listing, the
+       open fails instantly, with no request and no log line.
+
+       Our own install steps have the user add this host as a Kodi source and
+       browse it ("Install from zip file"), which caches exactly that listing.
+       While these were missing, the repository could not read its own index
+       afterwards -- "Could not connect to repository", until a Kodi restart
+       cleared the cache. That was the first bug an outside user ever
+       reported. See tests/test_channel_index_links.py. -->
+  <p class="repo-files">The repository's own index, for Kodi:
+     <a href="addons.xml">addons.xml</a> and
+     <a href="addons.xml.sha256">addons.xml.sha256</a>.</p>
 
   <footer>
     Source, releases and issues:
