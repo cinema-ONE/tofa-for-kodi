@@ -174,6 +174,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.prefer_file_id = kwargs.pop("play_file_id", None)
         kodigui.ControlledWindow.__init__(self, *args, **kwargs)
         self.client: MediaServerClient | None = None
+        #: {file_id: progress record} from the most recent _next_up_episode()
+        #: batch, so the load path does not re-ask for what it just fetched.
+        #: Only ever read straight after that call; see its own note.
+        self._nextup_progress: dict = {}
+        #: The episode _render_actions resolved, handed to _render_episodes so
+        #: it does not resolve it a second time.
+        self._nextup_episode: dict | None = None
         self.cast_list: kodigui.ManagedControlList | None = None
         self.crew_list: kodigui.ManagedControlList | None = None
         self.similar_list: kodigui.ManagedControlList | None = None
@@ -346,9 +353,17 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._wire_pill_navigation()
             return
 
+        # TIME TO PILLS is the number this screen is judged by: the hero draws
+        # from a payload already in hand, so the viewer sees backdrop and logo
+        # at once and then waits for the action row. Logged in the same shape
+        # as Home and the episode grid, and split, because a slow fetch and a
+        # slow build want opposite fixes.
+        t_start = time.monotonic()
         try:
             self._render_hero(client, self.media)
+            t_hero = time.monotonic()
             self._render_actions(client, self.media)
+            t_actions = time.monotonic()
             # PACK THE ROW HERE, not only in the finally below.
             #
             # Everything the row is made of is known by now: _render_actions
@@ -371,8 +386,23 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # -- positions, an enable, and nav links -- so the second call
             # costs nothing and corrects anything page 2 moved.
             self._wire_pill_navigation()
+            t_pills = time.monotonic()
+            log.info(
+                "detail: pills in {0:.2f}s (hero {1:.2f}, actions {2:.2f}, "
+                "pack {3:.2f})".format(
+                    t_pills - t_start, t_hero - t_start,
+                    t_actions - t_hero, t_pills - t_actions))
+            # Everything from here on is behind the pack, so none of it can
+            # hold the action row off the screen.
+            if self.media.get("media_type") == "tv":
+                self._render_episodes(
+                    client, self.media, self.media.get("seasons") or [],
+                    next_ep=self._nextup_episode,
+                    progress_map=self._nextup_progress)
             self._render_page2(client, self.media)
             self._render_more_like_this(client, media_id)
+            log.info("detail: page 2 done {0:.2f}s after the pills".format(
+                time.monotonic() - t_pills))
         finally:
             # In a finally so a throwing render pass above still leaves the
             # tab bar navigable -- and, since pills_packed gates their
@@ -746,10 +776,17 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("show_rewatch", "")
             seasons = media.get("seasons") or []
             ep, f = self._next_up_episode(client, seasons)
+            self._nextup_episode = ep
             if ep and f:
                 self.play_file_id = f.get("id")
                 self.is_playable = True
-                position_ms, completed = self._progress(client, self.play_file_id, f)
+                # From the batch that just ran, NOT a second single-file GET.
+                # _next_up_episode fetched progress for every candidate in one
+                # request and the chosen file is by definition one of them, so
+                # asking again was a whole round trip to re-learn what we were
+                # already holding -- on the critical path, ahead of the pills.
+                position_ms, completed = progress.position_of(
+                    self._nextup_progress.get(self.play_file_id))
                 self.play_duration_ms = f.get("duration_ms") or 0
                 # Same rule as movies: Rewatch means "restart the episode the
                 # primary button would resume", so it needs a resume point.
@@ -763,7 +800,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.setProperty("primary_label", "Unavailable")
                 self.setProperty("primary_progress_fill", "")
             self._render_version_pill()
-            self._render_episodes(client, media, seasons)
+            # NOT _render_episodes here. The grid is page-2 content the viewer
+            # cannot see yet, and rendering it from inside this call put the
+            # whole season sidebar + episode grid AHEAD of the pack that makes
+            # the action row visible -- defeating, on the TV path only, the
+            # early pack _load does for exactly this reason. _load renders it
+            # after the pack now, next to the other page-2 work.
             return
 
         # --- Movie: pick the first available file, read progress ---
@@ -1155,9 +1197,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """
         candidates = progress.episode_candidates(seasons)
         if not candidates:
+            self._nextup_progress = {}
             return None, None
         progress_map = progress.fetch_many(
             client, [c[3].get("id") for c in candidates], required=required)
+        # Published for the load path to reuse -- see _load. Set by the call
+        # that just fetched it, so it cannot go stale: a refresh path calls
+        # this again and overwrites it before anyone reads it. It is NOT a
+        # memo, and nothing may serve it without having called this first.
+        self._nextup_progress = progress_map
         chosen = progress.next_up(candidates, progress_map, self.prefer_file_id)
         if chosen is None:
             return None, None
@@ -1204,7 +1252,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # fetched for it. See _apply_episode_synopsis.
         self._next_up_overview = (ep.get("overview") or "").strip()
 
-    def _render_episodes(self, client: MediaServerClient, media: dict, seasons: list):
+    def _render_episodes(self, client: MediaServerClient, media: dict, seasons: list,
+                         *, next_ep: dict | None = None,
+                         progress_map: dict | None = None):
+        """`next_ep` and `progress_map` let the caller hand over what it has
+        already resolved. _load has both by the time it gets here, and
+        recomputing them meant a second whole-show progress batch for an
+        answer that had not changed. Omit them and this resolves its own, which
+        is what the season-switch and refresh paths want -- they are repainting
+        precisely because the answer MAY have changed."""
         if not seasons:
             if self.season_list is not None:
                 self.season_list.reset()
@@ -1212,7 +1268,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.episode_list.reset()
             self.setProperty("episodes_watched_count", "")
             return
-        next_ep, _ = self._next_up_episode(client, seasons)
+        if next_ep is None:
+            next_ep, _ = self._next_up_episode(client, seasons)
         default_season_number = None
         if next_ep:
             for s in seasons:
@@ -1224,7 +1281,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             default_season_number = (non_special[0] if non_special else seasons[0]).get("season_number")
         self.selected_season_number = default_season_number
         self._render_season_sidebar(seasons, default_season_number)
-        self._render_episode_grid(client, seasons, default_season_number)
+        self._render_episode_grid(client, seasons, default_season_number,
+                                  progress_map=progress_map)
 
     def _render_season_sidebar(self, seasons: list, active_season_number):
         if self.season_list is None:
@@ -1268,7 +1326,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             parts.append(year)
         self.setProperty("season_subtitle", _dot_join(*parts))
 
-    def _render_episode_grid(self, client: MediaServerClient, seasons: list, season_number):
+    def _render_episode_grid(self, client: MediaServerClient, seasons: list, season_number,
+                             *, progress_map: dict | None = None):
         if self.episode_list is None:
             return
         # Timed in the same shape MainWindow logs Home in, and for the same
@@ -1287,7 +1346,18 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if avail:
                 ep_file_map[ep.get("id")] = avail[0]
                 file_ids.append(avail[0].get("id"))
-        progress_map = progress.fetch_many(client, file_ids)
+        # A caller that already batched the whole show covers every ordinary
+        # season, so the common case fetches nothing here. Specials are the
+        # exception and genuinely are not covered: episode_candidates() drops
+        # season 0, so opening one still costs its own batch -- which is why
+        # this tops up the gap rather than trusting a handed-in map wholesale.
+        if progress_map is None:
+            progress_map = progress.fetch_many(client, file_ids)
+        else:
+            missing = [fid for fid in file_ids if fid not in progress_map]
+            if missing:
+                progress_map = dict(progress_map)
+                progress_map.update(progress.fetch_many(client, missing))
         fetched_at = time.monotonic()
 
         # Spoiler protection (7.1): everything PAST the next-to-watch episode

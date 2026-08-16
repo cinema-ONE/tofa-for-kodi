@@ -730,6 +730,13 @@
                 <texturefocus>transparent-6px.png</texturefocus>
                 <texturenofocus>transparent-6px.png</texturenofocus>
                 <label></label>
+                <!-- The Skip pill, which sits between this and the transport
+                     row. _tick_skip declines to steal focus when the chrome
+                     is up, on the grounds that UP reaches the pill instead;
+                     that was only true once this link existed. Nothing else
+                     is above the scrubber in the chrome, so when no pill is
+                     showing this simply does nothing. -->
+                <onup>9751</onup>
                 <ondown>9121</ondown>
             </control>
 
@@ -2560,6 +2567,19 @@
                 <label>$INFO[Window.Property(player_skip_label)]</label>
                 <visible>Control.HasFocus(9751)</visible>
             </control>
+            <!-- The pill had NO nav at all, and _tick_skip lands focus on it
+                 by itself, so once it was up the d pad was dead: the scrubber
+                 was unreachable and only Back or Select got you out. Reported
+                 from the box as not being able to reach the progress bar
+                 while a Skip pill is showing.
+
+                 UP is the scrubber, the same target every transport control
+                 uses. DOWN is play/pause rather than the right cluster
+                 sitting directly beneath it: those buttons (9130 to 9135 and
+                 9142) all share one position and are switched by visibility,
+                 so a static link there points at a control that is usually
+                 not focusable. 9121 is the one transport button always
+                 present, and is where the scrubber's own DOWN already goes. -->
             <control type="button" id="9751">
                 <posx>1610</posx>
                 <posy>952</posy>
@@ -2568,6 +2588,8 @@
                 <texturefocus>transparent-6px.png</texturefocus>
                 <texturenofocus>transparent-6px.png</texturenofocus>
                 <label></label>
+                <onup>9110</onup>
+                <ondown>9121</ondown>
             </control>
         </control>
 

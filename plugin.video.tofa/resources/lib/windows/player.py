@@ -118,10 +118,13 @@ _TICK_S = 0.2
 
 # 8.3's Next Up rail. The countdown is a stated hard contract; the lead is
 # "~30s before content end", which the spec allows stretching to 6 minutes
-# only when an outro MARKER says where the credits start. The server exposes
-# no such marker (see project_server_api_gaps), so the plain 30s is what we
-# can honestly do -- the clamp is recorded here so the number is not
-# mistaken for a free choice later.
+# only when an outro MARKER says where the credits start.
+#
+# This used to say the server exposed no such marker, and take the 30s
+# unconditionally. It does expose one: outro segments arrive on the QuickView
+# response that 8.5's skip pill has been reading all along, which is why they
+# were not found looking for a /markers endpoint. NEXT_UP_LEAD_S is now the
+# FALLBACK and the marker is preferred; see _next_up_reveal_ms.
 NEXT_UP_LEAD_S = 30.0
 NEXT_UP_LEAD_MARKER_MAX_S = 360.0
 NEXT_UP_COUNTDOWN_S = 20.0
@@ -407,6 +410,7 @@ class _PlayerUIPlayer(xbmc.Player):
 
     def onPlayBackResumed(self) -> None:
         self.window.setProperty("player_state", PlayerWindow.STATE_PLAYING)
+        self.window._release_next_up()
         self.window.hide_pause_card()
 
     def onPlayBackSeek(self, time: int, seekOffset: int) -> None:
@@ -872,6 +876,11 @@ class PlayerWindow(kodigui.ControlledDialog):
         # no longer answer "is the rail open".
         self._next_up_open = False
         self._next_up_deadline = 0.0   # monotonic; 0 = no countdown running
+        #: Seconds left on a countdown parked by a pause; 0 = not held. The
+        #: deadline is cleared while this is set, so the tick's countdown
+        #: block simply does not run and the ring and label stay where they
+        #: were. See _hold_next_up and _release_next_up.
+        self._next_up_hold = 0.0
         #: playback.auto_play_next, resolved once -- see _auto_play_next_mode
         self._auto_play_mode: Optional[str] = None
         self._next_up_focus_at = 0.0
@@ -2339,6 +2348,18 @@ class PlayerWindow(kodigui.ControlledDialog):
                 # once per segment rather than re-evaluated every tick.
                 self._skip_done.add(segment)
                 continue
+            if kind == "outro" and self.rail_owns_outro():
+                # The rail now OPENS at this marker rather than at a flat 30s
+                # (see _next_up_reveal_ms), so the pill would be raised and
+                # then suppressed a moment later by the block at the top of
+                # this method -- which is exactly the "Skip Credits, then Up
+                # Next" flicker reported from the box. The rail's Play Next
+                # already does everything Skip Credits does here and more, so
+                # the pill is not drawn for an outro at all. Intro, recap and
+                # preview are untouched: they are mid-file and the rail has
+                # nothing to say about them.
+                self._skip_done.add(segment)
+                continue
             # Nothing to skip TO: the spec's own guard, and the server's
             # number for it. Applies to BOTH actions -- an automatic seek of
             # under a second is a stutter, not a skip.
@@ -2944,6 +2965,13 @@ class PlayerWindow(kodigui.ControlledDialog):
             self._next_up_deadline = 0.0
             self.setProperty("nextup_seconds", "")
             self.setProperty("nextup_ring", "")
+        # Opening onto an already-paused stream: park the countdown at once
+        # rather than wait for a pause event that has already been and gone.
+        # Rare, because the rail is armed by POSITION and that does not move
+        # while paused -- but reachable by pausing in the instant it arms,
+        # and it would otherwise spend the full 20s against a still frame.
+        if self._paused():
+            self._hold_next_up()
         # Before the reveal, not after: the token the URL was staged with
         # may have expired during the episode. See _refresh_nextup_still.
         self._refresh_nextup_still()
@@ -2990,6 +3018,9 @@ class PlayerWindow(kodigui.ControlledDialog):
             return
         self._next_up_open = False
         self._next_up_deadline = 0.0
+        # A rail that closes while paused must not leave a parked countdown
+        # behind for the next resume to hand back to a rail that has gone.
+        self._next_up_hold = 0.0
         self._next_up_focus_at = 0.0
         self._next_up_dismissed = True
         self.setProperty("player_next_up", "")
@@ -3112,6 +3143,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._prev_episode = None
         self._next_up_open = False
         self._next_up_deadline = 0.0
+        # A rail that closes while paused must not leave a parked countdown
+        # behind for the next resume to hand back to a rail that has gone.
+        self._next_up_hold = 0.0
         self._next_up_focus_at = 0.0
         self._next_up_dismissed = False
         self.setProperty("player_next_up", "")
@@ -3680,6 +3714,10 @@ class PlayerWindow(kodigui.ControlledDialog):
 
         With the chrome already down there is no chrome-hide to wait for, so
         the same delay is measured from the pause itself."""
+        # BEFORE the early return below: the countdown has to stop whether or
+        # not the chrome happens to be up, and that return is only about
+        # which thing arms the pause card.
+        self._hold_next_up()
         if self._chrome_deadline:
             return          # chrome is up -- hide_chrome() arms it as usual
         if self.getProperty("player_state") == self.STATE_PAUSED:
@@ -4435,8 +4473,81 @@ class PlayerWindow(kodigui.ControlledDialog):
         # evaluated -- and because nothing opens, nothing auto-advances.
         if self._auto_play_next_mode() == AUTO_PLAY_NEXT_NONE:
             return
-        if self._duration_ms - self._position_ms() <= NEXT_UP_LEAD_S * 1000:
+        if self._position_ms() >= self._next_up_reveal_ms():
             self.show_next_up()
+
+    def _hold_next_up(self):
+        """Park the countdown for the duration of a pause.
+
+        8.3 calls the 20,000ms a hard contract, and this window used to read
+        that as "run it by wall clock whatever playback is doing" -- so
+        pausing under an open rail still advanced the next episode, and you
+        came back to find it already playing. The contract is about how LONG
+        the countdown is, not about ignoring the one key whose entire meaning
+        is "hold everything". The spec says nothing either way; this is the
+        behaviour Adrian expected without having read it.
+
+        The old worry was a timer frozen into a rail that never resolves.
+        That is not reachable: a hold only exists while Kodi reports the
+        stream paused, and the very next resume re-arms it."""
+        if self._next_up_open and self._next_up_deadline and not self._next_up_hold:
+            self._next_up_hold = max(
+                0.0, self._next_up_deadline - time.monotonic())
+            self._next_up_deadline = 0.0
+
+    def _release_next_up(self):
+        """Give back exactly what was left, not a fresh 20s."""
+        if self._next_up_hold:
+            self._next_up_deadline = time.monotonic() + self._next_up_hold
+            self._next_up_hold = 0.0
+
+    def _paused(self) -> bool:
+        return self.getProperty("player_state") == self.STATE_PAUSED
+
+    def _outro_start_ms(self):
+        """Where the credits start, or None if nothing detected them.
+
+        The LAST outro when there are several: that is the one that runs into
+        the end of the file. _load_segments has already dropped anything below
+        8.5's confidence floor, so whatever survives here is trusted."""
+        starts = [s[1] for s in self._segments if s[0] == "outro"]
+        return max(starts) if starts else None
+
+    def rail_owns_outro(self) -> bool:
+        """Is 8.3's rail going to take the outro moment for itself?
+
+        When it is, 8.5's pill must not also offer it -- see _tick_skip. When
+        it is NOT (a series finale with no next episode, or a viewer who set
+        auto-play to `none`) the pill is the only thing offering to move on,
+        so it stays."""
+        return (self._next_up is not None
+                and self._auto_play_next_mode() != AUTO_PLAY_NEXT_NONE)
+
+    def _next_up_reveal_ms(self) -> int:
+        """The position 8.3's rail opens at.
+
+        The plain reading of the spec is "~30s before content end absent an
+        outro marker, clamped <=6min from true end" -- so the 30s is the
+        FALLBACK and the marker is the real answer. player.py used to take
+        the fallback unconditionally, on the recorded grounds that the server
+        exposed no outro marker. It does now: they arrive on the QuickView
+        segments response, which is why they were not found under a name like
+        /markers, and _load_segments has been reading them for 8.5 all along.
+
+        Taking 30s when a marker existed is what put the rail and the Skip
+        Credits pill seconds apart describing the same moment: an outro
+        detected at 0:36 from the end raised the pill, and the rail replaced
+        it at 0:30. One moment, one surface."""
+        default_at = self._duration_ms - int(NEXT_UP_LEAD_S * 1000)
+        outro = self._outro_start_ms()
+        if outro is None:
+            return default_at
+        # Never LATER than the fallback: an outro detected 10s from the end
+        # would otherwise delay a rail that 8.3 wants up at 30s. And never
+        # more than 6 min early, which is the spec's own clamp and what keeps
+        # a mis-detected marker mid-episode from opening the rail there.
+        earliest = self._duration_ms - int(NEXT_UP_LEAD_MARKER_MAX_S * 1000)
+        return max(earliest, min(outro, default_at))
 
     def refresh_progress(self):
         """Drive the fill, the scrub head and the floating preview off ONE
