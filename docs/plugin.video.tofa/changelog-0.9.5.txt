@@ -1,0 +1,25 @@
+- The title page no longer keeps you waiting. The artwork and logo used to
+  appear at once and the Play row a moment later, which on a television is the
+  gap where you are already reaching for the remote. For a series it asked the
+  server for the same watch progress three times over and built the whole
+  episode grid before drawing the buttons; it now asks once and draws the
+  buttons first.
+- Skip Intro and Skip Credits no longer trap the remote. While one of those
+  buttons was showing you could not reach the progress bar or the transport
+  controls at all, and only Back or a press of the button itself got you out.
+  Up now goes to the progress bar and down to play/pause.
+- Up Next opens when the credits actually start, instead of thirty seconds
+  before the file ends. On a film or an episode whose credits tofa has
+  detected, that is the moment the rail is for. Skip Credits no longer appears
+  alongside it offering the same thing a few seconds earlier; it stays for the
+  last episode of a series, where nothing else offers to move on.
+- Pausing now holds the Up Next countdown. It used to keep running while the
+  film was stopped, so a pause with the rail up could return to find the next
+  episode already playing. It carries on from where it was when you resume.
+- The pause screen's synopsis keeps the bottom of its letters, and scrolls
+  when it is too long to fit rather than stopping mid-sentence.
+- The title page's synopsis no longer shows the top of a fifth line it has no
+  room for.
+- This version needs tofa server 0.9.31 or newer. 0.9.30 was withdrawn by
+  tofa; its Windows update could leave a server refusing to start, and on
+  Linux it would not install at all.
