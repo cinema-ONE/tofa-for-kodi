@@ -579,6 +579,15 @@ def action_play(params: dict[str, str]) -> None:
         notify(_(31033), xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.setResolvedUrl(HANDLE, False, xbmcgui.ListItem())
         return
+    except http.ApiError as exc:
+        # Same hole as windows/player.py, different surface. This one is a
+        # Kodi toast, gone in a few seconds, so it gets the SHORT sentence:
+        # the window's card can stay up and explain, a toast cannot. The
+        # useful half here is "not this one", not why.
+        log.warning(f"negotiate failed: {exc!r}")
+        notify(_(31121), xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.setResolvedUrl(HANDLE, False, xbmcgui.ListItem())
+        return
 
     if not playback.is_direct(resp):
         # No longer a prompt. This used to ask before playing anything other

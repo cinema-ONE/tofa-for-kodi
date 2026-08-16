@@ -466,3 +466,15 @@ msgctxt "#31118"
 msgid "Back"
 msgstr ""
 
+
+msgctxt "#31119"
+msgid "The server can't find this file any more. If it was moved or renamed, a library scan will put it back."
+msgstr ""
+
+msgctxt "#31120"
+msgid "The server couldn't start this file."
+msgstr ""
+
+msgctxt "#31121"
+msgid "This file isn't available right now."
+msgstr ""
