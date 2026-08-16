@@ -16,7 +16,7 @@ though it is built with the tofa team and against their design.
 
 **This is beta software.** It is in active development, still short of a 1.0,
 and things do change between releases. Expect the occasional rough edge, and
-please report what you find -- the issue tracker is below.
+please [report what you find](https://github.com/cinema-ONE/tofa-for-kodi/issues).
 
 ## Install
 
