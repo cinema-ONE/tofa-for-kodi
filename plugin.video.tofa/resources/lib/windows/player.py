@@ -118,10 +118,13 @@ _TICK_S = 0.2
 
 # 8.3's Next Up rail. The countdown is a stated hard contract; the lead is
 # "~30s before content end", which the spec allows stretching to 6 minutes
-# only when an outro MARKER says where the credits start. The server exposes
-# no such marker (see project_server_api_gaps), so the plain 30s is what we
-# can honestly do -- the clamp is recorded here so the number is not
-# mistaken for a free choice later.
+# only when an outro MARKER says where the credits start.
+#
+# This used to say the server exposed no such marker, and take the 30s
+# unconditionally. It does expose one: outro segments arrive on the QuickView
+# response that 8.5's skip pill has been reading all along, which is why they
+# were not found looking for a /markers endpoint. NEXT_UP_LEAD_S is now the
+# FALLBACK and the marker is preferred; see _next_up_reveal_ms.
 NEXT_UP_LEAD_S = 30.0
 NEXT_UP_LEAD_MARKER_MAX_S = 360.0
 NEXT_UP_COUNTDOWN_S = 20.0
@@ -2339,6 +2342,18 @@ class PlayerWindow(kodigui.ControlledDialog):
                 # once per segment rather than re-evaluated every tick.
                 self._skip_done.add(segment)
                 continue
+            if kind == "outro" and self.rail_owns_outro():
+                # The rail now OPENS at this marker rather than at a flat 30s
+                # (see _next_up_reveal_ms), so the pill would be raised and
+                # then suppressed a moment later by the block at the top of
+                # this method -- which is exactly the "Skip Credits, then Up
+                # Next" flicker reported from the box. The rail's Play Next
+                # already does everything Skip Credits does here and more, so
+                # the pill is not drawn for an outro at all. Intro, recap and
+                # preview are untouched: they are mid-file and the rail has
+                # nothing to say about them.
+                self._skip_done.add(segment)
+                continue
             # Nothing to skip TO: the spec's own guard, and the server's
             # number for it. Applies to BOTH actions -- an automatic seek of
             # under a second is a stutter, not a skip.
@@ -4435,8 +4450,53 @@ class PlayerWindow(kodigui.ControlledDialog):
         # evaluated -- and because nothing opens, nothing auto-advances.
         if self._auto_play_next_mode() == AUTO_PLAY_NEXT_NONE:
             return
-        if self._duration_ms - self._position_ms() <= NEXT_UP_LEAD_S * 1000:
+        if self._position_ms() >= self._next_up_reveal_ms():
             self.show_next_up()
+
+    def _outro_start_ms(self):
+        """Where the credits start, or None if nothing detected them.
+
+        The LAST outro when there are several: that is the one that runs into
+        the end of the file. _load_segments has already dropped anything below
+        8.5's confidence floor, so whatever survives here is trusted."""
+        starts = [s[1] for s in self._segments if s[0] == "outro"]
+        return max(starts) if starts else None
+
+    def rail_owns_outro(self) -> bool:
+        """Is 8.3's rail going to take the outro moment for itself?
+
+        When it is, 8.5's pill must not also offer it -- see _tick_skip. When
+        it is NOT (a series finale with no next episode, or a viewer who set
+        auto-play to `none`) the pill is the only thing offering to move on,
+        so it stays."""
+        return (self._next_up is not None
+                and self._auto_play_next_mode() != AUTO_PLAY_NEXT_NONE)
+
+    def _next_up_reveal_ms(self) -> int:
+        """The position 8.3's rail opens at.
+
+        The plain reading of the spec is "~30s before content end absent an
+        outro marker, clamped <=6min from true end" -- so the 30s is the
+        FALLBACK and the marker is the real answer. player.py used to take
+        the fallback unconditionally, on the recorded grounds that the server
+        exposed no outro marker. It does now: they arrive on the QuickView
+        segments response, which is why they were not found under a name like
+        /markers, and _load_segments has been reading them for 8.5 all along.
+
+        Taking 30s when a marker existed is what put the rail and the Skip
+        Credits pill seconds apart describing the same moment: an outro
+        detected at 0:36 from the end raised the pill, and the rail replaced
+        it at 0:30. One moment, one surface."""
+        default_at = self._duration_ms - int(NEXT_UP_LEAD_S * 1000)
+        outro = self._outro_start_ms()
+        if outro is None:
+            return default_at
+        # Never LATER than the fallback: an outro detected 10s from the end
+        # would otherwise delay a rail that 8.3 wants up at 30s. And never
+        # more than 6 min early, which is the spec's own clamp and what keeps
+        # a mis-detected marker mid-episode from opening the rail there.
+        earliest = self._duration_ms - int(NEXT_UP_LEAD_MARKER_MAX_S * 1000)
+        return max(earliest, min(outro, default_at))
 
     def refresh_progress(self):
         """Drive the fill, the scrub head and the floating preview off ONE
