@@ -116,8 +116,9 @@ def next_up(candidates: list, progress_map: dict, prefer_file_id: Any = None):
       0. one the CALLER named (Continue Watching knows its own episode)
       1. one already STARTED and not finished -- the MOST RECENTLY one,
          broken by `updated_at`, when several are part-watched
-      2. the first not-yet-completed, in season/episode order
-      3. the first episode, when everything is completed
+      2. the first not-yet-completed AFTER the highest completed episode
+      3. the first not-yet-completed, when there is no usable frontier
+      4. the first episode, when everything is completed
 
     Pure and side-effect free so both the detail hero and the card context
     menu can ask the same question and get the same answer. Detail owns the
@@ -137,6 +138,23 @@ def next_up(candidates: list, progress_map: dict, prefer_file_id: Any = None):
     if started:
         return max(started,
                    key=lambda c: (progress_map.get(c[3].get("id")) or {}).get("updated_at") or "")
+    # (2) Scanning from the top alone offers S1 E1 to a viewer whose history
+    # is a finished late season -- the same disagreement with Continue
+    # Watching that rule (1) exists to prevent, since the server promotes the
+    # episode after the last one FINISHED, not the earliest gap. A gap behind
+    # the frontier was skipped on purpose; ahead of it is where they are.
+    completed = [
+        c for c in candidates
+        if (progress_map.get(c[3].get("id")) or {}).get("completed")
+    ]
+    if completed:
+        frontier = max(completed, key=lambda c: (c[0], c[1]))
+        for c in candidates:
+            if (c[0], c[1]) <= (frontier[0], frontier[1]):
+                continue
+            prog = progress_map.get(c[3].get("id"))
+            if not prog or not prog.get("completed"):
+                return c
     for c in candidates:
         prog = progress_map.get(c[3].get("id"))
         if not prog or not prog.get("completed"):

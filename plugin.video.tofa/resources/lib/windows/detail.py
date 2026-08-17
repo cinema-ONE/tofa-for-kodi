@@ -1172,8 +1172,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
           0. one the CALLER named (Continue Watching knows its own episode)
           1. one already STARTED and not finished
-          2. the first not-yet-completed, in season/episode order
-          3. the first episode, when everything is completed
+          2. the first not-yet-completed AFTER the highest completed episode
+          3. the first not-yet-completed, when there is no usable frontier
+          4. the first episode, when everything is completed
 
         (1) exists because the first-unfinished rule alone disagreed with
         Continue Watching: a viewer who jumped straight into S1 E3 without
@@ -1182,6 +1183,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         screens one keypress apart. The reference app resumes the episode
         with progress on it, which is also the only one the word "Resume"
         is true of.
+
+        (2) is the same disagreement in its other form, and only shows up
+        once nothing is part-watched: someone who finished S3 and left no
+        episode mid-flight was offered S1 E1, because the earliest gap in a
+        long show is almost never where the viewer is. The server promotes
+        the episode after the last one FINISHED, so this matches it -- a gap
+        behind that frontier was skipped deliberately.
 
         Specials (season_number 0) are excluded throughout. Progress is
         looked up in one batch call across every candidate's file id.
