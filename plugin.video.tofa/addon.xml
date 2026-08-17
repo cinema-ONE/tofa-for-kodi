@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.7" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.8" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,18 +25,15 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - More Windows fixes, following 0.9.6. tofa could sign in but then forgot
-        everything it was told: the profile you picked was never saved, so it asked
-        again on every screen and your library came back empty. It could not hold on
-        to your sign-in either, which would eventually have logged the device out on
-        its own.
-      - On Windows, tofa's icons and fonts now install. They were silently refused
-        before, so the interface fell back to Kodi's own font, every icon showed as
-        an empty box, and tofa kept asking permission for something that had already
-        failed. Kodi's own seek bar no longer appears over tofa's player there.
-      - Installing from the repository no longer fails the first time. Adding tofa's
-        address to Kodi taught it that part of the update channel did not exist, so
-        the add-on could not be found until Kodi was restarted.
+      - A series now carries on from where you are. If you had finished a later
+        episode but skipped one earlier on, the details page went back and offered
+        the skipped one instead of the episode you were up to.
+      - Something you have finished no longer offers both Play and Rewatch. Both
+        started it from the beginning, so there was nothing to choose between them.
+      - Playback statistics now report the soundtrack's own channels. Where sound
+        is passed straight through to an amplifier, a 5.1 soundtrack was described
+        as 7.1: the panel was reading the connection carrying the sound rather than
+        the sound itself.
     </news>
     <assets>
       <icon>icon.png</icon>
