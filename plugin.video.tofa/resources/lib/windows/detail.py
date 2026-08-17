@@ -199,6 +199,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # row's progress sliver can be recomputed on a refresh without
         # re-fetching the file.
         self.play_duration_ms: int = 0
+        # Whether the server calls this title finished. Held as its own flag
+        # because it cannot be read back off the action row: Rewatch is no
+        # longer shown on a completed title (the primary already says Play),
+        # so `show_rewatch` stopped being a proxy for it.
+        self.play_completed: bool = False
         self.is_playable: bool = False
         self.tmdb_id: int | None = None
         self.content_media_type: str | None = None
@@ -820,6 +825,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("primary_label", "Unavailable")
             self.setProperty("primary_progress_fill", "")
             self.setProperty("show_rewatch", "")
+            self.play_completed = False
             return
 
         self.is_playable = True
@@ -844,12 +850,21 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         drift from a freshly-loaded one.
 
         Rewatch is the "start from the beginning" action, so it is meaningful
-        as soon as the primary button stops being a plain Play: mid-watch
-        (Resume) or already finished. Gating it on `completed` alone hid it
-        for every partially-watched title -- confirmed against the real Apple
-        TV app, which shows Resume and Rewatch side by side on a title only
-        ~2% in."""
-        if position_ms and not completed:
+        exactly while the primary button is NOT a plain Play -- that is,
+        mid-watch, when Resume would drop the viewer somewhere else. Gating it
+        on `completed` alone hid it for every partially-watched title --
+        confirmed against the real Apple TV app, which shows Resume and
+        Rewatch side by side on a title only ~2% in.
+
+        A FINISHED title is the case that reads wrong. The primary falls back
+        to Play, which already starts from the beginning, so a Rewatch beside
+        it is the same action under a second name and the viewer has to work
+        out which of two identical buttons they want. Offering both was
+        reported from the box on a film watched to the end. Two pills, one
+        behaviour: keep the one that says Play."""
+        resuming = bool(position_ms and not completed)
+        self.play_completed = bool(completed)
+        if resuming:
             self.resume_ms = position_ms
             self._set_primary_label(self._primary_label("Resume"))
             step = progress.fill_step(position_ms, self.play_duration_ms)
@@ -859,7 +874,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.resume_ms = 0
             self._set_primary_label(self._primary_label("Play"))
             self.setProperty("primary_progress_fill", "")
-        self.setProperty("show_rewatch", "1" if (position_ms or completed) else "")
+        self.setProperty("show_rewatch", "1" if resuming else "")
 
     def _progress(self, client: MediaServerClient, file_id: str, file_obj: dict):
         try:
@@ -1635,6 +1650,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._render_request_state(disc)
         self.setProperty("primary_progress_fill", "")
         self.setProperty("show_rewatch", "")
+        self.play_completed = False
         # Nothing to configure on a title the server does not hold.
         self.setProperty("hide_options", "1")
         self.is_playable = False
@@ -2306,7 +2322,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         media_id = self.media.get("id") or self.media_id
         keys = [k for k in cardoptions.option_keys(
             in_library=bool(media_id) and self.is_playable,
-            fully_watched=bool(self.getProperty("show_rewatch")) and not self.resume_ms,
+            fully_watched=self.play_completed,
             has_progress=bool(self.resume_ms),
             on_watchlist=self.on_watchlist,
             in_continue_watching=bool(self.resume_ms),
