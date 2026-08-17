@@ -63,7 +63,15 @@ need one specific version.
 
 An add-on installed this way is pinned: Kodi only auto-updates add-ons it knows
 came from a repository, so this copy will not update itself again. Reinstall it
-from the repository when you want updates to resume.
+from the repository when you want updates to resume. You can tell the two apart
+at a glance -- the add-on's information page shows **Origin: Manual** for a zip
+install, and **Origin: tofa Add-on Repository** for one Kodi is keeping current.
+
+**Keep a repository installed even if you install by hand.** The zip does not
+bundle the Python modules the add-on needs -- `requests`, and the `certifi`,
+`chardet`, `idna` and `urllib3` modules beneath it -- so Kodi fetches those from
+a repository as it installs. With no repository available and nothing in Kodi's
+package cache, the install fails on its dependencies.
 
 ## What doesn't work
 
@@ -76,5 +84,29 @@ These are the things worth trying first, and none of them help:
 - **Uninstalling the add-on and reinstalling it from the repository.** Kodi
   installs from its *cached* copy of the add-on list, so you get the same
   version back. Refresh the repository first, with either of the first two
-  methods above.
+  methods above -- and see below before uninstalling anything.
 - **Changing the Updates setting and changing it back.**
+
+## Reinstalling without losing your sign-in
+
+Everything the add-on stores -- your server pairing, the selected profile and
+your settings -- lives in Kodi's `addon_data` folder, separately from the add-on
+itself. So it survives a reinstall, with one exception worth knowing about.
+
+**To move to a new version by hand, install the new zip straight over the old
+one.** There is no need to uninstall first. Kodi treats it as an update, asks
+nothing, and nothing is lost.
+
+**If you do uninstall, Kodi asks a second question** after "Are you sure?":
+
+> Would you also like to remove all related data (e.g. settings) of this add-on?
+
+Answer **No** -- which is what it offers by default -- and everything is kept;
+reinstalling picks your sign-in and settings straight back up. Answer **Yes**
+and that folder is deleted: despite the wording mentioning only settings, your
+server pairing and profile go with it, and the next install starts as a new
+device that has to be paired again.
+
+Uninstalling also removes the shared Python modules described above, as nothing
+else is using them any more. They come back with the next install, provided a
+repository is still available to supply them.
