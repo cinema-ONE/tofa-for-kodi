@@ -275,6 +275,35 @@ def _channels(layout: str) -> str:
     return f"{tier} ({layout})" if tier else layout
 
 
+def _source_channels(layout: str, count: int, passthrough: bool) -> str:
+    """The TRACK's own channel layout, which is not what the audio engine
+    reports once a bitstream is being passed through.
+
+    PASSTHROUGH INFLATES `Player.Process(audiochannels)` TO 7.1. Measured on
+    the box against a DTS-HD MA 5.1 film: with `pt-dtshd` both `audiochannels`
+    and `audiochannelssink` read `FL, FR, FC, LFE, BL, BR, SL, SR`, while the
+    same file decoded locally (`ff-dca`) reads the correct six. Nothing is
+    upmixing it -- a passthrough bitstream rides inside an 8-channel IEC 61937
+    frame, so the engine is describing the CARRIER, not the programme. The
+    panel printed the carrier as the source's own layout and told the viewer
+    their 5.1 film was 7.1.
+
+    `VideoPlayer.AudioChannels` is the demuxer's count for the stream that is
+    actually playing, so it is right in both modes and needs no track-index
+    matching -- the same reason the Codec row above prefers
+    `VideoPlayer.AudioCodec`. The speaker NAMES only survive when the engine
+    is decoding; under passthrough there is no honest list to print, so the
+    tier stands alone rather than being dressed up with the carrier's."""
+    if not count:
+        # No demuxer count: the engine's layout is all there is, and it is
+        # trustworthy whenever it is not describing a passthrough carrier.
+        return MISSING if passthrough else _channels(layout)
+    tier = _CHANNEL_LAYOUTS.get(count) or f"{count}ch"
+    if passthrough or _channel_count(layout) != count:
+        return tier
+    return f"{tier} ({layout})"
+
+
 # ------------------------------------------------------------------ build --
 
 
@@ -466,8 +495,13 @@ def _rows(nego: dict[str, Any], selection, position: str,
     # worst kind of wrong: confident, prominent, and backwards.
     passthrough = _label("Player.Process(audiodecoder)").lower().startswith(
         _PASSTHROUGH_PREFIX)
-    downmixed = bool(not passthrough and sink and channels
-                     and _channel_count(sink) < _channel_count(channels))
+    source_count = int(_number("VideoPlayer.AudioChannels") or 0)
+    # The downmix test compares the sink against the SOURCE, not against the
+    # engine's layout: those are the same number while decoding, and under
+    # passthrough the engine's is the carrier's 8 (see _source_channels), so
+    # comparing against it would go on being wrong for a different reason.
+    downmixed = bool(not passthrough and sink and source_count
+                     and _channel_count(sink) < source_count)
 
     # Not every fact HAS an opposite number, and inventing one is worse than
     # leaving the cell empty: pairing "Container" with a bitrate would put two
@@ -539,7 +573,7 @@ def _rows(nego: dict[str, Any], selection, position: str,
               tracks.audio_codec_name(
                   _label("VideoPlayer.AudioCodec") or nego.get("audio_codec")) or MISSING,
               _join(audio_decoder, audio_engine)),
-        _pair("Channels", _channels(channels),
+        _pair("Channels", _source_channels(channels, source_count, passthrough),
               MISSING if (passthrough or not sink) else _channels(sink),
               CORE, warn=downmixed),
         _pair("Format",
