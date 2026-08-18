@@ -17274,7 +17274,7 @@
                                 <width>660</width>
                                 <height>128</height>
                                 <colordiffuse>0x06FFFFFF</colordiffuse>
-                                <texture border="20">rounded-20.png</texture>
+                                <texture>exact-rounded-20-660x128.png</texture>
                             </control>
                             <control type="label">
                                 <posx>19</posx>
