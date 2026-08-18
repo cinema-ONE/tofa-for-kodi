@@ -326,6 +326,10 @@ def render_main() -> str:
         settings_quality_eyebrow=settings_quality_eyebrow,
         settings_direct_item=settings_direct_item,
         settings_direct_focused=settings_direct_focused,
+        settings_connection_note=fragments.settings_note_card(
+            posy=T.SETTINGS_ACCOUNT_RELAY_NOTE_Y, title="Connection",
+            body_property="settings_connection_body",
+            height=T.SETTINGS_ACCOUNT_RELAY_NOTE_H),
         settings_fox_item=settings_fox_item,
         settings_fox_focused=settings_fox_focused,
         # Group-relative, not absolute: inside a grouplist child, posy 0 is

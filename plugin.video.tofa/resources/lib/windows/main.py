@@ -4733,9 +4733,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_switch_server_list.addItems([server])
 
         direct = kodigui.ManagedListItem(label="Direct connections only")
+        # Kept to ONE rendered line: the row's summary is a fixed-width label
+        # that ellipsises, not a textbox, so "...even if it is the only way"
+        # lost its tail off the right edge. The fuller "what the relay is"
+        # explanation now lives in the CONNECTION note below, so this can be
+        # terse -- it only has to say what the toggle DOES.
         direct.setProperty(
             "summary",
-            "Never connect through the tofa relay, even if it is the only way")
+            "Never use the tofa relay, even if it's the only way")
         self.settings_direct_list.reset()
         self.settings_direct_list.addItems([direct])
 
@@ -4821,6 +4826,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 me = client.whoami() or {}
             except http.ApiError as exc:
                 log.warning("settings: whoami failed: {0}".format(exc))
+        # AFTER whoami: a call that started on the LAN address and fell back to
+        # the relay has already swapped base_url by now, so the note reports
+        # the route actually carrying traffic rather than what pairing stored.
+        self._settings_fill_connection(client)
 
         # The app's row here is "Email", showing the tofa account address.
         # The media server has no email field at all -- its User record is
@@ -6047,6 +6056,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         item = self.settings_direct_list.getListItem(0)
         if item is not None:
             item.setProperty("checked", "1" if auth.direct_only() else "")
+
+    def _settings_fill_connection(self, client):
+        """CONNECTION's read-only note: how THIS box is reaching the server.
+
+        Read off the client's LIVE base_url rather than the stored pairing:
+        _request swaps base_url to the fallback on a successful retry, so by
+        the time Settings loads this reflects the address actually in use.
+        auth.is_relay_url answers for both the `<uuid>.connect.tofa.tv` relay
+        host and the cloud proxy path. The web app shows the same warning as a
+        banner; a 10-foot UI puts it here, next to the toggle that governs it,
+        rather than over Home."""
+        base = getattr(client, "base_url", "") if client else ""
+        if base and auth.is_relay_url(base):
+            body = ("Routed through tofa's relay, which can be slower. Forward "
+                    "your server's port to connect directly.")
+        elif base:
+            body = "Connected directly to your server."
+        else:
+            body = ""
+        self.setProperty("settings_connection_body", body)
 
     def _settings_fill_region(self):
         code = self._ensure_preferences().get("region") or ""

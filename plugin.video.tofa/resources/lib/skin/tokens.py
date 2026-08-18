@@ -807,8 +807,19 @@ SETTINGS_ACCOUNT_TAIL_SERVER_Y = (
 SETTINGS_ACCOUNT_CONNECTION_ROW_Y = (
     SETTINGS_ACCOUNT_TAIL_SERVER_Y + 2 * SETTINGS_VALUE_ROW_STACKED_H
     + SETTINGS_GROUP_GAP)
+# A read-only note under the CONNECTION toggle, reporting how THIS box is
+# actually reaching the server (direct or through tofa's relay). It rides
+# inside the tail child rather than in a child of its own, for the same
+# reason ACCOUNT and SERVER do: a focusless grouplist child eats a keypress.
+# Two body lines, so it stays short enough that the whole tail child still
+# fits the 699 viewport (project_kodi_grouplist_scroll_limit) -- a 3-line
+# card would push the bottom past it. Only the toggle above it takes focus,
+# so the card can hang a few px into the trail without stranding anything.
+SETTINGS_ACCOUNT_RELAY_NOTE_Y = (
+    SETTINGS_ACCOUNT_CONNECTION_ROW_Y + SETTINGS_ACTION_ROW_H + 6)
+SETTINGS_ACCOUNT_RELAY_NOTE_H = 18 + 34 + 4 + 2 * 27 + 18  # 128, two body lines
 SETTINGS_ACCOUNT_TAIL_GROUP_H = (
-    SETTINGS_ACCOUNT_CONNECTION_ROW_Y + SETTINGS_ACTION_ROW_H
+    SETTINGS_ACCOUNT_RELAY_NOTE_Y + SETTINGS_ACCOUNT_RELAY_NOTE_H
     + SETTINGS_GROUP_TRAIL)
 SETTINGS_FOX_BLURB_ABS_Y = SETTINGS_SECTION_BAND + SETTINGS_FOX_BLURB_Y
 SETTINGS_FOX_GRID_ABS_Y = SETTINGS_SECTION_BAND + SETTINGS_FOX_GRID_Y
