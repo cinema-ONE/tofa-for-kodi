@@ -9,7 +9,7 @@ GlobalProperty, waitForVisibility.
 
 Stripped of everything Plex-specific so this imports cleanly on xbmc/xbmcgui/
 xbmcaddon/xbmcvfs/os/sys alone -- no plexnet, no plexapp, no Jinja templating
-(tofa-kodi uses static XML, not plex-for-kodi's templated skins).
+(tofa-for-kodi uses static XML, not plex-for-kodi's templated skins).
 
 Two small Plex-specific pieces were load-bearing for the framework but not
 deep coupling, so they're replaced below with minimal local stand-ins

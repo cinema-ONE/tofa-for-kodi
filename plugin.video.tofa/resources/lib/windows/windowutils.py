@@ -7,7 +7,7 @@ Source: lib/windows/windowutils.py. Ported: GoHomeMixin, UtilMixin (minus
 Dropped two pieces as genuinely Plex-domain, not framework:
 - `getNextShowEp` (up-next episode picker + its resume/play-from-beginning
   dropdown prompt) -- Plex playlist/episode object logic. Port later
-  alongside episode browsing if/when tofa-kodi grows a custom episodes
+  alongside episode browsing if/when this add-on grows a custom episodes
   window.
 - `UtilMixin.openItem` -- routed through plex-for-kodi's `opener.py`, which
   dispatches on `obj.TYPE` (`movie`/`show`/`episode`/`playlist`/...) against
