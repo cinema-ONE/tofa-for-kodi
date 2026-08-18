@@ -177,8 +177,8 @@ PRESETS = (
     ("Snow", "F1EFE8", "tofa-logo-snow.png"),
 )
 
-# Cached for the lifetime of this process only -- most tofa-kodi entry
-# points (addon.py's plugin:// dispatch) are a fresh Python process per
+# Cached for the lifetime of this process only -- most of this add-on's
+# entry points (addon.py's plugin:// dispatch) are a fresh Python process per
 # invocation anyway, so this just avoids 2-3 redundant whoami() round
 # trips within a single window's own onFirstInit (accent_color,
 # accent_pill_fill, logo_file all resolve the same underlying hex).
