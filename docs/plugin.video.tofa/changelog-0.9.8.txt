@@ -1,0 +1,9 @@
+- A series now carries on from where you are. If you had finished a later
+  episode but skipped one earlier on, the details page went back and offered
+  the skipped one instead of the episode you were up to.
+- Something you have finished no longer offers both Play and Rewatch. Both
+  started it from the beginning, so there was nothing to choose between them.
+- Playback statistics now report the soundtrack's own channels. Where sound
+  is passed straight through to an amplifier, a 5.1 soundtrack was described
+  as 7.1: the panel was reading the connection carrying the sound rather than
+  the sound itself.
