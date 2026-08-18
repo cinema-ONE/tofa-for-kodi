@@ -62,6 +62,7 @@ one up while the old URL still resolves.
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import ipaddress
 import json
@@ -923,6 +924,24 @@ def custom_domain(base_url: str) -> str | None:
 #: dist/repo and that gets copied here, so this is "what is already public".
 PUBLISHED_DIR = os.path.join(ROOT, "docs")
 
+#: How many versions of the add-on the channel offers at once, newest included.
+#: `None` means every version ever published.
+#:
+#: Kodi's add-on browser has a "Versions" button that lists every version a
+#: repository declares, and lets the user install any of them -- which is the
+#: only way back for someone a bad release has broken. We published exactly
+#: one version until 0.9.9, so that button offered a single entry and there
+#: was no route back at all: the previous zip is deleted from the channel by
+#: the publish rsync, and the GitHub release pages for 0.9.8 and 0.9.9 carry
+#: no uploaded copy either. The old zips survive ONLY inside their tags'
+#: trees, which is a git operation, not something a viewer can do.
+#:
+#: Three is current + two behind: enough to step back past a bad release even
+#: if it is noticed a release late, without the channel growing forever. Raise
+#: it, or set it to None, whenever that trade changes -- everything else keys
+#: off this number.
+KEEP_VERSIONS: int | None = 3
+
 
 def republish_problems(version: str) -> list[str]:
     """Would this publish change an ALREADY-PUBLISHED version's contents?
@@ -970,8 +989,101 @@ def republish_problems(version: str) -> list[str]:
             "deliberate." % (zip_name, len(changed), shown)]
 
 
+#: `plugin.video.tofa-<version>.zip`, the only name a published zip may have.
+#: Kodi can fetch an arbitrary filename -- every entry states its own <path>,
+#: so the name is technically free -- but the copy it caches under
+#: special://home/addons/packages/ is named from the URL's basename, and both
+#: the Versions dialog's local-cache list and its "reinstall from cache" branch
+#: parse that basename back into (id, version). Deviate and the cached copy
+#: reads as the wrong version. Read out of Kodi's own AddonVersion/
+#: GUIDialogAddonInfo, not assumed.
+_ZIP_NAME_RE = re.compile(r"^plugin\.video\.tofa-(.+)\.zip$")
+
+
+def previously_published(current: str) -> list[str]:
+    """Versions already live on the channel, NEWEST FIRST, without `current`.
+
+    Read off the served tree rather than from git or a hand-kept list: docs/
+    IS the channel, so what is in it is exactly what users can still be
+    offered. A version whose zip has gone is simply no longer carried.
+
+    Sorted by Kodi's own version order (`compare`), not lexically -- 0.9.10
+    sorts above 0.9.9 to Kodi and below it to a string sort, so the wrong one
+    would be dropped first the moment a two-digit patch lands.
+    """
+    folder = os.path.join(PUBLISHED_DIR, "plugin.video.tofa")
+    if not os.path.isdir(folder):
+        return []
+    found = []
+    for name in os.listdir(folder):
+        match = _ZIP_NAME_RE.match(name)
+        if match and match.group(1) != current:
+            found.append(match.group(1))
+    return sorted(found, key=functools.cmp_to_key(compare), reverse=True)
+
+
+def _carry_previous(out_dir: str, current: str,
+                    keep: int | None) -> list[str]:
+    """Copy the versions we still offer into the new tree, and index them.
+
+    Kodi holds several versions of one add-on as several `<addon>` elements
+    with the same id in ONE addons.xml -- nothing dedupes them at parse, at
+    the database (addonID is a NON-unique index), or in the Versions dialog,
+    and their order in the file is irrelevant because "newest" is decided by
+    comparing versions. Verified against Kodi's own source, and against a
+    working example: pannal's Omega index is 103 entries over 11 add-ons.
+
+    Each carried version is indexed from the addon.xml INSIDE its own zip, so
+    an entry always describes the artifact it points at. Rebuilding it from
+    today's addon.xml would quietly relabel an old zip with the new version's
+    metadata, which is the one mistake that would make the whole feature lie.
+    """
+    if keep is not None and keep <= 1:
+        return []
+    wanted = previously_published(current)
+    if keep is not None:
+        wanted = wanted[:keep - 1]
+    folder = os.path.join(out_dir, "plugin.video.tofa")
+    entries = []
+    for version in wanted:
+        name = "plugin.video.tofa-%s.zip" % version
+        source = os.path.join(PUBLISHED_DIR, "plugin.video.tofa", name)
+        try:
+            with zipfile.ZipFile(source) as archive:
+                old_xml = archive.read(
+                    "plugin.video.tofa/addon.xml").decode("utf-8")
+        except (OSError, KeyError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
+            print("  not carrying %s: %s" % (version, exc))
+            continue
+        # The zip's NAME and the version inside it must agree, or the channel
+        # would offer "0.9.8" and hand over something else entirely.
+        try:
+            inside = current_version(old_xml)
+        except SystemExit:
+            print("  not carrying %s: its addon.xml has no version" % version)
+            continue
+        if inside != version:
+            print("  not carrying %s: the zip contains %s" % (version, inside))
+            continue
+        os.makedirs(folder, exist_ok=True)
+        with open(source, "rb") as handle:
+            data = handle.read()
+        _write_with_digest(os.path.join(folder, name), data)
+        # Regenerated from changelog.txt rather than copied from the old tree:
+        # one source of truth, and it still works if the old file is missing.
+        old_news = news_for(version)
+        if old_news:
+            with open(os.path.join(folder, "changelog-%s.txt" % version),
+                      "w", encoding="utf-8") as handle:
+                handle.write(old_news)
+        entries.append(_index_entry(
+            old_xml, "plugin.video.tofa/%s" % name, len(data)))
+        print("  also offering %s" % version)
+    return entries
+
+
 def do_publish(base_url: str | None, out_dir: str,
-               republish: bool = False) -> int:
+               republish: bool = False, keep: int | None = KEEP_VERSIONS) -> int:
     base_url = (base_url or BASE_URL or "").rstrip("/")
     if not base_url:
         print("publish needs the URL this tree will be served from, e.g.\n"
@@ -1014,6 +1126,10 @@ def do_publish(base_url: str | None, out_dir: str,
     news = news_for(version) or ""
     rel, size = _stage(out_dir, "plugin.video.tofa", addon_zip, art, news)
     entries.append(_index_entry(read_addon_xml(), rel, size))
+    # The versions behind this one, so Kodi's "Versions" button can offer a
+    # way back off a bad release. Carried BEFORE the repository add-on's entry
+    # only because it reads better in the file; Kodi does not care.
+    entries.extend(_carry_previous(out_dir, version, keep))
 
     # The repository add-on, built from scratch each time so its URLs cannot
     # drift from what this run was told.
@@ -1160,6 +1276,10 @@ def main() -> int:
     pub.add_argument("--republish", action="store_true",
                      help="replace an already-published version whose "
                           "contents have changed (normally refused)")
+    pub.add_argument("--keep", default=str(KEEP_VERSIONS),
+                     help="how many versions the channel offers at once, "
+                          "newest included, or 'all' (default: %s)"
+                          % KEEP_VERSIONS)
     setter = sub.add_parser("set", help="set the version")
     setter.add_argument("version")
     server = sub.add_parser(
@@ -1179,7 +1299,19 @@ def main() -> int:
     if args.command == "package":
         return do_package()
     if args.command == "publish":
-        return do_publish(args.base_url, args.out, args.republish)
+        keep: int | None
+        if str(args.keep).strip().lower() in ("all", "none", ""):
+            keep = None
+        else:
+            try:
+                keep = int(args.keep)
+            except ValueError:
+                print("--keep takes a number or 'all', got %r" % args.keep)
+                return 1
+            if keep < 1:
+                print("--keep must be at least 1 (the version being published)")
+                return 1
+        return do_publish(args.base_url, args.out, args.republish, keep)
     return do_check()
 
 
