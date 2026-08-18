@@ -4819,6 +4819,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_wire_playback_nav()
         self._settings_wire_appearance_nav()
 
+        _t0 = time.monotonic()
         client = self._get_client()
         me: dict = {}
         if client is not None:
@@ -4831,35 +4832,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # the route actually carrying traffic rather than what pairing stored.
         self._settings_fill_connection(client)
 
-        # The app's row here is "Email", showing the tofa account address.
-        # The media server has no email field at all -- its User record is
-        # id / username / avatar_path / preferences / is_admin -- and the
-        # address lives only on the cloud account, which this client stops
-        # holding a token for once pairing finishes. So the row names what
-        # we can actually answer. Filed under the server-API-gaps issue.
-        username = me.get("username") or ""
-        # The ACCOUNT's own address, which only the cloud knows. Falls back
-        # to the media server's username, which is all this page could show
-        # before the pairing started keeping a cloud refresh token.
-        identity = self._settings_account_identity()
-        account_line = (identity.get("email") or username)
-        if account_line:
-            # The ACCOUNT row's value column is wide; the identity card is
-            # 310px and the sidebar row 284, and a real address overruns
-            # both. Cut the MIDDLE rather than let Kodi cut the end, which
-            # would drop the domain -- see textmetrics.middle_ellipsis.
-            # The value column is `width // 2 - 40` = 290px, narrower than
-            # the card's 310, so this one truncates hardest of the three.
-            self.setProperty("settings_email", textmetrics.middle_ellipsis(
-                account_line, 290, font_size=24))
-            # FULL, not truncated: the card's font is tofa_font_account
-            # (semibold 20) rather than metadata 23, and the address fits at
-            # that size -- which is exactly why the app shows it whole here
-            # and we could not.
-            self.setProperty("settings_account_line", account_line)
-            self._settings_nav_account_line = textmetrics.middle_ellipsis(
-                account_line, 284)
-
+        # ORDER MATTERS on this page. Every fill below the email is LAN-fast --
+        # system_info, the profile list, avatars off it -- while the email
+        # alone is a CLOUD lookup: two internet round trips (mint a 15-minute
+        # token, then GET /v1/me). It used to run FIRST, so the whole Account
+        # view sat blank behind it -- measured on MACBOT at 0.16s of a 0.22s
+        # load, and much worse from a box across the internet, which is what
+        # "it takes a while for the values to appear" was. So the LAN data is
+        # painted first and the email is fetched LAST; the page fills at once
+        # and the address drops in a beat later.
         server_name, library_count = self._settings_server_summary(client)
         # The sidebar card's second line, e.g. "MEDIA-NAS - 4 libraries" -- or
         # "1 library", singular, on a server with one. A fresh server has
@@ -4890,6 +4871,36 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_avatar", self._settings_avatar_texture(profile))
         self.setProperty("settings_avatar_initial",
                          self._settings_avatar_initials(profile))
+
+        # LAST, because it is the slow one -- see the ORDER MATTERS note above.
+        # The app's row here is "Email", showing the tofa account address. The
+        # media server has no email field at all -- its User record is id /
+        # username / avatar_path / preferences / is_admin -- and the address
+        # lives only on the cloud account, which this client stops holding a
+        # token for once pairing finishes. So the row names what we can
+        # actually answer. Falls back to the media server's username, all this
+        # page could show before pairing started keeping a cloud refresh token.
+        username = me.get("username") or ""
+        identity = self._settings_account_identity()
+        account_line = (identity.get("email") or username)
+        if account_line:
+            # The ACCOUNT row's value column is wide; the identity card is
+            # 310px and the sidebar row 284, and a real address overruns
+            # both. Cut the MIDDLE rather than let Kodi cut the end, which
+            # would drop the domain -- see textmetrics.middle_ellipsis.
+            # The value column is `width // 2 - 40` = 290px, narrower than
+            # the card's 310, so this one truncates hardest of the three.
+            self.setProperty("settings_email", textmetrics.middle_ellipsis(
+                account_line, 290, font_size=24))
+            # FULL, not truncated: the card's font is tofa_font_account
+            # (semibold 20) rather than metadata 23, and the address fits at
+            # that size -- which is exactly why the app shows it whole here
+            # and we could not.
+            self.setProperty("settings_account_line", account_line)
+            self._settings_nav_account_line = textmetrics.middle_ellipsis(
+                account_line, 284)
+        log.info("settings: Account page filled in {0:.2f}s".format(
+            time.monotonic() - _t0))
 
         # Sidebar subtitles. Account's is the signed-in name and Appearance's
         # names the chosen fox; the rest DESCRIBE the page rather than
