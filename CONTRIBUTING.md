@@ -243,6 +243,24 @@ should not recur -- but the tags from before that guard need reading this way.
 list and the tag beside each row. Nothing reads the title -- Kodi installs
 from `addons.xml` and never sees the releases page.
 
+**Attach the add-on zip to every release.** The channel only serves the
+handful of versions `publish` keeps (`--keep`, default 3), so the releases
+page is the archive of record for everything older, and the only copy anyone
+outside the project can reach. Create the release with the zip in the same
+command, so it cannot be forgotten:
+
+```
+gh release create v<version> --verify-tag --title "<version>" \
+    --notes-file <notes> docs/plugin.video.tofa/plugin.video.tofa-<version>.zip
+```
+
+This was not done consistently: of the first eight releases only three
+carried the zip, and the five that did not included the two most recent --
+exactly the ones a rollback would want. They were backfilled on 2026-08-18
+from each tag's own tree, every one matching the sha256 recorded when it was
+published. Attach only the add-on zip; `repository.tofa`'s is identical on
+every release and would just repeat itself.
+
 Merges to `main` keep their history (`--ff-only`, or `--no-ff` if `main` has
 moved on). Do not squash: the commit messages here carry reasoning that is
 recorded nowhere else, and squashing throws it away.
