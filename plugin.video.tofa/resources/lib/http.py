@@ -11,7 +11,18 @@ import requests
 
 from . import branding, clientinfo
 
-USER_AGENT = "tofa-kodi/0.1.0"
+#: The product token every request carries. `tofa-for-kodi` is this repo, and
+#: the add-on it ships -- NOT `tofa-vault`, which is the internals repo beside
+#: it and makes no requests of its own. It was `tofa-kodi/0.1.0` until
+#: 2026-08-18: a name the vault gave up when it was renamed, and a version
+#: frozen at 0.1.0 for the whole of 0.9.x.
+#:
+#: The version is read from addon.xml rather than written here, for the same
+#: reason the name is (see branding.py): a second copy is only a copy that
+#: drifts, and this one had. Nothing on the server reads it -- the analytics
+#: bucket on X-Tofa-Client-Version below -- but it is what a Cloudflare or
+#: nginx log shows, so it should not lie about which build made the call.
+USER_AGENT = f"tofa-for-kodi/{branding.app_version()}"
 
 #: How this client names itself to the server. Read by middleware, NOT
 #: declared in the OpenAPI spec -- the only trace there is prose on the
