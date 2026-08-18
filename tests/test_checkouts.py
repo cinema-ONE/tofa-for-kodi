@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Finding the other checkout, once the add-on and the vault are two trees.
 
-`tofa-for-kodi` becomes the working repo and `tofa-kodi` is demoted to an
+`tofa-for-kodi` becomes the working repo and `tofa-vault` is demoted to an
 internals vault beside it. Tools break in both directions: the ones that
 travel need tofa's confidential documents (check_public_set, release.py
 check), and the ones that stay need the add-on (every live-box probe).
@@ -9,7 +9,7 @@ check), and the ones that stay need the add-on (every live-box probe).
 Two properties matter more than the resolution itself.
 
   1. A checkout is identified by CONTENT, never by its directory name. The
-     clones happen to be `kodi-client-for-tofa` and `tofa-for-kodi` today,
+     clones happen to be `tofa-vault` and `tofa-for-kodi` today,
      but a name belongs to whoever ran `git clone`.
   2. Not finding one answers None. Every caller is verifying something, and
      a resolver that invents a fallback turns a gate into a decoration --

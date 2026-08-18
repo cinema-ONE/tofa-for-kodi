@@ -2,8 +2,9 @@
 """Find the OTHER checkout, once the add-on and the vault stop being one tree.
 
 The plan (MANIFEST.md) is that `tofa-for-kodi` becomes the working repo and
-`tofa-kodi` is demoted to an internals vault checked out beside it. Two kinds
-of tool break the moment that happens, in opposite directions:
+`tofa-vault` (renamed from `tofa-kodi` on 2026-08-18) is demoted to an
+internals vault checked out beside it. Two kinds of tool break the moment
+that happens, in opposite directions:
 
 * Tools that TRAVEL and need private material. `check_public_set` compares
   the public file set against tofa's confidential documents, and
@@ -17,8 +18,8 @@ Both are the same question -- "where is the sibling checkout that has X" --
 so it is answered once, here.
 
 WHY A MARKER FILE RATHER THAN A DIRECTORY NAME. The two clones happen to be
-`~/code/kodi-client-for-tofa` and `~/code/tofa-for-kodi` today, but a name is
-a property of whoever ran `git clone`, not of the repository. A fresh clone
+`~/code/tofa-vault` and `~/code/tofa-for-kodi` today, but a name is a
+property of whoever ran `git clone`, not of the repository. A fresh clone
 with a different name would silently resolve to nothing, and "silently" is
 the failure mode this whole area keeps producing. Content is the honest test.
 
