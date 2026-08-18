@@ -239,7 +239,8 @@ def main() -> None:
     print(f"wrote {_OUTPUT_PATH} ({len(html) / 1024:.0f} KB)")
 
 
-HTML_TEMPLATE = r"""<title>tofa-kodi Design Language</title>
+HTML_TEMPLATE = r"""<meta charset="utf-8" />
+<title>tofa for Kodi Design Language</title>
 <style>
 @font-face {{ font-family: 'Inter Tight'; font-weight: 400; src: url(data:font/ttf;base64,{inter_reg}) format('truetype'); }}
 @font-face {{ font-family: 'Inter Tight'; font-weight: 600; src: url(data:font/ttf;base64,{inter_semi}) format('truetype'); }}
@@ -403,7 +404,7 @@ footer code {{ font-family: 'Roboto Mono'; background: rgba(255,255,255,0.08); p
 
   <main class="main">
     <div class="hero">
-      <h1>tofa-kodi Design Language</h1>
+      <h1>tofa for Kodi Design Language</h1>
       <p>Every distinctly-styled control in the add-on's window UI &mdash; cards, pills, rows, badges, input, panels &mdash; in every state it actually renders, with the exact fill/border/radius/font/color values behind it. Built from <code class="mono">fragments.py</code>, <code class="mono">theme.py</code>, <code class="mono">fontinstall.py</code> and the hand-authored screen XML, not eyeballed off screenshots.</p>
       <p class="src">Real typefaces (Inter Tight, Roboto Mono) and the real Lucide icon glyphs are embedded &mdash; this renders in the exact fonts the live app uses. See the <a href="#" id="iconRefLink">icon reference tool</a> for the full 2,027-icon Lucide catalog; this page only shows the glyphs already wired into a component.</p>
     </div>

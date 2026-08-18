@@ -236,7 +236,12 @@ def build() -> str:
         "     Run `python3 tools/gen_icon_reference.py` to refresh after\n"
         "     changing resources/lib/skin/icon_glyphs.py. -->\n"
     )
-    parts.append("<title>tofa-kodi — Icon Glyph Reference</title>\n")
+    # Must come before the first non-ASCII byte, and inside the first 1024.
+    # Without it a browser guesses, and guesses latin-1 for this file: the
+    # em dash in the title below renders as "â€"", as do the curly quotes
+    # and dashes throughout the dek and the section headings.
+    parts.append("<meta charset=\"utf-8\" />\n")
+    parts.append("<title>tofa for Kodi — Icon Glyph Reference</title>\n")
     parts.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n")
     parts.append("<style>\n")
     parts.append(f"""
@@ -586,7 +591,7 @@ footer code { font-family: "SCP", monospace; background: var(--bg-inset); paddin
 
     parts.append("<header class=\"masthead\">\n<div class=\"masthead-inner\">\n")
     parts.append("<button class=\"theme-toggle\" id=\"themeToggle\" type=\"button\" aria-label=\"Toggle color theme\">◐ theme</button>\n")
-    parts.append("<div class=\"prompt\">tofa-kodi / resources/lib/skin/icon_glyphs.py<span class=\"cursor\"></span></div>\n")
+    parts.append("<div class=\"prompt\">tofa-for-kodi / resources/lib/skin/icon_glyphs.py<span class=\"cursor\"></span></div>\n")
     parts.append("<h1 class=\"title\">Icon Glyph Reference<span class=\"dim\">.</span></h1>\n")
     parts.append(
         "<p class=\"dek\">Every Lucide glyph currently wired into the add-on’s UI, rendered from "
