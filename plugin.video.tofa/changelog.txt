@@ -1,3 +1,16 @@
+0.9.9
+- After you finish an episode, the details page now describes the NEXT
+  episode, not the one you just watched. The Play button already moved on to
+  the next episode, but the synopsis and the audio and video badges stayed
+  behind on the one that had just ended.
+- Settings now tells you how this device is reaching your server: connected
+  directly, or through tofa's relay. On the relay everything travels through
+  tofa, video included, so it can be slower -- and until now nothing on
+  screen said which one you were on.
+- The Account page in Settings fills in the moment it opens. It used to leave
+  the panel blank for a beat while it waited on one slower lookup before
+  showing anything.
+
 0.9.8
 - A series now carries on from where you are. If you had finished a later
   episode but skipped one earlier on, the details page went back and offered
