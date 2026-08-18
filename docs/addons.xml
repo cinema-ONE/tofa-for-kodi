@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.8" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.9" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -26,15 +26,17 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - A series now carries on from where you are. If you had finished a later
-        episode but skipped one earlier on, the details page went back and offered
-        the skipped one instead of the episode you were up to.
-      - Something you have finished no longer offers both Play and Rewatch. Both
-        started it from the beginning, so there was nothing to choose between them.
-      - Playback statistics now report the soundtrack's own channels. Where sound
-        is passed straight through to an amplifier, a 5.1 soundtrack was described
-        as 7.1: the panel was reading the connection carrying the sound rather than
-        the sound itself.
+      - After you finish an episode, the details page now describes the NEXT
+        episode, not the one you just watched. The Play button already moved on to
+        the next episode, but the synopsis and the audio and video badges stayed
+        behind on the one that had just ended.
+      - Settings now tells you how this device is reaching your server: connected
+        directly, or through tofa's relay. On the relay everything travels through
+        tofa, video included, so it can be slower -- and until now nothing on
+        screen said which one you were on.
+      - The Account page in Settings fills in the moment it opens. It used to leave
+        the panel blank for a beat while it waited on one slower lookup before
+        showing anything.
     </news>
     <assets>
       <icon>icon.png</icon>
@@ -46,7 +48,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/05-player.jpg</screenshot>
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
-  <size>9205870</size><path>plugin.video.tofa/plugin.video.tofa-0.9.8.zip</path></extension>
+  <size>9210887</size><path>plugin.video.tofa/plugin.video.tofa-0.9.9.zip</path></extension>
 </addon>
 <addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.1" provider-name="cinemaONE">
   <requires>
