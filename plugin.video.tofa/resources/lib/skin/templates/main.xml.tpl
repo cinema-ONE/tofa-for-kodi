@@ -1776,6 +1776,10 @@
 
 {settings_direct_focused}
                         </control>
+                        <!-- Reports how THIS box actually reaches the server.
+                             Non-focusable, so it rides in the toggle's child;
+                             body swaps direct/relay in _settings_fill_connection. -->
+{settings_connection_note}
                     </control>
                 </control>
             </control>

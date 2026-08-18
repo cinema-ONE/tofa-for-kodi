@@ -4733,9 +4733,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_switch_server_list.addItems([server])
 
         direct = kodigui.ManagedListItem(label="Direct connections only")
+        # Kept to ONE rendered line: the row's summary is a fixed-width label
+        # that ellipsises, not a textbox, so "...even if it is the only way"
+        # lost its tail off the right edge. The fuller "what the relay is"
+        # explanation now lives in the CONNECTION note below, so this can be
+        # terse -- it only has to say what the toggle DOES.
         direct.setProperty(
             "summary",
-            "Never connect through the tofa relay, even if it is the only way")
+            "Never use the tofa relay, even if it's the only way")
         self.settings_direct_list.reset()
         self.settings_direct_list.addItems([direct])
 
@@ -4814,6 +4819,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_wire_playback_nav()
         self._settings_wire_appearance_nav()
 
+        _t0 = time.monotonic()
         client = self._get_client()
         me: dict = {}
         if client is not None:
@@ -4821,36 +4827,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 me = client.whoami() or {}
             except http.ApiError as exc:
                 log.warning("settings: whoami failed: {0}".format(exc))
+        # AFTER whoami: a call that started on the LAN address and fell back to
+        # the relay has already swapped base_url by now, so the note reports
+        # the route actually carrying traffic rather than what pairing stored.
+        self._settings_fill_connection(client)
 
-        # The app's row here is "Email", showing the tofa account address.
-        # The media server has no email field at all -- its User record is
-        # id / username / avatar_path / preferences / is_admin -- and the
-        # address lives only on the cloud account, which this client stops
-        # holding a token for once pairing finishes. So the row names what
-        # we can actually answer. Filed under the server-API-gaps issue.
-        username = me.get("username") or ""
-        # The ACCOUNT's own address, which only the cloud knows. Falls back
-        # to the media server's username, which is all this page could show
-        # before the pairing started keeping a cloud refresh token.
-        identity = self._settings_account_identity()
-        account_line = (identity.get("email") or username)
-        if account_line:
-            # The ACCOUNT row's value column is wide; the identity card is
-            # 310px and the sidebar row 284, and a real address overruns
-            # both. Cut the MIDDLE rather than let Kodi cut the end, which
-            # would drop the domain -- see textmetrics.middle_ellipsis.
-            # The value column is `width // 2 - 40` = 290px, narrower than
-            # the card's 310, so this one truncates hardest of the three.
-            self.setProperty("settings_email", textmetrics.middle_ellipsis(
-                account_line, 290, font_size=24))
-            # FULL, not truncated: the card's font is tofa_font_account
-            # (semibold 20) rather than metadata 23, and the address fits at
-            # that size -- which is exactly why the app shows it whole here
-            # and we could not.
-            self.setProperty("settings_account_line", account_line)
-            self._settings_nav_account_line = textmetrics.middle_ellipsis(
-                account_line, 284)
-
+        # ORDER MATTERS on this page. Every fill below the email is LAN-fast --
+        # system_info, the profile list, avatars off it -- while the email
+        # alone is a CLOUD lookup: two internet round trips (mint a 15-minute
+        # token, then GET /v1/me). It used to run FIRST, so the whole Account
+        # view sat blank behind it -- measured locally at 0.16s of a 0.22s
+        # load, and much worse from a box across the internet, which is what
+        # "it takes a while for the values to appear" was. So the LAN data is
+        # painted first and the email is fetched LAST; the page fills at once
+        # and the address drops in a beat later.
         server_name, library_count = self._settings_server_summary(client)
         # The sidebar card's second line, e.g. "MEDIA-NAS - 4 libraries" -- or
         # "1 library", singular, on a server with one. A fresh server has
@@ -4881,6 +4871,36 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_avatar", self._settings_avatar_texture(profile))
         self.setProperty("settings_avatar_initial",
                          self._settings_avatar_initials(profile))
+
+        # LAST, because it is the slow one -- see the ORDER MATTERS note above.
+        # The app's row here is "Email", showing the tofa account address. The
+        # media server has no email field at all -- its User record is id /
+        # username / avatar_path / preferences / is_admin -- and the address
+        # lives only on the cloud account, which this client stops holding a
+        # token for once pairing finishes. So the row names what we can
+        # actually answer. Falls back to the media server's username, all this
+        # page could show before pairing started keeping a cloud refresh token.
+        username = me.get("username") or ""
+        identity = self._settings_account_identity()
+        account_line = (identity.get("email") or username)
+        if account_line:
+            # The ACCOUNT row's value column is wide; the identity card is
+            # 310px and the sidebar row 284, and a real address overruns
+            # both. Cut the MIDDLE rather than let Kodi cut the end, which
+            # would drop the domain -- see textmetrics.middle_ellipsis.
+            # The value column is `width // 2 - 40` = 290px, narrower than
+            # the card's 310, so this one truncates hardest of the three.
+            self.setProperty("settings_email", textmetrics.middle_ellipsis(
+                account_line, 290, font_size=24))
+            # FULL, not truncated: the card's font is tofa_font_account
+            # (semibold 20) rather than metadata 23, and the address fits at
+            # that size -- which is exactly why the app shows it whole here
+            # and we could not.
+            self.setProperty("settings_account_line", account_line)
+            self._settings_nav_account_line = textmetrics.middle_ellipsis(
+                account_line, 284)
+        log.info("settings: Account page filled in {0:.2f}s".format(
+            time.monotonic() - _t0))
 
         # Sidebar subtitles. Account's is the signed-in name and Appearance's
         # names the chosen fox; the rest DESCRIBE the page rather than
@@ -6047,6 +6067,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         item = self.settings_direct_list.getListItem(0)
         if item is not None:
             item.setProperty("checked", "1" if auth.direct_only() else "")
+
+    def _settings_fill_connection(self, client):
+        """CONNECTION's read-only note: how THIS box is reaching the server.
+
+        Read off the client's LIVE base_url rather than the stored pairing:
+        _request swaps base_url to the fallback on a successful retry, so by
+        the time Settings loads this reflects the address actually in use.
+        auth.is_relay_url answers for both the `<uuid>.connect.tofa.tv` relay
+        host and the cloud proxy path. The web app shows the same warning as a
+        banner; a 10-foot UI puts it here, next to the toggle that governs it,
+        rather than over Home."""
+        base = getattr(client, "base_url", "") if client else ""
+        if base and auth.is_relay_url(base):
+            body = ("Routed through tofa's relay, which can be slower. Forward "
+                    "your server's port to connect directly.")
+        elif base:
+            body = "Connected directly to your server."
+        else:
+            body = ""
+        self.setProperty("settings_connection_body", body)
 
     def _settings_fill_region(self):
         code = self._ensure_preferences().get("region") or ""
