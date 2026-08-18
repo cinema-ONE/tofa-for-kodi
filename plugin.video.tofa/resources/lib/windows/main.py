@@ -4836,7 +4836,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # system_info, the profile list, avatars off it -- while the email
         # alone is a CLOUD lookup: two internet round trips (mint a 15-minute
         # token, then GET /v1/me). It used to run FIRST, so the whole Account
-        # view sat blank behind it -- measured on MACBOT at 0.16s of a 0.22s
+        # view sat blank behind it -- measured locally at 0.16s of a 0.22s
         # load, and much worse from a box across the internet, which is what
         # "it takes a while for the values to appear" was. So the LAN data is
         # painted first and the email is fetched LAST; the page fills at once

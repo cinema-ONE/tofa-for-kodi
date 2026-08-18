@@ -38,7 +38,7 @@ def body_for(base_url):
     return win.getProperty("settings_connection_body")
 
 
-LAN = "http://192.168.0.60:33333"
+LAN = "http://mediaserver.local:33333"
 RELAY_HOST = "https://abc123.connect.tofa.tv"
 PROXY = "https://api.tofa.tv/servers/abc-123/relay"
 
