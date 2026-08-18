@@ -1253,12 +1253,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         Re-packs afterwards because the stack closes the gap left by an
         absent block, and "the show has a synopsis but this episode does
         not" is exactly the case that changes which blocks are present.
-        Falls back to leaving the show's text alone when the episode has
-        none, so a sparse episode never blanks the hero.
+        Falls back to the SHOW's synopsis when the episode has none, so a
+        sparse episode never blanks the hero -- and, on the refresh path,
+        never leaves the PREVIOUS episode's text behind. On the load path
+        _render_hero has already put the show synopsis there, so this writes
+        the same value; on refresh it restores it.
         """
-        if not self._next_up_overview:
-            return
-        self.setProperty("hero_synopsis", self._next_up_overview)
+        self.setProperty(
+            "hero_synopsis",
+            self._next_up_overview or (self.media.get("overview") or ""))
         self._layout_hero_stack()
 
     def _remember_next_up(self, season_number, episode_number, ep: dict) -> None:
@@ -2901,6 +2904,17 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     # to one episode -- so the pill can appear, vanish or
                     # relabel.
                     self._render_version_pill()
+                    # The hero's other per-episode blocks move with it: the
+                    # A/V badges describe the file that WILL play, and the
+                    # synopsis describes the episode it belongs to. _load
+                    # paints both after picking next-up (badges then synopsis,
+                    # the order _layout_hero_stack needs); the refresh path
+                    # only ever repainted the pill, so after finishing an
+                    # episode the badges and synopsis stayed on the one just
+                    # watched -- reported from the box as the Details synopsis
+                    # still describing the previous episode.
+                    self._render_format_badges(f)
+                    self._apply_episode_synopsis()
                 self._refresh_episode_progress(client)
                 # The grid's landing rule ("select what the pill offers") was
                 # only ever applied on render, so after watching, coming back
