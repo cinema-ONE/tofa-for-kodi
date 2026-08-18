@@ -117,6 +117,15 @@ check("...and still the Cloudflare-safe User-Agent",
       session.headers.get("User-Agent") == http.USER_AGENT
       and "python" not in session.headers.get("User-Agent", "").lower())
 
+# The User-Agent used to be a hand-written `tofa-kodi/0.1.0`: the name the
+# INTERNALS repo gave up when it was renamed to tofa-vault, and a version
+# left behind at 0.1.0 for the whole of 0.9.x. Both halves are asserted
+# against addon.xml so neither can drift away again.
+check("the User-Agent names this repo, not the vault",
+      http.USER_AGENT.split("/")[0] == "tofa-for-kodi", http.USER_AGENT)
+check("...and carries the version addon.xml declares",
+      http.USER_AGENT == f"tofa-for-kodi/{declared['version']}", http.USER_AGENT)
+
 print()
 failed = [n for n, ok in RESULTS if not ok]
 print(f"{len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
