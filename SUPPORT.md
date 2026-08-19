@@ -65,6 +65,12 @@ first if you cannot see it. And going back this way keeps the add-on's
 **Origin** as the repository, so Kodi will offer to update it again later --
 unlike installing a zip by hand, which pins it.
 
+Going back a version may ask once to **add tofa's fonts to your skin**, and
+restart Kodi. Each version installs the font set it was built against, so
+moving between versions that use different sets means one question and one
+restart -- in either direction. Nothing else changes, and it is not asked
+again until the set changes.
+
 Once a version is four releases old it leaves the repository. If you need one
 older than that, every release from 0.9.2 onwards has its zip attached at
 https://github.com/cinema-ONE/tofa-for-kodi/releases -- install that with
