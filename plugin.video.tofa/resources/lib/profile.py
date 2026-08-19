@@ -6,6 +6,17 @@ Phase 0 confirmed reliably yields DirectPlay/DirectFile (brief §12).
 `dolby_vision_supported` is left unset -- Phase 0 confirmed it's a no-op for
 DirectFile on the target server, so there's nothing to gain by setting it
 and one less moving part to reason about.
+
+`codec_ceilings` is left unset too, and it is NOT the same axis as
+`transcode_video_codecs` below however similar they read. A ceiling caps the
+SOURCE height we are willing to direct-play per codec ("hevc:1080" means
+"anything taller, re-encode it for me"); `transcode_video_codecs` names the
+codec of a re-encode the server has already decided on. Nothing in the 0.9.32
+spec says the server consults one while applying the other, so a ceiling
+would NOT protect this box from a 4K HEVC re-encode -- if we ever declare
+one, that has to be measured against a server rather than assumed. Declaring
+no ceiling, as we do, is also the only state in which the two provably cannot
+interact.
 """
 from __future__ import annotations
 
@@ -15,6 +26,36 @@ from typing import Any, Optional
 DEFAULT_VIDEO_CODECS = "hevc,h264,vp9,av1,mpeg2video,vc1"
 DEFAULT_AUDIO_CODECS = "truehd,dts,dtshd,eac3,ac3,aac,flac,pcm,opus,mp3,mp2"
 DEFAULT_CONTAINERS = "mkv,mp4,m2ts,ts,avi,mov,webm"
+
+#: Ordered codecs we can take when the server RE-ENCODES the video (server
+#: 0.9.32+). Deliberately a SHORTER list than DEFAULT_VIDEO_CODECS, which
+#: answers a different question: that one says which source bitstreams may
+#: reach this box untouched, and a box is right to accept a codec it decodes
+#: only adequately there, because the alternative is a transcode the file did
+#: not need. Here the alternative is a codec the server would have picked
+#: instead, so anything this box cannot decode WELL has no business on the
+#: list.
+#:
+#: Measured on AM6B-BOX (CoreELEC 21.3, Amlogic, kernel 4.9) 2026-08-19 by
+#: playing an HEVC-only fMP4 HLS media playlist -- the packaging a re-encode
+#: actually arrives in, which DirectPlay of an HEVC FILE never exercises:
+#:
+#:     HEVC Main10 1080p60, fMP4 HLS   Player.Process(videodecoder) = am-h265
+#:                                     hardware, and it kept real time
+#:     AV1 1080p30, plain mp4          ff-libdav1d -- SOFTWARE. There is no
+#:                                     am-av1 on this silicon.
+#:
+#: which is why `av1` is on the direct-play list and not on this one:
+#: inviting an AV1 re-encode would hand that box a dav1d software decode of a
+#: stream it never had to be sent. vp9/mpeg2video/vc1 are off for the same
+#: reason, and because no server re-encodes TO them.
+#:
+#: `h264` stays as the last rung rather than being left to the server's
+#: "omitted means legacy H.264" default, so the fallback is something we said
+#: rather than something we were handed. Setting this to "" reproduces the
+#: pre-0.9.32 behaviour exactly, which is the escape hatch if a box ever
+#: turns out not to cope.
+DEFAULT_TRANSCODE_VIDEO_CODECS = "hevc,h264"
 
 _BOOL_FIELDS = (
     "hdr_supported",
@@ -36,6 +77,19 @@ class CapabilityProfile:
     direct_play_video_codecs: str = DEFAULT_VIDEO_CODECS
     direct_play_audio_codecs: str = DEFAULT_AUDIO_CODECS
     direct_play_containers: str = DEFAULT_CONTAINERS
+    #: See DEFAULT_TRANSCODE_VIDEO_CODECS. A module-level constant and NOT
+    #: derived per box in for_device(), unlike the audio fields below, and
+    #: the difference is what Kodi will answer rather than a style choice:
+    #: it publishes the audio OUTPUT ROUTE (audiooutput.channels, a
+    #: passthrough switch per format), so audio_fidelity is a reading. It
+    #: publishes nothing of the kind for video decode. Its hardware-decode
+    #: settings are per-API -- usedxva2 / usevtb / usemediacodec / usevaapi
+    #: -- never per codec, and the only per-codec ones anywhere are
+    #: CoreELEC's useamcodec{h264,mpeg2,mpeg4,vc1}, which has no HEVC entry
+    #: at all (all 378 settings enumerated on AM6B-BOX, 2026-08-19).
+    #: Deriving this would be inventing an answer Kodi never gave, which is
+    #: the failure capabilities.py exists to avoid.
+    transcode_video_codecs: str = DEFAULT_TRANSCODE_VIDEO_CODECS
     hdr_supported: Optional[bool] = True
     h264_10bit_supported: Optional[bool] = True
     deinterlacing_supported: Optional[bool] = True
@@ -74,6 +128,18 @@ class CapabilityProfile:
             "direct_play_audio_codecs": self.direct_play_audio_codecs,
             "direct_play_containers": self.direct_play_containers,
         }
+        # Sent only when set, so "" is a real opt-out rather than a codec
+        # list nobody can satisfy: the server's own rule is that an omitted
+        # parameter means legacy H.264, which is precisely the behaviour
+        # every release before this one had.
+        #
+        # This DECLARES what we can take; it does not ask for it. HEVC output
+        # is a server-side setting and off by default, so until an operator
+        # turns it on the decision is the same one we get today. That is the
+        # spec's contract rather than something measured here -- no server
+        # with HEVC output enabled was available to negotiate against.
+        if self.transcode_video_codecs:
+            params["transcode_video_codecs"] = self.transcode_video_codecs
         for name in _BOOL_FIELDS:
             v = _bool_param(getattr(self, name))
             if v is not None:
