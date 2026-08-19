@@ -3518,7 +3518,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         renderer, not to add more code to repair it afterwards.
         """
         current, _ = self._current_stream(subtitles=False)
-        if current == slot:
+        # The identity check is second on purpose: it costs two JSON-RPC
+        # round trips and is only worth paying when the shortcut would
+        # otherwise be taken.
+        if current == slot and self._showing_current_item():
             log.debug(f"player: audio already on slot {slot}; not switching")
             return False
         self.ui_player.setAudioStream(slot)
@@ -3528,7 +3531,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         """setSubtitleStream(slot), but only when it would change something.
         Same reasoning as _switch_audio."""
         current, enabled = self._current_stream(subtitles=True)
-        if current == slot and enabled:
+        if current == slot and enabled and self._showing_current_item():
             log.debug(f"player: subtitles already on slot {slot}; not switching")
             return False
         self.ui_player.setSubtitleStream(slot)
@@ -4870,6 +4873,46 @@ class PlayerWindow(kodigui.ControlledDialog):
             selected=max(0, selected),
             apply=apply,
         )
+
+    def _showing_current_item(self) -> bool:
+        """True when Kodi's player is presenting the file we last handed it.
+
+        The Play Next path REPLACES the playing item without stopping it
+        (`advancing without stop`), and for a beat afterwards Kodi still
+        answers about the OUTGOING file. Anything read off the live player in
+        that window describes the wrong stream.
+
+        Reported 2026-08-19 from the cinema box: Murder, She Wrote S2 E19
+        started in German. `_switch_audio` had resolved English correctly,
+        then skipped the switch because `_current_stream()` said audio was
+        already on that slot -- true of E18, which Kodi was still describing.
+        The log has the ordering: the check ran 13ms BEFORE the new session
+        was adopted, where on a normal start it runs 3ms after.
+
+        `_stream_url` is set to the new URL before `play()` is called, so
+        during the stale window it disagrees with what Kodi reports, which is
+        exactly the signal wanted. Answers False on any doubt: the caller
+        then does the switch, which is the behaviour from before the
+        shortcut existed.
+        """
+        if not self._stream_url:
+            return False
+        try:
+            active = json.loads(xbmc.executeJSONRPC(json.dumps({
+                "jsonrpc": "2.0", "id": 1, "method": "Player.GetActivePlayers",
+            }))).get("result") or []
+            video = next((p for p in active if p.get("type") == "video"), None)
+            if video is None:
+                return False
+            item = (json.loads(xbmc.executeJSONRPC(json.dumps({
+                "jsonrpc": "2.0", "id": 1, "method": "Player.GetItem",
+                "params": {"playerid": video["playerid"],
+                           "properties": ["file"]},
+            }))).get("result") or {}).get("item") or {}
+            return bool(item.get("file")) and item["file"] == self._stream_url
+        except (ValueError, KeyError, TypeError, RuntimeError) as exc:
+            log.debug(f"player: could not confirm the playing item: {exc!r}")
+            return False
 
     def _current_stream(self, subtitles: bool) -> tuple:
         """(index of the active track, is it on) from JSON-RPC.
