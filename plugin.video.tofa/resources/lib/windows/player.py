@@ -3619,19 +3619,62 @@ class PlayerWindow(kodigui.ControlledDialog):
         return True
 
     def _external_subtitle_url(self, server_index) -> str:
-        """The server's own extraction of a track, as WebVTT.
+        """The server's own delivery of a track, in the format Kodi can read.
 
-        `.vtt` rather than `.ass`: Kodi renders both, but ASS carries styling
-        the skin has no say over, and 8's subtitles are meant to look like the
-        rest of the app. The endpoint wants the scoped session token as `st`,
-        the same one the progress and teardown calls use."""
+        `.vtt` rather than `.ass` for a TEXT track: Kodi renders both, but ASS
+        carries styling the skin has no say over, and 8's subtitles are meant
+        to look like the rest of the app.
+
+        A VobSub sidecar is the one exception, and it cannot be a `.vtt` at
+        all -- it is a pair of bitmap files, and the server answers 400 for
+        any bitmap track asked for as WebVTT. Server 0.9.32 serves that pair
+        as `full.idx` plus a companion `full.sub`, and we ask for the `.idx`
+        half only: Kodi DERIVES the `.sub` itself (`CVideoPlayer::
+        AddSubtitleFile` -> `CUtil::GetVobSubSubFromIdx` ->
+        `URIUtils::ReplaceExtension`).
+
+        That derivation is why the extension has to sit where it does. For a
+        URL, ReplaceExtension goes through `CURL`, which holds the query
+        string separately from the filename -- so `full.idx?st=<token>`
+        becomes `full.sub?st=<token>`, token intact, rather than the
+        `full.idx?st=....sub` a plain string swap would produce. MEASURED on
+        Kodi 21.3 against a mock of these two routes that 401s without the
+        token: Kodi asked for `full.idx?st=...`, then HEADed
+        `full.sub?st=...`, then range-read both, and rendered the cues.
+
+        `.sup` (PGS) is deliberately NOT mapped here even though the server
+        offers that route too: it is a separate delivery path with its own
+        demuxer and nothing has measured it. Bitmap PGS reaches this method
+        only under a transcode, where it is a pre-existing 400 rather than
+        something this change introduces.
+
+        The endpoint wants the scoped session token as `st`, the same one the
+        progress and teardown calls use."""
         nego = self._nego or {}
         session_id, token = nego.get("session_id"), nego.get("session_token")
         if not (session_id and token and self.client):
             return ""
+        track = next((t for t in self._subtitle_tracks
+                      if t.get("index") == server_index), None)
+        name = "full.idx" if self._is_vobsub_sidecar(track) else "full.vtt"
         return self.client.resolve_url(
             f"/api/v1/stream/s/{session_id}/subtitles/{server_index}"
-            f"/full.vtt?st={urllib.parse.quote(str(token))}")
+            f"/{name}?st={urllib.parse.quote(str(token))}")
+
+    @staticmethod
+    def _is_vobsub_sidecar(track) -> bool:
+        """Whether this track is one the `full.idx`/`full.sub` routes serve.
+
+        BOTH halves are required. The routes answer 400 for anything that is
+        not "a paired VobSub sidecar", and an EMBEDDED `dvd_subtitle` -- an
+        old disc rip muxed into the container -- is a real thing that reaches
+        the URL path whenever the server is transcoding and Kodi therefore
+        has no subtitle stream to select. Asking for `.idx` there would turn
+        a track that merely does not appear into a 400."""
+        if not track:
+            return False
+        return (str(track.get("codec") or "").strip().lower() == "dvd_subtitle"
+                and bool(track.get("external")))
 
     @staticmethod
     def _stream_slot(order: list, server_index: int, available: list):

@@ -21,6 +21,7 @@ _BOOL_FIELDS = (
     "h264_10bit_supported",
     "deinterlacing_supported",
     "client_render_bitmap_subtitles",
+    "client_render_vobsub_subtitles",
     "include_native_subtitle_rendition",
     "dolby_vision_supported",
 )
@@ -39,6 +40,13 @@ class CapabilityProfile:
     h264_10bit_supported: Optional[bool] = True
     deinterlacing_supported: Optional[bool] = True
     client_render_bitmap_subtitles: Optional[bool] = True
+    #: Server 0.9.32. Without it, a disc rip whose subtitles live in a
+    #: sidecar `.idx`/`.sub` pair gets them routed to
+    #: `burn_in_subtitle_tracks` -- a burn-in transcode, or nothing at all.
+    #: With it they arrive in `subtitle_tracks` as `render: bitmap` and are
+    #: fetched from the `full.idx` route, which Kodi's own VobSub demuxer
+    #: reads (see PlayerWindow._external_subtitle_url).
+    client_render_vobsub_subtitles: Optional[bool] = True
     stereo_only_audio_codecs: Optional[str] = None
     max_bitrate: Optional[int] = None
     include_native_subtitle_rendition: Optional[bool] = None
