@@ -1,0 +1,7 @@
+- The next episode keeps your audio language. Starting the next episode from
+  the Up Next rail could put it on the soundtrack the file itself lists first,
+  rather than the language on your profile -- a series whose files carry
+  German before English would come back in German at every episode. tofa now
+  checks which track is really playing before deciding there is nothing to
+  change, and checks once more a moment later that the language it asked for
+  is the one you are hearing.
