@@ -238,6 +238,57 @@ git log -- docs/plugin.video.tofa/plugin.video.tofa-<version>.zip
 `publish` now refuses to republish a version whose contents changed, so this
 should not recur -- but the tags from before that guard need reading this way.
 
+### The server version floor
+
+`tools/release.py server <v>` sets `MIN_SERVER_VERSION` and the requirement
+line in `plugin.video.tofa/README.txt` together, and `release.py check`
+compares both against the vendored OpenAPI spec next door. The rule the check
+enforces: **the vendored spec may LAG the floor but never LEAD it** -- a spec
+newer than the version the client claims means holding a contract we do not
+say we support, and `do_package()` refuses to build while it fails.
+
+**The tool does NOT touch the top-level `README.md`**, which states the same
+requirement in prose, and `check` does not compare it either -- so it drifts
+silently. Update it by hand after every bump.
+
+Bump the floor **with the feature that needs it, in the same commit**, and
+remember the changelog: a floor bump is user-visible.
+
+### Reissuing a published version
+
+Sometimes a shipped version needs replacing without a new number -- 0.9.10 went
+out with wording in its notes that had to go. `publish` refuses that by
+default, and says so precisely:
+
+```
+PROBLEM: plugin.video.tofa-0.9.10.zip is already published with DIFFERENT
+contents (16 file(s): ...). Bump the version, or pass --republish if
+replacing it is deliberate.
+```
+
+It names every changed file before doing anything, which is worth reading --
+if the list is longer than you expected, the reissue is not what you thought
+it was. `--republish` is the deliberate override.
+
+**Decide first whether it is worth it, because a reissue does not reach anyone
+already on that version.** Kodi will not reinstall an unchanged version
+string, so a reissue fixes new installs and the channel only. If the change
+matters for people who already have it, burn the next version number instead.
+
+The rest of the publish procedure is unchanged, plus three things:
+
+1. **Only that version's artefacts may move.** Check `git status docs/` before
+   committing: the zip, its `.sha256`, its `changelog-<v>.txt` and
+   `addons.xml`. The other versions carried forward must come back untouched.
+2. **Move the tag to the reissue's publish merge.** Same rule as `v0.9.3`
+   above -- a republished version's tag points at what shipped LAST.
+   `git tag -f -a v<v> <merge> && git push --force origin v<v>`.
+3. **Replace the release asset**, or the page still offers the old bytes:
+   `gh release upload v<v> docs/plugin.video.tofa/plugin.video.tofa-<v>.zip --clobber`.
+
+Then verify over the wire as usual. The served zip's sha256 will have changed;
+that is the point.
+
 **A GitHub Release is titled with the bare version** (`0.9.4`), not
 `tofa for Kodi 0.9.4`: the page already shows the repository name above the
 list and the tag beside each row. Nothing reads the title -- Kodi installs
