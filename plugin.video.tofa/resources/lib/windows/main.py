@@ -2068,11 +2068,27 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._home_update_hero_text(item)
         self.setProperty("hero_swapping", "")
 
+    def _set_hero_title(self, title: str) -> None:
+        """Publish the hero title as both a clean string and a wrapped label.
+
+        `hero_title` stays the plain title -- other code reads it back (and
+        hands it to dialogs and requests), so a [CR] must never get into it.
+        `hero_title_display` is what the label draws, with the break already
+        in it, and `hero_title_lines` is what the skin slides on: Kodi cannot
+        bottom-align a label, so a one-line title has to be moved down a line
+        for its baseline to meet the meta row. See
+        textmetrics.hero_title_wrap for why the break is made here rather
+        than left to <wrapmultiline>."""
+        self.setProperty("hero_title", title)
+        display, lines = textmetrics.hero_title_wrap(title, T.HERO_TITLE_COLUMN)
+        self.setProperty("hero_title_display", display)
+        self.setProperty("hero_title_lines", str(lines))
+
     def _home_update_hero_text(self, item: dict):
         title = item.get("title") or ""
         if item.get("episode_title"):
             title = u"{0} - {1}".format(title, item["episode_title"])
-        self.setProperty("hero_title", title)
+        self._set_hero_title(title)
 
         genres = item.get("genres") or []
         runtime_minutes = None

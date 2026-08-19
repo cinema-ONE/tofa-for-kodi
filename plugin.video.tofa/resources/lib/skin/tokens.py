@@ -1093,7 +1093,33 @@ SURFACE_PLACEHOLDER = "0xFF11182B"
 # directly, and nothing should ever name a Kodi built-in (font13/font45/...):
 # those resolve against whatever host skin is active and render differently
 # per skin.
-FONT_HERO = "tofa_font_hero"                # hero title
+FONT_HERO = "tofa_font_hero"                # full-screen heading (server picker)
+FONT_HERO_TITLE = "tofa_font_hero_title"    # Home/Detail hero title, logo-less fallback
+
+# The hero title's wrap column, and one line of it. Shared deliberately: the
+# templates set the label's <width> from HERO_TITLE_COLUMN and windows/main.py
+# and windows/detail.py pass the SAME number to textmetrics.hero_title_wrap(),
+# so Python breaks the string at exactly the width Kodi lays it out in. Measured
+# off the live Apple TV, which wraps this title with a longest line of 822px on
+# Home and 813px on Detail.
+HERO_TITLE_COLUMN = 830
+# One line of tofa_font_hero_title, and the distance the label slides DOWN when
+# the title is a single line -- which is how it bottom-anchors, since Kodi
+# cannot bottom-align a label at all. Measured off the render: line 1 and line 2
+# of a wrapped title sit 74px apart.
+HERO_TITLE_LINE = 74
+# Detail's hero title posy. It lives here because TWO places set it and they
+# silently disagreed: detail.xml.tpl positions the control, and
+# windows/detail.py's HERO_TITLE_BLOCK setPosition()s it again on every render
+# as part of packing the hero stack. Changing only the template did nothing at
+# all -- Python put it straight back.
+#
+# -158 is where "box bottom == meta top" lands (-158 + 170 = 12 = id 5102's
+# posy) and it renders a 25px ink gap. The app leaves 34px on THIS screen (27
+# on Home -- the two differ because Detail's meta line is tofa_font_row_title
+# at 26 against Home's body at 24, so its ink starts lower in its own box).
+# -167 is that same derivation minus the 9px the measurement asks for.
+HERO_TITLE_POSY_DETAIL = -167
 FONT_HEADING = "tofa_font_heading"          # full-screen headings (sign-in)
 FONT_DIALOG_TITLE = "tofa_font_dialog_title"  # 7.2 card-options title (34/Bold)
 FONT_SECTION_TITLE = "tofa_font_section_title"  # row/section headers

@@ -425,6 +425,22 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # page 1 -- hero
     # ------------------------------------------------------------------
 
+    def _set_hero_title(self, title: str) -> None:
+        """Publish the hero title as both a clean string and a wrapped label.
+
+        `hero_title` stays the plain title -- other code reads it back (and
+        hands it to dialogs and requests), so a [CR] must never get into it.
+        `hero_title_display` is what the label draws, with the break already
+        in it, and `hero_title_lines` is what the skin slides on: Kodi cannot
+        bottom-align a label, so a one-line title has to be moved down a line
+        for its baseline to meet the meta row. See
+        textmetrics.hero_title_wrap for why the break is made here rather
+        than left to <wrapmultiline>."""
+        self.setProperty("hero_title", title)
+        display, lines = textmetrics.hero_title_wrap(title, T.HERO_TITLE_COLUMN)
+        self.setProperty("hero_title_display", display)
+        self.setProperty("hero_title_lines", str(lines))
+
     def _render_hero(self, client: MediaServerClient, media: dict):
         # Same reason as MainWindow._home_update_hero_art: a hero resolved on
         # a miss hands Kodi a URL carrying the hourly image token, and that
@@ -443,7 +459,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("hero_logo", logo)
 
         title = media.get("title") or ""
-        self.setProperty("hero_title", title)
+        self._set_hero_title(title)
         self.setProperty("eyebrow_title", title.upper())
 
         genres = media.get("genres") or []
@@ -526,7 +542,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ("synopsis", 231, (5104,),      161),
     )
     #: Title logo / text title. Rides the whole shift, being above all of it.
-    HERO_TITLE_BLOCK = ((5105, -215), (5101, -97))
+    #: 5101's y comes from the TOKEN, not a literal: this setPosition() runs on
+    #: every render and overrides whatever the template said, so a literal here
+    #: silently wins over the XML. It did -- moving the title in the template
+    #: alone changed nothing until this line was found.
+    HERO_TITLE_BLOCK = ((5105, -215), (5101, T.HERO_TITLE_POSY_DETAIL))
 
     def _layout_hero_stack(self):
         """Pack the hero's blocks down against the action row, closing the
@@ -1845,7 +1865,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                              client.resolve_image_url(item.get("logo_path")) or "")
 
         title = item.get("title") or item.get("name") or ""
-        self.setProperty("hero_title", title)
+        self._set_hero_title(title)
 
         # Same grammar as an owned title's meta line, over the fields a
         # discovery item has: no runtime and no content rating come back
