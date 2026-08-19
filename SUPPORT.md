@@ -51,6 +51,31 @@ along with Kodi's cached copy of the add-on list, so the reinstall starts over.
 This removes only the repository, not the add-on: your sign-in and settings are
 untouched, and tofa for Kodi keeps working throughout.
 
+### Go back to an earlier version
+
+The repository carries the **three most recent versions** -- the current one
+and the two before it -- so you can go back without hunting for a zip.
+
+1. **Settings** → **Add-ons** → **My add-ons** → **Video add-ons** → **tofa**
+2. Choose **Versions**, and pick the one you want
+
+Two things to know about that button. It is **hidden while an update is
+waiting**: Kodi shows **Update** in its place, so install or dismiss the update
+first if you cannot see it. And going back this way keeps the add-on's
+**Origin** as the repository, so Kodi will offer to update it again later --
+unlike installing a zip by hand, which pins it.
+
+Going back a version may ask once to **add tofa's fonts to your skin**, and
+restart Kodi. Each version installs the font set it was built against, so
+moving between versions that use different sets means one question and one
+restart -- in either direction. Nothing else changes, and it is not asked
+again until the set changes.
+
+Once a version is four releases old it leaves the repository. If you need one
+older than that, every release from 0.9.2 onwards has its zip attached at
+https://github.com/cinema-ONE/tofa-for-kodi/releases -- install that with
+**Install from zip file** below.
+
 ### Install a version directly
 
 A last resort, for when the repository can't be reached at all, or when you
