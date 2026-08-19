@@ -335,7 +335,7 @@
             <align>center</align>
             <aligny>center</aligny>
             <font>tofa_font_icons_19</font>
-            <textcolor>0x99FFFFFF</textcolor>
+            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
             <label>&#xE087;</label>
             <visible>String.IsEqual(Window.Property(state),waiting) + !String.IsEmpty(Window.Property(countdown_text))</visible>
         </control>
