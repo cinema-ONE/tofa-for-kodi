@@ -63,6 +63,7 @@ Three things about Kodi's API that this module exists to encapsulate:
 from __future__ import annotations
 
 import json
+import re
 import time
 
 import xbmc
@@ -608,6 +609,73 @@ def _output_refresh(fps, caps: dict) -> float:
     # Kodi prefers an exact multiple (24 -> 24/48/72), else the closest.
     best = min(rates, key=lambda r: min(abs(r - fps * n) for n in (1, 2, 3)))
     return best
+
+
+#: Where the Amlogic kernel publishes its own decoder table, and the ONE
+#: place a PER-CODEC video answer can be had on this hardware. Kodi settings
+#: cannot give one: its hardware-decode switches are per-API (usedxva2 /
+#: usevtb / usemediacodec / usevaapi) and the only per-codec ones anywhere
+#: are CoreELEC's useamcodec{h264,mpeg2,mpeg4,vc1}, which has no AV1 entry
+#: (all 378 settings enumerated on AM6B-BOX, 2026-08-19).
+#:
+#: This is the same file Kodi itself reads to decide whether to use the
+#: hardware AV1 path -- `aml_support_av1()` in xbmc/utils/AMLUtils.cpp:238,
+#: which calls `aml_support_vcodec_profile()` at :146 on exactly this path.
+#: Absent on every non-Amlogic platform, which is why absence claims nothing.
+_VCODEC_PROFILE = "/sys/class/amstream/vcodec_profile"
+
+#: Ported from AMLUtils.cpp:243 rather than written fresh, so that what we
+#: believe about this box is what Kodi believes about it. Kodi's literal is
+#: "(\\bav1\\b|\\bav1_fb\\b):(?!\\;).*compressed" -- the escaped
+#: semicolon is just a semicolon, and `.` not crossing newlines is what
+#: confines a match to one codec's row, in PCRE and in `re` alike.
+_AV1_HARDWARE = re.compile(r"(\bav1\b|\bav1_fb\b):(?!;).*compressed")
+
+#: The height an AV1 source may reach before we would rather the server
+#: re-encoded it. 1080 because 1080p30 AV1 was MEASURED to decode and keep
+#: real time on AM6B-BOX (2026-08-19, Player.Process(videodecoder) =
+#: ff-libdav1d -- software dav1d, there being no am-av1 on that silicon).
+#: The 4K case that this ceiling exists to refuse was NOT measured; see the
+#: comment on CapabilityProfile.codec_ceilings.
+#:
+#: 1080 is OUR number, not the kernel's, and it is the one part of this that
+#: is not a reading. The table does carry sizes -- Kodi reads "4k"/"8k" out of
+#: it for hevc (AMLUtils.cpp:177-187) -- but those describe the HARDWARE
+#: decoder's reach, and the whole point here is that AV1 never touches it.
+#: Nothing in the file says how far software dav1d gets on this CPU.
+_AV1_SOFTWARE_CEILING = "av1:1080"
+
+
+def video_codec_ceilings() -> str:
+    """Per-codec source-height ceilings for THIS box, as the CSV the server
+    wants, or `""` for "no ceiling" -- which is what every release before
+    this one sent.
+
+    Only AV1 has an entry, and only when the platform says it has no
+    hardware AV1 decoder. A software dav1d decode is fine at 1080p and is
+    not fine at 4K, so the honest answer differs per box: the S922X in
+    AM6B-BOX has no AV1 block, while newer Amlogic parts do -- Kodi's own
+    `am-av1` path exists and is gated on precisely this reading
+    (DVDVideoCodecAmlogic.cpp:269-275), so "Amlogic" is NOT the question and
+    generalising from one box would be the invention this module exists to
+    avoid.
+
+    Silence is the safe direction and the default: a platform with no such
+    file (everything that is not Amlogic -- Windows, Android, macOS, generic
+    Linux, all of which may well have a hardware AV1 decoder we cannot see
+    from here) claims no ceiling and behaves exactly as it does today.
+    """
+    try:
+        with open(_VCODEC_PROFILE, "r") as handle:
+            table = handle.read()
+    except (IOError, OSError):
+        return ""
+    if not table.strip():
+        return ""
+    # Hardware AV1: nothing to cap, this box decodes it like any other codec.
+    if _AV1_HARDWARE.search(table):
+        return ""
+    return _AV1_SOFTWARE_CEILING
 
 
 def delivery(file_format: dict, video_caps: dict | None = None,

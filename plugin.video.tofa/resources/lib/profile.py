@@ -7,16 +7,21 @@ Phase 0 confirmed reliably yields DirectPlay/DirectFile (brief §12).
 DirectFile on the target server, so there's nothing to gain by setting it
 and one less moving part to reason about.
 
-`codec_ceilings` is left unset too, and it is NOT the same axis as
-`transcode_video_codecs` below however similar they read. A ceiling caps the
-SOURCE height we are willing to direct-play per codec ("hevc:1080" means
-"anything taller, re-encode it for me"); `transcode_video_codecs` names the
-codec of a re-encode the server has already decided on. Nothing in the 0.9.32
-spec says the server consults one while applying the other, so a ceiling
-would NOT protect this box from a 4K HEVC re-encode -- if we ever declare
-one, that has to be measured against a server rather than assumed. Declaring
-no ceiling, as we do, is also the only state in which the two provably cannot
-interact.
+`codec_ceilings` is NOT the same axis as `transcode_video_codecs` below,
+however similar they read. A ceiling caps the SOURCE height we are willing to
+direct-play per codec ("av1:1080" means "anything taller, re-encode it for
+me"); `transcode_video_codecs` names the codec of a re-encode the server has
+already decided on. Nothing in the 0.9.32 spec says the server consults one
+while applying the other, so a ceiling does NOT protect this box from a 4K
+HEVC re-encode.
+
+It is no longer left unset. An earlier draft of this file said that declaring
+none was "the only state in which the two provably cannot interact", which
+was true and is now spent: the ceiling below is derived per box, so the two
+parameters do travel together and that combination has not been negotiated
+against a live server. What is at stake if they interact badly is a 4K AV1
+source arriving as a 1080p re-encode -- the outcome we are ASKING for -- so
+the risk is of the ceiling being ignored, not of it doing harm.
 """
 from __future__ import annotations
 
@@ -89,6 +94,28 @@ class CapabilityProfile:
     #: Deriving this would be inventing an answer Kodi never gave, which is
     #: the failure capabilities.py exists to avoid.
     transcode_video_codecs: str = DEFAULT_TRANSCODE_VIDEO_CODECS
+    #: Per-codec SOURCE height ceilings, CSV of `codec:height`. Unlike
+    #: transcode_video_codecs above, this one IS derived per box in
+    #: for_device() -- and the difference is again what the machine will
+    #: answer rather than a style choice. Kodi publishes nothing per codec
+    #: for video, but the Amlogic kernel publishes its whole decoder table
+    #: at /sys/class/amstream/vcodec_profile, and that is the same file
+    #: Kodi's own aml_support_av1() reads. So this is a reading, not a
+    #: guess, and it says different things on different silicon: the S922X
+    #: in AM6B-BOX has no AV1 block, newer Amlogic parts do.
+    #:
+    #: Why AV1 needs one at all: `av1` is on the direct-play list above and
+    #: belongs there, because accepting a 1080p AV1 source untouched beats a
+    #: transcode it never needed. But that list is unconditional, and on a
+    #: box decoding AV1 in software the same promise at 4K is one the
+    #: hardware cannot keep -- and it fails SILENTLY, as a stutter, where
+    #: declining would have got a stream that plays.
+    #:
+    #: NOT measured, and the honest gap in this: 1080p30 AV1 was measured to
+    #: keep real time on AM6B-BOX (2026-08-19), but no 4K AV1 clip was ever
+    #: played there, so the height this refuses is the one case never tried.
+    #: `None` reproduces the pre-0.9.32 behaviour exactly.
+    codec_ceilings: Optional[str] = None
     hdr_supported: Optional[bool] = True
     h264_10bit_supported: Optional[bool] = True
     deinterlacing_supported: Optional[bool] = True
@@ -132,6 +159,10 @@ class CapabilityProfile:
         # with HEVC output enabled was available to negotiate against.
         if self.transcode_video_codecs:
             params["transcode_video_codecs"] = self.transcode_video_codecs
+        # Same rule, same reason: "" or None omits it, and an omitted
+        # ceiling is the server's "no ceiling" -- today's behaviour exactly.
+        if self.codec_ceilings:
+            params["codec_ceilings"] = self.codec_ceilings
         for name in _BOOL_FIELDS:
             v = _bool_param(getattr(self, name))
             if v is not None:
@@ -166,6 +197,16 @@ class CapabilityProfile:
             try:
                 from . import capabilities
                 kwargs.update(capabilities.audio_delivery())
+            except Exception:                               # noqa: BLE001
+                pass
+        # Read separately from the audio block, not folded into it: a box
+        # that cannot answer one question may still answer the other, and
+        # either failing must leave the OTHER reading intact rather than
+        # taking both down with it.
+        if "codec_ceilings" not in kwargs:
+            try:
+                from . import capabilities
+                kwargs["codec_ceilings"] = capabilities.video_codec_ceilings()
             except Exception:                               # noqa: BLE001
                 pass
         return cls(**kwargs)

@@ -543,7 +543,15 @@ def show_watchlist() -> None:
 
 def action_play(params: dict[str, str]) -> None:
     client = get_client()
-    profile = CapabilityProfile()
+    # for_device(), not the bare constructor: this path NEGOTIATES (see
+    # playback.negotiate below), and profile.py commits every caller that
+    # asks the server for a playback decision to the derived profile. It was
+    # the one negotiating call site still using the plain one, so the AV1
+    # ceiling would have reached windows/player.py and stopped here. Fixing
+    # that also starts deriving audio_fidelity on this path, which is the
+    # documented intent -- the bare constructor's own fallback is what
+    # profile.py calls "the old stereo-AAC behaviour".
+    profile = CapabilityProfile.for_device()
 
     file_id = params.get("file_id")
     if not file_id:
