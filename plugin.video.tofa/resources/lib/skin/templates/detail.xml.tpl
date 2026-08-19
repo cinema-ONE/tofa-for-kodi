@@ -116,27 +116,45 @@
                         <texture>$INFO[Window.Property(hero_logo)]</texture>
                         <visible>!String.IsEmpty(Window.Property(hero_logo))</visible>
                     </control>
-                    <!-- Runs to a 100px right margin, mirroring the hero
-                         group's own 100px left inset: 1920 - 100 - 100.
-                         The title is the one line here worth giving the
-                         full measure, and it used to have the SHORTEST of
-                         the stack at 1100; a long one ellipsised while
-                         the synopsis under it ran ~250px further right. 16
-                         asks layouts to "truncate or grow gracefully" for
-                         +35% German text growth, and a German title is
-                         exactly what caught this ("00 Schneider - Jagd auf
-                         Nihil Baxter", clipped at "Nihil"). 6's hero
-                         anatomy sets no cap of its own; 7.9.4's 66% cap is
-                         the Discover open card, not this screen. Anything
-                         longer still ellipsises, just far later. -->
+                    <!-- Same role and treatment as Home's id 4001, and for
+                         the same reason: this renders only when the title
+                         has no logo art. See that control for the full
+                         measurement note.
+
+                         The width was 1720 (1920 - 2 * 100) so a long
+                         title would ellipsise "far later" - the German
+                         case that drove it was "00 Schneider - Jagd auf
+                         Nihil Baxter", clipped at "Nihil". Wrapping
+                         answers that better than a wide single line does,
+                         and it is what the app does: measured on a live
+                         capture, Detail lays this title over two lines
+                         with its longer line at 813px. 16's "truncate or
+                         grow gracefully" for +35% German growth is now
+                         served by the second line rather than by running
+                         to the far margin.
+
+                         Detail's own hero is 63 to Home's 59 on the app
+                         (two agreeing metrics), but both take the single
+                         61 - one size for the two content heroes is a
+                         deliberate call, not an oversight.
+
+                         BOTTOM-ANCHORED exactly like Home's id 4001, by
+                         the same slide-when-one-line trick and for the same
+                         reason - Kodi cannot bottom-align a label at all.
+                         Read 4001's note for the source detail. -158 + 170
+                         = 12 = id 5102's posy, so the box's bottom edge is
+                         the meta line's top edge. -->
                     <control type="label" id="5101">
-                        <posy>-97</posy>
-                        <width>1720</width>
-                        <height>62</height>
-                        <font>tofa_font_hero</font>
+                        <posy>{HERO_TITLE_POSY_DETAIL}</posy>
+                        <width>{HERO_TITLE_COLUMN}</width>
+                        <height>170</height>
+                        <wrapmultiline>true</wrapmultiline>
+                        <font>tofa_font_hero_title</font>
                         <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[Window.Property(hero_title)]</label>
+                        <label>$INFO[Window.Property(hero_title_display)]</label>
                         <visible>String.IsEmpty(Window.Property(hero_logo))</visible>
+                        <animation effect="slide" start="0,0" end="0,{HERO_TITLE_LINE}" time="0"
+                                   condition="String.IsEqual(Window.Property(hero_title_lines),1)">Conditional</animation>
                     </control>
 
                     <control type="label" id="5102">

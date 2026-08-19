@@ -174,30 +174,54 @@
                     <texture>$INFO[Window.Property(hero_logo)]</texture>
                     <visible>!String.IsEmpty(Window.Property(hero_logo))</visible>
                 </control>
-                <!-- 1608 = SCREEN_W - 2 * HOME_LEFT, i.e. the title may run
-                     to a right margin mirroring its own left one. Same rule
-                     Detail's text title already follows (id 5101 is 1720 =
-                     1920 - 2 * 100, that screen's margin).
+                <!-- Renders ONLY when the title has no logo art (its own
+                     visible= below), standing in for artwork rather than
+                     heading a screen - so it is tofa_font_hero_title (61),
+                     not tofa_font_hero (77). 77 measured RIGHT for the one
+                     surface that really is a heading, the server picker.
 
-                     It was 1000, which is the column the meta, ratings and
-                     synopsis lines below it use - and those are ordinary
-                     text at 23-26px, while this is 77px bold, so it ran out
-                     of room first and by a long way. Measured: "Horst
-                     Schlämmer sucht das Glück" is 1197 and "Masters of the
-                     Universe: Revolution" 1266, both cut at 1000. The lines
-                     below keep their 1000; only the one that overflowed
-                     grows.
+                     WRAPS instead of ellipsising, because the app does.
+                     Measured off a live capture of this very title with no
+                     logo (2026-08-19): Apple TV lays it over two lines,
+                     "To the Journey: Looking Back" / "at Star Trek:
+                     Voyager", the longer line 822px. 830 is that column.
+                     The width was 1608 (SCREEN_W - 2 * HOME_LEFT) and ran
+                     one unbroken line most of the way across the screen,
+                     which is half of why it read as oversized - the other
+                     half being the 77.
 
-                     This label only ever renders when the title has NO logo
-                     art (its own visible= below), which is exactly the case
-                     that has a long string and nothing else on the row. -->
+                     BOTTOM-ANCHORED, THE ONLY WAY KODI ALLOWS. There is no
+                     <aligny>bottom</aligny> for a label: GUIControlFactory
+                     maps "bottom" to the SAME value as "top" (it passes
+                     {{0, 0, XBFONT_CENTER_Y, 0}} as {{default, top, center,
+                     bottom}}), and CGUILabelControl has no GetHeight() to
+                     shrink the box to its text - only GetWidth(), which is
+                     what <width>auto</width> uses. So the text hangs from
+                     the TOP however the box is sized, and a one-line title
+                     would leave a line of empty space above the meta row.
+
+                     The box is therefore positioned for the TWO-line case
+                     (-64 + 170 = 106 = id 4002's posy, so its bottom edge
+                     IS the meta line's top edge), and the animation below
+                     slides it down exactly one line when the title only
+                     needs one. hero_title_lines comes from Python, which
+                     also inserts the break - see textmetrics.hero_title_wrap.
+
+                     If 4002's posy moves, this posy has to follow it.
+
+                     Verified against the live capture: the app leaves 27px
+                     between the title's last line and the meta ink. -->
                 <control type="label" id="4001">
-                    <width>1608</width>
-                    <height>85</height>
-                    <font>tofa_font_hero</font>
+                    <posy>-64</posy>
+                    <width>{HERO_TITLE_COLUMN}</width>
+                    <height>170</height>
+                    <wrapmultiline>true</wrapmultiline>
+                    <font>tofa_font_hero_title</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                    <label>$INFO[Window.Property(hero_title)]</label>
+                    <label>$INFO[Window.Property(hero_title_display)]</label>
                     <visible>String.IsEmpty(Window.Property(hero_logo))</visible>
+                    <animation effect="slide" start="0,0" end="0,{HERO_TITLE_LINE}" time="0"
+                               condition="String.IsEqual(Window.Property(hero_title_lines),1)">Conditional</animation>
                 </control>
                 <control type="label" id="4002">
                     <posy>106</posy>

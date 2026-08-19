@@ -61,7 +61,7 @@ from . import log
 # through this mechanism -- they're bespoke full-color SVGs rasterized to
 # PNG (see tools/gen_avatar_assets.py), and a font glyph can only ever be
 # one solid color, which can't reproduce multi-color artwork.
-FONT_SET_VERSION = 24
+FONT_SET_VERSION = 25
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
 ADDON = xbmcaddon.Addon()
@@ -86,7 +86,34 @@ FONTS: dict[str, tuple[str, int, str]] = {
     "tofa_font_link": ("RobotoMono-Bold.ttf", 32, "Regular"),
     "tofa_font_code": ("RobotoMono-Bold.ttf", 66, "Regular"),
     # General TV type-scale roles (tofa UX/styleguide.md).
+    #
+    # 77 is §3's hero, and it is RIGHT -- but only where it is a screen
+    # HEADING. Measured 2026-08-19 against the live Apple TV: the Switch
+    # Server page's "Pick where to watch from." caps at 56px, which is
+    # exactly 77 through Inter Tight's 0.7275 cap ratio, cross-checked on
+    # x-height (its 'o' and ours both 40px). Its one caller is
+    # script-tofa-serverpicker.xml.
     "tofa_font_hero": ("inter_tight_bold.ttf", 77, "Regular"),
+    # The hero TITLE on Home and Detail, which is a different thing: it
+    # renders only when a title has no logo art, standing in for artwork
+    # rather than heading a screen, and the app sets it visibly smaller.
+    # Measured off live captures of the SAME logo-less title on both
+    # screens (cap height, glyph-anchored threshold -- calibrated, it
+    # predicts our own 77 to the pixel):
+    #
+    #     Home    cap 43px -> 59      Detail  cap 46px -> 63
+    #
+    # The app really does use two sizes there (cap ratio 1.070, line-pitch
+    # ratio 1.079 -- two independent metrics agreeing). 61 is one value for
+    # both, Adrian's explicit call, and lands within 3-4% of each -- under
+    # the 7% that itself took two agreeing metrics to see.
+    #
+    # Weight stays bold: stem/cap measures 0.186 on Home and 0.179 on the
+    # picker against our 0.196, all inside the +/-1px (~10%) a stem this
+    # size can be read to. Detail reads 0.239, but its glyph sits over a
+    # bright backdrop that fattens antialiased strokes at a fixed
+    # threshold -- not a weight signal.
+    "tofa_font_hero_title": ("inter_tight_bold.ttf", 61, "Regular"),
     "tofa_font_section_title": ("inter_tight_semibold.ttf", 39, "Regular"),
     "tofa_font_row_title": ("inter_tight_semibold.ttf", 26, "Regular"),
     "tofa_font_micro": ("inter_tight_regular.ttf", 16, "Regular"),
