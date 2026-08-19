@@ -3297,6 +3297,38 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._ticker.daemon = True
         self._ticker.start()
 
+    def _log_kodi_audio_pick(self) -> None:
+        """What Kodi chose on its OWN, before we touch anything.
+
+        Added 2026-08-19 for issue #67. Twice I explained why one box shows
+        that bug and another does not, and twice the explanation was wrong,
+        because the one thing that decides it is not recorded anywhere: which
+        track KODI opened the file on, and whether the value we read back
+        described the file we were about to judge.
+
+        Both are in one line here, taken at the top of apply_track_selection()
+        -- the single place every played item passes through, on onAVStarted,
+        before any switch. `showing_current` is the same check `_switch_audio`
+        trusts its shortcut with, so the log now says whether that trust was
+        warranted at the moment it mattered.
+
+        Kodi's Python Player has no getAudioStreamIndex (see _current_stream),
+        so the ACTIVE slot comes from JSON-RPC while the stream LIST comes
+        from the Player object -- two sources for one line, which is why this
+        is worth writing once here rather than at each call site.
+
+        Best-effort: this is instrumentation, and it must never be the reason
+        a track is not applied.
+        """
+        try:
+            current, _ = self._current_stream(subtitles=False)
+            names = list(self.ui_player.getAvailableAudioStreams() or [])
+            showing = self._showing_current_item()
+            log.info("player: audio[open] kodi_streams=%r kodi_current=%r "
+                     "showing_current=%r" % (names, current, showing))
+        except Exception as exc:                            # noqa: BLE001
+            log.debug(f"player: could not log Kodi's audio pick: {exc!r}")
+
     def apply_track_selection(self):
         """Apply 7.7's Audio/Subtitle picks to the running stream.
 
@@ -3335,6 +3367,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         switch ever following, while the next episode -- started from Up Next,
         which never touches that Selection -- switched correctly 0.7s in.
         """
+        # Before anything is switched: what did Kodi land on by itself, and
+        # can we trust a read of it? See _log_kodi_audio_pick.
+        self._log_kodi_audio_pick()
         explicit_audio = self.selection.audio_index is not None
         explicit_subtitle = self.selection.subtitle_index is not None
         chosen_audio = None

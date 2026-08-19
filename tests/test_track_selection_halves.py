@@ -65,6 +65,12 @@ class FakePlayer:
 
 class Fake:
     """Only the machinery apply_track_selection actually reaches."""
+    # Instrumentation only (issue #67): records what Kodi picked before we
+    # touch it. Stubbed rather than bound, because it reads JSON-RPC and this
+    # file is about which SWITCHES happen, not about logging.
+    def _log_kodi_audio_pick(self):
+        self.logged_kodi_pick = True
+
     apply_track_selection = PlayerWindow.apply_track_selection
     _apply_language_preferences = PlayerWindow._apply_language_preferences
     # staticmethod() is load-bearing: bound as a plain function it would take
