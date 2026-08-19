@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.10" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.11" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,29 +25,13 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Long titles are no longer cut off on the home screen and the details page.
-        Where something has no logo artwork of its own, tofa shows its name as text
-        -- and that text was set so large that a long name ran most of the way across
-        the screen and was still cut short. It is smaller now and wraps onto a second
-        line, so you get the whole name.
-      - tofa asks once more to add its fonts to your skin, because the change above
-        needed a text size it had not installed before. It is the same one-off
-        question as always and Kodi restarts straight after; nothing else changes.
-      - Subtitles that sit in separate files beside a film now play properly.
-        Where a film's subtitles are in a pair of files next to it rather than
-        inside it, tofa used to either re-encode the whole picture to paint
-        them on -- costing quality -- or not offer them at all. They are now sent
-        across as they are and drawn on top, so the picture is untouched. Needs
-        tofa server 0.9.32.
-      - Video your server has to convert on the way to you can now arrive as HEVC
-        instead of H.264, which holds more detail at the same bandwidth. tofa had
-        never said it could take anything but H.264, so it always got the older one.
-        This applies only to conversion -- anything that plays untouched is
-        unaffected -- and only once whoever runs your server has switched HEVC on
-        for it, which is off to begin with.
-      - This version needs tofa server 0.9.32 or newer. On an older server the
-        sidecar subtitles above will not appear and converted video keeps coming as
-        H.264; everything else works as before.
+      - The next episode keeps your audio language. Starting the next episode from
+        the Up Next rail could put it on the soundtrack the file itself lists first,
+        rather than the language on your profile -- a series whose files carry
+        German before English would come back in German at every episode. tofa now
+        checks which track is really playing before deciding there is nothing to
+        change, and checks once more a moment later that the language it asked for
+        is the one you are hearing.
     </news>
     <assets>
       <icon>icon.png</icon>
