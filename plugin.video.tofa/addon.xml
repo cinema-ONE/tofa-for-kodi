@@ -33,9 +33,9 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       - tofa asks once more to add its fonts to your skin, because the change above
         needed a text size it had not installed before. It is the same one-off
         question as always and Kodi restarts straight after; nothing else changes.
-      - Subtitles that came with a DVD or Blu-ray rip as separate files now play
-        properly. Where a film's subtitles sit in a pair of files beside it rather
-        than inside it, tofa used to either re-encode the whole picture to paint
+      - Subtitles that sit in separate files beside a film now play properly.
+        Where a film's subtitles are in a pair of files next to it rather than
+        inside it, tofa used to either re-encode the whole picture to paint
         them on -- costing quality -- or not offer them at all. They are now sent
         across as they are and drawn on top, so the picture is untouched. Needs
         tofa server 0.9.32.
@@ -46,7 +46,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
         unaffected -- and only once whoever runs your server has switched HEVC on
         for it, which is off to begin with.
       - This version needs tofa server 0.9.32 or newer. On an older server the
-        disc-rip subtitles above will not appear and converted video keeps coming as
+        sidecar subtitles above will not appear and converted video keeps coming as
         H.264; everything else works as before.
     </news>
     <assets>
