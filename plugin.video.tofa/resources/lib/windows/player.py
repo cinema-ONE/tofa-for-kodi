@@ -115,6 +115,9 @@ SCRUB_STEP_MIN_MS = 10_000
 SCRUB_STEP_MAX_MS = 60_000
 
 _TICK_S = 0.2
+#: How long after a track choice its outcome is confirmed. Comfortably
+#: past Kodi's 1s player-state caches, which is the point of it.
+_AUDIO_CONFIRM_S = 2.0
 
 # 8.3's Next Up rail. The countdown is a stated hard contract; the lead is
 # "~30s before content end", which the spec allows stretching to 6 minutes
@@ -748,6 +751,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._chrome_deadline = 0.0     # monotonic; 0 = chrome is down
         self._pause_card_deadline = 0.0  # monotonic; 0 = not armed
         self._stream_url = ""           # what play() was handed, for updateInfoTag
+        # The one-shot audio confirmation: when to check, and against what.
+        # See _confirm_audio_slot.
+        self._audio_confirm_at = 0.0    # monotonic; 0 = nothing armed
+        self._audio_confirm_slot: Optional[int] = None
         self._toast_deadline = 0.0
         # Seek ladder: which rung, which way, and when the last press was.
         # -1 means "no gesture in progress".
@@ -1116,6 +1123,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         # only queues it. That is what made the first version of
         # _publish_now_playing() a silent no-op.
         self._stream_url = resp["stream_url"]
+        # A confirmation armed by the OUTGOING item must not fire against
+        # this one; the new item arms its own from apply_track_selection.
+        self._audio_confirm_at = 0.0
         # Ticker up BEFORE the open, so Kodi's busy spinner is closed while
         # it appears rather than after; see _ensure_ticker.
         self._ensure_ticker()
@@ -3321,11 +3331,12 @@ class PlayerWindow(kodigui.ControlledDialog):
         a track is not applied.
         """
         try:
-            current, _ = self._current_stream(subtitles=False)
+            cached, _ = self._current_stream(subtitles=False)
             names = list(self.ui_player.getAvailableAudioStreams() or [])
-            showing = self._showing_current_item()
-            log.info("player: audio[open] kodi_streams=%r kodi_current=%r "
-                     "showing_current=%r" % (names, current, showing))
+            log.info("player: audio[open] kodi_streams=%r kodi_playing=%r "
+                     "label=%r cached_index=%r"
+                     % (names, self._playing_audio_slot(),
+                        xbmc.getInfoLabel(self._AUDIO_LABELS[0]), cached))
         except Exception as exc:                            # noqa: BLE001
             log.debug(f"player: could not log Kodi's audio pick: {exc!r}")
 
@@ -3552,11 +3563,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         supposed to prevent -- so the better move is to do less to the
         renderer, not to add more code to repair it afterwards.
         """
-        current, _ = self._current_stream(subtitles=False)
-        # The identity check is second on purpose: it costs two JSON-RPC
-        # round trips and is only worth paying when the shortcut would
-        # otherwise be taken.
-        if current == slot and self._showing_current_item():
+        # NOT _current_stream(): its index is a second old on a changeover
+        # and has cost this bug twice. See _playing_audio_slot.
+        self._arm_audio_confirmation(slot)
+        if self._playing_audio_slot() == slot:
             log.debug(f"player: audio already on slot {slot}; not switching")
             return False
         self.ui_player.setAudioStream(slot)
@@ -3565,8 +3575,10 @@ class PlayerWindow(kodigui.ControlledDialog):
     def _switch_subtitle(self, slot: int) -> bool:
         """setSubtitleStream(slot), but only when it would change something.
         Same reasoning as _switch_audio."""
-        current, enabled = self._current_stream(subtitles=True)
-        if current == slot and enabled and self._showing_current_item():
+        # `subtitleenabled` is read from JSON-RPC (it is not cached); the
+        # INDEX beside it is, so the slot comes from _playing_subtitle_slot.
+        _current, enabled = self._current_stream(subtitles=True)
+        if enabled and self._playing_subtitle_slot() == slot:
             log.debug(f"player: subtitles already on slot {slot}; not switching")
             return False
         self.ui_player.setSubtitleStream(slot)
@@ -4458,6 +4470,7 @@ class PlayerWindow(kodigui.ControlledDialog):
             except RuntimeError:
                 pass
         self._close_kodi_osd()
+        self._confirm_audio_slot(now)
         # Anything a `stats` notification asked for, applied HERE because
         # this is the UI thread; see request_stats_mode.
         self._apply_stats_request()
@@ -4909,45 +4922,161 @@ class PlayerWindow(kodigui.ControlledDialog):
             apply=apply,
         )
 
-    def _showing_current_item(self) -> bool:
-        """True when Kodi's player is presenting the file we last handed it.
+    #: The InfoLabels that describe the audio Kodi is ACTUALLY decoding.
+    #: Language alone identifies the track on nearly every file; the other
+    #: two only break a tie between two tracks in the same language.
+    _AUDIO_LABELS = ("VideoPlayer.AudioLanguage", "VideoPlayer.AudioCodec",
+                     "VideoPlayer.AudioChannels")
 
-        The Play Next path REPLACES the playing item without stopping it
-        (`advancing without stop`), and for a beat afterwards Kodi still
-        answers about the OUTGOING file. Anything read off the live player in
-        that window describes the wrong stream.
+    def _kodi_audio_streams(self) -> list:
+        """Kodi's audio streams as OBJECTS, the twin of
+        _kodi_subtitle_streams.
 
-        Reported 2026-08-19 from the cinema box: Murder, She Wrote S2 E19
-        started in German. `_switch_audio` had resolved English correctly,
-        then skipped the switch because `_current_stream()` said audio was
-        already on that slot -- true of E18, which Kodi was still describing.
-        The log has the ordering: the check ran 13ms BEFORE the new session
-        was adopted, where on a normal start it runs 3ms after.
-
-        `_stream_url` is set to the new URL before `play()` is called, so
-        during the stale window it disagrees with what Kodi reports, which is
-        exactly the signal wanted. Answers False on any doubt: the caller
-        then does the switch, which is the behaviour from before the
-        shortcut existed.
+        getAvailableAudioStreams() returns bare name strings, which cannot be
+        joined to anything; JSON-RPC carries `language`, `codec` and
+        `channels` per stream. Measured fresh: on a changeover this list is
+        the NEW file's within ~160ms of the open, well before onAVStarted --
+        it is the INDEX of the current stream that lags, not the inventory.
         """
-        if not self._stream_url:
-            return False
         try:
             active = json.loads(xbmc.executeJSONRPC(json.dumps({
                 "jsonrpc": "2.0", "id": 1, "method": "Player.GetActivePlayers",
             }))).get("result") or []
             video = next((p for p in active if p.get("type") == "video"), None)
             if video is None:
-                return False
-            item = (json.loads(xbmc.executeJSONRPC(json.dumps({
-                "jsonrpc": "2.0", "id": 1, "method": "Player.GetItem",
+                return []
+            props = json.loads(xbmc.executeJSONRPC(json.dumps({
+                "jsonrpc": "2.0", "id": 1, "method": "Player.GetProperties",
                 "params": {"playerid": video["playerid"],
-                           "properties": ["file"]},
-            }))).get("result") or {}).get("item") or {}
-            return bool(item.get("file")) and item["file"] == self._stream_url
-        except (ValueError, KeyError, TypeError, RuntimeError) as exc:
-            log.debug(f"player: could not confirm the playing item: {exc!r}")
-            return False
+                           "properties": ["audiostreams"]},
+            }))).get("result") or {}
+        except (ValueError, KeyError, TypeError) as exc:
+            log.warning(f"player: could not read audio streams: {exc!r}")
+            return []
+        return list(props.get("audiostreams") or [])
+
+    def _playing_audio_slot(self):
+        """The slot Kodi is REALLY playing, or None when it cannot be told.
+
+        NOT `currentaudiostream`'s index, which is the read that has now cost
+        this bug twice. That index comes from
+        `CApplicationPlayer::GetAudioStream()`, which is a **one-second
+        cache** (ApplicationPlayer.cpp: `m_audioStreamUpdate.Set(1000ms)`).
+        `CApplicationPlayer::OpenFile` expires it, but it expires it as the
+        open is QUEUED -- so any reader in the window before the new audio
+        stream opens re-fills it with the OUTGOING file's index, and that
+        answer then stands for a full second into the new episode.
+
+        On the cinema box there is such a reader: two clients sit on Kodi's
+        JSON-RPC port polling the player. That is also why neither local Kodi
+        nor the AM6B+ ever reproduced this -- nothing was polling them.
+
+        Reproduced deliberately, 2026-08-19, on local Kodi with two plain
+        mkvs (ger default, eng second) and a 40ms poller, no add-on involved:
+
+            t      currentaudiostream   VideoPlayer.AudioLanguage   file
+            +0.30s index 1 ("eng")      ger                         epB
+            +1.00s index 1 ("eng")      ger                         epB
+            +1.08s index 0 ("ger")      ger                         epB
+
+        With the poller off, the same read is right from +0.30s. The file
+        identity is fresh throughout, which is why PR #68's
+        `_showing_current_item()` could not catch it: `Player.GetItem` is not
+        behind that cache, so it said "yes, the new episode" while the index
+        still described the old one.
+
+        So the current track is resolved from the two surfaces that told the
+        truth in every sample: the stream INVENTORY, and the InfoLabels for
+        what is being decoded. Ambiguity answers None, and the caller then
+        switches -- the behaviour from before the shortcut existed.
+        """
+        streams = self._kodi_audio_streams()
+        if not streams:
+            return None
+        language = (xbmc.getInfoLabel(self._AUDIO_LABELS[0]) or "").strip().lower()
+        if not language:
+            return None
+        matches = [s for s in streams
+                   if str(s.get("language") or "").strip().lower() == language]
+        if len(matches) > 1:
+            # Two tracks in one language -- a commentary, or a second mix.
+            codec = (xbmc.getInfoLabel(self._AUDIO_LABELS[1]) or "").strip().lower()
+            channels = (xbmc.getInfoLabel(self._AUDIO_LABELS[2]) or "").strip()
+            matches = [s for s in matches
+                       if str(s.get("codec") or "").strip().lower() == codec
+                       and str(s.get("channels") or "") == channels]
+        if len(matches) != 1:
+            return None
+        slot = matches[0].get("index")
+        return slot if isinstance(slot, int) else None
+
+    def _playing_subtitle_slot(self):
+        """_playing_audio_slot for subtitles: same cache, same lie.
+
+        `CApplicationPlayer::GetSubtitle()` carries the identical 1000ms
+        cache (`m_subtitleStreamUpdate`), so `currentsubtitle`'s index is
+        just as stale on a changeover. `subtitleenabled` is NOT cached, so
+        the caller still reads that from JSON-RPC.
+
+        Subtitle tracks share a language far more often than audio ones
+        (full, forced and SDH are all `eng`) and no InfoLabel distinguishes
+        them, so this answers None more often than its audio twin. That
+        costs a needless setSubtitleStream, which is cheap -- unlike an
+        audio switch it does not reconfigure the renderer.
+        """
+        streams = self._kodi_subtitle_streams()
+        if not streams:
+            return None
+        language = (xbmc.getInfoLabel("VideoPlayer.SubtitlesLanguage") or "").strip().lower()
+        if not language:
+            return None
+        matches = [s for s in streams
+                   if str(s.get("language") or "").strip().lower() == language]
+        if len(matches) != 1:
+            return None
+        slot = matches[0].get("index")
+        return slot if isinstance(slot, int) else None
+
+    def _arm_audio_confirmation(self, slot: int) -> None:
+        """Remember the slot just asked for, and when to check it landed."""
+        self._audio_confirm_slot = slot
+        self._audio_confirm_at = time.monotonic() + _AUDIO_CONFIRM_S
+
+    def _confirm_audio_slot(self, now: float) -> None:
+        """Belt and braces: a beat after the switch, did the audio LAND?
+
+        Two fixes for this bug have shipped on the strength of a read that
+        was believed fresh, and both were wrong about a different surface. So
+        the outcome is now checked once per item, _AUDIO_CONFIRM_S after the
+        choice was applied -- by which time every cache Kodi holds has
+        expired -- and corrected if the wrong LANGUAGE is playing.
+
+        Only on the language, and only once. A different track in the same
+        language is a tie this cannot break and must not fight over, and a
+        viewer who changes the track by hand during those two seconds keeps
+        their choice because the panel arms this with the slot THEY asked
+        for.
+        """
+        if not self._audio_confirm_at or now < self._audio_confirm_at:
+            return
+        self._audio_confirm_at = 0.0
+        wanted = self._audio_confirm_slot
+        if wanted is None:
+            return
+        try:
+            playing = self._playing_audio_slot()
+            if playing is None or playing == wanted:
+                return
+            by_slot = {s.get("index"): s for s in self._kodi_audio_streams()}
+            want_lang = str((by_slot.get(wanted) or {}).get("language") or "").lower()
+            got_lang = str((by_slot.get(playing) or {}).get("language") or "").lower()
+            if not want_lang or want_lang == got_lang:
+                return
+            log.info("player: audio landed on slot %s (%s), correcting to "
+                     "slot %s (%s)" % (playing, got_lang, wanted, want_lang))
+            self.ui_player.setAudioStream(wanted)
+        except (RuntimeError, AttributeError, TypeError) as exc:
+            log.warning(f"player: could not confirm the audio track: {exc!r}")
 
     def _current_stream(self, subtitles: bool) -> tuple:
         """(index of the active track, is it on) from JSON-RPC.
