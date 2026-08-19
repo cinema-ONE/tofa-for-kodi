@@ -3642,7 +3642,7 @@
                 <align>center</align>
                 <valign>center</valign>
                 <font>tofa_font_button</font>
-                <textcolor>0xFFFFFFFF</textcolor>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <scroll>true</scroll>
                 <scrollsuffix>   </scrollsuffix>
                 <label>$INFO[Window(10000).Property(tofa_toast)]</label>

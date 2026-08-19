@@ -5046,7 +5046,7 @@ def toast(indent: str = "        ") -> str:
 {indent}        <align>center</align>
 {indent}        <valign>center</valign>
 {indent}        <font>{T.FONT_BUTTON}</font>
-{indent}        <textcolor>0xFFFFFFFF</textcolor>
+{indent}        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
 {indent}        <scroll>true</scroll>
 {indent}        <scrollsuffix>\u2003\u2003\u2003</scrollsuffix>
 {indent}        <label>$INFO[Window(10000).Property({TOAST_PROPERTY})]</label>

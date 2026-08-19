@@ -181,15 +181,32 @@ FONTS: dict[str, tuple[str, int, str]] = {
     "tofa_font_stats_key": ("inter_tight_regular.ttf", 15, "Regular"),
     "tofa_font_stats_eyebrow": ("inter_tight_bold.ttf", 11, "Regular"),
     "tofa_font_stats_title": ("inter_tight_bold.ttf", 14, "Regular"),
-    # Icon-font roles, one per pixel footprint the UI uses (nav tabs 36,
-    # sidebar rows 26, pill icons 24, chevrons 19). Sizes are literal
-    # target px -- icon fonts fill their em-square, unlike Inter Tight's
-    # correction above -- but verify live before reusing for a new size.
+    # Icon-font roles, one per pixel footprint the UI uses. Sizes are
+    # literal target px -- icon fonts fill their em-square, unlike Inter
+    # Tight's correction above -- but verify live before reusing for a
+    # new size.
+    #
+    # The footprints below are what the skin ACTUALLY draws, re-derived by
+    # counting <font> references per role (2026-08-19). Three of these
+    # comments had drifted: a role is named for a number, not a place, so
+    # nothing catches it when the place moves. If you move an icon, fix the
+    # comment in the same commit -- the design-language page states these
+    # callers and is generated from the skin, so the two will disagree.
+    #
+    #   36 -- nav-bar tabs, episode + collection card marks, player transport
+    #   26 -- the player OSD, all 25 callers. NOT sidebar rows: those are 24
+    #   24 -- sidebar / picker / card-options row icons, pill icons
+    #   19 -- chevrons and inline marks; the most-used icon role
     "tofa_font_icons_36": ("lucide-icons.ttf", 36, "Regular"),
     "tofa_font_icons_26": ("lucide-icons.ttf", 26, "Regular"),
     "tofa_font_icons_24": ("lucide-icons.ttf", 24, "Regular"),
     "tofa_font_icons_19": ("lucide-icons.ttf", 19, "Regular"),
-    # Search's Top Result poster placeholder / Actors shelf circular placeholder.
+    # 56 is the placeholder size: BOTH card placeholders live here
+    # (poster_visual()'s film glyph and person_card()'s user-round), plus
+    # Search's other empty states and the player's skip-back/forward.
+    # 80 and 64 are one caller each and neither is a placeholder -- 80 is
+    # sign-in's expired-code clock, 64 is Search's idle / first-run empty
+    # state. They shared this comment until 2026-08-19 and it described 56.
     "tofa_font_icons_80": ("lucide-icons.ttf", 80, "Regular"),
     "tofa_font_icons_64": ("lucide-icons.ttf", 64, "Regular"),
     "tofa_font_icons_56": ("lucide-icons.ttf", 56, "Regular"),
