@@ -5,11 +5,14 @@ of api.tofa.tv 403s (error code 1010) on any UA containing it.
 """
 from __future__ import annotations
 
+import threading
+import time
+import weakref
 from typing import Any, Optional
 
 import requests
 
-from . import branding, clientinfo
+from . import branding, clientinfo, log
 
 #: The product token every request carries. `tofa-for-kodi` is this repo, and
 #: the add-on it ships -- NOT `tofa-vault`, which is the internals repo beside
@@ -89,6 +92,73 @@ def client_headers() -> dict:
     return dict(_CLIENT_HEADERS)
 
 
+#: How long a pooled connection may sit idle before we stop trusting it.
+#:
+#: A `requests.Session` outlives any one screen -- the add-on builds one at
+#: launch and every window reuses the client holding it -- so its pooled TCP
+#: connection can sit unused for as long as the viewer sits still. The tofa
+#: server answers with `keep-alive: timeout=40`, so anything past that is
+#: already closed on its side.
+#:
+#: Reported from the cinema box 2026-08-21: after a ~12 minute break the next
+#: Detail screen drew no backdrop, no logo and an empty Play pill. The log
+#: showed 15.09s between the window opening and the error -- exactly the
+#: default timeout below -- then an instant "connection refused" from the
+#: relay it fell back to. The LAN server was healthy throughout (200 in
+#: 1.7ms when probed minutes later). The request had been written into a
+#: socket that was long dead and waited out the full timeout.
+#:
+#: urllib3 discards a pooled connection it can SEE has been closed, which is
+#: why this is not a problem on a clean shutdown. It cannot see one that died
+#: silently -- a Wi-Fi path that dropped the flow, a NAT entry that expired --
+#: and that is the case this covers. 30s rather than the server's 40 so a
+#: connection is dropped before the server's own timer can catch it.
+IDLE_POOL_LIMIT_SECONDS = 30.0
+
+#: Last use per session, weak so a short-lived session (signin, artcache)
+#: is not kept alive by this bookkeeping. Guarded because a session can be
+#: shared between the UI thread and a background fetch, and the check has to
+#: be read-and-update in one step or two threads both decide to drop.
+_LAST_USED: "weakref.WeakKeyDictionary[requests.Session, float]" = weakref.WeakKeyDictionary()
+_LAST_USED_LOCK = threading.Lock()
+
+#: Indirected so a test can drive an idle gap without waiting one out.
+#: Monotonic rather than wall-clock: this measures a duration, and the boxes
+#: do adjust their clock (a CoreELEC box with no RTC gets its time from NTP
+#: seconds after boot, which would otherwise read as a huge idle gap or a
+#: negative one).
+_now = time.monotonic
+
+
+def _drop_stale_pool(session: requests.Session) -> None:
+    """Drop the connection pool if this session has been idle too long.
+
+    `Session.close()` clears the adapters' pool managers; the session stays
+    usable and the next request opens a fresh connection. On a LAN that is a
+    ~1ms handshake against the 15s a dead socket costs.
+
+    A request in flight on another thread holds its connection OUTSIDE the
+    pool, so clearing cannot pull it out from under that thread -- the
+    connection is simply not returned to a live pool afterwards.
+    """
+    now = _now()
+    with _LAST_USED_LOCK:
+        last = _LAST_USED.get(session)
+        stale = last is not None and now - last > IDLE_POOL_LIMIT_SECONDS
+        if stale:
+            # Record now so a second thread arriving behind this one does not
+            # close the pool again on the same idle gap.
+            _LAST_USED[session] = now
+    if stale:
+        log.debug("http: dropping pooled connections after {0:.0f}s idle".format(now - last))
+        session.close()
+
+
+def _mark_used(session: requests.Session) -> None:
+    with _LAST_USED_LOCK:
+        _LAST_USED[session] = _now()
+
+
 class ApiError(Exception):
     def __init__(self, status: int, error: str, message: str):
         self.status = status
@@ -140,6 +210,7 @@ def request_response(
     """
     if params:
         params = {k: v for k, v in params.items() if v is not None}
+    _drop_stale_pool(session)
     try:
         resp = session.request(
             method, url, params=params, json=json_body, data=form_body, headers=headers, timeout=timeout
@@ -148,6 +219,12 @@ def request_response(
         raise ApiError(0, "timeout", str(exc)) from None
     except requests.RequestException as exc:
         raise ApiError(0, "connection_error", str(exc)) from None
+    finally:
+        # Marked on the way OUT, not in: the next idle gap starts when this
+        # request finishes, and a slow one would otherwise be counted as idle
+        # time it did not spend idle. In `finally` so a failed request still
+        # moves the clock -- the pool has just been proven live or replaced.
+        _mark_used(session)
 
     if not resp.ok:
         error, message = _parse_error_body(resp)
@@ -193,4 +270,11 @@ def raw_range_request(
     hdrs = dict(headers or {})
     if range_header:
         hdrs["Range"] = range_header
-    return session.request(method, url, headers=hdrs, timeout=timeout, stream=True)
+    # Same staleness guard as request_response. This path carries the artwork
+    # fetches, which are exactly the ones that run after a screen has sat
+    # still, and a hung range request stalls a whole grid of posters.
+    _drop_stale_pool(session)
+    try:
+        return session.request(method, url, headers=hdrs, timeout=timeout, stream=True)
+    finally:
+        _mark_used(session)
