@@ -85,8 +85,21 @@ def main():
     # text on the screen and the first thing read, and a constant there
     # ("Couldn't load this title" on every branch) tells the viewer nothing
     # the blank page had not already told them.
+    # A TIMEOUT IS ITS OWN CASE. The server answered -- we gave up first --
+    # so the connection has just proved it works. Traced end to end on
+    # 2026-08-21: the server was still executing the query 99ms after the
+    # client hung up (vault issue #107). This branch used to be lumped in
+    # with "reach" and sent the viewer to check a working network.
+    title, message = DetailWindow._load_error_copy(
+        http.ApiError(0, "timeout", "timed out"))
+    check("a timeout does NOT blame the connection",
+          "connection" not in (title + message).lower(), title + " / " + message)
+    check("...the headline says the SERVER was slow",
+          "took too long" in title.lower(), title)
+    check("...and Retry is the right thing to offer, so it says so",
+          "try again" in message.lower(), message)
+
     reach = [
-        http.ApiError(0, "timeout", "timed out"),          # what the box hit
         http.ApiError(0, "connection_error", "refused"),
         http.ApiError(503, "server_relay_not_connected", ""),
         http.ApiError(502, "bad_gateway", ""),
@@ -136,6 +149,7 @@ def main():
     # the viewer exactly where the blank page did.
     seen_titles = set()
     for exc in (None,
+                http.ApiError(0, "timeout", ""),
                 http.ApiError(403, "profile_locked", ""),
                 http.ApiError(404, "not_found", ""),
                 http.ApiError(500, "internal_error", "")):
@@ -149,7 +163,7 @@ def main():
               "(status %s)" % label, message.lower() != title.lower())
         seen_titles.add(title)
     check("each kind of failure gets its OWN headline, not one shared one",
-          len(seen_titles) == 4, str(sorted(seen_titles)))
+          len(seen_titles) == 5, str(sorted(seen_titles)))
 
     failed = [n for n, ok in RESULTS if not ok]
     print()
