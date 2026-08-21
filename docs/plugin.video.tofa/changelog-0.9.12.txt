@@ -1,0 +1,17 @@
+- Coming back to tofa after a break no longer leaves you on a blank page.
+  If the app had been sitting idle for a minute or two, the next thing you
+  opened could hang for about fifteen seconds and then show a title with no
+  artwork and an empty Play button. The connection to your server had gone
+  quiet without tofa noticing. It now opens a fresh one instead of waiting
+  on the old.
+- A title that cannot load now tells you why. Where the page used to come
+  up empty, it says whether your server could not be reached, your profile
+  needs unlocking again, or the title is no longer in your library -- and
+  offers a Retry button.
+- Stray marks at the edge of the screen are gone. If you had made the
+  interface smaller (Settings > Interface > Skin > Zoom, below 100%), two
+  things appeared outside the picture: a small pale tick to the left of the
+  player's progress bar, and a sliver of the next card past the right-hand
+  end of the rows on Home and Discover. Both sat just off the edge of the
+  screen, where a reduced zoom brought them back into view. Nothing about
+  these screens has changed at 100%.
