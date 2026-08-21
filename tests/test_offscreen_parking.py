@@ -146,6 +146,31 @@ check("no painting control sits entirely outside the frame", not parked,
 check("the scan actually walked the rendered windows",
       len(glob.glob(os.path.join(SKINS, "*.xml"))) >= 14)
 
+
+# --- 3. a rows REGION clips at the frame, its lists still bleed ------------
+# The two must not be unified. A poster row runs one HPAD past the screen so
+# that the last poster can reach the edge (tokens.row_bleed_width), but the
+# grouplist that CLIPS the rows has to stop at the screen -- otherwise that
+# bleed is drawn outside the frame, which is invisible at 100% and on screen
+# below it. Measured before the fix at -30%: 2645 stray px on Home, 3665 on
+# Discover, all of it the next card showing past where the UI ends.
+from resources.lib.skin import tokens as T  # noqa: E402
+
+for name, (left, width) in {
+    "Home rows": (T.HOME_LEFT, T.HOME_ROWS_W),
+    "Discover rows": (T.DISCOVER_LEFT, T.DISCOVER_ROWS_W),
+    "Search shelves": (T.SEARCH_SHELF_X, T.SEARCH_SHELF_CLIP_W),
+    "Detail shelves": (100, T.DETAIL_SHELF_W),
+}.items():
+    check("%s clip at the screen edge" % name, left + width == T.SCREEN_W,
+          "clips at %d" % (left + width))
+
+check("...and the lists inside still bleed past it",
+      T.row_bleed_width(T.HOME_LEFT) > T.HOME_ROWS_W
+      and T.SEARCH_SHELF_W > T.SEARCH_SHELF_CLIP_W,
+      "home list %d vs region %d" % (T.row_bleed_width(T.HOME_LEFT),
+                                     T.HOME_ROWS_W))
+
 print("")
 failed = [n for n, ok in RESULTS if not ok]
 print("off-screen parking: nothing hides where Kodi's zoom would show it "

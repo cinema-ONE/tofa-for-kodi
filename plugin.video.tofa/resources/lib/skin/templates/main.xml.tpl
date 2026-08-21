@@ -1315,7 +1315,7 @@
                 <control type="grouplist" id="6810">
                     <posx>-20</posx>
                     <posy>{SEARCH_SHELVES_Y}</posy>
-                    <width>{SEARCH_SHELF_W}</width>
+                    <width>{SEARCH_SHELF_CLIP_W}</width>
                     <height>{SEARCH_SHELVES_H}</height>
                     <orientation>vertical</orientation>
                     <!-- 0, NOT the 32 this used to carry. Each shelf group
