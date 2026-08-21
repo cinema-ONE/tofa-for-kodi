@@ -945,7 +945,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # episode -- which is also the state a movie, or a title whose
         # metadata fetch failed, stays in for good.
         self._apply_transport_mode(episode=False)
-        # Park the marker pool before the first paint, or all 46 sit stacked
+        # Hide the marker pool before the first paint, or all 46 sit stacked
         # at the head of the track until something places them.
         for cid in self.CHAPTER_TICK_IDS + self.SEGMENT_TICK_IDS:
             self._hide_marker(cid)
@@ -2021,6 +2021,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                 return
             control.setPosition(_TRACK_X + x, _TRACK_Y)
             control.setWidth(max(2, width))
+            control.setVisible(True)
 
         for i, cid in enumerate(self.SEGMENT_TICK_IDS):
             if i >= len(self._segments):
@@ -2044,15 +2045,28 @@ class PlayerWindow(kodigui.ControlledDialog):
                 continue
             place(cid, int(start * scale), 2)
 
-    # Unused markers are parked off-screen rather than hidden. A static
-    # <visible>false</visible> in the XML is a CONDITION, which Kodi keeps
-    # re-evaluating -- setVisible(True) cannot win against it, so the whole
-    # pool stayed invisible however it was placed.
-    _MARKER_PARKED_X = -50
-
     def _hide_marker(self, control_id: int):
+        """Hide one marker -- and HIDE it, do not park it off-screen.
+
+        The pool used to be parked at x=-50 instead, because a static
+        `<visible>false</visible>` in the XML is a CONDITION that Kodi keeps
+        re-evaluating, so `setVisible(True)` could never win against it and
+        the whole pool stayed invisible however it was placed. True, but the
+        conclusion was wrong: the fix for that is to leave the tag OUT, which
+        these controls already do. With no condition to re-evaluate, the
+        Python call stands in both directions.
+
+        Parking leaked. Kodi's GUI zoom (Settings > Interface > Skin > Zoom)
+        scales the whole skin about the centre, so anything just off the edge
+        comes back on screen below 100%: at -10%, skin x=-50 lands at
+        960 + (-50 - 960) * 0.9 = 51. Reported as "a white tick left of the
+        scrub bar, only visible when zoom is under 100%", and reproduced
+        locally at exactly that pixel -- 40 chapter ticks at 35% white plus
+        every unused segment tick, stacked on one spot, which is why
+        something built from 2px translucent marks read as a solid nick.
+        """
         try:
-            self.getControl(control_id).setPosition(self._MARKER_PARKED_X, _TRACK_Y)
+            self.getControl(control_id).setVisible(False)
         except RuntimeError:
             pass
 
