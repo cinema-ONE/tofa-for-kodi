@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.11" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.12" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,13 +25,23 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - The next episode keeps your audio language. Starting the next episode from
-        the Up Next rail could put it on the soundtrack the file itself lists first,
-        rather than the language on your profile -- a series whose files carry
-        German before English would come back in German at every episode. tofa now
-        checks which track is really playing before deciding there is nothing to
-        change, and checks once more a moment later that the language it asked for
-        is the one you are hearing.
+      - Coming back to tofa after a break no longer leaves you on a blank page.
+        If the app had been sitting idle for a minute or two, the next thing you
+        opened could hang for about fifteen seconds and then show a title with no
+        artwork and an empty Play button. The connection to your server had gone
+        quiet without tofa noticing. It now opens a fresh one instead of waiting
+        on the old.
+      - A title that cannot load now tells you why. Where the page used to come
+        up empty, it says whether your server could not be reached, your profile
+        needs unlocking again, or the title is no longer in your library -- and
+        offers a Retry button.
+      - Stray marks at the edge of the screen are gone. If you had made the
+        interface smaller (Settings &gt; Interface &gt; Skin &gt; Zoom, below 100%), two
+        things appeared outside the picture: a small pale tick to the left of the
+        player's progress bar, and a sliver of the next card past the right-hand
+        end of the rows on Home and Discover. Both sat just off the edge of the
+        screen, where a reduced zoom brought them back into view. Nothing about
+        these screens has changed at 100%.
     </news>
     <assets>
       <icon>icon.png</icon>
