@@ -327,8 +327,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         naming the wrong address; a card that confidently blames the wrong
         thing does the same to the viewer, and they cannot read the log.
 
-          reach   nothing answered. Their connection or their server, and
-                  worth telling them to look.
+          slow    the server answered, eventually -- we gave up first. Its
+                  problem, not their network's, and Retry genuinely helps.
+          reach   nothing answered at all. Their connection or their server,
+                  and worth telling them to look.
           locked  the server answered and refused the profile (403 is the
                   locked primary, 401 an expired credential). Telling them
                   to check the connection would send them to look at
@@ -339,8 +341,22 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         status = exc.status if exc else 0
         error = exc.error if exc else "connection_error"
 
-        if exc is None or error in ("connection_error", "timeout") \
+        if error == "timeout":
+            # A TIMEOUT IS NOT A REACH PROBLEM, and this branch used to say it
+            # was. Traced end to end on 2026-08-21: the server had accepted
+            # the request and was still executing it 99ms after we hung up --
+            # it was mid library scan and a 26-row lookup was taking 4.4s.
+            # The connection was perfect. Telling that viewer to go and check
+            # it sends them at the one thing in the chain that was working,
+            # which is the same wrong turn the log's own error message caused
+            # (vault issue #107).
+            return ("Your server took too long to answer",
+                    "It may be busy. Try again in a moment.")
+        if exc is None or error == "connection_error" \
                 or status in (0, 502, 503, 504) or error in api._RELAY_DOWN:
+            # Nothing answered -- including the relay answering FOR an absent
+            # server (_RELAY_DOWN, 502/504), which is still "your server is
+            # not there" from where the viewer sits.
             return ("Couldn't reach your server",
                     "Check the connection and try again.")
         if status in (401, 403):
