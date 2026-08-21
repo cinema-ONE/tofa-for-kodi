@@ -165,8 +165,27 @@ CELL_W = POSTER_W + 2 * HPAD
 # simply cut back to the region's edge. That clip is what kept a ~14px strip
 # of background at the right of Home after the lists themselves were widened.
 ROW_BLEED_RIGHT = SCREEN_W + HPAD
-HOME_ROWS_W = ROW_BLEED_RIGHT - HOME_LEFT
-DISCOVER_ROWS_W = ROW_BLEED_RIGHT - DISCOVER_LEFT
+
+# ...but the REGION that clips those lists stops at the screen edge, and this
+# is the one place the two must NOT agree.
+#
+# A grouplist clips its children to its own width, so the region is what
+# decides where a bleeding row is actually cut. Cutting at ROW_BLEED_RIGHT
+# draws the last HPAD of a row OUTSIDE the frame: invisible at 100% zoom,
+# because the screen ends there -- and visible below it, because Kodi's skin
+# zoom (lookandfeel.skinzoom, -30%..+30%) scales the whole skin about the
+# CENTRE, so at -30% the visible area runs -411..2331 across. Reported after
+# the scrub-marker leak as ~10px of the next card floating past the edge of
+# the UI on Home and Discover.
+#
+# Cutting at the screen edge costs nothing at 100%: the screen cuts there
+# anyway, so a partially-scrolled card is cut in exactly the same place. What
+# it must NOT do is narrow the LISTS -- their extra HPAD is what lets the
+# last poster reach the edge (see row_bleed_width) -- which is why this is a
+# separate token rather than a smaller ROW_BLEED_RIGHT.
+ROWS_CLIP_RIGHT = SCREEN_W
+HOME_ROWS_W = ROWS_CLIP_RIGHT - HOME_LEFT
+DISCOVER_ROWS_W = ROWS_CLIP_RIGHT - DISCOVER_LEFT
 
 
 
@@ -252,6 +271,9 @@ SEARCH_COLUMN_X = 666
 # inside it run to the screen edge, same reasoning as DETAIL_SHELF_W.
 SEARCH_SHELF_X = SEARCH_COLUMN_X - 20
 SEARCH_SHELF_W = ROW_BLEED_RIGHT - SEARCH_SHELF_X
+#: The shelves' grouplist clips at the screen edge, its lists bleed one HPAD
+#: past it. See ROWS_CLIP_RIGHT for why the two differ.
+SEARCH_SHELF_CLIP_W = ROWS_CLIP_RIGHT - SEARCH_SHELF_X
 
 # Search's Top Result cell. Typed in TWO places before this existed -- the
 # itemlayout inside fragments.py:top_result_card() and the <itemwidth>/
@@ -521,7 +543,10 @@ BROWSE_CELL_H = CELL_H + GRID_GAP_BROWSE      # 504, app measures 505
 # card -- Kodi refuses to clamp a horizontal list's scroll to the viewport's
 # far edge, measured before and after on a 25-item row (the focused last
 # card stayed at 1813 either way).
-DETAIL_SHELF_W = ROW_BLEED_RIGHT - 100
+# The shelves' grouplist, so it clips at the screen edge; the lists inside it
+# get row_bleed_width(100) from screens.py and still bleed. See
+# ROWS_CLIP_RIGHT.
+DETAIL_SHELF_W = ROWS_CLIP_RIGHT - 100
 DETAIL_SHELF_H = SCREEN_H - 150
 
 # Cast & Crew tiles (Detail page 2). Square cells, not posters: 1740 of panel
