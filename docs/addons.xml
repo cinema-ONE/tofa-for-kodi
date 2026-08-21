@@ -26,16 +26,11 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Coming back to tofa after a break no longer leaves you on a blank page.
-        If the app had been sitting idle for a minute or two, the next thing you
-        opened could hang for about fifteen seconds and then show a title with no
-        artwork and an empty Play button. The connection to your server had gone
-        quiet without tofa noticing. It now opens a fresh one instead of waiting
-        on the old.
-      - A title that cannot load now tells you why. Where the page used to come
-        up empty, it says whether your server could not be reached, your profile
-        needs unlocking again, or the title is no longer in your library -- and
-        offers a Retry button.
+      - A title that cannot load now tells you why. Where the page used to come up
+        empty -- no artwork, no synopsis, and a Play button with nothing on it --
+        it now says whether your server could not be reached, your profile needs
+        unlocking again, or the title is no longer in your library, and offers a
+        Retry button.
       - Stray marks at the edge of the screen are gone. If you had made the
         interface smaller (Settings &gt; Interface &gt; Skin &gt; Zoom, below 100%), two
         things appeared outside the picture: a small pale tick to the left of the
@@ -54,7 +49,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/05-player.jpg</screenshot>
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
-  <size>9235141</size><path>plugin.video.tofa/plugin.video.tofa-0.9.12.zip</path></extension>
+  <size>9234976</size><path>plugin.video.tofa/plugin.video.tofa-0.9.12.zip</path></extension>
 </addon>
 <addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.11" provider-name="cinemaONE">
   <requires>
