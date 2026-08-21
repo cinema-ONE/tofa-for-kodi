@@ -1,28 +1,31 @@
 """A pooled connection that has been idle too long must be dropped, not used.
 
-Reported from the cinema box 2026-08-21: after a ~12 minute break, opening a
-title drew no backdrop, no logo and an empty Play pill. kodi.log showed
-15.09s between the window opening and the failure -- exactly http.py's
-default timeout -- and then an instant "connection refused" from the relay it
-fell back to. The LAN server was healthy throughout, answering in 1.7ms when
-probed minutes later.
+The tofa server closes an idle keep-alive connection after 40 seconds
+(`keep-alive: timeout=40`). urllib3 discards a pooled connection it can SEE
+has been closed, so a clean close is harmless. One that died silently -- a
+Wi-Fi path that dropped the flow, a NAT entry that expired -- is not: the
+request goes into a dead socket and waits out the full 15s timeout.
 
-The add-on builds ONE `requests.Session` at launch and every window reuses
-the client holding it, so its pooled TCP connection had sat unused since the
-last episode ended. The tofa server closes an idle keep-alive connection
-after 40 seconds (`keep-alive: timeout=40`). The request was written into a
-socket that was long dead and waited out the whole timeout.
+Reproduced against a loopback server that keep-alives the first request and
+then black-holes the second on the same connection: 15.01s, one TCP
+connection, reused. With the guard: 0.003s and a second connection opened.
 
-urllib3 discards a pooled connection it can SEE has been closed. It cannot
-see one that died silently -- a Wi-Fi path that dropped the flow, a NAT entry
-that expired -- and the box is on wlan0.
+**Scope, recorded because it was got wrong once.** This guards only the
+sessions that outlive a single action -- artcache's, monitor's and
+service.py's. Every WINDOW builds a fresh session per action, so no screen
+is protected by this and none needed to be. It was written believing it
+fixed a Detail page that came up empty after a break on 2026-08-21; that
+page had a brand-new session, so this was never the cause. Verified by
+reading the call sites and by watching a box idle 110s without the guard
+firing.
 
-Reproduced off the box against a loopback server that keep-alives the first
-request and then black-holes the second on the same connection: 15.01s,
-one TCP connection, reused. With the fix: 0.003s and a second connection
-opened. That repro needs a real `requests` -- which the test harness stubs,
-deliberately, since no other suite wants a socket -- so what is checked here
-is the part that can actually regress: WHEN the pool gets dropped.
+The loopback repro needs a real `requests`, which `tests/kodi_stubs.py`
+deliberately stubs as a `SimpleNamespace` with no pooling -- so no suite in
+the harness can exercise real sockets. What is checked here is the part that
+can regress: WHEN the pool is dropped, against a fake session, with
+`http._now` as the clock seam.
+
+Run:  python3 test_stale_pool_reset.py
 """
 from __future__ import annotations
 import os, sys
