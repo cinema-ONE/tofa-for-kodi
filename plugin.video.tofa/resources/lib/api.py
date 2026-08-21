@@ -191,6 +191,18 @@ class MediaServerClient:
             if not _worth_retrying(exc) or not self.fallback_base_url \
                     or not try_fallback or auth.direct_only():
                 raise
+            # SAY WHICH ADDRESS FAILED, before the second attempt can bury it.
+            #
+            # Only the fallback's exception propagates, so a failure of the
+            # PRIMARY left no trace at all: the one line in kodi.log named
+            # the fallback's host and nothing else. On 2026-08-21 that read
+            # as "the relay refused us" when the actual event was the LAN
+            # server timing out, and sent the investigation at the profile
+            # PIN instead. The primary is the address that was supposed to
+            # work; when both fail, its error is the one worth having.
+            log.warning("api: {0} {1} failed on {2} ({3}), trying {4}".format(
+                method, path, self.base_url, exc,
+                self.fallback_base_url))
             resp = http.request_response(self.session, method, f"{self.fallback_base_url}{path}", **kwargs)
             self.base_url, self.fallback_base_url = self.fallback_base_url, self.base_url
             auth.update_server(self.base_url, self.fallback_base_url)

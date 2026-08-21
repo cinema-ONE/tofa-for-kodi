@@ -534,6 +534,56 @@ def render_detail() -> str:
     # NOT hidden: the real Apple TV app keeps it and answers it with this, as
     # captured on Besenbinden (2026-08-01), which has neither cast nor similar
     # titles. Glyphs and both sentences are that capture's, verbatim.
+    # 5260 = windows/detail.py:DetailWindow.PILL_RETRY, kept in sync by hand
+    # like every other id in this file.
+    RETRY_PILL_ID = 5260
+
+    # PAGE 1's LOAD FAILURE, 9.7's error flavour.
+    #
+    # Until this, a Detail page whose media_detail call failed drew the hero
+    # scaffold with nothing in it: no backdrop, no logo, and an action row
+    # holding whatever the XML defaults to. Reported from the cinema box
+    # 2026-08-21, where a stale pooled connection made the request time out
+    # (see http.IDLE_POOL_LIMIT_SECONDS) and the page came up hollow with
+    # nothing on it to say why -- the same "blank screen, no explanation"
+    # shape the relay work already has open against Home.
+    #
+    # This is the FIRST screen to wire 9.7's Retry button, which empty_state
+    # has described and no caller has been able to use: the others have no
+    # reload path, and Detail's is simply _load() again.
+    load_error = fragments.empty_state(
+        visible="String.IsEqual(Window.Property(detail_state),error)",
+        glyph="&#x{0:X};".format(icon_glyphs.TRIANGLE_ALERT),
+        title="$INFO[Window.Property(detail_error_title)]",
+        message="$INFO[Window.Property(detail_error_message)]",
+        flavour="error",
+        indent="                ",
+    )
+    # "Retry" is 9.7's own word for this button, twice over; not "Try
+    # Again". 280 wide rather than the action row's 360, whose width is set
+    # by "Resume Playing" rather than by the shape.
+    retry_pill = fragments.glass_pill(
+        RETRY_PILL_ID,
+        x=(T.SCREEN_W - 280) // 2,
+        width=280,
+        # Nothing above, below or beside it -- NAV_STOP is an id no control
+        # has, which is how every list on this screen refuses to wrap.
+        ondown=T.NAV_STOP,
+        onleft=T.NAV_STOP,
+        onright=T.NAV_STOP,
+        label_xml="""<control type="label">
+                                <posx>0</posx>
+                                <posy>0</posy>
+                                <width>280</width>
+                                <height>64</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>{0}</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <label>Retry</label>
+                            </control>""".format(T.FONT_BUTTON),
+    )
+
     cast_empty = fragments.empty_state(
         visible="String.IsEmpty(Window.Property(has_cast_content))",
         glyph="&#x{0:X};".format(icon_glyphs.USERS),
@@ -669,6 +719,9 @@ def render_detail() -> str:
     )
 
     return _load("detail.xml.tpl").format(
+        load_error=load_error,
+        retry_pill=retry_pill,
+        RETRY_PILL_ID=RETRY_PILL_ID,
         **T.template_kwargs(),
         cast_item=cast_item,
         cast_focused=cast_focused,

@@ -138,6 +138,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     PILL_WATCHLIST = 5230
     PILL_VERSION = 5240
     PILL_CANCEL_REQUEST = 5250
+    PILL_RETRY = 5260
     TAB_EPISODES = 6100
     TAB_CAST = 6110
     TAB_ABOUT = 6120
@@ -174,6 +175,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.prefer_file_id = kwargs.pop("play_file_id", None)
         kodigui.ControlledWindow.__init__(self, *args, **kwargs)
         self.client: MediaServerClient | None = None
+        #: True when _get_client came back empty because the viewer DECLINED
+        #: the profile PIN, which is a choice rather than a failure -- so the
+        #: page stays as it was instead of accusing the server.
+        self._client_declined: bool = False
         #: {file_id: progress record} from the most recent _next_up_episode()
         #: batch, so the load path does not re-ask for what it just fetched.
         #: Only ever read straight after that call; see its own note.
@@ -292,13 +297,95 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             tok = auth.ensure_fresh(session)
             tok = profile_select.ensure_profile_selected(session, tok)
             self.client = api.client_for(session, tok)
-        except (auth.NotSignedIn, profile_select.ProfileCanceled, http.ApiError):
+            self._client_declined = False
+        except profile_select.ProfileCanceled:
+            # NOT a failure: the viewer was asked for the PIN and said no.
+            # Kept apart from the rest so _load can leave the page alone
+            # instead of telling them their server is unreachable.
             self.client = None
+            self._client_declined = True
+        except (auth.NotSignedIn, http.ApiError):
+            self.client = None
+            self._client_declined = False
         return self.client
 
+    @staticmethod
+    def _load_error_copy(exc: http.ApiError | None) -> tuple[str, str]:
+        """What to say about a failed load, which is not one thing.
+
+        The TITLE carries the diagnosis and the message carries the advice.
+        Both halves earn their place that way: on a 10-foot screen the red
+        line is the biggest text and the first thing read, so spending it on
+        a constant ("Couldn't load this title", which every branch would
+        share) says nothing the empty page had not already said. The card is
+        allowed the second line because it is a card; a toast gets one
+        sentence and no room to explain.
+
+        The branches exist because a wrong explanation is worse than a vague
+        one. The failure that prompted all this was diagnosed as an expired
+        PIN for the best part of an hour, on no more evidence than a log line
+        naming the wrong address; a card that confidently blames the wrong
+        thing does the same to the viewer, and they cannot read the log.
+
+          reach   nothing answered. Their connection or their server, and
+                  worth telling them to look.
+          locked  the server answered and refused the profile (403 is the
+                  locked primary, 401 an expired credential). Telling them
+                  to check the connection would send them to look at
+                  something that is working perfectly.
+          gone    404. The server was reached and does not have it.
+          other   it answered, badly. Say so without guessing why.
+        """
+        status = exc.status if exc else 0
+        error = exc.error if exc else "connection_error"
+
+        if exc is None or error in ("connection_error", "timeout") \
+                or status in (0, 502, 503, 504) or error in api._RELAY_DOWN:
+            return ("Couldn't reach your server",
+                    "Check the connection and try again.")
+        if status in (401, 403):
+            # Retry reuses the credential the server has just refused, so
+            # pointing at it here would point at the one action that cannot
+            # work. Switching profile is what re-runs verify_pin.
+            return ("This profile needs unlocking",
+                    "Switch profile and back to enter its PIN.")
+        if status == 404:
+            return ("This title isn't on your server",
+                    "It may have been removed from your library.")
+        return ("Your server couldn't answer",
+                "Something went wrong at its end. Try again in a moment.")
+
+    def _set_load_error(self, title: str, message: str) -> None:
+        """Drive 9.7's error scaffold on page 1 (screens.py:render_detail).
+
+        The template hides the hero stack and the tab hint on this same
+        property, so setting it is the whole switch: there is no second call
+        to put the page into the failed state, and clearing it puts every
+        block back.
+        """
+        self.setProperty("detail_error_title", title)
+        self.setProperty("detail_error_message", message)
+        self.setProperty("detail_state", "error")
+        # Focus has to land on the one thing left on screen. Without this it
+        # stays on whichever pill it was on, which is now hidden -- and Kodi
+        # will happily hold focus on an invisible control, so the page looks
+        # like it is ignoring the remote.
+        self.setFocusId(self.PILL_RETRY)
+
+    def _clear_load_error(self) -> None:
+        self.setProperty("detail_state", "")
+
     def _load(self):
+        # Cleared up front so a retry that succeeds puts the page back,
+        # rather than drawing content underneath a stale error card.
+        self._clear_load_error()
         client = self._get_client()
         if not client:
+            if not self._client_declined:
+                # No client at all: there is no exception to read, and the
+                # reason is always reach (sign-in gone, or the server did not
+                # answer), never a per-title answer.
+                self._set_load_error(*self._load_error_copy(None))
             return
 
         media_id = self.media_id
@@ -350,12 +437,21 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         except http.ApiError as exc:
             kodigui.ERROR("detail.py: media_detail failed: {0}".format(exc))
             self.media = {}
-            # Still pack the row. Nothing conditional is visible until it has
-            # been packed, so skipping this would leave an empty page with no
-            # action pills at all -- where it used to show the two the XML
-            # defaults to. The failure is not a reason to change what a
-            # failed page looks like.
+            # Say so, rather than drawing the hero scaffold with nothing in
+            # it. Reported from the cinema box 2026-08-21: a stale pooled
+            # connection timed out here and the page came up with no
+            # backdrop, no logo and an empty Play pill -- indistinguishable
+            # from a title whose artwork simply had not arrived, and with
+            # nothing on screen to try again with.
+            #
+            # An older comment here said "the failure is not a reason to
+            # change what a failed page looks like" and packed the pill row
+            # instead. That was the wrong conclusion from the right
+            # observation: the row is packed because unpacked pills are
+            # invisible, but a page with no data should not be showing that
+            # row at all.
             self._wire_pill_navigation()
+            self._set_load_error(*self._load_error_copy(exc))
             return
 
         # TIME TO PILLS is the number this screen is judged by: the hero draws
@@ -2235,6 +2331,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self._retry_request_clicked()
             elif self.is_playable:
                 self._play(self._fresh_resume_ms())
+        elif controlID == self.PILL_RETRY:
+            self._load()
         elif controlID == self.PILL_CANCEL_REQUEST:
             self._cancel_request_clicked()
         elif controlID == self.PILL_REWATCH:
@@ -3332,6 +3430,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         disabled outright by _wire_pill_navigation(), so focus could not stay
         there anyway.
         """
+        # The failed page has exactly one control on it, and every pill is
+        # hidden -- so this has to answer before any of them.
+        if self.getProperty("detail_state") == "error":
+            return self.PILL_RETRY
         if self._primary_is_actionable():
             return self.PILL_PRIMARY
         if self.getProperty("show_cancel_request"):

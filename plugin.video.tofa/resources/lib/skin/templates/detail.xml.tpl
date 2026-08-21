@@ -91,10 +91,14 @@
                     <texture>fade-bottom.png</texture>
                 </control>
 
-                <!-- Hero info block, bottom-left stack. -->
+                <!-- Hero info block, bottom-left stack. Hidden outright
+                     when the page failed to load: with no payload there is
+                     nothing in this stack but an empty action row, which
+                     reads as a broken screen rather than a failed one. -->
                 <control type="group">
                     <posx>100</posx>
                     <posy>500</posy>
+                    <visible>String.IsEmpty(Window.Property(detail_state))</visible>
 
                     <!-- Title-logo artwork when present, text title
                          fallback. Whole upper stack (logo through
@@ -592,6 +596,7 @@
                 <control type="group">
                     <posx>760</posx>
                     <posy>1000</posy>
+                    <visible>String.IsEmpty(Window.Property(detail_state))</visible>
                     <control type="label">
                         <width>500</width>
                         <height>24</height>
@@ -609,6 +614,28 @@
                         <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                         <label>&#xE06D;</label>
                     </control>
+                </control>
+
+                <!-- The page failed to load. 9.7's error flavour, driven by
+                     detail.py:_set_load_error(); the two blocks above hide
+                     themselves on the same property, so this is what page 1
+                     IS in that state rather than an overlay on top of it.
+
+                     The backdrop behind it is detail-no-backdrop.png, since
+                     hero_backdrop never got set; that is the same soft wash
+                     a title with no artwork gets, and the reason this reads
+                     as sparse rather than as a hole. -->
+{load_error}
+
+                <!-- 9.7's Retry, the first one in the app: empty_state has
+                     described this button since it was written and no screen
+                     could wire it, having no reload path. Detail's is
+                     _load() again. Sits below the message slot (centre 635)
+                     with the same 64px pill the action row uses. -->
+                <control type="group">
+                    <posy>712</posy>
+                    <visible>String.IsEqual(Window.Property(detail_state),error)</visible>
+{retry_pill}
                 </control>
             </control>
 
