@@ -438,11 +438,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             kodigui.ERROR("detail.py: media_detail failed: {0}".format(exc))
             self.media = {}
             # Say so, rather than drawing the hero scaffold with nothing in
-            # it. Reported from the cinema box 2026-08-21: a stale pooled
-            # connection timed out here and the page came up with no
-            # backdrop, no logo and an empty Play pill -- indistinguishable
-            # from a title whose artwork simply had not arrived, and with
-            # nothing on screen to try again with.
+            # it. Reported from the cinema box 2026-08-21: this call failed
+            # and the page came up with no backdrop, no logo and an empty
+            # Play pill -- indistinguishable from a title whose artwork
+            # simply had not arrived, and with nothing on screen to try
+            # again with. WHY it failed took an hour to not find out, which
+            # is the other half of the lesson: the log named the fallback
+            # address and the primary's error was thrown away.
             #
             # An older comment here said "the failure is not a reason to
             # change what a failed page looks like" and packed the pill row

@@ -543,10 +543,9 @@ def render_detail() -> str:
     # Until this, a Detail page whose media_detail call failed drew the hero
     # scaffold with nothing in it: no backdrop, no logo, and an action row
     # holding whatever the XML defaults to. Reported from the cinema box
-    # 2026-08-21, where a stale pooled connection made the request time out
-    # (see http.IDLE_POOL_LIMIT_SECONDS) and the page came up hollow with
-    # nothing on it to say why -- the same "blank screen, no explanation"
-    # shape the relay work already has open against Home.
+    # 2026-08-21, where the request took 15s to fail and the page came up
+    # hollow with nothing on it to say why -- the same "blank screen, no
+    # explanation" shape the relay work already has open against Home.
     #
     # This is the FIRST screen to wire 9.7's Retry button, which empty_state
     # has described and no caller has been able to use: the others have no

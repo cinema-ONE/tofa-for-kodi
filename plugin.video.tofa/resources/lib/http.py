@@ -94,25 +94,29 @@ def client_headers() -> dict:
 
 #: How long a pooled connection may sit idle before we stop trusting it.
 #:
-#: A `requests.Session` outlives any one screen -- the add-on builds one at
-#: launch and every window reuses the client holding it -- so its pooled TCP
-#: connection can sit unused for as long as the viewer sits still. The tofa
-#: server answers with `keep-alive: timeout=40`, so anything past that is
-#: already closed on its side.
+#: The tofa server answers with `keep-alive: timeout=40`, so a pooled socket
+#: older than that is already closed on its side. urllib3 discards one it can
+#: SEE has been closed; it cannot see one that died silently -- a Wi-Fi path
+#: that dropped the flow, a NAT entry that expired -- and reusing that costs
+#: the FULL request timeout (15s) before anything else can happen.
 #:
-#: Reported from the cinema box 2026-08-21: after a ~12 minute break the next
-#: Detail screen drew no backdrop, no logo and an empty Play pill. The log
-#: showed 15.09s between the window opening and the error -- exactly the
-#: default timeout below -- then an instant "connection refused" from the
-#: relay it fell back to. The LAN server was healthy throughout (200 in
-#: 1.7ms when probed minutes later). The request had been written into a
-#: socket that was long dead and waited out the full timeout.
+#: WHICH SESSIONS THIS ACTUALLY PROTECTS, because it is fewer than it looks:
+#: only the three that outlive a single action -- `artcache`'s module-level
+#: session, `monitor`'s heartbeat and `service.py`'s. **Every window builds a
+#: fresh session per action** (`detail._get_client` and its siblings call
+#: new_session() whenever `self.client` is None, which is every open, since
+#: no caller hands one in). A fresh session has no pool and cannot go stale.
 #:
-#: urllib3 discards a pooled connection it can SEE has been closed, which is
-#: why this is not a problem on a clean shutdown. It cannot see one that died
-#: silently -- a Wi-Fi path that dropped the flow, a NAT entry that expired --
-#: and that is the case this covers. 30s rather than the server's 40 so a
-#: connection is dropped before the server's own timer can catch it.
+#: Worth stating plainly because this guard was WRITTEN in the belief that it
+#: fixed a reported Detail failure -- a page that came up with no artwork and
+#: an empty Play pill after a break on 2026-08-21. It did not, and could not:
+#: that page had a brand-new session. Verified twice, by reading the call
+#: sites and by watching a box idle 110s without this guard ever firing. What
+#: really consumed that 15s is still unknown; the primary address's error was
+#: never logged, which is what api._request now fixes.
+#:
+#: 30s rather than the server's 40 so a connection is dropped before the
+#: server's own timer can catch it.
 IDLE_POOL_LIMIT_SECONDS = 30.0
 
 #: Last use per session, weak so a short-lived session (signin, artcache)
