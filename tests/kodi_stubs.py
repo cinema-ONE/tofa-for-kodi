@@ -144,6 +144,26 @@ class _VfsFile(object):
         self._handle.close()
 
 
+class _StubSession:
+    """Stand-in for requests.Session.
+
+    A real class rather than a SimpleNamespace because http.new_session()
+    keeps every session it makes in a WeakSet, and SimpleNamespace cannot be
+    weak-referenced -- which made a stub detail look like a bug in the thing
+    under test. Records close() so teardown can be asserted.
+    """
+
+    def __init__(self):
+        self.headers = {}
+        self.closed = 0
+
+    def request(self, *args, **kwargs):
+        return None
+
+    def close(self):
+        self.closed += 1
+
+
 def install():
     _stub("xbmc", Player=_Player, Monitor=_Monitor, log=lambda *a, **k: None,
           LOGINFO=1, LOGWARNING=2, LOGERROR=3, LOGDEBUG=0, LOGFATAL=4,
@@ -179,7 +199,7 @@ def install():
           addDirectoryItem=lambda *a, **k: None, endOfDirectory=lambda *a, **k: None,
           setContent=lambda *a, **k: None)
     _stub("requests",
-          Session=lambda: types.SimpleNamespace(headers={}, request=lambda *a, **k: None),
+          Session=_StubSession,
           RequestException=_RequestException,
           exceptions=types.SimpleNamespace(Timeout=_Timeout,
                                            RequestException=_RequestException),

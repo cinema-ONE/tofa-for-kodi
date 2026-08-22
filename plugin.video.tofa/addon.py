@@ -15,7 +15,7 @@ import xbmcaddon
 import xbmcgui
 import xbmcplugin
 
-from resources.lib import api, auth, cloud, home_rows, http, listing, log, monitor, playback, signin
+from resources.lib import api, artcache, auth, cloud, home_rows, http, listing, log, monitor, playback, signin
 from resources.lib.api import MediaServerClient
 from resources.lib.profile import CapabilityProfile
 from resources.lib.windows import profile_select
@@ -709,4 +709,43 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    finally:
+        # STOP THE ARTWORK WORKERS, exactly as launch_home.py does.
+        #
+        # They were only stopped there, and this file is the OTHER door into
+        # the add-on: the directory listing, ?action=play, the profile
+        # picker, and every ?action=*_window route. Any of those that touches
+        # artwork starts two workers, and a worker with nothing left to do
+        # parks in _queue.get() for ever. Kodi then waits 5s for each on the
+        # way out and force-kills it mid-park -- which loses whatever socket
+        # its requests session was holding.
+        #
+        # Measured on the cinema box 2026-08-22 with tools/probe_leaks.py,
+        # driving fifteen Detail windows through this router: 41 stranded
+        # threads (29 LanguageInvokers, 14 artcache workers), 36 sockets to
+        # the media server left in CLOSE_WAIT, RSS up 1098MB. With this
+        # `finally`: 22 stranded threads, 17 sockets, RSS up 610MB.
+        #
+        # A normal browse never gets near those numbers, because it goes
+        # through launch_home.py as ONE long-lived process -- but four
+        # CLOSE_WAIT sockets were sitting on the box after an ordinary day's
+        # use, which is this leaking slowly through the profile picker.
+        #
+        # Safe because each script invocation gets its OWN module namespace:
+        # the seven separate `tofa-artcache-0` threads on that box are the
+        # proof -- a shared artcache would have started one pair and reused
+        # it. So this cannot stop the workers belonging to a window UI
+        # running alongside.
+        artcache.stop()
+        # ...and hand back the API client's own pooled connections.
+        #
+        # HONESTLY: this one's effect is NOT separable from run-to-run noise
+        # (17 sockets left with it, 15 without, on 15 opens). It is here
+        # because the mechanism is not in doubt -- a requests.Session has no
+        # destructor that returns its keep-alive socket, and this interpreter
+        # dies inside a kodi.bin that runs for days. Fifteen sockets to the
+        # media server survive it and are NOT in any session this process
+        # made; whose they are is still unknown.
+        http.close_all()

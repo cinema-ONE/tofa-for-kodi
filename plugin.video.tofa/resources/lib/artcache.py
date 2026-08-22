@@ -293,7 +293,15 @@ def prefetch(pairs, timeout_s: float = PREFETCH_TIMEOUT_S) -> int:
                 _log("debug",
                      f"artcache: prefetch missed {os.path.basename(path)}: {exc!r}")
 
-    threads = [_t.Thread(target=run, name="tofa-artcache-pre", daemon=True)
+    def run_and_close():
+        try:
+            run()
+        finally:
+            # A prefetch thread is born and dies inside this call, so its
+            # session has no second use -- see _close_session.
+            _close_session()
+
+    threads = [_t.Thread(target=run_and_close, name="tofa-artcache-pre", daemon=True)
                for _ in range(min(PREFETCH_WORKERS, len(todo)))]
     for t in threads:
         t.start()
@@ -349,6 +357,7 @@ def _worker() -> None:
             with _lock:
                 _inflight.discard(path)
             _queue.task_done()
+    _close_session()
 
 
 def stop() -> None:
@@ -384,6 +393,30 @@ def _session():
         from . import http
         session = _sessions.session = http.new_session()
     return session
+
+
+def _close_session():
+    """Hand back this thread's pooled connections as the thread ends.
+
+    Every thread here is finite -- a queue worker that has been told to stop,
+    or one of the handful prefetch() spawns per batch -- and each holds a
+    keep-alive connection to the media server. Dropping the reference alone
+    is not enough in practice: the server FINs its end at its own keep-alive
+    timeout, and a socket nobody reads sits in CLOSE_WAIT until the process
+    exits. Thirty-seven of them were counted on the cinema box in one
+    session (see addon.py's teardown for the whole measurement).
+
+    Never fatal: this runs on the way out of a thread, where raising achieves
+    nothing and hides whatever the thread was actually doing.
+    """
+    session = getattr(_sessions, "session", None)
+    if session is None:
+        return
+    _sessions.session = None
+    try:
+        session.close()
+    except Exception:                                       # noqa: BLE001
+        pass
 
 
 def _fetch(remote_url: str, path: str) -> None:
