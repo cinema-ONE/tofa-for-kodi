@@ -18,7 +18,7 @@ window UI (e.g. a Favourite) without going through this script entry.
 """
 from __future__ import annotations
 
-from resources.lib import artcache, prefetch, stereoscopic
+from resources.lib import artcache, http, prefetch, stereoscopic
 from resources.lib.windows import splash
 
 # The splash goes up FIRST, before the heavy imports below. main.py is the
@@ -132,3 +132,8 @@ finally:
     # what wedged Kodi's quit on 2026-08-07. A Kodi shutdown is caught by the
     # workers themselves; this is the clean exit for a plain add-on close.
     artcache.stop()
+    # Hand the pooled connections back too. A session has no destructor that
+    # does it, and this interpreter is torn down inside a kodi.bin that goes
+    # on running for days -- so a socket the server has since FIN'd sits in
+    # CLOSE_WAIT until Kodi itself exits. See http.close_all().
+    http.close_all()

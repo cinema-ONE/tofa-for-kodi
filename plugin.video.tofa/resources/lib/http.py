@@ -182,6 +182,12 @@ def _parse_error_body(resp: requests.Response) -> tuple[str, str]:
     return error, message
 
 
+#: Every session this process has made, weakly. The point is teardown: see
+#: close_all(). Weak so an ordinary short-lived session (signin, a card
+#: options dialog) is still collected the moment its owner drops it.
+_SESSIONS: "weakref.WeakSet[requests.Session]" = weakref.WeakSet()
+
+
 def new_session() -> requests.Session:
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
@@ -189,7 +195,39 @@ def new_session() -> requests.Session:
     # add-on makes -- including the ones added later by someone who has
     # never read this file.
     session.headers.update(client_headers())
+    _SESSIONS.add(session)
     return session
+
+
+def close_all() -> None:
+    """Give every pooled connection back, as this interpreter ends.
+
+    A `requests.Session` holds a keep-alive socket to the media server and
+    has no destructor that returns it. Normally that does not matter -- the
+    process ends and the kernel tidies up -- but a Kodi add-on is not a
+    process: the interpreter is torn down inside a kodi.bin that goes on
+    running for days, and a socket whose far end has since sent FIN then
+    sits in CLOSE_WAIT until Kodi itself exits.
+
+    Counted on the cinema box, driving fifteen Detail windows through the
+    plugin router: thirty-seven such sockets, every one to the media server.
+    Stopping the artwork workers took that to seventeen; this took it to
+    fifteen, which is INSIDE the noise -- so treat the mechanism as the
+    reason for this function, not the measurement. The fifteen that survive
+    belong to no session this process made and are still unattributed.
+
+    Called from the two entry points that END -- addon.py and
+    launch_home.py. NOT from service.py, which is meant to outlive its
+    sessions. Safe against a session still in use: close() only clears the
+    adapters' pool managers, and the next request opens a fresh connection.
+    """
+    for session in list(_SESSIONS):
+        try:
+            session.close()
+        except Exception:                                   # noqa: BLE001
+            # Teardown. Raising here would lose whatever the caller was
+            # actually finishing.
+            pass
 
 
 def request_response(
