@@ -1223,7 +1223,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # the behaviour this replaces. Safe to spend time on because page 2
         # is behind the pill pack -- the viewer is looking at the hero.
         artcache.prefetch(client.stage_pairs(list(cast) + list(crew),
-                                             "profile_url"))
+                                             "profile_url", include_cdn=True))
         self.cast_list.reset()
         cast_managed = [
             self._person_card_item(m.get("name"), m.get("role"), m.get("profile_url"), client)

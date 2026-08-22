@@ -397,6 +397,27 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     DISCOVER_ROW_LIST_IDS = home_rows.DISCOVER_ROW_LIST_IDS
     MAX_DISCOVER_ROWS = home_rows.MAX_DISCOVER_ROWS
 
+    #: How many of a Discover tab's shelves are staged EAGERLY -- i.e. how
+    #: many the render pass will wait on the internet for. Two, because two
+    #: is what fits on a 4K screen: the first shelf and the top of the
+    #: second. Everything below the fold is queued in the background instead,
+    #: so the wait is bounded by what the viewer can actually see rather than
+    #: by how many shelves the server sent (up to MAX_DISCOVER_ROWS).
+    DISCOVER_EAGER_SHELVES = 2
+
+    #: ...and how many cards of each. A shelf carries about 40 and shows
+    #: about five; eight is that plus a card of headroom for the first
+    #: sideways press. Staging whole shelves instead was measured at 2.40s on
+    #: the render call -- 75 images fetched to draw ten.
+    DISCOVER_EAGER_ITEMS = 8
+
+    #: The whole eager batch's budget, not each shelf's. Shorter than
+    #: artcache's own 3s default because this runs on the action thread, so
+    #: it is time the screen is not repainting. What misses the deadline
+    #: draws from the CDN exactly as it did before -- a slow network makes
+    #: this a no-op, never a stall.
+    DISCOVER_EAGER_TIMEOUT_S = 1.5
+
     # The card's cinema chip, drawn in the Lucide icon font. Its two
     # siblings (the not-in-library plus and the requested clock) live in
     # windows/cards.py, which owns that badge for every screen.
@@ -3154,8 +3175,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # server rather than the usual relative *_path, and both are drawn on
         # the card -- stage_pair knows the difference, this only has to name
         # the right fields.
-        artcache.prefetch(client.stage_pairs(collections, "poster_url", "backdrop_url"))
+        # include_cdn: a collection's art is usually ours, but the cloud
+        # serves some of it, and this is a dedicated screen the viewer has
+        # navigated to and is waiting on -- not a row being built behind
+        # something else. Two fields, ~15 tiles, so the batch stays small.
+        started = time.monotonic()
+        artcache.prefetch(client.stage_pairs(collections, "poster_url",
+                                             "backdrop_url", include_cdn=True))
         managed = [self._browse_build_collection_item(client, it) for it in collections]
+        log.info("browse: %d collection(s) in %.2fs"
+                 % (len(collections), time.monotonic() - started))
         self.setProperty("browse_collections", "1")
         # The sidebar's <onright> is baked at the poster grid, which is
         # hidden in this state, so right out of the sidebar went nowhere.
@@ -3879,6 +3908,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         for idx in range(self.MAX_DISCOVER_ROWS):
             self.setProperty("discover_row{0}_title".format(idx), "")
 
+        started = time.monotonic()
+        self._discover_stage_first_screenful(client, shelves)
         for idx, shelf in enumerate(shelves):
             list_id = self.DISCOVER_ROW_LIST_IDS[idx]
             self.setProperty("discover_row{0}_title".format(idx), shelf["title"])
@@ -3892,6 +3923,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             mcl.reset()
             if managed:
                 mcl.addItems(managed)
+
+        log.info("discover: %s -- %d shelf/shelves in %.2fs"
+                 % (tab, len(shelves), time.monotonic() - started))
 
         # Every tab pill's Down must land on a row that actually exists; with
         # no shelves at all it stays on the pills rather than dropping focus
@@ -3935,6 +3969,53 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if tab == self._discover_tab:
             return
         self._discover_render_tab(tab)
+
+    def _discover_stage_first_screenful(self, client: MediaServerClient,
+                                        shelves: list) -> None:
+        """Fetch the art the viewer is about to look at, and only that.
+
+        A discovery poster lives on the tofa cloud's CDN, so waiting for one
+        is waiting on the internet. Everything else on this screen goes on
+        doing what it did before -- queued in the background by ref(), drawn
+        from the CDN until it lands -- because a shelf below the fold is not
+        worth a stall and a tab can carry up to MAX_DISCOVER_ROWS of them.
+
+        WHY IT IS WORTH WAITING FOR AT ALL. Anything Kodi has to cache itself
+        costs download -> decode -> resize -> re-encode -> write to eMMC ->
+        INSERT into Textures14.db, four jobs at a time, and the commit is
+        what costs. Timed cold on the cinema box: fifteen images took **20.6
+        seconds** to appear.
+
+        THREE CAPS, and each one is load-bearing:
+
+        - the first DISCOVER_EAGER_SHELVES shelves, because that is what
+          fits on screen;
+        - their first DISCOVER_EAGER_ITEMS cards, for the same reason -- a
+          shelf carries 40 and shows about five. Staging whole shelves was
+          measured at 2.40s on this call, against 75 images fetched to draw
+          about ten;
+        - backdrop and logo for the FIRST card of each, and no other, since
+          those two fields belong to the wide focused card and item 0 is
+          what focus lands on. Staging them for every card is the mistake
+          that took a cold Home from 2.2s to 10.1s (see _CARD_ART_FIELD).
+
+        One batch and one deadline rather than one per shelf, so the cap is
+        on the wait the viewer feels rather than on each piece of it.
+        """
+        pairs, seen = [], set()
+        for shelf in shelves[: self.DISCOVER_EAGER_SHELVES]:
+            items = shelf.get("items") or []
+            for pair in (client.stage_pairs(items[: self.DISCOVER_EAGER_ITEMS],
+                                            "poster_path", include_cdn=True)
+                         + client.stage_pairs(items[:1], "backdrop_path",
+                                              "logo_path", include_cdn=True)):
+                # Shelves overlap -- a title can be Trending AND Popular --
+                # and stage_pairs only deduplicates within one call.
+                if pair[1] not in seen:
+                    seen.add(pair[1])
+                    pairs.append(pair)
+        if pairs:
+            artcache.prefetch(pairs, timeout_s=self.DISCOVER_EAGER_TIMEOUT_S)
 
     def _discover_build_card(
         self, client: MediaServerClient, item: dict, rank: int | None = None
@@ -4560,8 +4641,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # waiting for, not something built behind a hero, so a slow
             # network must not hold the results back. What misses the
             # deadline draws from the CDN, as it always did.
-            artcache.prefetch(client.stage_pairs(items, "profile_url"),
-                              timeout_s=1.0)
+            artcache.prefetch(
+                client.stage_pairs(items, "profile_url", include_cdn=True),
+                timeout_s=1.0)
         managed = []
         for item in items:
             name = item.get("name") or ""
