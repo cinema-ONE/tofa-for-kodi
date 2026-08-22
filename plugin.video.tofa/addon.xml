@@ -13,7 +13,7 @@
   <extension point="xbmc.service" library="service.py" start="startup"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
-    <description lang="en_GB">An unofficial client for the tofa media server (api.tofa.tv), in two parts.
+    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
 
 Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
 
