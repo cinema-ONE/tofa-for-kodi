@@ -1,7 +1,7 @@
 tofa for Kodi
 =============
 
-A client for the tofa media server (api.tofa.tv).
+A client for the tofa media server (tofa.tv).
 
 It is first of all a PROGRAM. Under Programs, "tofa" opens a complete TV
 interface: Home, Browse, Discover, Search, title detail, its own player
