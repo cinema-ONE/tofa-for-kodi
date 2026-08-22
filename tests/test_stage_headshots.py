@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.join(ROOT, "plugin.video.tofa", "resources"))
 import kodi_stubs  # noqa: F401,E402
 from lib import api, artcache  # noqa: E402
 
-LAN = "http://192.168.0.60:33333"
+LAN = "http://192.168.1.50:33333"
 CDN = "https://api.tofa.tv"
 HEADSHOT = CDN + "/v1/metadata/assets/tmdb/people/00/5c/" + ("a" * 64) + ".jpg"
 DISCOVERY = CDN + "/v1/metadata/assets/tmdb/discovery/01/b4/" + ("b" * 64) + ".jpg"
