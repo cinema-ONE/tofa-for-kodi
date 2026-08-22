@@ -316,22 +316,27 @@ class MediaServerClient:
         cache_path = path if path.startswith("/cache/") else f"/cache/{path.lstrip('/')}"
         return f"{self.resolve_url(cache_path)}?st={self.image_token()}"
 
-    def stage_pair(self, path: Optional[str]):
-        """`(remote_url, staging key)` for an image worth staging, else None.
+    def stage_pair(self, path: Optional[str], include_cdn: bool = False):
+        """`(remote_url, staging key)` for an image worth FETCHING NOW.
 
-        The one place that decides what belongs in the staging area, so a
-        batch caller cannot disagree with resolve_image_url about it. It said
-        yes to everything once, and the tofa cloud's CDN images -- which need
-        no staging, being tokenless and already stable -- were then dragged
-        over the internet on every cold Home build. Two rows timed out mid
-        batch because of it.
+        The one place that decides what a blocking batch may wait for, so two
+        callers cannot disagree about it. LAN only by default -- it said yes
+        to everything once, and the tofa cloud's CDN images were then dragged
+        over the internet on every cold Home build, timing two rows out mid
+        batch.
+
+        `include_cdn=True` is the opt-in for a caller that is NOT on the
+        critical path and would rather spend a bounded wait than let Kodi
+        cache the image itself. See _worth_blocking_for.
         """
         if not path or not self._stageable(path):
+            return None
+        if not include_cdn and not self._worth_blocking_for(path):
             return None
         url = self.image_url_uncached(path)
         return (url, self._stage_key(path)) if url else None
 
-    def stage_pairs(self, items, *fields) -> list:
+    def stage_pairs(self, items, *fields, include_cdn: bool = False) -> list:
         """Every `(remote_url, staging key)` a batch of cards is about to draw.
 
         The batch form of stage_pair, so a caller building a row or a grid can
@@ -348,51 +353,72 @@ class MediaServerClient:
         Deduplicated, because the same picture legitimately repeats -- a season
         poster standing in for episodes that have no still, the same title in
         two search shelves -- and fetching it twice would be work for nothing.
+
+        `include_cdn` passes straight through to stage_pair: off, this returns
+        only the LAN images it is safe to wait for; on, the tofa cloud's CDN
+        art too. Read that flag as "this caller is not on the critical path".
         """
         pairs, seen = [], set()
         for item in items or []:
             for field in fields:
-                pair = self.stage_pair((item or {}).get(field))
+                pair = self.stage_pair((item or {}).get(field), include_cdn)
                 if pair and pair[1] not in seen:
                     seen.add(pair[1])
                     pairs.append(pair)
         return pairs
 
-    #: The one part of the tofa cloud's metadata CDN we DO stage. See
-    #: _stageable for why this is a carve-out rather than the whole CDN.
-    _CDN_PEOPLE = "/metadata/assets/tmdb/people/"
+    #: The tofa cloud's metadata asset CDN -- headshots, discovery posters,
+    #: title art, collection art. Matched on PATH so it cannot be confused
+    #: with anything else the same host serves (avatars, the API itself).
+    _CDN_ASSETS = "/metadata/assets/"
 
     def _stageable(self, path: str) -> bool:
-        """Whether this image is ours to stage.
+        """Whether this image may live in the staging area at all.
 
-        Most of the tofa cloud's metadata CDN is not: its URLs carry no token,
-        so they are already stable and Kodi caches them exactly once. Staging
-        them was tried and reverted -- discovery posters were dragged over the
-        internet on every cold Home build and two rows timed out mid batch.
+        The CDN's URLs carry no token and are already stable, so the old rule
+        here was that Kodi caches them exactly once and staging would be work
+        for no gain. The first half is true. The second is not, because
+        **Kodi's once is not free**: a URL it has to cache goes download ->
+        decode -> resize -> re-encode -> write to eMMC -> INSERT into
+        Textures14.db, four jobs at a time, and the commit is what costs.
 
-        HEADSHOTS ARE THE EXCEPTION, measured on the cinema box 2026-08-22.
-        "Cached exactly once" is true and still expensive, because Kodi's
-        once is not free: a URL it has to cache goes download -> decode ->
-        resize -> re-encode -> write to eMMC -> INSERT into Textures14.db,
-        four jobs at a time, and the commit is what costs. Timed on a cold
-        Cast & Crew, eleven headshots: the downloads finished in 20-280ms
-        each, and then the panel sat still for 1.8s while the first four
-        wrote themselves into the cache. Staged art skips all of it -- 3821
-        staged files had produced 13 texture rows in total, against 323 rows
-        for headshots alone.
+        Measured on the cinema box 2026-08-22:
 
-        And unlike a discovery poster, a headshot is never already there:
-        every one of seven shows sampled at random added 6-11 NEW rows, so
-        the cast set is effectively unbounded and the cost is paid on every
-        title opened rather than once per library.
+        - a cold Cast & Crew, eleven headshots: every download landed in
+          20-280ms and then the panel sat still for **1.8s** while the first
+          four wrote themselves into the cache;
+        - a cold Discover tab: fifteen images took **20.6 seconds** to
+          appear, while our own LAN batches beside them staged 22, 19 and 27
+          files without a pause.
 
-        The carve-out is by PATH, not by caller, because resolve_image_url
-        and stage_pair must agree about it -- a card that staged the file and
-        then drew the remote URL would pay both costs.
+        Staged art skips the whole path. 3821 staged files had produced 13
+        texture rows in total, against 405 rows for CDN art alone.
+
+        WHAT IS *NOT* WIDENED WITH IT. This says only that a local copy may
+        exist; `stage_pair` still decides what a batch may BLOCK on, and it
+        stays LAN-only by default. That separation is the whole safety
+        argument: staging the CDN was tried once as a single rule and
+        reverted, because a cold Home then waited on every discovery poster
+        over the internet and two rows timed out mid batch. Home's row build
+        is untouched here -- its CDN posters are queued in the background by
+        `ref()` and fall back to the CDN URL exactly as they do today.
         """
         if not path.startswith("http"):
             return True
-        return self._is_own_host(path) or self._CDN_PEOPLE in path
+        return self._is_own_host(path) or self._CDN_ASSETS in path
+
+    def _worth_blocking_for(self, path: str) -> bool:
+        """Whether a batch prefetch may WAIT for this image.
+
+        Our own server is on the LAN and answers in ~50ms; the CDN is over
+        the internet. A caller that is on the critical path (Home's row
+        build, Search's results) must only ever wait for the first kind. One
+        that is not -- Detail's page 2, the Discover shelf the viewer is
+        looking at, the Collections grid -- opts in explicitly with
+        `include_cdn=True` and accepts a bounded wait in exchange for a panel
+        that fills at once.
+        """
+        return not path.startswith("http") or self._is_own_host(path)
 
     @staticmethod
     def _stage_key(path: str) -> str:
