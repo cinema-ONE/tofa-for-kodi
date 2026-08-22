@@ -1206,6 +1206,24 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Cast, that's real data, not a bug to work around.
         cast = media.get("cast") or []
         crew = media.get("crew") or []
+        # STAGE THE HEADSHOTS FIRST, in one batch, exactly as the episode
+        # grid stages its stills. Not an optimisation of a fetch we were
+        # already making: without this, Kodi fetches each one itself from the
+        # metadata CDN and pushes it through its own texture cache, and the
+        # SQLite commit at the end of that is what makes a cold Cast & Crew
+        # fill in visible steps (1.8s for the first four, measured on the
+        # cinema box). Staged, the same panel draws from local files.
+        #
+        # ONE call over cast+crew rather than two, so a person who is in both
+        # (a voice actor who also wrote an episode) is fetched once --
+        # stage_pairs deduplicates within a call, not across two.
+        #
+        # Best effort and bounded, like every other prefetch: whatever has
+        # not landed by the deadline stays on its CDN URL, which is exactly
+        # the behaviour this replaces. Safe to spend time on because page 2
+        # is behind the pill pack -- the viewer is looking at the hero.
+        artcache.prefetch(client.stage_pairs(list(cast) + list(crew),
+                                             "profile_url"))
         self.cast_list.reset()
         cast_managed = [
             self._person_card_item(m.get("name"), m.get("role"), m.get("profile_url"), client)

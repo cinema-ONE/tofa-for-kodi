@@ -358,14 +358,41 @@ class MediaServerClient:
                     pairs.append(pair)
         return pairs
 
+    #: The one part of the tofa cloud's metadata CDN we DO stage. See
+    #: _stageable for why this is a carve-out rather than the whole CDN.
+    _CDN_PEOPLE = "/metadata/assets/tmdb/people/"
+
     def _stageable(self, path: str) -> bool:
         """Whether this image is ours to stage.
 
-        The tofa cloud's metadata CDN is not: its URLs carry no token, so they
-        are already stable and Kodi caches them exactly once. Staging them
-        would be work for no gain.
+        Most of the tofa cloud's metadata CDN is not: its URLs carry no token,
+        so they are already stable and Kodi caches them exactly once. Staging
+        them was tried and reverted -- discovery posters were dragged over the
+        internet on every cold Home build and two rows timed out mid batch.
+
+        HEADSHOTS ARE THE EXCEPTION, measured on the cinema box 2026-08-22.
+        "Cached exactly once" is true and still expensive, because Kodi's
+        once is not free: a URL it has to cache goes download -> decode ->
+        resize -> re-encode -> write to eMMC -> INSERT into Textures14.db,
+        four jobs at a time, and the commit is what costs. Timed on a cold
+        Cast & Crew, eleven headshots: the downloads finished in 20-280ms
+        each, and then the panel sat still for 1.8s while the first four
+        wrote themselves into the cache. Staged art skips all of it -- 3821
+        staged files had produced 13 texture rows in total, against 323 rows
+        for headshots alone.
+
+        And unlike a discovery poster, a headshot is never already there:
+        every one of seven shows sampled at random added 6-11 NEW rows, so
+        the cast set is effectively unbounded and the cost is paid on every
+        title opened rather than once per library.
+
+        The carve-out is by PATH, not by caller, because resolve_image_url
+        and stage_pair must agree about it -- a card that staged the file and
+        then drew the remote URL would pay both costs.
         """
-        return not path.startswith("http") or self._is_own_host(path)
+        if not path.startswith("http"):
+            return True
+        return self._is_own_host(path) or self._CDN_PEOPLE in path
 
     @staticmethod
     def _stage_key(path: str) -> str:

@@ -4552,6 +4552,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if self.actors_list is None:
             return
         client = self._get_client()
+        if client:
+            # Same reason as Detail's Cast & Crew: an unstaged headshot makes
+            # Kodi cache it itself, and the SQLite commit that ends that is
+            # what fills a people shelf in visible steps. A SHORTER deadline
+            # than Detail's, though -- this shelf is what the viewer is
+            # waiting for, not something built behind a hero, so a slow
+            # network must not hold the results back. What misses the
+            # deadline draws from the CDN, as it always did.
+            artcache.prefetch(client.stage_pairs(items, "profile_url"),
+                              timeout_s=1.0)
         managed = []
         for item in items:
             name = item.get("name") or ""
