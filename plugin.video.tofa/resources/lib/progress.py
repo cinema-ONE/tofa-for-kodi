@@ -212,11 +212,26 @@ def fill_step(position_ms: Any, duration_ms: Any) -> int:
 
 
 def minutes_left_label(position_ms: Any, duration_ms: Any) -> str:
-    """`116 MIN LEFT`, or "" when there is nothing left to say."""
+    """`116 MIN LEFT`, or "" when there is nothing left to say.
+
+    NOTHING TO SAY INCLUDES "NOT STARTED", which is why the position is
+    tested and not just the remainder. Continue Watching is not only the
+    things you are part-way through: the server promotes the NEXT episode
+    onto the row once you finish one, so an untouched S1 E2 sits there with
+    position 0 -- and the old rule happily labelled it "44 MIN LEFT", which
+    is not what is left, it is the whole episode.
+
+    The card already knew: fill_step() returns 0 at position 0, so those
+    cards drew no progress bar at all while still claiming time remaining.
+    Reported by Adrian 2026-08-23, and visible on Home's first screenful --
+    The Walking Dead: Dead City S1 E2 and Lioness S1 E2, both bar-less, both
+    captioned. Now the bar and the caption answer the same question.
+    """
     try:
-        remaining = float(duration_ms or 0) - float(position_ms or 0)
+        position_ms = float(position_ms or 0)
+        remaining = float(duration_ms or 0) - position_ms
     except (TypeError, ValueError):
         return ""
-    if remaining <= 0:
+    if position_ms <= 0 or remaining <= 0:
         return ""
     return "{0} MIN LEFT".format(int(math.ceil(remaining / 60000.0)))

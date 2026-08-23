@@ -42,6 +42,11 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       - tofa no longer leaves background work and open connections behind when it
         has finished with a screen. On a box left running all day this showed up
         as memory creeping upwards.
+      - Continue Watching only says how much is left when there is something
+        left. Once you finish an episode the next one takes its place on that
+        row, and tofa was labelling it with the whole episode's running time as
+        though you were already part-way through -- while drawing no progress bar
+        under it, which is what gave it away.
     </news>
     <assets>
       <icon>icon.png</icon>
