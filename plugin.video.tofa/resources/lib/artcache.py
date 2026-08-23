@@ -233,6 +233,33 @@ def ref(remote_url: Optional[str], server_path: Optional[str]) -> Optional[str]:
 #: at four workers on the LAN, 0.28s at two, measured 2026-08-07. The
 #: deadline is there for the bad network, not the normal one.
 PREFETCH_TIMEOUT_S = 3.0
+
+#: How many threads a batch is spread over. FOUR, AND MEASURED -- swept on
+#: the cinema box 2026-08-23 against live Discover artwork on the CDN, four
+#: runs per arm with disjoint URLs so no arm warmed another:
+#:
+#:      workers    batch 10   batch 20   batch 40      CPU (batch 20)
+#:            1       298ms      513ms         --               251ms
+#:            2       201ms      336ms      574ms               328ms
+#:            4       209ms      302ms      529ms               449ms
+#:            8       268ms      391ms      608ms               736ms
+#:           16          --      555ms      795ms              1259ms
+#:
+#: It gets WORSE above four, and the CPU column says why: prefetch() spawns
+#: fresh threads per batch and each builds its own session, so every extra
+#: worker is another TLS handshake -- about 65ms of CPU each -- on a box with
+#: exactly four cores. Past that they contend for those cores and the
+#: handshakes cost more than the concurrency saves.
+#:
+#: Raising this was proposed and is WRONG. The number that suggested it
+#: compared eight-at-once against SERIAL (746ms -> 225ms), which says
+#: parallelism helps, not that more of it helps. Against four it does not.
+#:
+#: Not a setting, deliberately: there is one right answer per device, and the
+#: one to tune for is the constrained one -- the cinema box draws 4K on
+#: littler cores than anything else here, so a value that suits it cannot
+#: hurt a desktop. Re-run the sweep (the vault's tools/probe_cdn.py) if the
+#: hardware changes; do not guess.
 PREFETCH_WORKERS = 4
 
 
