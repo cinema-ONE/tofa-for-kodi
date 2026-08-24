@@ -29,7 +29,11 @@ from . import log
 #: 0.9.29: the 44 pixel-art profile avatars (the six emoji-only presets are
 #: gone), uploaded profile photos, and the split Recently Released Movies /
 #: TV Shows home rows.
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 32)
+#:
+#: 0.9.33: `client_render_embedded_vobsub_subtitles` -- an older server
+#: ignores the flag and a DirectPlay file's embedded VobSub tracks stay
+#: out of the subtitle panel, which reads as this client losing them.
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 33)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,
