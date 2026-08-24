@@ -652,6 +652,22 @@ class MediaServerClient:
         params = {"curated": curated}
         return self._get("/api/v1/collections", params=params)
 
+    def custom_collections(self) -> Any:
+        """`{collections: [...]}` -- user-made collections (server 0.9.33+).
+        Everyone on the server sees every one; members are filtered per
+        viewer by libraries and rating limit. Art is the RELATIVE
+        `poster_path`/`backdrop_path` pair media uses -- NOT the absolute
+        `*_url` pair the curated endpoint answers -- plus `poster_paths`,
+        up to four member posters for a collection nobody has given art."""
+        return self._get("/api/v1/collections/custom")
+
+    def custom_collection(self, collection_id: str) -> Any:
+        """One user-made collection with the members THIS viewer may see,
+        as MediaSummary under `items` -- library shapes, not the discovery
+        items the curated route answers, so every member is owned and
+        opens by media id."""
+        return self._get(f"/api/v1/collections/custom/{collection_id}")
+
     def discovery_detail(self, media_type: str, tmdb_id: int) -> Any:
         return self._get(f"/api/v1/discovery/detail/{media_type}/{tmdb_id}")
 
