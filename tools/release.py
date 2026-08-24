@@ -364,6 +364,11 @@ def news_in_xml(xml: str) -> str | None:
 SERVERVERSION_PY = os.path.join(
     ADDON_DIR, "resources", "lib", "serverversion.py")
 README = os.path.join(ADDON_DIR, "README.txt")
+#: The repo's own front page states the requirement in PROSE too, and it was
+#: hand-fixed after being forgotten on two consecutive floor bumps (0.9.32,
+#: then 0.9.33 in PR #93) -- which is exactly the drift this module exists
+#: to make impossible.
+README_MD = os.path.join(ROOT, "README.md")
 #: The vault holds the vendored spec, and travels nowhere. In one tree that
 #: is this checkout; after the split it is the sibling. None when there is no
 #: vault to read -- which the public repo's CI legitimately is, so this is
@@ -375,6 +380,10 @@ _FLOOR_RE = re.compile(
     r"^MIN_SERVER_VERSION.*?=\s*\((\d+),\s*(\d+),\s*(\d+)\)", re.M)
 _README_RE = re.compile(
     r"^Built against tofa media server (\d+\.\d+\.\d+)\.", re.M)
+#: Tolerant of the bold markdown around the number, strict about the
+#: sentence -- "A tofa media server at **0.9.33** or newer".
+_README_MD_RE = re.compile(
+    r"A tofa media server at \*{0,2}(\d+\.\d+\.\d+)\*{0,2} or newer")
 
 
 def server_floor() -> str | None:
@@ -391,6 +400,15 @@ def readme_server_version() -> str | None:
     try:
         with open(README, encoding="utf8") as handle:
             found = _README_RE.search(handle.read())
+    except OSError:
+        return None
+    return found.group(1) if found else None
+
+
+def readme_md_server_version() -> str | None:
+    try:
+        with open(README_MD, encoding="utf8") as handle:
+            found = _README_MD_RE.search(handle.read())
     except OSError:
         return None
     return found.group(1) if found else None
@@ -435,6 +453,14 @@ def server_problems() -> list[str]:
         problems.append(
             "README.txt says server %s, serverversion.py enforces %s "
             "(run: release.py server %s)" % (readme, floor, floor))
+    readme_md = readme_md_server_version()
+    if readme_md is None:
+        problems.append(
+            "README.md has no 'A tofa media server at **X.Y.Z** or newer' line")
+    elif readme_md != floor:
+        problems.append(
+            "README.md says server %s, serverversion.py enforces %s "
+            "(run: release.py server %s)" % (readme_md, floor, floor))
     spec = spec_version()
     if spec and compare(spec, floor) > 0:
         problems.append(
@@ -445,27 +471,38 @@ def server_problems() -> list[str]:
 
 
 def do_server(version: str) -> int:
-    """Set the server floor in BOTH places at once."""
+    """Set the server floor everywhere it is named, in one go."""
     if not re.fullmatch(r"\d+\.\d+\.\d+", version or ""):
         print("server version must be X.Y.Z, got %r" % version)
         return 1
     parts = version.split(".")
     with open(SERVERVERSION_PY, encoding="utf8") as handle:
         code = handle.read()
+    if not _FLOOR_RE.search(code):
+        print("serverversion.py: MIN_SERVER_VERSION not found")
+        return 1
     updated = _FLOOR_RE.sub(
         "MIN_SERVER_VERSION: Tuple[int, int, int] = (%s, %s, %s)" % tuple(parts),
         code, count=1)
-    if updated == code:
-        print("serverversion.py: MIN_SERVER_VERSION not found or unchanged")
-        return 1
-    with open(SERVERVERSION_PY, "w", encoding="utf8") as handle:
-        handle.write(updated)
+    # "Already at that version" is NOT an error: the readmes may still be
+    # behind (README.md drifted exactly that way twice), and stopping here
+    # would leave the one command meant to fix the drift unable to.
+    if updated != code:
+        with open(SERVERVERSION_PY, "w", encoding="utf8") as handle:
+            handle.write(updated)
     with open(README, encoding="utf8") as handle:
         readme = handle.read()
     with open(README, "w", encoding="utf8") as handle:
         handle.write(_README_RE.sub(
             "Built against tofa media server %s." % version, readme, count=1))
-    print("server floor set to %s in serverversion.py and README.txt" % version)
+    with open(README_MD, encoding="utf8") as handle:
+        readme_md = handle.read()
+    with open(README_MD, "w", encoding="utf8") as handle:
+        handle.write(_README_MD_RE.sub(
+            "A tofa media server at **%s** or newer" % version,
+            readme_md, count=1))
+    print("server floor set to %s in serverversion.py, README.txt "
+          "and README.md" % version)
     print("Remember the changelog: a floor bump is a user-visible change.")
     return 0
 
