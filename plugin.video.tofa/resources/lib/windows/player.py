@@ -3535,11 +3535,24 @@ class PlayerWindow(kodigui.ControlledDialog):
         # correctly-matched foreign audio track into an unwanted subtitle.
         try:
             if always_subs:
-                # Full subtitles in a preferred language. A forced track is
-                # not "subtitles on", a plain track beats an SDH one, and a
-                # text track beats a picture one -- langcodes ranks all three.
+                # Full subtitles, down the server 0.9.33 chain: a preferred
+                # language, else the language of the audio actually being
+                # heard, else a track nobody tagged, else off. The web
+                # player used to grab the file's first track whatever its
+                # language, and the fix's ordering is the sensible one for
+                # us too -- each rung shows something the viewer can use,
+                # where the old behaviour showed whatever came first.
+                # Within a rung: a forced track is not "subtitles on", a
+                # plain track beats an SDH one, and a text track beats a
+                # picture one -- langcodes ranks all three.
                 track = (langcodes.first_subtitle_by_language(
                     self._subtitle_tracks, sub_langs) if sub_langs else None)
+                if track is None and playing_lang:
+                    track = langcodes.first_subtitle_by_language(
+                        self._subtitle_tracks, [playing_lang])
+                if track is None:
+                    track = langcodes.first_untagged_subtitle(
+                        self._subtitle_tracks)
             else:
                 # OFF does not mean silence: the disc's FORCED track for the
                 # language being heard still gets shown, so the lines the

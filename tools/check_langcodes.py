@@ -119,6 +119,20 @@ def main() -> int:
               [{"index": 6, "language": "deu", "forced": False}], ["ger"]) or {}).get("index"), 6)
     check("no match -> nothing", lc.first_subtitle_by_language(disc_subs, ["jpn"]), None)
 
+    # --- the untagged rung (server 0.9.33's chain ends here) ------------
+    # A tagged track in the wrong language is exactly what the chain
+    # exists to avoid, so only '' and 'und' count as untagged.
+    untagged_set = [
+        {"index": 3, "language": "fra", "forced": False},
+        {"index": 4, "language": "", "forced": True},
+        {"index": 5, "language": "und", "forced": False},
+    ]
+    check("untagged skips the wrong-language track and ranks the rest",
+          (lc.first_untagged_subtitle(untagged_set) or {}).get("index"), 5)
+    check("all tracks tagged -> nothing",
+          lc.first_untagged_subtitle([{"index": 3, "language": "fra"}]), None)
+    check("no tracks at all -> nothing", lc.first_untagged_subtitle([]), None)
+
     # The server reports sdh=false on a track plainly titled "English SDH
     # (PGS)", so the title is the fallback. Live payload, verbatim.
     real = [
@@ -185,7 +199,7 @@ def main() -> int:
 
     for f in fails:
         print("FAIL " + f)
-    print("%d checks, %d failed" % (52, len(fails)))
+    print("%d checks, %d failed" % (55, len(fails)))
     return 1 if fails else 0
 
 

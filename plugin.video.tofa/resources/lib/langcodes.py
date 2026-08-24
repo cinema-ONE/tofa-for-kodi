@@ -220,6 +220,29 @@ def first_subtitle_by_language(track_list: list, languages: list) -> Optional[di
     return None
 
 
+#: Language values that mean "nobody said". ISO 639-2 reserves `und` for
+#: undetermined, and an empty/missing field says the same thing without
+#: the vocabulary.
+_UNTAGGED = ("", "und")
+
+
+def first_untagged_subtitle(track_list: list) -> Optional[dict]:
+    """The best track carrying no language at all, or None.
+
+    The last rung of the auto-enable chain (server 0.9.33's own order:
+    preferred language, then the audio's language, then this). An untagged
+    track is more often the file's only real subtitle than a wrong-language
+    one -- a labelled track in a language the viewer did not ask for is
+    exactly what this chain exists to avoid turning on, so anything tagged
+    is out, and the untagged candidates rank the same way a language's
+    do."""
+    candidates = [t for t in track_list or []
+                  if str(t.get("language") or "").strip().lower() in _UNTAGGED]
+    if not candidates:
+        return None
+    return min(candidates, key=_subtitle_rank)
+
+
 #: Bitmap subtitle codecs, for payloads that carry no `render` field.
 _BITMAP_CODECS = {"hdmv_pgs_subtitle", "dvd_subtitle", "dvb_subtitle", "pgs"}
 
