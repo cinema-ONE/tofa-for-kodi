@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+import xbmc
 import xbmcgui
 
-from . import http
+from . import http, log
 from .api import MediaServerClient
 from .profile import CapabilityProfile
 
@@ -46,6 +47,18 @@ def resolve_file_id(client: MediaServerClient, media_id: str, season: Optional[i
 TICKS_PER_MS = 10_000
 
 
+#: One brief second-chance for a 503 from /stream/info -- "host is at
+#: transcode capacity", which is also what a converter that cannot START
+#: answers. The 0.9.33 notes say these failures usually clear within a
+#: second or two, most often because a previous stream of the same title
+#: has not finished releasing the graphics card, and that apps should
+#: retry for a moment rather than erroring straight away. ONE retry, 503
+#: only: a host genuinely out of capacity answers the same way, and
+#: hammering it helps nobody -- while a 404 or 403 would answer the same
+#: way forever.
+_RETRY_503_AFTER_SECONDS = 2.0
+
+
 def negotiate(
     client: MediaServerClient,
     file_id: str,
@@ -54,14 +67,24 @@ def negotiate(
 ) -> dict[str, Any]:
     """Negotiate a stream. `resume_ms` is MILLISECONDS, like every other
     position in this client; the conversion to the API's ticks happens here
-    so no caller has to remember which unit this endpoint wants."""
+    so no caller has to remember which unit this endpoint wants.
+
+    Both play paths call this under their own spinner, so the one 503
+    retry's two-second wait is spent looking like the load it is, not like
+    a hang."""
     resume_ticks = (resume_ms * TICKS_PER_MS) if resume_ms else None
-    try:
-        resp = client.stream_info(file_id, profile, dry_run=False, resume_ticks=resume_ticks)
-    except http.ApiError as exc:
-        if exc.error == "timeout":
-            raise NegotiateTimeout(str(exc)) from None
-        raise
+    for attempt in (1, 2):
+        try:
+            resp = client.stream_info(file_id, profile, dry_run=False, resume_ticks=resume_ticks)
+            break
+        except http.ApiError as exc:
+            if exc.error == "timeout":
+                raise NegotiateTimeout(str(exc)) from None
+            if exc.status == 503 and attempt == 1:
+                log.warning(f"playback: converter not ready (503), retrying once: {exc!r}")
+                xbmc.sleep(int(_RETRY_503_AFTER_SECONDS * 1000))
+                continue
+            raise
     if resp.get("stream_url"):
         resp["stream_url"] = client.resolve_url(resp["stream_url"])
     return resp
