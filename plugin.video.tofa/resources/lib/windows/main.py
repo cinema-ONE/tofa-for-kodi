@@ -2517,7 +2517,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # call, no per-item cost.
             try:
                 collections_resp = client.collections() or {}
-                self._sources[2]["count"] = str(len(collections_resp.get("collections") or []))
+                count = len(collections_resp.get("collections") or [])
+                # User-made collections (0.9.33) count too -- the grid
+                # shows both, so the badge must agree with it.
+                try:
+                    count += len((client.custom_collections() or {}).get("collections") or [])
+                except http.ApiError as exc:
+                    kodigui.ERROR("main.py: browse custom collections count failed: {0}".format(exc))
+                self._sources[2]["count"] = str(count)
             except http.ApiError as exc:
                 kodigui.ERROR("main.py: browse collections count failed: {0}".format(exc))
 
@@ -3171,10 +3178,25 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             kodigui.ERROR("main.py: browse collections failed: {0}".format(exc))
             resp = {}
         collections = resp.get("collections") or []
-        # Collections carry absolute poster_url/backdrop_url on our own
-        # server rather than the usual relative *_path, and both are drawn on
-        # the card -- stage_pair knows the difference, this only has to name
-        # the right fields.
+        # User-made collections (server 0.9.33) live on their own route and
+        # come FIRST: someone on this server made each of them on purpose,
+        # there will only ever be a handful, and behind five hundred
+        # franchise tiles nobody would learn they exist. Marked so the card
+        # builder and the drill-in know which field family and which fetch
+        # applies. Read-only here by decision (2026-08-24): the server's
+        # own apps have create/edit; we show.
+        try:
+            custom = (client.custom_collections() or {}).get("collections") or []
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: browse custom collections failed: {0}".format(exc))
+            custom = []
+        for it in custom:
+            it["_custom"] = True
+        # Curated collections carry absolute poster_url/backdrop_url on our
+        # own server rather than the usual relative *_path, and both are
+        # drawn on the card -- stage_pair knows the difference, this only
+        # has to name the right fields. Custom ones carry the ordinary
+        # relative pair, so they stage as a second small batch.
         # include_cdn: a collection's art is usually ours, but the cloud
         # serves some of it, and this is a dedicated screen the viewer has
         # navigated to and is waiting on -- not a row being built behind
@@ -3182,9 +3204,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         started = time.monotonic()
         artcache.prefetch(client.stage_pairs(collections, "poster_url",
                                              "backdrop_url", include_cdn=True))
-        managed = [self._browse_build_collection_item(client, it) for it in collections]
-        log.info("browse: %d collection(s) in %.2fs"
-                 % (len(collections), time.monotonic() - started))
+        if custom:
+            artcache.prefetch(client.stage_pairs(custom, "poster_path",
+                                                 "backdrop_path"))
+        managed = [self._browse_build_collection_item(client, it)
+                   for it in custom + collections]
+        log.info("browse: %d collection(s) (%d custom) in %.2fs"
+                 % (len(collections) + len(custom), len(custom),
+                    time.monotonic() - started))
         self.setProperty("browse_collections", "1")
         # The sidebar's <onright> is baked at the poster grid, which is
         # hidden in this state, so right out of the sidebar went nowhere.
@@ -3200,8 +3227,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # art, and the poster is the fallback that must be fitted rather
         # than cropped. They go in different slots so the layout can tell
         # them apart and pick its own treatment for each.
-        backdrop = client.resolve_image_url(item.get("backdrop_url")) or ""
-        poster = client.resolve_image_url(item.get("poster_url")) or ""
+        if item.get("_custom"):
+            # The relative *_path family, like media. A collection nobody
+            # has given a poster still answers `poster_paths` -- up to four
+            # member posters -- and the first of those beats an empty slot;
+            # a composite tile would need layout work this read-only pass
+            # doesn't buy.
+            poster_path = item.get("poster_path")
+            if not poster_path:
+                paths = item.get("poster_paths") or []
+                poster_path = paths[0] if paths else None
+            backdrop = client.resolve_image_url(item.get("backdrop_path")) or ""
+            poster = client.resolve_image_url(poster_path) or ""
+        else:
+            backdrop = client.resolve_image_url(item.get("backdrop_url")) or ""
+            poster = client.resolve_image_url(item.get("poster_url")) or ""
         mli = kodigui.ManagedListItem(label=title, thumbnailImage=backdrop, data_source=item)
         mli.setArt({"thumb": backdrop, "poster": poster})
         mli.setProperty("poster", poster)
@@ -3236,7 +3276,19 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not client:
             return
         try:
-            resp = client.collection(str(collection_id)) or {}
+            if data.get("_custom"):
+                resp = client.custom_collection(str(collection_id)) or {}
+                # Members are MediaSummary -- library shapes carrying
+                # `release_date`, not the `year` the shared card, caption
+                # and sort all read. Derive it once here rather than
+                # branching three consumers.
+                for m in resp.get("items") or []:
+                    if m.get("year") is None:
+                        date = str(m.get("release_date") or "")
+                        if date[:4].isdigit():
+                            m["year"] = int(date[:4])
+            else:
+                resp = client.collection(str(collection_id)) or {}
         except http.ApiError as exc:
             kodigui.ERROR("main.py: collection {0} failed: {1}".format(collection_id, exc))
             return
