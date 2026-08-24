@@ -38,7 +38,7 @@ Add the repository once and Kodi keeps the add-on updated on its own:
 A zip installed by hand works too and never updates itself, which is the
 whole reason the repository exists.
 
-**Requirements.** A tofa media server at **0.9.32** or newer -- older servers
+**Requirements.** A tofa media server at **0.9.33** or newer -- older servers
 are not refused, but this add-on carries no backward-compatibility paths, so
 some screens will be missing or wrong rather than degrading gracefully. It
 says so once per session when it sees one. `addon.xml` declares
