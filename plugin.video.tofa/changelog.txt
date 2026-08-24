@@ -1,3 +1,21 @@
+0.9.14
+- Picture subtitles stored inside a film's own file (VobSub) now appear in
+  the subtitle list when the file plays directly. They used to be offered
+  only burnt into the picture, which meant re-encoding the whole video for
+  a subtitle track. Needs tofa server 0.9.33, which is now the version this
+  add-on is built against.
+- Collections people make on your server now show up in Browse, ahead of
+  the catalogue's own franchise sets. Open one to see what's in it; making
+  and editing them stays in tofa's web app for now. Needs tofa server
+  0.9.33.
+- "Always show subtitles" no longer gives up when no track matches your
+  preferred language: it now tries the language of the audio you are
+  hearing, then a track with no language label, before leaving subtitles
+  off. The same order tofa's web player uses.
+- A converted stream that cannot start straight away -- usually because a
+  just-stopped stream is still letting go of the server's graphics card --
+  now gets a second chance two seconds later instead of an error message.
+
 0.9.13
 - When a title will not load because your server is busy rather than
   unreachable, tofa now says so. It used to tell you to check your
