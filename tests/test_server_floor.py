@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""The server floor is named in three places and must not drift.
+"""The server floor is named in four places and must not drift.
 
 release.py enforces this at package time, which is the backstop. Running it
 here too means the drift fails on the commit that caused it rather than
@@ -29,7 +29,12 @@ check("serverversion.py declares a floor", bool(floor), str(floor))
 check("README.txt names the same one",
       release.readme_server_version() == floor,
       f"README {release.readme_server_version()} vs code {floor}")
-check("no drift between any of the three", not release.server_problems(),
+# README.md states the requirement in prose and was forgotten on two
+# consecutive floor bumps (fixed by hand in PR #93 the second time).
+check("README.md names the same one",
+      release.readme_md_server_version() == floor,
+      f"README.md {release.readme_md_server_version()} vs code {floor}")
+check("no drift between any of the four", not release.server_problems(),
       "; ".join(release.server_problems()))
 
 # The spec is allowed to LAG -- 0.9.29 shipped avatars and home rows with no
