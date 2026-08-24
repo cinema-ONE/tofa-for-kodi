@@ -63,6 +63,7 @@ _BOOL_FIELDS = (
     "deinterlacing_supported",
     "client_render_bitmap_subtitles",
     "client_render_vobsub_subtitles",
+    "client_render_embedded_vobsub_subtitles",
     "include_native_subtitle_rendition",
     "dolby_vision_supported",
 )
@@ -101,6 +102,15 @@ class CapabilityProfile:
     #: fetched from the `full.idx` route, which Kodi's own VobSub demuxer
     #: reads (see PlayerWindow._external_subtitle_url).
     client_render_vobsub_subtitles: Optional[bool] = True
+    #: Server 0.9.33, and a different promise from the sidecar flag above:
+    #: there is no server extraction route for VobSub INSIDE the container,
+    #: so this one never yields a fetchable URL. It only moves embedded
+    #: `dvd_subtitle` out of `burn_in_subtitle_tracks` into `subtitle_tracks`
+    #: on DirectPlay, where Kodi demuxes the container itself and selects
+    #: the stream natively (`external` unset, so _is_vobsub_sidecar stays
+    #: False and nothing asks the 400-answering routes for it). Under a
+    #: transcode the tracks stay burn-in-only, exactly as before.
+    client_render_embedded_vobsub_subtitles: Optional[bool] = True
     stereo_only_audio_codecs: Optional[str] = None
     max_bitrate: Optional[int] = None
     include_native_subtitle_rendition: Optional[bool] = None
