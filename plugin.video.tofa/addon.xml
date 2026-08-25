@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.14" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.15" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,22 +25,15 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Picture subtitles stored inside a film's own file (VobSub) now appear in
-        the subtitle list when the file plays directly. They used to be offered
-        only burnt into the picture, which meant re-encoding the whole video for
-        a subtitle track. Needs tofa server 0.9.33, which is now the version this
-        add-on is built against.
-      - Collections people make on your server now show up in Browse, ahead of
-        the catalogue's own franchise sets. Open one to see what's in it; making
-        and editing them stays in tofa's web app for now. Needs tofa server
-        0.9.33.
-      - "Always show subtitles" no longer gives up when no track matches your
-        preferred language: it now tries the language of the audio you are
-        hearing, then a track with no language label, before leaving subtitles
-        off. The same order tofa's web player uses.
-      - A converted stream that cannot start straight away -- usually because a
-        just-stopped stream is still letting go of the server's graphics card --
-        now gets a second chance two seconds later instead of an error message.
+      - Browse's Collections list now opens straight away. On a large library it
+        had to prepare every single collection before it could show you the
+        first one, which meant a wait of several seconds each time you opened
+        the section -- and much longer the first time. It now prepares only what
+        is on screen, and the rest as you scroll to it.
+      - If you change Kodi skin, tofa now offers to add its fonts to the new
+        skin. Previously, saying no to that once meant you were never asked
+        again, even on a different skin where the fonts really were missing, and
+        tofa's own screens were left using whatever the skin happened to supply.
     </news>
     <assets>
       <icon>icon.png</icon>
