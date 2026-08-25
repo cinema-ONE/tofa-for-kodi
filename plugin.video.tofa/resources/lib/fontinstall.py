@@ -364,6 +364,11 @@ dialog rather than one per window open. Stored as the version declined, not
 a bare flag: a later font set is a new question, and gets asked again."""
 DECLINED_SETTING = "fonts_declined_version"
 
+#: ...and per SKIN, because this edits the active skin and nothing else.
+#: Declining on one skin says nothing about a skin the user has not switched
+#: to yet, where the fonts really are absent. hostsetup owns the format.
+SKIN_DECLINED_SETTING = "fonts_declined_skins"
+
 
 def fonts_needed() -> bool:
     """True when this font set is not in the active skin's Font.xml yet.

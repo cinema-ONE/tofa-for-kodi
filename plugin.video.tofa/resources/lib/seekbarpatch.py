@@ -98,6 +98,10 @@ _WINDOW_OPEN_RE = re.compile(r"<window(?:\s[^>]*)?>")
 costs one dialog rather than one per player open."""
 DECLINED_SETTING = "seekbar_declined_version"
 
+#: ...and per SKIN: this patches the active skin's DialogSeekBar.xml, so a
+#: decline is about that skin only. hostsetup owns the format.
+SKIN_DECLINED_SETTING = "seekbar_declined_skins"
+
 
 def _find_seekbar_xml_files(skin_path: str) -> list[str]:
     """Same reasoning as fontinstall._find_font_xml_files: the file's
