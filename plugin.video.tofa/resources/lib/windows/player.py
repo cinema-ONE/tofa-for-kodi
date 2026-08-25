@@ -197,29 +197,6 @@ SKIP_PROMPT_MIN_DURATION_S = 3
 SKIP_MIN_REMAINING_S = 1
 SKIP_PROMPT_AUTO_HIDE_S = 8
 
-#: EXPERIMENT, 2026-08-05: hand Kodi the next episode's URL WITHOUT stopping
-#: the current one first.
-#:
-#: WHY. The box runs videoplayer.adjustrefreshrate = 2 ("on start and stop"),
-#: so Kodi reverts the display to 60Hz on every stop. An auto-advance between
-#: two 25fps episodes therefore costs 25 -> 60 -> 25, and that round trip --
-#: not our bounce -- is the flicker and the A/V dropouts reported from the
-#: room. Kodi's play() replaces a playing item, so never stopping means never
-#: triggering the revert, and refreshrate.would_switch() then finds the
-#: display already correct and does not bounce at all.
-#:
-#: WHAT TO WATCH IF IT MISBEHAVES. The stop is load-bearing for something
-#: else: monitor.py's TofaPlayer lives in the service.py process and learns
-#: that an episode finished ONLY from Kodi's onPlayBackStopped. If replacing
-#: the item does not dispatch that callback, the outgoing episode's final
-#: position is never written and its server session is never ended -- it
-#: would leak one per episode across a binge. Kodi is believed to stop the
-#: previous item internally and dispatch normally, but that is the
-#: assumption this experiment is testing, so check the previous episode's
-#: watched state and the server's open sessions after a couple of advances.
-#:
-#: Set False to restore the explicit stop.
-NO_STOP_BETWEEN_EPISODES = True
 # QuickView reports 100-nanosecond ticks, NOT the milliseconds the progress
 # endpoint's position_ticks uses. Two units in one API.
 SKIP_TICKS_PER_MS = 10_000
@@ -3155,6 +3132,58 @@ class PlayerWindow(kodigui.ControlledDialog):
             except Exception as exc:                        # noqa: BLE001
                 log.warning(f"player: outgoing {what} failed: {exc!r}")
 
+    # WHY WE ALWAYS STOP BEFORE STARTING THE NEXT EPISODE.
+    #
+    # Between 2026-08-05 and 2026-08-25 this was an experiment
+    # (NO_STOP_BETWEEN_EPISODES) that handed Kodi the next episode's URL
+    # WITHOUT stopping the current one, to dodge a display-mode round trip:
+    # with Kodi's `videoplayer.adjustrefreshrate` on "On start / stop" (2,
+    # the default) Kodi reverts to 60Hz on every stop, so advancing between
+    # two 25fps episodes cost 25 -> 60 -> 25 and showed up in the room as
+    # flicker and A/V dropouts.
+    #
+    # IT WAS WITHDRAWN on 2026-08-25, after Play Next twice started an
+    # episode ~1:30 in rather than at the beginning (AM6B+, Outer Banks).
+    # Ruled out by evidence at the time: no resume point (this method passes
+    # resume_ms=None and progress.resume_position_ms is never called on this
+    # path), no server-side cut (a plain /direct URL, and no "stream starts
+    # ...ms into the file" line), and no auto-skip (the episode's only
+    # segment was an outro, and every segment action was `ask`).
+    #
+    # WHAT REMAINS UNPROVEN is what DID move it. Withdrawing the experiment
+    # is a judgement -- never stopping is the unusual thing this code does,
+    # and it is what the failing advances had in common -- not a diagnosis.
+    # Two advances after the withdrawal started correctly at zero, but so
+    # did one advance before it, so that is not evidence either.
+    #
+    # A DEAD END, recorded so it is not re-walked. Kodi asking its file
+    # cache for a huge byte offset right after opening the new stream --
+    #
+    #     CurlFile::CReadState::Connect - Resume from position 6844288115
+    #     CFileCache::Process - <...new url...> source read hit eof
+    #
+    # -- looks damning and is NOT the signal. 6,844,288,115 bytes is 6.374
+    # GB, and the file it had just opened (Outer Banks S05E05, measured on
+    # the server) is 6.37 GB: the offset IS that file's own end, which is
+    # matroska Cues probing, and `hit eof` on the next line says so. It
+    # appears identically on advances that start correctly at zero.
+    #
+    # Do not "confirm" this from the position: dividing a byte offset by the
+    # reported percentage to infer a file size assumes the offset is the
+    # position, which is the very thing in question. Done here on 2026-08-25
+    # and it produced a confident ~41 GB for a 6.37 GB file.
+    #
+    # `Player.isPlaying()` is likewise useless as a teardown signal: it
+    # reads False immediately after stop(), measured at 0.00s.
+    #
+    # THE DISPLAY-MODE PROBLEM IS KODI'S OWN SETTING, AND THE VIEWER'S TO
+    # MAKE. `videoplayer.adjustrefreshrate` = 3 ("On start") switches the
+    # mode when playback starts and never reverts on stop, which is exactly
+    # the round trip the experiment existed to avoid. We deliberately do NOT
+    # set it: it is the viewer's display, and a client that silently
+    # rewrites Kodi's video settings is worse than one that costs a mode
+    # switch. Anyone seeing the flicker can change it in
+    # Settings > Player > Videos.
     def _play_episode(self, queued: Optional[tuple]):
         if queued is None:
             return
@@ -3204,24 +3233,33 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._time_offset_ms = 0
         self._nextup_still_path = ""
         self._restarting = True
-        if not NO_STOP_BETWEEN_EPISODES:
-            try:
-                self.ui_player.stop()
-            except RuntimeError:
-                pass
-        else:
-            # The outgoing episode keeps playing while the negotiation for the
-            # next one is in flight. That is deliberate and it is not visible:
-            # STATE_OPENING below puts the full-screen scrim over it on the
-            # very next frame, so what the viewer sees is the opening card,
-            # not the tail of the credits. A stop here would instead give
-            # them a black screen for the same interval AND cost the mode.
-            log.debug("player: advancing without stop (keeping display mode)")
-            # No stop means no onPlayBackStopped, so nothing else will ever
-            # finish the outgoing session. Do it here, before _start_playback
-            # overwrites _nego with the next episode's.
-            self._close_out_session(outgoing_file_id, outgoing_position,
-                                    finished=outgoing_finished)
+        # BEFORE the stop, and before _start_playback overwrites _nego with
+        # the next episode's: this is written from the position captured
+        # while the outgoing episode was still the one playing, and it is the
+        # single writer for that episode's final state. monitor.py stands
+        # down for the changeover (see its mid-changeover guard), so a stop
+        # arriving after this cannot overwrite `ended` with a stale position
+        # -- which would UNDO the completion, since ended=False does exactly
+        # that on the server.
+        self._close_out_session(outgoing_file_id, outgoing_position,
+                                finished=outgoing_finished)
+        # Kodi is stopped before it is handed the next URL. This is the
+        # pre-2026-08-05 behaviour, restored: the no-stop advance was an
+        # experiment and it is the only thing the misplaced-start report of
+        # 2026-08-25 has in common across occurrences.
+        #
+        # NOT A PROVEN FIX for that report. What IS established: the next
+        # episode is negotiated with resume_ms=None, the stream is a plain
+        # /direct with no server cut, and the episode carried no intro or
+        # recap segment -- so no resume point, no server-side offset and no
+        # auto-skip put playback 1:33 in. What is NOT established is what
+        # did. Kodi's large byte-offset reads at open are normal matroska
+        # Cues probing and are NOT the signal; they appear identically on
+        # advances that start correctly at zero.
+        try:
+            self.ui_player.stop()
+        except RuntimeError:
+            pass
         self.setProperty("player_state", self.STATE_OPENING)
         # Deferred, not immediate. This runs as the Next Up rail's click
         # handler, and taking focus to the bare surface from inside that
