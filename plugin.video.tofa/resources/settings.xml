@@ -54,6 +54,15 @@
                     <level>0</level>
                     <default></default>
                     <visible>false</visible>
+                    <!-- REQUIRED for an empty default. Without it Kodi
+                         refuses the setting outright ("error reading the
+                         default value", then "unable to read setting"), so
+                         it never registers, getSetting answers nothing, and
+                         the per-skin decline silently forgets itself.
+                         Seen on the box 2026-08-25. -->
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
                     <control type="edit" format="string"/>
                 </setting>
                 <!-- The same, for hostsetup.HOSTCONFIG_VERSION: the
@@ -83,6 +92,15 @@
                     <level>0</level>
                     <default></default>
                     <visible>false</visible>
+                    <!-- REQUIRED for an empty default. Without it Kodi
+                         refuses the setting outright ("error reading the
+                         default value", then "unable to read setting"), so
+                         it never registers, getSetting answers nothing, and
+                         the per-skin decline silently forgets itself.
+                         Seen on the box 2026-08-25. -->
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
                     <control type="edit" format="string"/>
                 </setting>
                 <!-- How much disk the artwork staging area may hold, in MB.
