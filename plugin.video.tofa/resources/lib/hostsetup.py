@@ -62,21 +62,32 @@ class _Concern(NamedTuple):
     """One thing we change outside the add-on. `clause` is the string id of
     a short phrase naming the change, listed in the consent dialog only when
     that change is actually outstanding -- the dialog must never claim to be
-    about to do something it has already done."""
+    about to do something it has already done.
+
+    `skin_setting` names the per-skin decline store, and is set for the
+    concerns that edit the ACTIVE SKIN rather than something global. For
+    those, a decline only ever means "not on this skin": see
+    _declined_version.
+    """
     declined_setting: str
     version: int
     needed: Callable[[], bool]
     apply: Callable[[], bool]
     clause: int
+    skin_setting: str = ""
 
 
 _CONCERNS = (
     _Concern(fontinstall.DECLINED_SETTING, fontinstall.FONT_SET_VERSION,
-             fontinstall.fonts_needed, fontinstall.apply_fonts, 31109),
+             fontinstall.fonts_needed, fontinstall.apply_fonts, 31109,
+             fontinstall.SKIN_DECLINED_SETTING),
+    # advancedsettings.xml is per-PROFILE, not per-skin, so this one keeps a
+    # bare version int: declining it means declining it everywhere.
     _Concern(HOSTCONFIG_DECLINED_SETTING, HOSTCONFIG_VERSION,
              hostconfig.imageres_needed, hostconfig.apply_imageres, 31110),
     _Concern(seekbarpatch.DECLINED_SETTING, seekbarpatch.SEEKBAR_PATCH_VERSION,
-             seekbarpatch.patch_needed, seekbarpatch.apply_patch, 31111),
+             seekbarpatch.patch_needed, seekbarpatch.apply_patch, 31111,
+             seekbarpatch.SKIN_DECLINED_SETTING),
 )
 
 #: The fonts are the only concern that INSTALLS anything, so they alone
@@ -84,11 +95,118 @@ _CONCERNS = (
 _FONTS = _CONCERNS[0]
 
 
-def _declined(setting: str) -> int:
+def _skin_id() -> str:
+    try:
+        return xbmc.getSkinDir() or ""
+    except Exception:
+        return ""
+
+
+def _parse_skin_map(raw: str) -> dict[str, int]:
+    """`skin.estuary=25|skin.confluence=24` -> {"skin.estuary": 25, ...}.
+
+    Deliberately forgiving: an unparseable chunk is dropped rather than
+    raising, because the worst case of forgetting a decline is one extra
+    dialog, and the worst case of raising here is no host setup at all.
+    """
+    parsed: dict[str, int] = {}
+    for chunk in raw.split("|"):
+        skin, _sep, version = chunk.partition("=")
+        if skin and version.isdigit():
+            parsed[skin] = int(version)
+    return parsed
+
+
+def _format_skin_map(declines: dict[str, int]) -> str:
+    return "|".join(f"{skin}={version}" for skin, version in sorted(declines.items()))
+
+
+def _read_skin_map(concern: _Concern) -> dict[str, int]:
+    """The per-skin declines, migrating the pre-0.9.15 bare int on first read.
+
+    MIGRATION. Before this, a decline was one integer with no skin attached,
+    so an existing "no" cannot be attributed to a skin by inspection. It is
+    credited to whatever skin is active the first time this runs, which is
+    the skin the user was almost certainly looking at when they declined --
+    and crucially it is not credited to any OTHER skin, so switching still
+    asks. The legacy int is zeroed in the same breath so this happens once;
+    leaving it set would re-credit it to a different skin later.
+    """
+    try:
+        raw = ADDON.getSetting(concern.skin_setting) or ""
+    except (TypeError, ValueError):
+        raw = ""
+    declines = _parse_skin_map(raw)
+    if declines:
+        return declines
+
+    legacy = _declined_int(concern.declined_setting)
+    if legacy <= 0:
+        return {}
+    skin = _skin_id()
+    if not skin:
+        return {}
+    declines = {skin: legacy}
+    _write_skin_map(concern, declines)
+    ADDON.setSettingInt(concern.declined_setting, 0)
+    log.debug(f"hostsetup: migrated {concern.declined_setting}={legacy} onto {skin}")
+    return declines
+
+
+def _write_skin_map(concern: _Concern, declines: dict[str, int]) -> None:
+    ADDON.setSetting(concern.skin_setting, _format_skin_map(declines))
+
+
+def _declined_int(setting: str) -> int:
     try:
         return ADDON.getSettingInt(setting)
     except (TypeError, ValueError):
         return 0
+
+
+def _declined_version(concern: _Concern) -> int:
+    """The version of this concern the user last said no to, HERE.
+
+    For a concern that edits the active skin, a decline is remembered
+    against that skin's id. Declining tofa's fonts on Estuary said nothing
+    about a skin the user had not switched to yet, and the fonts genuinely
+    are missing over there -- a global "no" left tofa's screens on fallback
+    fonts with no way back except a FONT_SET_VERSION bump.
+    """
+    if not concern.skin_setting:
+        return _declined_int(concern.declined_setting)
+    skin = _skin_id()
+    if not skin:
+        # No active skin to attribute a decline to. Answering 0 means "not
+        # declined", which at worst asks once more; it never writes.
+        return 0
+    return _read_skin_map(concern).get(skin, 0)
+
+
+def _remember_declined(concern: _Concern) -> None:
+    if not concern.skin_setting:
+        ADDON.setSettingInt(concern.declined_setting, concern.version)
+        return
+    skin = _skin_id()
+    if not skin:
+        return
+    declines = _read_skin_map(concern)
+    declines[skin] = concern.version
+    _write_skin_map(concern, declines)
+
+
+def _clear_declined(concern: _Concern) -> None:
+    """A previous decline is spent once the concern is applied: leaving it
+    set would suppress the prompt for the NEXT version of this concern."""
+    if not concern.skin_setting:
+        ADDON.setSettingInt(concern.declined_setting, 0)
+        return
+    skin = _skin_id()
+    if not skin:
+        return
+    declines = _read_skin_map(concern)
+    if declines.pop(skin, None) is not None:
+        _write_skin_map(concern, declines)
 
 
 def will_auto_restart() -> bool:
@@ -132,7 +250,7 @@ def _outstanding(forced: bool) -> list[_Concern]:
     wanted = [c for c in _CONCERNS if c.needed()]
     if forced:
         return wanted
-    return [c for c in wanted if _declined(c.declined_setting) < c.version]
+    return [c for c in wanted if _declined_version(c) < c.version]
 
 
 def ensure_host_setup(forced: bool = False) -> bool:
@@ -149,16 +267,14 @@ def ensure_host_setup(forced: bool = False) -> bool:
 
         if not _ask_consent(wanted):
             for concern in wanted:
-                ADDON.setSettingInt(concern.declined_setting, concern.version)
+                _remember_declined(concern)
             log.debug("hostsetup: declined, nothing written")
             return False
 
         changed = False
         for concern in wanted:
             if concern.apply():
-                # A previous decline is spent: leaving it set would suppress
-                # the prompt for the NEXT version of this concern.
-                ADDON.setSettingInt(concern.declined_setting, 0)
+                _clear_declined(concern)
                 changed = True
 
         if not changed:
