@@ -4606,6 +4606,122 @@ def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
                                  trailing_w=SW + 56, **kwargs)
 
 
+def settings_segmented_group(group_id: int, seg_ids: tuple, *,
+                             prop: str, seg_width: int = 108,
+                             posy: str = "0",
+                             width: int = T.SETTINGS_DETAIL_W_WIDE,
+                             height: int = T.SETTINGS_ACTION_ROW_H) -> str:
+    """A settings row whose options are each independently focusable, as the
+    reference app has them: `[Auto][Original]`, `[Play][Ask][Skip]`.
+
+    Replaces settings_segmented_row's cycle-on-Select. That shape was chosen
+    because "Left/Right cannot do it here -- Left already means back to the
+    sidebar for every row on this pane". True for a LIST, whose row is one
+    focus target; not true once each segment is its own control, because
+    then only the LEFTMOST segment needs Left to mean the sidebar and the
+    others move between segments. Same resolution as the home-row editor's
+    arrows.
+
+    Everything reads WINDOW properties under `prop`, since a group has no
+    list item: <prop>_title, <prop>_summary, and per segment <prop>_seg<i>
+    and <prop>_seg<i>_on. main.py fills them.
+
+    The row's own focus wash/rim light up when ANY of its segments has
+    focus, so the row still reads as one thing.
+    """
+    TEXT_X = 18
+    SEG_H = 38
+    GAP = 6
+    n = len(seg_ids)
+    total = n * seg_width + (n - 1) * GAP
+    X0 = width - 28 - total
+    Y = (height - SEG_H) // 2
+    TEXT_W = width - TEXT_X - (total + 56)
+    anyfocus = " | ".join(f"Control.HasFocus({i})" for i in seg_ids)
+
+    segs = []
+    for i, sid in enumerate(seg_ids):
+        x = X0 + i * (seg_width + GAP)
+        on = f"String.IsEqual(Window.Property({prop}_seg{i}_on),1)"
+        focused = f"Control.HasFocus({sid})"
+        segs.append(f"""
+                        <control type="image">
+                            <visible>{on}</visible>
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{seg_width}</width><height>{SEG_H}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture border="19">capsule-h38.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{focused} + !{on}</visible>
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{seg_width}</width><height>{SEG_H}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture border="19">capsule-h38-outline.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{seg_width}</width><height>{SEG_H}</height>
+                            <align>center</align><aligny>center</aligny>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                            <label>$INFO[Window.Property({prop}_seg{i})]</label>
+                            <visible>{on}</visible>
+                        </control>
+                        <control type="label">
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{seg_width}</width><height>{SEG_H}</height>
+                            <align>center</align><aligny>center</aligny>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property({prop}_seg{i})]</label>
+                            <visible>!{on}</visible>
+                        </control>
+                        <control type="button" id="{sid}">
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{seg_width}</width><height>{SEG_H}</height>
+                            <texturefocus>transparent-6px.png</texturefocus>
+                            <texturenofocus>transparent-6px.png</texturenofocus>
+                            <label></label>
+                        </control>""")
+
+    return f"""
+                    <control type="group" id="{group_id}">
+                        <posy>{posy}</posy>
+                        <width>{width}</width>
+                        <height>{height}</height>
+                        <control type="image">
+                            <posx>0</posx><posy>0</posy>
+                            <width>{width}</width><height>{height}</height>
+                            <colordiffuse>{T.SURFACE_REST}</colordiffuse>
+                            <texture border="20">rounded-20.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{anyfocus}</visible>
+                            <posx>0</posx><posy>0</posy>
+                            <width>{width}</width><height>{height}</height>
+                            <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
+                            <texture border="20">rounded-20.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{TEXT_X}</posx><posy>23</posy>
+                            <width>{TEXT_W}</width><height>34</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ROW_TITLE}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property({prop}_title)]</label>
+                        </control>
+                        <control type="label">
+                            <posx>{TEXT_X}</posx><posy>58</posy>
+                            <width>{TEXT_W}</width><height>28</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                            <label>$INFO[Window.Property({prop}_summary)]</label>
+                        </control>{"".join(segs)}
+                    </control>"""
+
+
 def settings_segmented_row(list_id: int, options: int = 3, seg_width: int = 108,
                            **kwargs) -> tuple[str, str]:
     """A detail-pane row offering a small closed set of choices, drawn inline

@@ -817,16 +817,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_SWITCH_PROFILE_ID, 1)
         self.settings_switch_server_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SWITCH_SERVER_ID, 1)
-        self.settings_quality_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_QUALITY_ID, 1)
         self.settings_direct_list = kodigui.ManagedControlList(
             self, self.SETTINGS_DIRECT_ONLY_ID, 1)
         self.settings_sign_out_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SIGN_OUT_ID, 1)
         self.settings_fox_list = kodigui.ManagedControlList(
             self, self.SETTINGS_FOX_ID, len(theme.PRESETS))
-        self.settings_rating_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_RATING_ID, 1)
         self.settings_episodes_list = kodigui.ManagedControlList(
             self, self.SETTINGS_EPISODES_ID, 1)
         self.settings_spotlight_list = kodigui.ManagedControlList(
@@ -841,18 +837,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_ADD_GENRE_ID, 1)
         self.settings_region_list = kodigui.ManagedControlList(
             self, self.SETTINGS_REGION_ID, 1)
-        self.settings_segment_lists = {
-            key: kodigui.ManagedControlList(self, cid, 1)
-            for (key, _l, _h), cid in zip(settings_options.SEGMENT_ROWS,
-                                          self.SETTINGS_SEGMENT_IDS)
-        }
-        self.settings_segment_by_id = {
-            cid: key
-            for (key, _l, _h), cid in zip(settings_options.SEGMENT_ROWS,
-                                          self.SETTINGS_SEGMENT_IDS)
-        }
-        self.settings_nextup_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_NEXTUP_ID, 1)
         self.settings_audiolang_list = kodigui.ManagedControlList(
             self, self.SETTINGS_AUDIOLANG_ID, 1)
         self.settings_audiolang2_list = kodigui.ManagedControlList(
@@ -1165,20 +1149,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_switch_profile()
         elif controlID == self.SETTINGS_SWITCH_SERVER_ID:
             self._settings_switch_server()
-        elif controlID == self.SETTINGS_QUALITY_ID:
-            self._settings_quality_clicked()
         elif controlID == self.SETTINGS_DIRECT_ONLY_ID:
             self._settings_direct_only_clicked()
         elif controlID == self.SETTINGS_SIGN_OUT_ID:
             self._settings_sign_out()
         elif controlID == self.SETTINGS_FOX_ID:
             self._settings_fox_clicked()
-        elif controlID == self.SETTINGS_RATING_ID:
-            self._settings_rating_clicked()
         elif controlID == self.SETTINGS_EPISODES_ID:
             self._settings_episodes_clicked()
         elif controlID == self.SETTINGS_SPOTLIGHT_ID:
             self._settings_spotlight_clicked()
+        elif controlID in settings_options.SEGMENTED_BY_ID:
+            self._settings_segmented_pressed(controlID)
         elif 8800 <= controlID <= 8800 + 10 * home_rows.MAX_HOME_ROWS:
             self._settings_home_row_pressed(controlID)
         elif controlID == self.SETTINGS_ADD_DISCOVER_ID:
@@ -1187,10 +1169,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_add_genre_row()
         elif controlID == self.SETTINGS_REGION_ID:
             self._settings_region_clicked()
-        elif controlID == self.SETTINGS_NEXTUP_ID:
-            self._settings_nextup_clicked()
-        elif controlID in self.settings_segment_by_id:
-            self._settings_segment_clicked(self.settings_segment_by_id[controlID])
         elif controlID in self.SETTINGS_LANGUAGE_ROWS:
             key, slot = self.SETTINGS_LANGUAGE_ROWS[controlID]
             self._settings_language_clicked(key, slot)
@@ -5075,6 +5053,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_wire_account_nav()
         self._settings_wire_playback_nav()
         self._settings_wire_appearance_nav()
+        self._settings_wire_segmented()
 
         _t0 = time.monotonic()
         client = self._get_client()
@@ -5660,6 +5639,114 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ("Off", {"show_card_ratings": False}),
     )
 
+    #: Title and one-line summary per segmented row, in the app's wording.
+    SEGMENTED_TEXT = {
+        "rating":  ("Rating badge", "Which score appears on posters"),
+        "quality": ("Streaming quality", "Auto adapts to your connection"),
+        "nextup":  ("Play the next episode", "What happens as an episode ends"),
+    }
+
+    def _settings_segmented_options(self, key: str):
+        """(label, value) for one segmented row, in display order.
+
+        Normalises three different source shapes: the rating segments carry
+        a preference PATCH rather than a scalar, and SEGMENT_ACTIONS /
+        AUTO_PLAY_NEXT_ACTIONS are (value, label) where the other two are
+        (label, value). Getting that pair backwards writes the label to the
+        server, which it rejects with a 400 -- so it is normalised once here
+        rather than at four call sites.
+        """
+        if key == "rating":
+            return list(self.SETTINGS_RATING_SEGMENTS)
+        if key == "quality":
+            return list(self.SETTINGS_QUALITY_SEGMENTS)
+        if key == "nextup":
+            return [(l, v) for v, l in settings_options.AUTO_PLAY_NEXT_ACTIONS]
+        return [(l, v) for v, l in settings_options.SEGMENT_ACTIONS]
+
+    def _settings_segmented_active(self, key: str) -> int:
+        """Which option is currently selected, as an index."""
+        if key == "rating":
+            return self._settings_rating_index(self._ensure_preferences())
+        playback = self._settings_playback()
+        if key == "quality":
+            return self._settings_quality_index(playback)
+        values = [v for _l, v in self._settings_segmented_options(key)]
+        if key == "nextup":
+            current = str(playback.get("auto_play_next") or "").lower()
+        else:
+            current = (playback.get("segment_actions") or {}).get(key, "ask")
+        try:
+            return values.index(current)
+        except ValueError:
+            # An unset or unknown value reads as the documented default:
+            # "auto" for next-up, "ask" for a skip segment.
+            return 0 if key == "nextup" else values.index("ask")
+
+    def _settings_fill_segmented(self):
+        """Window properties for all eight segmented rows.
+
+        Window rather than ListItem properties because these rows are groups
+        of real buttons now, not one-item lists -- see
+        fragments.settings_segmented_group.
+        """
+        hints = dict(self.SEGMENTED_TEXT)
+        for key, label, hint in settings_options.SEGMENT_ROWS:
+            hints[key] = (label, hint)
+        for key, _gid, _sids, prop in settings_options.SEGMENTED_GROUPS:
+            title, summary = hints.get(key, (key.title(), ""))
+            self.setProperty(prop + "_title", title)
+            self.setProperty(prop + "_summary", summary)
+            active = self._settings_segmented_active(key)
+            for idx, (seg_label, _value) in enumerate(
+                    self._settings_segmented_options(key)):
+                self.setProperty("{0}_seg{1}".format(prop, idx), seg_label)
+                self.setProperty("{0}_seg{1}_on".format(prop, idx),
+                                 "1" if idx == active else "")
+
+    def _settings_segmented_pressed(self, control_id: int):
+        """Pick the option that was pressed. No cycling: each option is its
+        own control now, so the viewer chooses directly, which is what the
+        reference app does and what makes a three-option row usable."""
+        found = settings_options.SEGMENTED_BY_ID.get(control_id)
+        if not found:
+            return
+        key, index = found
+        options = self._settings_segmented_options(key)
+        if not (0 <= index < len(options)):
+            return
+        _label, value = options[index]
+        if key == "rating":
+            self._settings_write(value)          # a preference patch
+        elif key == "quality":
+            self._settings_write({"playback": {"default_quality": value}})
+        elif key == "nextup":
+            self._settings_write({"playback": {"auto_play_next": value}})
+        else:
+            actions = dict(self._settings_playback().get("segment_actions") or {})
+            actions[key] = value
+            self._settings_write({"playback": {"segment_actions": actions}})
+        self._settings_fill_segmented()
+
+    def _settings_wire_segmented(self):
+        """Left/Right between a row's options, Left off the first one back to
+        the sidebar. Python, not XML: these buttons are grandchildren of a
+        grouplist, whose AddControl overrides its children's up/down and
+        leaves grandchildren resolving to nothing."""
+        try:
+            nav = self.getControl(self.SETTINGS_NAV_ID)
+        except Exception:                                       # noqa: BLE001
+            return
+        for _key, _gid, sids, _prop in settings_options.SEGMENTED_GROUPS:
+            try:
+                btns = [self.getControl(i) for i in sids]
+            except Exception:                                   # noqa: BLE001
+                continue
+            for i, btn in enumerate(btns):
+                btn.controlLeft(btns[i - 1] if i else nav)
+                if i < len(btns) - 1:
+                    btn.controlRight(btns[i + 1])
+
     def _settings_rating_index(self, prefs: dict) -> int:
         if not prefs.get("show_card_ratings", True):
             return 2
@@ -5669,14 +5756,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Build both MEDIA CARDS rows from the profile's live preferences."""
         prefs = self._ensure_preferences()
 
-        rating = kodigui.ManagedListItem(label="Rating badge")
-        rating.setProperty("summary", "Which score appears on posters")
-        active = self._settings_rating_index(prefs)
-        for idx, (label, _patch) in enumerate(self.SETTINGS_RATING_SEGMENTS):
-            rating.setProperty("seg{0}".format(idx), label)
-            rating.setProperty("seg{0}_on".format(idx), "1" if idx == active else "")
-        self.settings_rating_list.reset()
-        self.settings_rating_list.addItems([rating])
+        self._settings_fill_segmented()
 
         episodes = kodigui.ManagedListItem(label="Episodes remaining")
         episodes.setProperty("summary", "Show how many episodes you have left on show posters")
@@ -5684,13 +5764,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "checked", "1" if prefs.get("show_unwatched_count", True) else "")
         self.settings_episodes_list.reset()
         self.settings_episodes_list.addItems([episodes])
-
-    def _settings_rating_clicked(self):
-        """Select CYCLES to the next segment -- see settings_segmented_row for
-        why Left/Right cannot do it."""
-        prefs = self._ensure_preferences()
-        nxt = (self._settings_rating_index(prefs) + 1) % len(self.SETTINGS_RATING_SEGMENTS)
-        self._settings_write(self.SETTINGS_RATING_SEGMENTS[nxt][1])
 
     def _settings_episodes_clicked(self):
         prefs = self._ensure_preferences()
@@ -6149,63 +6222,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         # The API's contract: "A missing key means `auto` ... every client
         # must apply that default", so an untouched profile shows Auto
-        # selected rather than nothing selected.
-        current_next = str(playback.get("auto_play_next") or "").lower()
-        values = [v for v, _l in settings_options.AUTO_PLAY_NEXT_ACTIONS]
-        if current_next not in values:
-            current_next = "auto"
-        label, hint = settings_options.AUTO_PLAY_NEXT_ROW
-        nextup = kodigui.ManagedListItem(label=label)
-        nextup.setProperty("summary", hint)
-        for idx, (value, seg_label) in enumerate(
-                settings_options.AUTO_PLAY_NEXT_ACTIONS):
-            nextup.setProperty("seg{0}".format(idx), seg_label)
-            nextup.setProperty("seg{0}_on".format(idx),
-                               "1" if value == current_next else "")
-        self.settings_nextup_list.reset()
-        self.settings_nextup_list.addItems([nextup])
-
-        actions = (playback.get("segment_actions") or {})
-        for key, label, hint in settings_options.SEGMENT_ROWS:
-            mlist = self.settings_segment_lists.get(key)
-            if mlist is None:
-                continue
-            current = actions.get(key, "ask")
-            li = kodigui.ManagedListItem(label=label)
-            li.setProperty("summary", hint)
-            for idx, (value, seg_label) in enumerate(settings_options.SEGMENT_ACTIONS):
-                li.setProperty("seg{0}".format(idx), seg_label)
-                li.setProperty("seg{0}_on".format(idx), "1" if value == current else "")
-            mlist.reset()
-            mlist.addItems([li])
-
-    def _settings_nextup_clicked(self):
-        """Select cycles auto -> ask -> none, like the segment rows."""
-        playback = self._settings_playback()
-        values = [v for v, _l in settings_options.AUTO_PLAY_NEXT_ACTIONS]
-        current = str(playback.get("auto_play_next") or "").lower()
-        try:
-            nxt = values[(values.index(current) + 1) % len(values)]
-        except ValueError:
-            # Unset (or a value we do not know) reads as the default "auto",
-            # so the first press moves off it rather than re-selecting it.
-            nxt = values[1] if len(values) > 1 else values[0]
-        self._settings_write({"playback": {"auto_play_next": nxt}})
-        self._settings_fill_playback()
-        self._settings_fill_quality()
-
-    def _settings_segment_clicked(self, key: str):
-        """Select cycles, same as the rating badge and for the same reason."""
-        actions = dict(self._settings_playback().get("segment_actions") or {})
-        values = [v for v, _l in settings_options.SEGMENT_ACTIONS]
-        try:
-            nxt = values[(values.index(actions.get(key, "ask")) + 1) % len(values)]
-        except ValueError:
-            nxt = "ask"
-        actions[key] = nxt
-        self._settings_write({"playback": {"segment_actions": actions}})
-        self._settings_fill_playback()
-        self._settings_fill_quality()
+        self._settings_fill_segmented()
 
     def _settings_fill_audio(self):
         """Two sections, worded as the web and desktop apps word them --
@@ -6341,24 +6358,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return 0
 
     def _settings_fill_quality(self):
-        playback = self._settings_playback()
-        row = kodigui.ManagedListItem(label="Streaming quality")
-        row.setProperty("summary", "Auto adapts to your connection")
-        active = self._settings_quality_index(playback)
-        for idx, (label, _value) in enumerate(self.SETTINGS_QUALITY_SEGMENTS):
-            row.setProperty("seg{0}".format(idx), label)
-            row.setProperty("seg{0}_on".format(idx), "1" if idx == active else "")
-        self.settings_quality_list.reset()
-        self.settings_quality_list.addItems([row])
-
-    def _settings_quality_clicked(self):
-        """Select CYCLES, as the other segmented rows do."""
-        playback = self._settings_playback()
-        nxt = (self._settings_quality_index(playback) + 1) % len(
-            self.SETTINGS_QUALITY_SEGMENTS)
-        self._settings_write({"playback": {
-            "default_quality": self.SETTINGS_QUALITY_SEGMENTS[nxt][1]}})
-        self._settings_fill_quality()
+        self._settings_fill_segmented()
 
     def _settings_direct_only_clicked(self):
         """Flip CONNECTION's toggle. Device-local, so no server round trip --

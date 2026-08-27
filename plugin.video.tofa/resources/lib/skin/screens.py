@@ -13,6 +13,7 @@ from . import fragments
 from . import icon_glyphs
 from . import tokens as T
 from .. import branding
+from .. import settings_options
 from .. import home_rows
 from .. import settings_pages
 
@@ -234,8 +235,6 @@ def render_main() -> str:
     # column, and a switch positioned against the wide one lands off the
     # row entirely (the fragment's own docstring says so).
     # Two segments, not the rating row's three; the wide detail column here.
-    settings_quality_item, settings_quality_focused = fragments.settings_segmented_row(
-        8470, options=2, width=T.SETTINGS_DETAIL_W_WIDE)
     settings_quality_eyebrow = fragments.settings_group_eyebrow(
         posy=T.SETTINGS_SECTION_BAND, label="QUALITY",
         indent="                        ")
@@ -243,8 +242,6 @@ def render_main() -> str:
         8130, width=T.SETTINGS_DETAIL_W)
 
     settings_fox_item, settings_fox_focused = fragments.settings_fox_tile(8200)
-    settings_rating_item, settings_rating_focused = fragments.settings_segmented_row(
-        8300, options=3)
     settings_episodes_item, settings_episodes_focused = fragments.settings_toggle_row(8310)
     settings_spotlight_item, settings_spotlight_focused = fragments.settings_toggle_row(8320)
     settings_homerow_item, settings_homerow_focused = fragments.settings_home_row(8330)
@@ -263,14 +260,28 @@ def render_main() -> str:
         8360, value_property="settings_region")
     # One segmented row per segment type, wider pills than the media-cards
     # one because "Do nothing" is nearly the default pill's whole width.
-    settings_nextup_item, settings_nextup_focused = fragments.settings_segmented_row(
-        8460, options=3, seg_width=T.SETTINGS_NEXTUP_PILL_W)
-    settings_seg_layouts = {}
-    for _i in range(T.SETTINGS_SEGMENT_COUNT):
-        _item, _focused = fragments.settings_segmented_row(
-            8410 + _i * 10, options=3, seg_width=T.SETTINGS_SEGMENT_PILL_W)
-        settings_seg_layouts["settings_seg{0}_item".format(_i)] = _item
-        settings_seg_layouts["settings_seg{0}_focused".format(_i)] = _focused
+    # The eight rows whose options are individually focusable pills. One
+    # fragment, one id map (settings_options.SEGMENTED_GROUPS), so a new
+    # segmented setting is a table entry rather than another hand-built row.
+    settings_seg_groups = {}
+    for _key, _gid, _sids, _prop in settings_options.SEGMENTED_GROUPS:
+        _name = {"rating": "settings_rating_group",
+                 "quality": "settings_quality_group",
+                 "nextup": "settings_nextup_group"}.get(
+                     _key, "settings_seg_{0}_group".format(_key))
+        _w = (T.SETTINGS_NEXTUP_PILL_W if _key == "nextup"
+              else T.SETTINGS_SEGMENT_PILL_W)
+        # Each row keeps the posy its list carried: these sit in a plain
+        # group, where children do NOT stack themselves, and dropping the
+        # posy piled all five skip rows on one another.
+        _skip = [k for k, _l, _h in settings_options.SEGMENT_ROWS]
+        if _key in _skip and _skip.index(_key):
+            _y = T.SETTINGS_SKIP_ROW_Y[_skip.index(_key)]
+        else:
+            _y = T.SETTINGS_SECTION_BAND
+        settings_seg_groups[_name] = fragments.settings_segmented_group(
+            _gid, _sids, prop=_prop, seg_width=_w, posy=_y)
+
     settings_audiolang_item, settings_audiolang_focused = fragments.settings_choice_row(
         8510, value_property="settings_audio_lang")
     settings_audiolang2_item, settings_audiolang2_focused = fragments.settings_choice_row(
@@ -328,8 +339,6 @@ def render_main() -> str:
         settings_switch_eyebrow=settings_switch_eyebrow,
         settings_session_eyebrow=settings_session_eyebrow,
         settings_account_tail=settings_account_tail,
-        settings_quality_item=settings_quality_item,
-        settings_quality_focused=settings_quality_focused,
         settings_quality_eyebrow=settings_quality_eyebrow,
         settings_direct_item=settings_direct_item,
         settings_direct_focused=settings_direct_focused,
@@ -410,15 +419,12 @@ def render_main() -> str:
         settings_nextup_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="NEXT EPISODE",
             indent="                        "),
-        settings_nextup_item=settings_nextup_item,
-        settings_nextup_focused=settings_nextup_focused,
         settings_audio_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="AUDIO",
             indent="                        "),
         settings_subs_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="SUBTITLES",
             indent="                        "),
-        **settings_seg_layouts,
         settings_audiolang_item=settings_audiolang_item,
         settings_audiolang_focused=settings_audiolang_focused,
         settings_audiolang2_item=settings_audiolang2_item,
@@ -435,11 +441,10 @@ def render_main() -> str:
         settings_add_discover_focused=settings_add_discover_focused,
         settings_add_genre_item=settings_add_genre_item,
         settings_add_genre_focused=settings_add_genre_focused,
+        **settings_seg_groups,
         settings_homerow_editors=settings_homerow_editors,
         settings_homerow_item=settings_homerow_item,
         settings_homerow_focused=settings_homerow_focused,
-        settings_rating_item=settings_rating_item,
-        settings_rating_focused=settings_rating_focused,
         settings_episodes_item=settings_episodes_item,
         settings_episodes_focused=settings_episodes_focused,
         settings_page_scaffolds="\n".join(scaffolds),
