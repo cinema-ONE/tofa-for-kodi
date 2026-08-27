@@ -4871,6 +4871,23 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     SH, KNOB = 38, 30
     SY = (H - SH) // 2
     on = f"String.IsEqual(Window.Property({P}_checked),1)"
+    # The switch needs its OWN focus signal. The arrows show focus by
+    # filling their circle, but a switch is already filled when it is on, so
+    # focus has to read as a ring around it rather than a change of fill.
+    # h52 outline against the 38-high switch = a 7px inset all round, and
+    # 52 is a capsule height that actually ships an asset
+    # (feedback_capsule_ninepatch_rule).
+    RING_PAD = 7
+    ring = f"""
+                        <control type="image">
+                            <visible>Control.HasFocus({tog_id})</visible>
+                            <posx>{TOG_X - RING_PAD}</posx>
+                            <posy>{(H - 38) // 2 - RING_PAD}</posy>
+                            <width>{SW_W + 2 * RING_PAD}</width>
+                            <height>52</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture border="26">capsule-h52-outline.png</texture>
+                        </control>"""
     switch = f"""
                         <control type="image">
                             <posx>{TOG_X}</posx><posy>{SY}</posy>
@@ -4898,7 +4915,7 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
                             <width>{KNOB}</width><height>{KNOB}</height>
                             <colordiffuse>$INFO[Window.Property(on_accent_color)]</colordiffuse>
                             <texture>circle.png</texture>
-                        </control>"""
+                        </control>{ring}"""
 
     can_up = f"!String.IsEmpty(Window.Property({P}_can_up))"
     can_down = f"!String.IsEmpty(Window.Property({P}_can_down))"
