@@ -5994,11 +5994,29 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if action in ("up", "down"):
             landed = slot - 1 if action == "up" else slot + 1
             landed = max(0, min(landed, len(slots) - 1))
-            col = 0 if action == "up" else 1
-            try:
-                self.setFocusId(home_rows.HOME_ROW_EDIT_IDS[landed][col])
-            except Exception:                                   # noqa: BLE001
-                pass
+            # The arrow the viewer just pressed may be DISABLED at the row's
+            # new position -- moving row 2 up makes it row 1, whose up arrow
+            # is dimmed by design, and the mirror case for the last row's
+            # down arrow. setFocusId on a disabled control does nothing, so
+            # focus was left stranded on the row that had moved away and the
+            # next Up escaped to the nav bar. Reported 2026-08-27.
+            #
+            # Follow the ROW to the nearest control that can actually hold
+            # focus: the pressed column first, then the other arrow, then the
+            # switch, which is never disabled.
+            last = len(slots) - 1
+            wanted = 0 if action == "up" else 1
+            order = [wanted, 1 - wanted, 2]
+            for col in order:
+                if col == 0 and landed == 0:
+                    continue        # up arrow is dimmed at the top
+                if col == 1 and landed == last:
+                    continue        # down arrow is dimmed at the bottom
+                try:
+                    self.setFocusId(home_rows.HOME_ROW_EDIT_IDS[landed][col])
+                except Exception:                               # noqa: BLE001
+                    continue
+                break
 
     def _settings_write_home(self, home: dict):
         """Send the WHOLE home_screen object, for the shallow-merge reason in
