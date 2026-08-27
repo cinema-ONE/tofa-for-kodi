@@ -59,6 +59,31 @@ DISCOVERY_LIST_LABELS: dict[str, int] = {
 # group/list pair to main.xml.tpl, following the id-increment rule below.
 MAX_HOME_ROWS = 9
 
+#: The home-screen EDITOR in Settings > Appearance: three focusable
+#: controls per row slot, laid out like the reference app -- move up, move
+#: down, and the on/off switch.
+#:
+#: They have to be real controls rather than parts of a list item: Kodi
+#: builds a list item's layout with `insideContainer=true`
+#: (CGUIListItemLayout::LoadControl), so those controls are drawn but never
+#: join the focus tree -- the list itself is the single focus target. A
+#: grouplist of real buttons is the shape Kodi's own Estuary uses for
+#: SettingsCategory, and it is what makes three targets per row reachable.
+#:
+#: 8801/8802/8803 for slot 0, then +10 per slot. The 88xx block, NOT 84xx:
+#: Playback & Video already owns the 8400s (its segment ids are 8410-8450
+#: and its grouplist is 8490), and check_xml.py caught the collision the
+#: first time this was written. 88xx and 89xx were the lowest free blocks.
+HOME_ROW_EDIT_IDS: tuple[tuple[int, int, int], ...] = tuple(
+    (8801 + 10 * i, 8802 + 10 * i, 8803 + 10 * i) for i in range(MAX_HOME_ROWS)
+)
+
+#: Slot i's wrapping group, so the whole row can be hidden when the account
+#: has fewer rows than slots.
+HOME_ROW_EDIT_GROUP_IDS: tuple[int, ...] = tuple(
+    8800 + 10 * i for i in range(MAX_HOME_ROWS)
+)
+
 # HOME_ROW_GROUP_IDS[i]/HOME_ROW_LIST_IDS[i] is slot i's (group, list)
 # control-id pair in the Home section of main.xml.tpl (rendered to
 # script-tofa-main.xml). Continues the increment already established by

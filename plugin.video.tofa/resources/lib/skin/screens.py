@@ -248,6 +248,13 @@ def render_main() -> str:
     settings_episodes_item, settings_episodes_focused = fragments.settings_toggle_row(8310)
     settings_spotlight_item, settings_spotlight_focused = fragments.settings_toggle_row(8320)
     settings_homerow_item, settings_homerow_focused = fragments.settings_home_row(8330)
+    # One editor row per slot, each a DIRECT child of the appearance
+    # grouplist so the grouplist chains them for up/down and scrolls the
+    # focused one into view. Slots past the account's row count hide
+    # themselves on an empty title property, which also takes them out of
+    # that chain.
+    settings_homerow_editors = "".join(
+        fragments.settings_home_row_editor(i) for i in range(home_rows.MAX_HOME_ROWS))
     settings_add_discover_item, settings_add_discover_focused = fragments.settings_add_row(8340)
     settings_add_genre_item, settings_add_genre_focused = fragments.settings_add_row(8350)
     # Value rows that open a picker: same shape as an action row, with the
@@ -428,6 +435,7 @@ def render_main() -> str:
         settings_add_discover_focused=settings_add_discover_focused,
         settings_add_genre_item=settings_add_genre_item,
         settings_add_genre_focused=settings_add_genre_focused,
+        settings_homerow_editors=settings_homerow_editors,
         settings_homerow_item=settings_homerow_item,
         settings_homerow_focused=settings_homerow_focused,
         settings_rating_item=settings_rating_item,

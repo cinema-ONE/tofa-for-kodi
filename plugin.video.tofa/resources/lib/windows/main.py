@@ -831,8 +831,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_EPISODES_ID, 1)
         self.settings_spotlight_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SPOTLIGHT_ID, 1)
-        self.settings_homerows_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_HOMEROWS_ID, home_rows.MAX_HOME_ROWS)
+        # NOTE: no settings_homerows_list any more. The home-row editor is
+        # nine groups of real buttons (home_rows.HOME_ROW_EDIT_IDS), because
+        # a list item cannot hold three focus targets. See
+        # fragments.settings_home_row_editor.
         self.settings_add_discover_list = kodigui.ManagedControlList(
             self, self.SETTINGS_ADD_DISCOVER_ID, 1)
         self.settings_add_genre_list = kodigui.ManagedControlList(
@@ -1177,8 +1179,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_episodes_clicked()
         elif controlID == self.SETTINGS_SPOTLIGHT_ID:
             self._settings_spotlight_clicked()
-        elif controlID == self.SETTINGS_HOMEROWS_ID:
-            self._settings_home_row_clicked()
+        elif 8800 <= controlID <= 8800 + 10 * home_rows.MAX_HOME_ROWS:
+            self._settings_home_row_pressed(controlID)
         elif controlID == self.SETTINGS_ADD_DISCOVER_ID:
             self._settings_add_discovery_row()
         elif controlID == self.SETTINGS_ADD_GENRE_ID:
@@ -5806,15 +5808,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             rating = self.getControl(self.SETTINGS_RATING_ID)
             episodes = self.getControl(self.SETTINGS_EPISODES_ID)
             spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
-            homerows = self.getControl(self.SETTINGS_HOMEROWS_ID)
             foxes.controlDown(spotlight)
             spotlight.controlUp(foxes)
-            spotlight.controlDown(homerows)
-            homerows.controlUp(spotlight)
             add_discover = self.getControl(self.SETTINGS_ADD_DISCOVER_ID)
             add_genre = self.getControl(self.SETTINGS_ADD_GENRE_ID)
-            homerows.controlDown(add_discover)
-            add_discover.controlUp(homerows)
+            # spotlight <-> first editor row and last editor row <-> add
+            # rows are joined by _settings_wire_home_rows, which is the only
+            # place that knows how many rows the account actually has.
             add_discover.controlDown(add_genre)
             add_genre.controlUp(add_discover)
             add_genre.controlDown(rating)
@@ -5855,7 +5855,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_spotlight_list.reset()
         self.settings_spotlight_list.addItems([spotlight])
 
-        items = []
+        # Window properties, one set per SLOT: these rows are real controls
+        # now, not list items, so there is no ListItem to read from. A slot
+        # with an empty title hides itself, which also removes it from the
+        # grouplist's navigation chain.
+        shown = []
         for index, row in enumerate(home.get("rows") or []):
             title = home_rows.row_title(row, _)
             if not title:
@@ -5864,101 +5868,128 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 # we cannot fully name would reorder rows blind.
                 log.debug("settings: skipping unnameable home row {0}".format(row))
                 continue
-            enabled = row.get("enabled", True)
-            li = kodigui.ManagedListItem(label=title, data_source=index)
-            li.setProperty("checked", "1" if enabled else "")
-            li.setProperty("state", "On" if enabled else "Off")
-            items.append(li)
-        self.settings_homerows_list.reset()
-        self.settings_homerows_list.addItems(items)
-        self._settings_size_home_rows(len(items))
+            shown.append((index, title, row.get("enabled", True)))
 
-    def _settings_size_home_rows(self, count: int):
-        """Fit the row list to the account's real row count.
-
-        Kodi cannot size a control from its content, but setHeight() exists,
-        so this is a measure-then-resize -- the same trick plex-for-kodi uses
-        in lib/windows/dropdown.py.
-
-        The list is the grouplist child directly, with no wrapping group --
-        one control with one height cannot drift from itself.
-
-        It is DECLARED at the maximum and shrunk here, never grown. Kodi
-        allocates a list's item slots from its declared height at load, so a
-        list declared at five rows and grown to eight gets the layout space
-        but not the extra slots: measured, it drew four rows inside a 512px
-        box while the grouplist correctly reserved all 512, leaving a gap that
-        looked like a layout bug and was really a missing-slots one.
-
-        Capped at what fits the viewport, and that cap is load-bearing rather
-        than tidy: a grouplist child taller than the viewport strands focus,
-        because the list has no overflow of its own to scroll and the
-        grouplist thinks its focused child is already at offset 0
-        (project_kodi_grouplist_scroll_limit). Past the cap the list keeps its
-        internal scroll instead, which is that memory's prescribed fallback.
-
-        In practice the cap never binds: MAX_HOME_ROWS is 9 and the viewport
-        holds 10. It is here so that raising one without the other cannot
-        quietly produce an unreachable row."""
-        visible = max(1, min(count, T.SETTINGS_HOMEROWS_MAX_VISIBLE))
-        height = visible * T.SETTINGS_HOMEROW_H
-        try:
-            self.getControl(self.SETTINGS_HOMEROWS_ID).setHeight(height)
-        except Exception:
-            pass
+        self._settings_home_slots = [i for i, _t, _e in shown]
+        for slot in range(home_rows.MAX_HOME_ROWS):
+            prefix = "homerow_{0}".format(slot)
+            if slot >= len(shown):
+                self.setProperty(prefix + "_title", "")
+                self.setProperty(prefix + "_can_up", "")
+                self.setProperty(prefix + "_can_down", "")
+                self.setProperty(prefix + "_checked", "")
+                continue
+            _index, title, enabled = shown[slot]
+            self.setProperty(prefix + "_title", title)
+            self.setProperty(prefix + "_checked", "1" if enabled else "")
+            # The app dims the first row's up arrow and the last row's down.
+            # <enable> is bound to these, and Kodi SKIPS a disabled control
+            # when navigating, so the ends behave as well as look right.
+            self.setProperty(prefix + "_can_up", "" if slot == 0 else "1")
+            self.setProperty(prefix + "_can_down",
+                             "" if slot == len(shown) - 1 else "1")
+        self._settings_wire_home_rows(len(shown))
 
     def _settings_spotlight_clicked(self):
         home = self._settings_home_screen()
         home["show_hero"] = not home.get("show_hero", True)
         self._settings_write_home(home)
 
-    def _settings_home_row_clicked(self):
-        """Select opens the three choices the app spreads across three
-        independently focusable controls per row. A Kodi list item cannot
-        offer a third focus target, and Left is taken by "back to the
-        sidebar" on this pane, so they live in the same floating panel 7.2
-        already uses for card actions."""
-        item = self.settings_homerows_list.getSelectedItem()
-        if item is None:
+    def _settings_wire_home_rows(self, count: int):
+        """Chain the editor's buttons by hand, in both axes.
+
+        Two reasons XML cannot do this. CGUIControlGroupList::AddControl
+        OVERRIDES its direct children's up/down, and these buttons are
+        GRANDCHILDREN of the appearance grouplist, which is precisely the
+        case that resolves to nothing and makes Kodi wrap internally instead
+        of navigating away (reference_kodi_grouplist_children). And the last
+        VISIBLE row is only known at runtime, since the account decides how
+        many rows there are.
+
+        Vertical moves keep the COLUMN, the way the app does: up from the
+        middle button lands on the middle button above, not back at the
+        first control of the row.
+        """
+        try:
+            spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
+            add_discover = self.getControl(self.SETTINGS_ADD_DISCOVER_ID)
+            cols = [[self.getControl(cid)
+                     for cid in home_rows.HOME_ROW_EDIT_IDS[slot]]
+                    for slot in range(count)]
+        except Exception as exc:                                # noqa: BLE001
+            # Before onInit has built the controls, or a slot id that does
+            # not exist: nothing to wire, and this must never break the pane.
+            log.debug("settings: home row wiring skipped ({0!r})".format(exc))
             return
-        index = item.dataSource
+
+        for slot, row in enumerate(cols):
+            for col, btn in enumerate(row):
+                if col:
+                    btn.controlLeft(row[col - 1])
+                else:
+                    # Leftmost column keeps the pane's rule: Left is "back
+                    # to the sidebar".
+                    btn.controlLeft(self.getControl(self.SETTINGS_NAV_ID))
+                if col < len(row) - 1:
+                    btn.controlRight(row[col + 1])
+                btn.controlUp(cols[slot - 1][col] if slot else spotlight)
+                btn.controlDown(cols[slot + 1][col] if slot + 1 < len(cols)
+                                else add_discover)
+        if cols:
+            # The block's own ends, so the pane above and below still joins up.
+            spotlight.controlDown(cols[0][0])
+            add_discover.controlUp(cols[-1][0])
+
+    #: control id -> (slot, what pressing it does)
+    def _settings_home_row_button(self, control_id: int):
+        for slot, ids in enumerate(home_rows.HOME_ROW_EDIT_IDS):
+            for action, cid in zip(("up", "down", "toggle"), ids):
+                if cid == control_id:
+                    return slot, action
+        return None, None
+
+    def _settings_home_row_pressed(self, control_id: int):
+        """Move a row, or turn it off, straight from the row itself.
+
+        No action panel any more: the three choices are three real buttons,
+        which is what the reference app shows and what a viewer expects to
+        find on the row rather than one Select deeper.
+        """
+        slot, action = self._settings_home_row_button(control_id)
+        if slot is None:
+            return
+        slots = getattr(self, "_settings_home_slots", [])
+        if not (0 <= slot < len(slots)):
+            return
+        index = slots[slot]
         home = self._settings_home_screen()
         rows = list(home.get("rows") or [])
         if not (0 <= index < len(rows)):
             return
-        enabled = rows[index].get("enabled", True)
 
-        keys = []
-        if index > 0:
-            keys.append(cardoptions.ROW_UP)
-        if index < len(rows) - 1:
-            keys.append(cardoptions.ROW_DOWN)
-        keys.append(cardoptions.ROW_OFF if enabled else cardoptions.ROW_ON)
-        if rows[index].get("type") != "builtin":
-            # A row the viewer added. The builtin set is fixed, so those can
-            # only be hidden; anything added from the two pickers below has to
-            # be removable or it accumulates with no way back.
-            keys.append(cardoptions.ROW_REMOVE)
-        # No Cancel row: Back already dismisses the panel (CardOptionsDialog
-        # .onAction), and a list of three real actions plus an escape hatch
-        # that the remote's own Back key duplicates is one row of noise. The
-        # Detail variant keeps its Cancel because it is opened from a BUTTON,
-        # where Back is less obviously "put this away".
-        choice = cardoptions.show(title=item.getLabel(),
-                                  subtitle="Where this row sits on Home, and whether it shows.",
-                                  keys=keys)
-        if choice is None:
-            return
-        if choice == cardoptions.ROW_UP:
-            rows[index - 1], rows[index] = rows[index], rows[index - 1]
-        elif choice == cardoptions.ROW_DOWN:
-            rows[index + 1], rows[index] = rows[index], rows[index + 1]
-        elif choice == cardoptions.ROW_REMOVE:
-            del rows[index]
+        if action == "up" and slot > 0:
+            other = slots[slot - 1]
+            rows[other], rows[index] = rows[index], rows[other]
+        elif action == "down" and slot < len(slots) - 1:
+            other = slots[slot + 1]
+            rows[other], rows[index] = rows[index], rows[other]
+        elif action == "toggle":
+            rows[index] = dict(rows[index], enabled=not rows[index].get("enabled", True))
         else:
-            rows[index] = dict(rows[index], enabled=not enabled)
+            return
         home["rows"] = rows
         self._settings_write_home(home)
+        # Follow the row, not the position: after a move the viewer is still
+        # thinking about the row they just moved, and leaving focus behind
+        # means the next press moves a DIFFERENT row.
+        if action in ("up", "down"):
+            landed = slot - 1 if action == "up" else slot + 1
+            landed = max(0, min(landed, len(slots) - 1))
+            col = 0 if action == "up" else 1
+            try:
+                self.setFocusId(home_rows.HOME_ROW_EDIT_IDS[landed][col])
+            except Exception:                                   # noqa: BLE001
+                pass
 
     def _settings_write_home(self, home: dict):
         """Send the WHOLE home_screen object, for the shallow-merge reason in

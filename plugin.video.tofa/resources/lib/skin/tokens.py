@@ -864,6 +864,10 @@ SETTINGS_MEDIACARDS_GROUP_H = SETTINGS_MEDIACARDS_SECOND_Y + SETTINGS_ACTION_ROW
 # (project_kodi_grouplist_scroll_limit). Capping the child and letting the
 # list scroll itself is that memory's own prescribed fix.
 SETTINGS_HOMEROW_H = 64
+#: The explanatory line under the home-row editor. Tertiary text, so it sits
+#: quieter than a row; tall enough to clear the metadata font's descenders
+#: plus the gap the reference leaves before MEDIA CARDS.
+SETTINGS_HOMEROWS_NOTE_H = 56
 # The row list is its OWN grouplist child, and sized at runtime to however
 # many rows the account actually has (windows/main.py:_settings_size_home_rows).
 #

@@ -4672,6 +4672,163 @@ def settings_segmented_row(list_id: int, options: int = 3, seg_width: int = 108,
                                  trailing_w=total + 56, **kwargs)
 
 
+def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> str:
+    """One row of the home-screen editor: title, move up, move down, switch.
+
+    THREE REAL FOCUS TARGETS, like the reference app. The previous shape was
+    a list whose Select opened an action panel, because a list item cannot
+    offer a third focus target -- Kodi builds item layouts with
+    `insideContainer=true` so their controls are drawn but never join the
+    focus tree. That constraint is real; the conclusion that a panel was the
+    only answer was not. Real buttons inside a grouplist is what Kodi's own
+    Estuary does for SettingsCategory, and it is what this uses.
+
+    Everything is driven by WINDOW properties, not ListItem ones: these are
+    ordinary controls, so there is no list item to read. main.py's
+    _settings_fill_home_screen writes homerow_<slot>_* for each slot.
+
+    The wrapping group is hidden when the account has fewer rows than slots,
+    which also takes the row out of the grouplist's navigation chain.
+
+    `enable` on the arrows is what reproduces the app's dimmed first-up and
+    last-down: Kodi skips a disabled control when navigating, so the ends
+    behave rather than just looking right.
+
+    NAVIGATION IS WIRED IN PYTHON, not here. CGUIControlGroupList::AddControl
+    OVERRIDES its children's up/down, and these buttons are grandchildren of
+    the grouplist, which is exactly the case that resolves to nothing and
+    makes Kodi wrap internally (reference_kodi_grouplist_children). See
+    _settings_wire_home_rows.
+    """
+    # Local import for the same reason discover_tab_positions does it:
+    # home_rows.py is deliberately dependency-free.
+    from .. import home_rows
+
+    up_id, down_id, tog_id = home_rows.HOME_ROW_EDIT_IDS[slot]
+    group_id = home_rows.HOME_ROW_EDIT_GROUP_IDS[slot]
+    H = T.SETTINGS_HOMEROW_H
+    TEXT_X = 18
+    BTN = 58                      # capsule/circle asset heights that exist
+    GAP = 12
+    SW_W = 72                     # the switch, same as the pane's other rows
+    TOG_X = width - 28 - SW_W
+    DOWN_X = TOG_X - GAP - BTN
+    UP_X = DOWN_X - GAP - BTN
+    Y = (H - BTN) // 2
+    P = f"homerow_{slot}"
+
+    def circle(x: int, glyph: int, focus_id: int, gate: str) -> str:
+        """The visual half of one arrow: a filled circle when focused, an
+        outline when not, with the glyph on top. The button itself is
+        transparent and sits over this -- the same split the rest of the
+        skin uses, so focus never has to move to a textured control."""
+        return f"""
+                        <control type="image">
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <texture>circle-outline.png</texture>
+                            <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
+                            <visible>{gate}</visible>
+                        </control>
+                        <control type="image">
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <texture>circle.png</texture>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <visible>Control.HasFocus({focus_id}) + {gate}</visible>
+                        </control>
+                        <control type="label">
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <align>center</align><aligny>center</aligny>
+                            <font>tofa_font_icons_26</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>{chr(glyph)}</label>
+                            <visible>{gate}</visible>
+                        </control>"""
+
+    # The pane's own switch, redrawn against WINDOW properties. Same
+    # geometry and the same two-parked-knobs trick as settings_toggle_row
+    # (Kodi cannot animate a control's position, see ANIMATION.md); it
+    # cannot simply be reused because that one reads ListItem properties
+    # and these rows are not list items.
+    SH, KNOB = 38, 30
+    SY = (H - SH) // 2
+    on = f"String.IsEqual(Window.Property({P}_checked),1)"
+    switch = f"""
+                        <control type="image">
+                            <posx>{TOG_X}</posx><posy>{SY}</posy>
+                            <width>{SW_W}</width><height>{SH}</height>
+                            <colordiffuse>{T.SURFACE_TRACK}</colordiffuse>
+                            <texture border="19">capsule-h38.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{on}</visible>
+                            <posx>{TOG_X}</posx><posy>{SY}</posy>
+                            <width>{SW_W}</width><height>{SH}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture border="19">capsule-h38.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>!{on}</visible>
+                            <posx>{TOG_X + 4}</posx><posy>{SY + 4}</posy>
+                            <width>{KNOB}</width><height>{KNOB}</height>
+                            <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
+                            <texture>circle.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{on}</visible>
+                            <posx>{TOG_X + SW_W - KNOB - 4}</posx><posy>{SY + 4}</posy>
+                            <width>{KNOB}</width><height>{KNOB}</height>
+                            <colordiffuse>$INFO[Window.Property(on_accent_color)]</colordiffuse>
+                            <texture>circle.png</texture>
+                        </control>"""
+
+    can_up = f"!String.IsEmpty(Window.Property({P}_can_up))"
+    can_down = f"!String.IsEmpty(Window.Property({P}_can_down))"
+
+    return f"""
+                    <control type="group" id="{group_id}">
+                        <width>{width}</width>
+                        <height>{H}</height>
+                        <visible>!String.IsEmpty(Window.Property({P}_title))</visible>
+                        <control type="label">
+                            <posx>{TEXT_X}</posx>
+                            <posy>0</posy>
+                            <width>{UP_X - TEXT_X - 16}</width>
+                            <height>{H}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ROW_TITLE}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property({P}_title)]</label>
+                        </control>{circle(UP_X, icon_glyphs.ARROW_UP, up_id, can_up)}{circle(DOWN_X, icon_glyphs.ARROW_DOWN, down_id, can_down)}
+{switch}
+                        <control type="button" id="{up_id}">
+                            <posx>{UP_X}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <texturefocus>transparent-6px.png</texturefocus>
+                            <texturenofocus>transparent-6px.png</texturenofocus>
+                            <label></label>
+                            <enable>{can_up}</enable>
+                        </control>
+                        <control type="button" id="{down_id}">
+                            <posx>{DOWN_X}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <texturefocus>transparent-6px.png</texturefocus>
+                            <texturenofocus>transparent-6px.png</texturenofocus>
+                            <label></label>
+                            <enable>{can_down}</enable>
+                        </control>
+                        <control type="button" id="{tog_id}">
+                            <posx>{TOG_X}</posx><posy>0</posy>
+                            <width>{SW_W}</width><height>{H}</height>
+                            <texturefocus>transparent-6px.png</texturefocus>
+                            <texturenofocus>transparent-6px.png</texturenofocus>
+                            <label></label>
+                        </control>
+                    </control>"""
+
+
 def settings_home_row(list_id: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> tuple[str, str]:
     """One row of the home-screen editor: its name, and whether it is on.
 

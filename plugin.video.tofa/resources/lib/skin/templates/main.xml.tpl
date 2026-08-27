@@ -1913,26 +1913,27 @@
                         </control>
                     </control>
 
-                    <!-- The list IS the grouplist child, with no wrapping
-                         group. It had one, and the group did not follow the
-                         list's runtime height: the two got out of step and
-                         left ~250px of dead air above the "add a row" block.
-                         One control, one height, nothing to keep in sync. -->
-                    <control type="list" id="8330">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_HOMEROWS_H}</height>
-                        <onleft>8000</onleft>
-                        <onright>8330</onright>
-                        <orientation>vertical</orientation>
-                        <itemheight>{SETTINGS_HOMEROW_H}</itemheight>
-                        <scrolltime>{SCROLLTIME}</scrolltime>
+                    <!-- ONE GROUP PER ROW, not a list, so each row can
+                         carry three independently focusable controls the way
+                         the reference app does: move up, move down, and the
+                         switch. A list cannot: Kodi builds item layouts with
+                         insideContainer=true, so an item's controls are drawn
+                         but never join the focus tree and the list itself is
+                         the single focus target. A grouplist of real buttons
+                         is what Kodi's own Estuary uses for SettingsCategory.
 
-{settings_homerow_item}
+                         Each row is a DIRECT child of the appearance
+                         grouplist, which is what makes up/down between rows
+                         and scroll-into-view work; the buttons inside are
+                         grandchildren, so their navigation is wired in
+                         Python (see _settings_wire_home_rows) rather than
+                         here, because a grouplist OVERRIDES its children's
+                         up/down and grandchildren resolve to nothing.
 
-{settings_homerow_focused}
-                    </control>
+                         Slots past the account's row count hide themselves
+                         on an empty title property, which also takes them
+                         out of the grouplist's chain. -->
+{settings_homerow_editors}
 
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
@@ -1966,6 +1967,26 @@
 {settings_add_genre_item}
 
 {settings_add_genre_focused}
+                        </control>
+                    </control>
+
+                    <!-- The line the reference app puts under the row
+                         editor. It carries two facts a viewer cannot infer
+                         from the controls: that the list order IS the Home
+                         order, and that turning a row off follows the
+                         account rather than staying on this device. -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_HOMEROWS_NOTE_H}</height>
+                        <control type="label">
+                            <posx>18</posx>
+                            <posy>0</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_HOMEROWS_NOTE_H}</height>
+                            <aligny>center</aligny>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                            <label>$LOCALIZE[31122]</label>
                         </control>
                     </control>
 

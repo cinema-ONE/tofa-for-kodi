@@ -478,3 +478,7 @@ msgstr ""
 msgctxt "#31121"
 msgid "This file isn't available right now."
 msgstr ""
+
+msgctxt "#31122"
+msgid "Rows appear on Home in this order. Turning one off hides it everywhere you sign in, on every tofa app."
+msgstr ""
