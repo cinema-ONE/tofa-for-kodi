@@ -4806,9 +4806,12 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     The wrapping group is hidden when the account has fewer rows than slots,
     which also takes the row out of the grouplist's navigation chain.
 
-    `enable` on the arrows is what reproduces the app's dimmed first-up and
-    last-down: Kodi skips a disabled control when navigating, so the ends
-    behave rather than just looking right.
+    An arrow the row cannot use is DIMMED, not hidden, because that is what
+    the reference app draws -- measured off a capture, its end-of-list arrow
+    sits at 0.36-0.40 of a live one's brightness against the same
+    background. `enable` on the button carries the other half: Kodi skips a
+    disabled control when navigating, so the ends behave as well as look
+    right.
 
     NAVIGATION IS WIRED IN PYTHON, not here. CGUIControlGroupList::AddControl
     OVERRIDES its children's up/down, and these buttons are grandchildren of
@@ -4841,25 +4844,34 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     Y = (H - BTN) // 2
     P = f"homerow_{slot}"
 
-    def circle(x: int, glyph: int, focus_id: int, gate: str) -> str:
+    DIM = 38                      # the reference app's unavailable arrow
+
+    def circle(x: int, glyph: int, focus_id: int, flag: str) -> str:
         """The visual half of one arrow: a filled circle when focused, an
         outline when not, with the glyph on top. The button itself is
         transparent and sits over this -- the same split the rest of the
-        skin uses, so focus never has to move to a textured control."""
+        skin uses, so focus never has to move to a textured control.
+
+        The whole arrow fades to DIM when the row cannot move that way. It
+        is a zero-time conditional fade on the wrapping group rather than a
+        `<visible>`, because hiding it leaves a hole in the first and last
+        rows where the reference app shows a greyed arrow."""
         return f"""
+                        <control type="group">
+                            <animation effect="fade" start="100" end="{DIM}" time="0"
+                                       condition="String.IsEmpty(Window.Property({flag}))">Conditional</animation>
                         <control type="image">
                             <posx>{x}</posx><posy>{Y}</posy>
                             <width>{BTN}</width><height>{BTN}</height>
                             <texture>circle-outline.png</texture>
                             <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
-                            <visible>{gate}</visible>
                         </control>
                         <control type="image">
                             <posx>{x}</posx><posy>{Y}</posy>
                             <width>{BTN}</width><height>{BTN}</height>
                             <texture>circle.png</texture>
                             <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <visible>Control.HasFocus({focus_id}) + {gate}</visible>
+                            <visible>Control.HasFocus({focus_id})</visible>
                         </control>
                         <control type="label">
                             <posx>{x}</posx><posy>{Y}</posy>
@@ -4868,7 +4880,7 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
                             <font>tofa_font_icons_26</font>
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>{chr(glyph)}</label>
-                            <visible>{gate}</visible>
+                        </control>
                         </control>"""
 
     # The pane's own switch, redrawn against WINDOW properties. Same
@@ -5003,7 +5015,7 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
                             <label>$INFO[Window.Property({P}_sub)]</label>
                             <visible>!String.IsEmpty(Window.Property({P}_sub))</visible>
                         </control>
-                        <control type="group">{slide}{circle(UP_X, icon_glyphs.ARROW_UP, up_id, can_up)}{circle(DOWN_X, icon_glyphs.ARROW_DOWN, down_id, can_down)}
+                        <control type="group">{slide}{circle(UP_X, icon_glyphs.ARROW_UP, up_id, f"{P}_can_up")}{circle(DOWN_X, icon_glyphs.ARROW_DOWN, down_id, f"{P}_can_down")}
                         </control>{remove}
 {switch}
                         <control type="button" id="{up_id}">
