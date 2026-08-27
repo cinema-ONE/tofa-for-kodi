@@ -5737,6 +5737,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             nav = self.getControl(self.SETTINGS_NAV_ID)
         except Exception:                                       # noqa: BLE001
             return
+        rows: dict = {}
         for _key, _gid, sids, _prop in settings_options.SEGMENTED_GROUPS:
             try:
                 btns = [self.getControl(i) for i in sids]
@@ -5746,6 +5747,42 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 btn.controlLeft(btns[i - 1] if i else nav)
                 if i < len(btns) - 1:
                     btn.controlRight(btns[i + 1])
+            rows[_key] = btns
+
+        # UP/DOWN as well as left/right. The pills are grandchildren of the
+        # appearance/playback grouplist, so their vertical navigation
+        # resolves to nothing and Kodi wraps them internally -- Down simply
+        # did nothing. Same trap the home-row editor hit.
+        #
+        # Keep the column where the next row is wide enough, clamped
+        # otherwise, so moving down a page of pills does not always dump
+        # focus on the first one.
+        def _join(above, below):
+            if not (above and below):
+                return
+            for i, btn in enumerate(above):
+                btn.controlDown(below[min(i, len(below) - 1)])
+            for i, btn in enumerate(below):
+                btn.controlUp(above[min(i, len(above) - 1)])
+
+        order = [k for k, _g, _s, _p in settings_options.SEGMENTED_GROUPS]
+        playback_chain = [k for k in order if k not in ("rating",)]
+        for a, b in zip(playback_chain, playback_chain[1:]):
+            _join(rows.get(a), rows.get(b))
+
+        # The rating row sits between "Add a genre row" and "Episodes
+        # remaining" on Appearance, not in the playback chain.
+        try:
+            add_genre = self.getControl(self.SETTINGS_ADD_GENRE_ID)
+            episodes = self.getControl(self.SETTINGS_EPISODES_ID)
+        except Exception:                                       # noqa: BLE001
+            return
+        for btn in rows.get("rating", []):
+            btn.controlUp(add_genre)
+            btn.controlDown(episodes)
+        if rows.get("rating"):
+            add_genre.controlDown(rows["rating"][0])
+            episodes.controlUp(rows["rating"][0])
 
     def _settings_rating_index(self, prefs: dict) -> int:
         if not prefs.get("show_card_ratings", True):
@@ -5887,7 +5924,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         Wiring it from Python survives the override that XML does not."""
         try:
             foxes = self.getControl(self.SETTINGS_FOX_ID)
-            rating = self.getControl(self.SETTINGS_RATING_ID)
+            # NOT SETTINGS_RATING_ID: the rating row is a group of pills now,
+            # and getControl on the deleted list RAISED -- aborting this whole
+            # try block, so even foxes->spotlight never got wired and Down
+            # from the fox grid did nothing. Reported 2026-08-27.
             episodes = self.getControl(self.SETTINGS_EPISODES_ID)
             spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
             foxes.controlDown(spotlight)
@@ -5899,10 +5939,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # place that knows how many rows the account actually has.
             add_discover.controlDown(add_genre)
             add_genre.controlUp(add_discover)
-            add_genre.controlDown(rating)
-            rating.controlUp(add_genre)
-            rating.controlDown(episodes)
-            episodes.controlUp(rating)
+            # add_genre <-> rating pills <-> episodes is joined by
+            # _settings_wire_segmented, which is the only place that knows
+            # which pills a segmented row has.
             region = self.getControl(self.SETTINGS_REGION_ID)
             episodes.controlDown(region)
             region.controlUp(episodes)
@@ -6018,9 +6057,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 btn.controlDown(cols[slot + 1][col] if slot + 1 < len(cols)
                                 else add_discover)
         if cols:
-            # The block's own ends, so the pane above and below still joins up.
-            spotlight.controlDown(cols[0][0])
-            add_discover.controlUp(cols[-1][0])
+            # The block's own ends, so the pane above and below still joins
+            # up -- landing on a control that can actually take focus. The
+            # FIRST row's up arrow is disabled by design, so aiming Down
+            # from the spotlight at cols[0][0] pointed at a dead control and
+            # Down did nothing. Same mistake as the focus-follow bug, one
+            # layer up. Mirrored for the last row's down arrow.
+            first = cols[0][1] if len(cols) > 1 else cols[0][2]
+            last = cols[-1][0] if len(cols) > 1 else cols[-1][2]
+            spotlight.controlDown(first)
+            add_discover.controlUp(last)
 
     #: control id -> (slot, what pressing it does)
     def _settings_home_row_button(self, control_id: int):

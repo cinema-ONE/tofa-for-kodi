@@ -89,7 +89,11 @@ RIGHT_TARGETS: dict[str, int] = {
     # the group above NEXT EPISODE. This entry has been wrong once per new
     # top group -- left stale, the new row can only be reached by pressing
     # Up from the top of the page, which reads as the row not being there.
-    "playback": 8470,
+    # 8911 is Streaming quality's FIRST PILL. Was 8470, the list that row
+    # used to be; the segmented rows became groups of focusable pills and a
+    # stale id here means Right does nothing at all, which is how this was
+    # found. The comment above has now been earned twice.
+    "playback": 8911,
     "audio": 8510,
     "appearance": 8200,
     "privacy": 8620,
