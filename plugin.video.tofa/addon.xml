@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.15" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.16" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,15 +25,13 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Browse's Collections list now opens straight away. On a large library it
-        had to prepare every single collection before it could show you the
-        first one, which meant a wait of several seconds each time you opened
-        the section -- and much longer the first time. It now prepares only what
-        is on screen, and the rest as you scroll to it.
-      - If you change Kodi skin, tofa now offers to add its fonts to the new
-        skin. Previously, saying no to that once meant you were never asked
-        again, even on a different skin where the fonts really were missing, and
-        tofa's own screens were left using whatever the skin happened to supply.
+      - Play Next now always starts the next episode at the beginning. It could
+        occasionally begin a minute or two in instead, which happened because the
+        add-on handed Kodi the next episode without stopping the previous one
+        first. That shortcut existed to avoid a brief display-mode change between
+        episodes; if you would rather not see that change, Kodi's own setting
+        under Settings &gt; Player &gt; Videos &gt; "Adjust display refresh rate" has an
+        "On start" option that leaves the display alone when playback stops.
     </news>
     <assets>
       <icon>icon.png</icon>
