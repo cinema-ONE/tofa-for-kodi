@@ -4614,13 +4614,13 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
     """A settings row whose options are each independently focusable, as the
     reference app has them: `[Auto][Original]`, `[Play][Ask][Skip]`.
 
-    Replaces settings_segmented_row's cycle-on-Select. That shape was chosen
-    because "Left/Right cannot do it here -- Left already means back to the
-    sidebar for every row on this pane". True for a LIST, whose row is one
-    focus target; not true once each segment is its own control, because
-    then only the LEFTMOST segment needs Left to mean the sidebar and the
-    others move between segments. Same resolution as the home-row editor's
-    arrows.
+    The shape before it was a single focusable row whose Select CYCLED to the
+    next option, chosen because "Left/Right cannot do it here -- Left already
+    means back to the sidebar for every row on this pane". True for a LIST,
+    whose row is one focus target; not true once each segment is its own
+    control, because then only the LEFTMOST segment needs Left to mean the
+    sidebar and the others move between segments. Same resolution as the
+    home-row editor's arrows.
 
     Everything reads WINDOW properties under `prop`, since a group has no
     list item: <prop>_title, <prop>_summary, and per segment <prop>_seg<i>
@@ -4720,72 +4720,6 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
                             <label>$INFO[Window.Property({prop}_summary)]</label>
                         </control>{"".join(segs)}
                     </control>"""
-
-
-def settings_segmented_row(list_id: int, options: int = 3, seg_width: int = 108,
-                           **kwargs) -> tuple[str, str]:
-    """A detail-pane row offering a small closed set of choices, drawn inline
-    as the app draws it (`[Audience][Critics][Off]`) rather than behind a
-    picker dialog.
-
-    Select CYCLES to the next option; the segments are not individually
-    focusable. That is a divergence: the real app focuses a segment and moves
-    between them. Left/Right cannot do it here because Left already means
-    "back to the sidebar" for every row on this pane, and stealing it would
-    strand focus in the detail column. With two or three options a cycle
-    costs at most two presses.
-
-    Each segment reads its own `seg{N}` / `seg{N}_on` ListItem properties, so
-    one layout serves any label set. `seg_width` has to suit the LONGEST label
-    in that set -- "Do nothing" is 108px of ink at FONT_METADATA, which is the
-    whole default pill."""
-    W = kwargs.get("width", T.SETTINGS_DETAIL_W_WIDE)
-    SEG_W, SEG_H = seg_width, 38
-    GAP = 6
-    total = options * SEG_W + (options - 1) * GAP
-    X0 = W - 28 - total
-    Y = (T.SETTINGS_ACTION_ROW_H - SEG_H) // 2
-
-    segs = []
-    for i in range(options):
-        x = X0 + i * (SEG_W + GAP)
-        on = f"String.IsEqual(ListItem.Property(seg{i}_on),1)"
-        segs.append(f"""
-                    <control type="image">
-                        <visible>{on}</visible>
-                        <posx>{x}</posx>
-                        <posy>{Y}</posy>
-                        <width>{SEG_W}</width>
-                        <height>{SEG_H}</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="19">capsule-h38.png</texture>
-                    </control>
-                    <control type="label">
-                        <visible>{on}</visible>
-                        <posx>{x}</posx>
-                        <posy>{Y}</posy>
-                        <width>{SEG_W}</width>
-                        <height>{SEG_H}</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_METADATA}</font>
-                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Property(seg{i})]</label>
-                    </control>
-                    <control type="label">
-                        <visible>!{on}</visible>
-                        <posx>{x}</posx>
-                        <posy>{Y}</posy>
-                        <width>{SEG_W}</width>
-                        <height>{SEG_H}</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_METADATA}</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[ListItem.Property(seg{i})]</label>
-                    </control>""")
-    return _settings_control_row(list_id, trailing="".join(segs),
-                                 trailing_w=total + 56, **kwargs)
 
 
 def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> str:
