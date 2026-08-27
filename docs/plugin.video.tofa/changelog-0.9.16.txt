@@ -1,0 +1,7 @@
+- Play Next now always starts the next episode at the beginning. It could
+  occasionally begin a minute or two in instead, which happened because the
+  add-on handed Kodi the next episode without stopping the previous one
+  first. That shortcut existed to avoid a brief display-mode change between
+  episodes; if you would rather not see that change, Kodi's own setting
+  under Settings > Player > Videos > "Adjust display refresh rate" has an
+  "On start" option that leaves the display alone when playback stops.

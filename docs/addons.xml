@@ -1,5 +1,51 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.16" provider-name="cinemaONE">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="script.module.requests" version="2.31.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="addon.py">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.python.script" library="launch_home.py">
+    <provides>executable</provides>
+  </extension>
+  <extension point="xbmc.service" library="service.py" start="startup"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
+    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
+
+Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
+
+Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
+
+Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
+    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
+    <platform>all</platform>
+    <license>GPL-2.0-only</license>
+    <website>https://tofa.tv</website>
+    <news>
+      - Play Next now always starts the next episode at the beginning. It could
+        occasionally begin a minute or two in instead, which happened because the
+        add-on handed Kodi the next episode without stopping the previous one
+        first. That shortcut existed to avoid a brief display-mode change between
+        episodes; if you would rather not see that change, Kodi's own setting
+        under Settings &gt; Player &gt; Videos &gt; "Adjust display refresh rate" has an
+        "On start" option that leaves the display alone when playback stops.
+    </news>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
+      <screenshot>resources/screenshots/01-home.jpg</screenshot>
+      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
+      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
+      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
+      <screenshot>resources/screenshots/05-player.jpg</screenshot>
+      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
+    </assets>
+  <size>9249296</size><path>plugin.video.tofa/plugin.video.tofa-0.9.16.zip</path></extension>
+</addon>
 <addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.15" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
@@ -102,67 +148,6 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
   <size>9245334</size><path>plugin.video.tofa/plugin.video.tofa-0.9.14.zip</path></extension>
-</addon>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.13" provider-name="cinemaONE">
-  <requires>
-    <import addon="xbmc.python" version="3.0.0"/>
-    <import addon="script.module.requests" version="2.31.0"/>
-  </requires>
-  <extension point="xbmc.python.pluginsource" library="addon.py">
-    <provides>video</provides>
-  </extension>
-  <extension point="xbmc.python.script" library="launch_home.py">
-    <provides>executable</provides>
-  </extension>
-  <extension point="xbmc.service" library="service.py" start="startup"/>
-  <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
-    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
-
-Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
-
-Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
-
-Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
-    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
-    <platform>all</platform>
-    <license>GPL-2.0-only</license>
-    <website>https://tofa.tv</website>
-    <news>
-      - When a title will not load because your server is busy rather than
-        unreachable, tofa now says so. It used to tell you to check your
-        connection even when the connection was fine and the server was simply
-        taking too long to answer, which sent you looking at the one part that
-        was working.
-      - Cast &amp; Crew fills in one go. The photographs used to arrive a few at a
-        time, leaving half the panel empty for several seconds on a 4K box; tofa
-        now collects them while you are still on the title's main page. The
-        People results in Search are quicker for the same reason.
-      - Discover and Collections fill the same way. Their artwork comes from
-        tofa's cloud rather than from your own server, and Kodi was filing every
-        picture away itself before it drew it -- on a cold Discover tab that took
-        twenty seconds. tofa now fetches what is on screen up front and the rest
-        quietly behind it.
-      - tofa no longer leaves background work and open connections behind when it
-        has finished with a screen. On a box left running all day this showed up
-        as memory creeping upwards.
-      - Continue Watching only says how much is left when there is something
-        left. Once you finish an episode the next one takes its place on that
-        row, and tofa was labelling it with the whole episode's running time as
-        though you were already part-way through -- while drawing no progress bar
-        under it, which is what gave it away.
-    </news>
-    <assets>
-      <icon>icon.png</icon>
-      <fanart>fanart.jpg</fanart>
-      <screenshot>resources/screenshots/01-home.jpg</screenshot>
-      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
-      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
-      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
-      <screenshot>resources/screenshots/05-player.jpg</screenshot>
-      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
-    </assets>
-  <size>9242723</size><path>plugin.video.tofa/plugin.video.tofa-0.9.13.zip</path></extension>
 </addon>
 <addon id="repository.tofa" name="tofa Add-on Repository" version="1.0.1" provider-name="cinemaONE">
   <requires>
