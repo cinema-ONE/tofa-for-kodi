@@ -4820,7 +4820,7 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     # home_rows.py is deliberately dependency-free.
     from .. import home_rows
 
-    up_id, down_id, tog_id = home_rows.HOME_ROW_EDIT_IDS[slot]
+    up_id, down_id, tog_id, rm_id = home_rows.HOME_ROW_EDIT_IDS[slot]
     group_id = home_rows.HOME_ROW_EDIT_GROUP_IDS[slot]
     H = T.SETTINGS_HOMEROW_H
     TEXT_X = 18
@@ -4828,8 +4828,16 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     GAP = 12
     SW_W = 72                     # the switch, same as the pane's other rows
     TOG_X = width - 28 - SW_W
-    DOWN_X = TOG_X - GAP - BTN
+    # A row the viewer ADDED carries a fourth control, remove, between the
+    # down arrow and the switch -- as the reference app does for e.g.
+    # "Trending Anime". The arrows are laid out as if it is always there and
+    # slide RIGHT by one slot when it is not, because Kodi cannot reposition
+    # a control by condition but it can slide one; the same conditional-slide
+    # idiom Detail uses to bottom-anchor its hero title.
+    RM_X = TOG_X - GAP - BTN
+    DOWN_X = RM_X - GAP - BTN
     UP_X = DOWN_X - GAP - BTN
+    SHIFT = BTN + GAP
     Y = (H - BTN) // 2
     P = f"homerow_{slot}"
 
@@ -4917,6 +4925,53 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
                             <texture>circle.png</texture>
                         </control>{ring}"""
 
+    can_rm = f"!String.IsEmpty(Window.Property({P}_can_remove))"
+    slide = (f"""
+                            <animation effect="slide" start="0,0" end="{SHIFT},0"
+                                       time="0" condition="!{can_rm}">Conditional</animation>""")
+
+    remove = f"""
+                        <control type="image">
+                            <posx>{RM_X}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <texture>circle-outline.png</texture>
+                            <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
+                            <visible>{can_rm}</visible>
+                        </control>
+                        <control type="image">
+                            <posx>{RM_X}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <texture>circle.png</texture>
+                            <colordiffuse>{T.STATUS_RED}</colordiffuse>
+                            <visible>Control.HasFocus({rm_id}) + {can_rm}</visible>
+                        </control>
+                        <control type="label">
+                            <posx>{RM_X}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <align>center</align><aligny>center</aligny>
+                            <font>tofa_font_icons_26</font>
+                            <textcolor>{T.STATUS_RED}</textcolor>
+                            <label>{chr(icon_glyphs.MINUS_CIRCLE)}</label>
+                            <visible>{can_rm} + !Control.HasFocus({rm_id})</visible>
+                        </control>
+                        <control type="label">
+                            <posx>{RM_X}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <align>center</align><aligny>center</aligny>
+                            <font>tofa_font_icons_26</font>
+                            <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                            <label>{chr(icon_glyphs.MINUS_CIRCLE)}</label>
+                            <visible>{can_rm} + Control.HasFocus({rm_id})</visible>
+                        </control>
+                        <control type="button" id="{rm_id}">
+                            <posx>{RM_X}</posx><posy>{Y}</posy>
+                            <width>{BTN}</width><height>{BTN}</height>
+                            <texturefocus>transparent-6px.png</texturefocus>
+                            <texturenofocus>transparent-6px.png</texturenofocus>
+                            <label></label>
+                            <enable>{can_rm}</enable>
+                        </control>"""
+
     can_up = f"!String.IsEmpty(Window.Property({P}_can_up))"
     can_down = f"!String.IsEmpty(Window.Property({P}_can_down))"
 
@@ -4934,14 +4989,29 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
                             <font>{T.FONT_ROW_TITLE}</font>
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[Window.Property({P}_title)]</label>
-                        </control>{circle(UP_X, icon_glyphs.ARROW_UP, up_id, can_up)}{circle(DOWN_X, icon_glyphs.ARROW_DOWN, down_id, can_down)}
+                            <animation effect="slide" start="0,0" end="0,-9" time="0"
+                                       condition="!String.IsEmpty(Window.Property({P}_sub))">Conditional</animation>
+                        </control>
+                        <control type="label">
+                            <posx>{TEXT_X}</posx>
+                            <posy>{H // 2 + 2}</posy>
+                            <width>{UP_X - TEXT_X - 16}</width>
+                            <height>24</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                            <label>$INFO[Window.Property({P}_sub)]</label>
+                            <visible>!String.IsEmpty(Window.Property({P}_sub))</visible>
+                        </control>
+                        <control type="group">{slide}{circle(UP_X, icon_glyphs.ARROW_UP, up_id, can_up)}{circle(DOWN_X, icon_glyphs.ARROW_DOWN, down_id, can_down)}
+                        </control>{remove}
 {switch}
                         <control type="button" id="{up_id}">
                             <posx>{UP_X}</posx><posy>{Y}</posy>
                             <width>{BTN}</width><height>{BTN}</height>
                             <texturefocus>transparent-6px.png</texturefocus>
                             <texturenofocus>transparent-6px.png</texturenofocus>
-                            <label></label>
+                            <label></label>{slide}
                             <enable>{can_up}</enable>
                         </control>
                         <control type="button" id="{down_id}">
@@ -4949,7 +5019,7 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
                             <width>{BTN}</width><height>{BTN}</height>
                             <texturefocus>transparent-6px.png</texturefocus>
                             <texturenofocus>transparent-6px.png</texturenofocus>
-                            <label></label>
+                            <label></label>{slide}
                             <enable>{can_down}</enable>
                         </control>
                         <control type="button" id="{tog_id}">

@@ -5989,9 +5989,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 # we cannot fully name would reorder rows blind.
                 log.debug("settings: skipping unnameable home row {0}".format(row))
                 continue
-            shown.append((index, title, row.get("enabled", True)))
+            shown.append((index, title, row.get("enabled", True),
+                          row.get("type")))
 
-        self._settings_home_slots = [i for i, _t, _e in shown]
+        self._settings_home_slots = [i for i, _t, _e, _k in shown]
         for slot in range(home_rows.MAX_HOME_ROWS):
             prefix = "homerow_{0}".format(slot)
             if slot >= len(shown):
@@ -5999,9 +6000,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.setProperty(prefix + "_can_up", "")
                 self.setProperty(prefix + "_can_down", "")
                 self.setProperty(prefix + "_checked", "")
+                self.setProperty(prefix + "_can_remove", "")
+                self.setProperty(prefix + "_sub", "")
                 continue
-            _index, title, enabled = shown[slot]
+            _index, title, enabled, kind = shown[slot]
             self.setProperty(prefix + "_title", title)
+            # A row the viewer ADDED can be removed; the builtin set is
+            # fixed and can only be hidden. The reference app marks the
+            # added ones with where they came from, under the title.
+            self.setProperty(prefix + "_can_remove",
+                             "" if kind == "builtin" else "1")
+            self.setProperty(prefix + "_sub", {
+                "discovery": "Discover", "genre": "Genre"}.get(kind, ""))
             self.setProperty(prefix + "_checked", "1" if enabled else "")
             # The app dims the first row's up arrow and the last row's down.
             # <enable> is bound to these, and Kodi SKIPS a disabled control
@@ -6009,14 +6019,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty(prefix + "_can_up", "" if slot == 0 else "1")
             self.setProperty(prefix + "_can_down",
                              "" if slot == len(shown) - 1 else "1")
-        self._settings_wire_home_rows(len(shown))
+        self._settings_wire_home_rows(
+            len(shown), [k != "builtin" for _i, _t, _e, k in shown])
 
     def _settings_spotlight_clicked(self):
         home = self._settings_home_screen()
         home["show_hero"] = not home.get("show_hero", True)
         self._settings_write_home(home)
 
-    def _settings_wire_home_rows(self, count: int):
+    def _settings_wire_home_rows(self, count: int, removable=None):
         """Chain the editor's buttons by hand, in both axes.
 
         Two reasons XML cannot do this. CGUIControlGroupList::AddControl
@@ -6043,19 +6054,46 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             log.debug("settings: home row wiring skipped ({0!r})".format(exc))
             return
 
+        removable = list(removable or [False] * count)
+
+        def usable(slot):
+            """Columns that can actually take focus on this row. A disabled
+            control cannot, so wiring INTO one is the same bug as aiming
+            focus at it -- the move silently does nothing."""
+            out = []
+            if slot > 0:
+                out.append(home_rows.EDIT_UP)
+            if slot < count - 1:
+                out.append(home_rows.EDIT_DOWN)
+            out.append(home_rows.EDIT_TOGGLE)
+            if slot < len(removable) and removable[slot]:
+                out.append(home_rows.EDIT_REMOVE)
+            return out
+
         for slot, row in enumerate(cols):
-            for col, btn in enumerate(row):
-                if col:
-                    btn.controlLeft(row[col - 1])
+            live = usable(slot)
+            for n, col in enumerate(live):
+                btn = row[col]
+                if n:
+                    btn.controlLeft(row[live[n - 1]])
                 else:
                     # Leftmost column keeps the pane's rule: Left is "back
                     # to the sidebar".
                     btn.controlLeft(self.getControl(self.SETTINGS_NAV_ID))
-                if col < len(row) - 1:
-                    btn.controlRight(row[col + 1])
-                btn.controlUp(cols[slot - 1][col] if slot else spotlight)
-                btn.controlDown(cols[slot + 1][col] if slot + 1 < len(cols)
-                                else add_discover)
+                if n < len(live) - 1:
+                    btn.controlRight(row[live[n + 1]])
+                # Vertically, keep the column when the neighbouring row also
+                # has it; otherwise fall to its toggle, which every row has.
+                for delta, fallback in ((-1, spotlight), (1, add_discover)):
+                    near = slot + delta
+                    if 0 <= near < len(cols):
+                        target = row_at = cols[near]
+                        pick = (col if col in usable(near)
+                                else home_rows.EDIT_TOGGLE)
+                        target = row_at[pick]
+                    else:
+                        target = fallback
+                    (btn.controlUp if delta < 0 else btn.controlDown)(target)
         if cols:
             # The block's own ends, so the pane above and below still joins
             # up -- landing on a control that can actually take focus. The
@@ -6063,15 +6101,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # from the spotlight at cols[0][0] pointed at a dead control and
             # Down did nothing. Same mistake as the focus-follow bug, one
             # layer up. Mirrored for the last row's down arrow.
-            first = cols[0][1] if len(cols) > 1 else cols[0][2]
-            last = cols[-1][0] if len(cols) > 1 else cols[-1][2]
+            first = (cols[0][home_rows.EDIT_DOWN] if len(cols) > 1
+                     else cols[0][home_rows.EDIT_TOGGLE])
+            last = (cols[-1][home_rows.EDIT_UP] if len(cols) > 1
+                    else cols[-1][home_rows.EDIT_TOGGLE])
             spotlight.controlDown(first)
             add_discover.controlUp(last)
 
     #: control id -> (slot, what pressing it does)
     def _settings_home_row_button(self, control_id: int):
         for slot, ids in enumerate(home_rows.HOME_ROW_EDIT_IDS):
-            for action, cid in zip(("up", "down", "toggle"), ids):
+            for action, cid in zip(("up", "down", "toggle", "remove"), ids):
                 if cid == control_id:
                     return slot, action
         return None, None
@@ -6101,6 +6141,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         elif action == "down" and slot < len(slots) - 1:
             other = slots[slot + 1]
             rows[other], rows[index] = rows[index], rows[other]
+        elif action == "remove":
+            del rows[index]
         elif action == "toggle":
             rows[index] = dict(rows[index], enabled=not rows[index].get("enabled", True))
         else:
@@ -6110,7 +6152,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Follow the row, not the position: after a move the viewer is still
         # thinking about the row they just moved, and leaving focus behind
         # means the next press moves a DIFFERENT row.
-        if action in ("up", "down"):
+        if action == "remove":
+            # The row is gone. Land on whatever now occupies its slot, or the
+            # one above if it was the last -- never on the vanished row.
+            landed = min(slot, len(slots) - 2)
+            if landed < 0:
+                return
+            try:
+                self.setFocusId(
+                    home_rows.HOME_ROW_EDIT_IDS[landed][home_rows.EDIT_TOGGLE])
+            except Exception:                                   # noqa: BLE001
+                pass
+        elif action in ("up", "down"):
             landed = slot - 1 if action == "up" else slot + 1
             landed = max(0, min(landed, len(slots) - 1))
             # The arrow the viewer just pressed may be DISABLED at the row's

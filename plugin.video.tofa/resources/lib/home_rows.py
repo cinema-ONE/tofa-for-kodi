@@ -74,9 +74,13 @@ MAX_HOME_ROWS = 9
 #: Playback & Video already owns the 8400s (its segment ids are 8410-8450
 #: and its grouplist is 8490), and check_xml.py caught the collision the
 #: first time this was written. 88xx and 89xx were the lowest free blocks.
-HOME_ROW_EDIT_IDS: tuple[tuple[int, int, int], ...] = tuple(
-    (8801 + 10 * i, 8802 + 10 * i, 8803 + 10 * i) for i in range(MAX_HOME_ROWS)
+HOME_ROW_EDIT_IDS: tuple[tuple[int, int, int, int], ...] = tuple(
+    (8801 + 10 * i, 8802 + 10 * i, 8803 + 10 * i, 8804 + 10 * i)
+    for i in range(MAX_HOME_ROWS)
 )
+
+#: Column meaning, so a caller never indexes these by a bare number.
+EDIT_UP, EDIT_DOWN, EDIT_TOGGLE, EDIT_REMOVE = 0, 1, 2, 3
 
 #: Slot i's wrapping group, so the whole row can be hidden when the account
 #: has fewer rows than slots.
