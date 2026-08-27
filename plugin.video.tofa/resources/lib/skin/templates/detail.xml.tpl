@@ -163,7 +163,20 @@
 
                     <control type="label" id="5102">
                         <posy>12</posy>
-                        <width>1200</width>
+                        <!-- 1264, not 1200: this line leads with the EPISODE
+                             title on a series (detail.py:_apply_episode_meta_line),
+                             which lengthens it well past what the show's own
+                             year/rating/runtime/genres need. Measured in the
+                             real font (inter_tight_semibold 26, via
+                             tools/gen_text_metrics.py's 100x recipe): the
+                             show-only line is 621px, a typical episode line
+                             781px, and a long episode title 1075px. 1264 is
+                             the synopsis textbox's width, the hero text
+                             column's established right edge, rather than an
+                             invented number. A genuinely extreme title still
+                             truncates at the TAIL, which drops a genre and
+                             keeps the episode title. -->
+                        <width>1264</width>
                         <height>26</height>
                         <font>tofa_font_row_title</font>
                         <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>

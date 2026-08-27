@@ -229,6 +229,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._next_up_season = None
         self._next_up_episode_number = None
         self._next_up_title = ""
+        #: The show's own year/rating/runtime/genres line, before the
+        #: episode title is put in front of it. See _apply_episode_meta_line.
+        self._hero_meta_base = ""
         self._next_up_overview = ""
         self._prev_focus_id = 0
         self._tab_just_arrived = False
@@ -579,7 +582,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         genres = media.get("genres") or []
         meta = [_year_from(media), media.get("content_rating") or "", _runtime_str(media.get("runtime_minutes"))]
         meta.extend(genres[:2])
-        self.setProperty("hero_meta_line", _dot_join(*meta))
+        # Kept so _apply_episode_meta_line can COMPOSE rather than prepend.
+        # That call runs again whenever the next-up episode moves, and a
+        # prepend would stack a second title on every refresh.
+        self._hero_meta_base = _dot_join(*meta)
+        self.setProperty("hero_meta_line", self._hero_meta_base)
 
         self.setProperty("hero_ratings_line", self._ratings_line(media))
         # Before _render_format_badges(): it ends by re-packing the stack, and
@@ -933,6 +940,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self._render_format_badges(f)
                 # AFTER the badges: that call ends by packing the hero stack,
                 # and this can change which blocks are in it.
+                self._apply_episode_meta_line()
                 self._apply_episode_synopsis()
             else:
                 self.is_playable = False
@@ -1387,6 +1395,29 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         season_number, episode_number, ep, f = chosen
         self._remember_next_up(season_number, episode_number, ep)
         return ep, f
+
+    def _apply_episode_meta_line(self) -> None:
+        """Lead the hero meta line with the EPISODE's own title.
+
+        "The Scytale - 2020 - TV-MA - 47 min - Drama" rather than starting
+        at the year. Adrian's call, 2026-08-27: the episode title had no
+        home on this screen at all -- the hero shows the SERIES title, the
+        eyebrow shows it again uppercased, and the Play pill carries only
+        "Resume S5 E5". The number was on screen; the name was not.
+
+        NOT a new control. The reference app has no series-detail screen to
+        copy here (every detail capture we hold is a film), so rather than
+        invent a layout this composes into the line that already exists and
+        already joins its parts this way.
+
+        Composed from `_hero_meta_base`, never prepended to the live
+        property: this runs again each time the next-up episode moves, and
+        prepending would stack a second title on every refresh.
+        """
+        if not self._hero_meta_base and not self._next_up_title:
+            return
+        self.setProperty("hero_meta_line",
+                         _dot_join(self._next_up_title, self._hero_meta_base))
 
     def _apply_episode_synopsis(self) -> None:
         """Describe the EPISODE the Play pill is pointing at, not the series.
