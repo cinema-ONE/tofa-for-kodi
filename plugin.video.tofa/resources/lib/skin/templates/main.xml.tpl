@@ -1913,30 +1913,34 @@
                         </control>
                     </control>
 
-                    <!-- The list IS the grouplist child, with no wrapping
-                         group. It had one, and the group did not follow the
-                         list's runtime height: the two got out of step and
-                         left ~250px of dead air above the "add a row" block.
-                         One control, one height, nothing to keep in sync. -->
-                    <control type="list" id="8330">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_HOMEROWS_H}</height>
-                        <onleft>8000</onleft>
-                        <onright>8330</onright>
-                        <orientation>vertical</orientation>
-                        <itemheight>{SETTINGS_HOMEROW_H}</itemheight>
-                        <scrolltime>{SCROLLTIME}</scrolltime>
+                    <!-- ONE GROUP PER ROW, not a list, so each row can
+                         carry three independently focusable controls the way
+                         the reference app does: move up, move down, and the
+                         switch. A list cannot: Kodi builds item layouts with
+                         insideContainer=true, so an item's controls are drawn
+                         but never join the focus tree and the list itself is
+                         the single focus target. A grouplist of real buttons
+                         is what Kodi's own Estuary uses for SettingsCategory.
 
-{settings_homerow_item}
+                         Each row is a DIRECT child of the appearance
+                         grouplist, which is what makes up/down between rows
+                         and scroll-into-view work; the buttons inside are
+                         grandchildren, so their navigation is wired in
+                         Python (see _settings_wire_home_rows) rather than
+                         here, because a grouplist OVERRIDES its children's
+                         up/down and grandchildren resolve to nothing.
 
-{settings_homerow_focused}
-                    </control>
+                         Slots past the account's row count hide themselves
+                         on an empty title property, which also takes them
+                         out of the grouplist's chain. -->
+{settings_homerow_editors}
 
+                    <!-- ONE "Add a row", holding three groups. It was two
+                         tiles until the reference apps settled on a single
+                         grouped picker; 8350 is retired, not reused. -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_HOMEADD_GROUP_H}</height>
+                        <height>{SETTINGS_HOMEADD_H}</height>
                         <control type="list" id="8340">
                             <posx>0</posx>
                             <posy>0</posy>
@@ -1948,24 +1952,38 @@
                             <itemheight>{SETTINGS_HOMEADD_H}</itemheight>
                             <scrolltime>0</scrolltime>
 
-{settings_add_discover_item}
+{settings_add_row_item}
 
-{settings_add_discover_focused}
+{settings_add_row_focused}
                         </control>
-                        <control type="list" id="8350">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_HOMEADD_SECOND_Y}</posy>
+                    </control>
+
+                    <!-- The line the reference app puts under the row
+                         editor. It carries two facts a viewer cannot infer
+                         from the controls: that the list order IS the Home
+                         order, and that turning a row off follows the
+                         account rather than staying on this device.
+
+                         The text arrives as a WINDOW PROPERTY, not as
+                         $LOCALIZE[31122]. Kodi resolves $LOCALIZE in a
+                         window XML against the ACTIVE SKIN's strings, and
+                         31000-31999 is the range skins use: Estuary's
+                         #31122 is "Unwatched TV Shows", which is exactly
+                         what this line displayed. It fails silently and
+                         differently per skin, so nothing in this add-on's
+                         XML may use $LOCALIZE; check_xml.py enforces it. -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_HOMEROWS_NOTE_H}</height>
+                        <control type="label">
+                            <posx>18</posx>
+                            <posy>0</posy>
                             <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_HOMEADD_H}</height>
-                            <onleft>8000</onleft>
-                            <onright>8350</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_HOMEADD_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_add_genre_item}
-
-{settings_add_genre_focused}
+                            <height>{SETTINGS_HOMEROWS_NOTE_H}</height>
+                            <aligny>center</aligny>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                            <label>$INFO[Window.Property(home_rows_note)]</label>
                         </control>
                     </control>
 
@@ -1974,22 +1992,7 @@
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
                         <height>{SETTINGS_MEDIACARDS_GROUP_H}</height>
 {settings_mediacards_eyebrow}
-                        <control type="list" id="8300">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <ondown>8310</ondown>
-                            <onleft>8000</onleft>
-                            <onright>8300</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_rating_item}
-
-{settings_rating_focused}
-                        </control>
+{settings_rating_group}
                         <control type="list" id="8310">
                             <posx>0</posx>
                             <posy>{SETTINGS_MEDIACARDS_SECOND_Y}</posy>
@@ -2052,132 +2055,23 @@
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
                         <height>{SETTINGS_QUALITY_GROUP_H}</height>
 {settings_quality_eyebrow}
-                        <control type="list" id="8470">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8000</onleft>
-                            <onright>8470</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_quality_item}
-
-{settings_quality_focused}
-                        </control>
+{settings_quality_group}
                     </control>
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
                         <height>{SETTINGS_NEXTUP_GROUP_H}</height>
 {settings_nextup_eyebrow}
-                        <control type="list" id="8460">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8470</onup>
-                            <ondown>8410</ondown>
-                            <onleft>8000</onleft>
-                            <onright>8460</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_nextup_item}
-
-{settings_nextup_focused}
-                        </control>
+{settings_nextup_group}
                     </control>
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
                         <height>{SETTINGS_SKIP_GROUP_H}</height>
 {settings_skip_eyebrow}
-                        <control type="list" id="8410">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8460</onup>
-                            <ondown>8420</ondown>
-                            <onleft>8000</onleft>
-                            <onright>8410</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_seg0_item}
-
-{settings_seg0_focused}
-                        </control>
-                        <control type="list" id="8420">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SKIP_ROW_Y[1]}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8410</onup>
-                            <ondown>8430</ondown>
-                            <onleft>8000</onleft>
-                            <onright>8420</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_seg1_item}
-
-{settings_seg1_focused}
-                        </control>
-                        <control type="list" id="8430">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SKIP_ROW_Y[2]}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8420</onup>
-                            <ondown>8440</ondown>
-                            <onleft>8000</onleft>
-                            <onright>8430</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_seg2_item}
-
-{settings_seg2_focused}
-                        </control>
-                        <control type="list" id="8440">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SKIP_ROW_Y[3]}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8430</onup>
-                            <ondown>8450</ondown>
-                            <onleft>8000</onleft>
-                            <onright>8440</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_seg3_item}
-
-{settings_seg3_focused}
-                        </control>
-                        <control type="list" id="8450">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SKIP_ROW_Y[4]}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8440</onup>
-                            <onleft>8000</onleft>
-                            <onright>8450</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_seg4_item}
-
-{settings_seg4_focused}
-                        </control>
+{settings_seg_intro_group}
+{settings_seg_recap_group}
+{settings_seg_preview_group}
+{settings_seg_outro_group}
+{settings_seg_commercial_group}
                     </control>
                 </control>
             </control>

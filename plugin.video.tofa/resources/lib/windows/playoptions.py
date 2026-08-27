@@ -205,6 +205,11 @@ def _hint(info: dict[str, Any], sections: list[dict[str, Any]]) -> str:
 
 
 class PlaybackOptionsDialog(kodigui.BaseDialog):
+    #: One-shot chooser mode, set from the `pick_once` kwarg. Declared on the
+    #: class so _rebuild() can read it off any instance -- the section tests
+    #: build a stand-in that never runs __init__.
+    _pick_once = False
+
     xmlFile = "script-tofa-playoptions.xml"
     path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
@@ -236,12 +241,21 @@ class PlaybackOptionsDialog(kodigui.BaseDialog):
         # those keys and leaves them alone, so the caller simply reads
         # each section's `selected` back once the dialog closes.
         self._custom_sections = kwargs.pop("sections", None)
+        # Sectioned mode normally APPLIES a pick and collapses back, because
+        # its sections are settings that stay put. `pick_once` turns it into
+        # a one-shot chooser instead: the first option picked closes the
+        # panel and comes back as (section key, option index). That is what
+        # a grouped "Add a row" needs -- three categories to look through,
+        # one answer.
+        self._pick_once = bool(kwargs.pop("pick_once", False))
         self._hint_text = kwargs.pop("hint", "")
         # preferences.playback.preferred_audio_languages, so the Audio
         # section can default to the track that will actually play. Absent
         # for the flat/custom-section callers, which have no audio section.
         self._audio_languages = kwargs.pop("audio_languages", None)
         self.picked_idx: Optional[int] = None
+        #: (section key, option index) in pick_once mode; None if dismissed.
+        self.picked_option: Optional[tuple] = None
         kodigui.BaseDialog.__init__(self, *args, **kwargs)
         if self._flat_rows is not None:
             self._sections = []
@@ -316,10 +330,17 @@ class PlaybackOptionsDialog(kodigui.BaseDialog):
                 model.append((None, i))
         for section in self._sections:
             expanded = section["key"] == self._expanded
-            chosen = section["options"][section["selected"]]
             header = kodigui.ManagedListItem(label=section["title"])
             header.setProperty("section", section["key"])
-            header.setProperty("value", "" if expanded else chosen["label"])
+            # A collapsed section reads back the value it holds. A one-shot
+            # chooser holds none -- `selected` is only there to satisfy the
+            # shared model -- so it shows how many choices are inside
+            # instead, which is what a closed group has to say for itself.
+            if self._pick_once:
+                header.setProperty("value", str(len(section["options"])))
+            else:
+                chosen = section["options"][section["selected"]]
+                header.setProperty("value", "" if expanded else chosen["label"])
             # chevrons-up-down, the same "opens a list of choices" mark the
             # Options pill that led here carries. A plain chevron
             # right/down pair reads as a DIRECTION, which is what it means
@@ -339,8 +360,14 @@ class PlaybackOptionsDialog(kodigui.BaseDialog):
             if not expanded:
                 continue
             for i, option in enumerate(section["options"]):
-                items.append(self._option_item(option["label"], option["detail"],
-                                               i == section["selected"]))
+                # A chooser has no current value, so no row gets the check.
+                # `selected` is 0 there only because the shared model needs
+                # a number; drawing a tick on row 0 would read as "this one
+                # is already on your Home screen", which is the opposite of
+                # what the list means.
+                checked = (not self._pick_once) and i == section["selected"]
+                items.append(self._option_item(option["label"],
+                                               option.get("detail", ""), checked))
                 model.append((section["key"], i))
 
         self._model = model
@@ -420,6 +447,14 @@ class PlaybackOptionsDialog(kodigui.BaseDialog):
                 self._rebuild((section_key, section["selected"]))
             else:
                 self._rebuild((section_key, None))
+            return
+
+        if self._pick_once:
+            # A one-shot chooser: picking IS the answer, so it closes, the
+            # same as flat mode. Nothing is applied and nothing collapses --
+            # there is no state here to leave behind.
+            self.picked_option = (section_key, option_index)
+            self.doClose()
             return
 
         # Option: apply, then collapse back to the headers. Collapsing is
@@ -524,6 +559,35 @@ def show_choice(*, title: str, subtitle: str, rows: list[dict[str, Any]],
         title=title, subtitle=subtitle, rows=rows,
         selected_idx=selected_idx, hint=hint)
     picked = getattr(dialog, "picked_idx", None)
+    del dialog
+    return picked
+
+
+def show_grouped_choice(*, title: str, subtitle: str,
+                        groups: list[dict[str, Any]],
+                        hint: str = "") -> Optional[tuple]:
+    """Pick ONE option from several named groups, collapsed until opened.
+
+    Returns (group key, option index), or None if dismissed.
+
+    The shape the web app uses for "Add a row": one control holding three
+    labelled groups rather than one button per group. Reusing the collapsed
+    section panel rather than a flat list keeps the categories the reference
+    shows -- a flat list of every Discover shelf, every genre and every
+    builtin run together is the thing the grouping exists to avoid.
+
+    A group with no options is dropped; if that leaves nothing, so is the
+    dialog.
+    """
+    sections = [{"key": g["key"], "title": g["title"], "selected": 0,
+                 "options": g["options"]}
+                for g in groups if g.get("options")]
+    if not sections:
+        return None
+    dialog = PlaybackOptionsDialog.open(
+        title=title, subtitle=subtitle, sections=sections,
+        pick_once=True, hint=hint)
+    picked = getattr(dialog, "picked_option", None)
     del dialog
     return picked
 

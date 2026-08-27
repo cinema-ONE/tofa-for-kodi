@@ -75,6 +75,35 @@ SEGMENT_ACTIONS: tuple[tuple[str, str], ...] = (
 # All five segment types the server stores, with the web/desktop apps' own
 # labels and hints verbatim. The Apple TV app surfaces only intro and outro;
 # every other tofa client offers the lot, so this does too.
+#: The settings rows whose options are individually focusable pills, as the
+#: reference app draws them. Each entry is
+#: (key, group id, (segment ids...), window-property prefix).
+#:
+#: The 89xx block, because 84xx is Playback & Video's and 85xx is Audio &
+#: Subtitles'; check_xml.py catches a collision but only after it has
+#: silently broken a row, so the block was picked from a scan of what is
+#: actually free.
+#:
+#: EIGHT rows, not five: the five skip kinds below PLUS streaming quality,
+#: play-the-next-episode and the rating badge.
+SEGMENTED_GROUPS: tuple[tuple[str, int, tuple[int, ...], str], ...] = (
+    ("rating",  8900, (8901, 8902, 8903), "segrow_rating"),
+    ("quality", 8910, (8911, 8912),       "segrow_quality"),
+    ("nextup",  8920, (8921, 8922, 8923), "segrow_nextup"),
+    ("intro",      8930, (8931, 8932, 8933), "segrow_intro"),
+    ("recap",      8940, (8941, 8942, 8943), "segrow_recap"),
+    ("preview",    8950, (8951, 8952, 8953), "segrow_preview"),
+    ("outro",      8960, (8961, 8962, 8963), "segrow_outro"),
+    ("commercial", 8970, (8971, 8972, 8973), "segrow_commercial"),
+)
+
+SEGMENTED_BY_ID: dict[int, tuple[str, int]] = {
+    sid: (key, i)
+    for key, _g, sids, _p in SEGMENTED_GROUPS
+    for i, sid in enumerate(sids)
+}
+
+
 SEGMENT_ROWS: tuple[tuple[str, str, str], ...] = (
     ("intro", "Intro", "Opening sequence before the episode/movie starts."),
     ("recap", "Recap", "Previously-on summary segments."),

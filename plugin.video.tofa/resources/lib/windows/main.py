@@ -459,7 +459,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: id does not error -- Kodi silently resolves to whichever comes first
     #: in the XML, so the segment row simply stops working. check_xml caught
     #: it; the screen did not.
-    SETTINGS_QUALITY_ID = 8470
     #: `playback.default_quality`, in the app's order. Both values verified
     #: against the live server by writing each and reading it back -- the
     #: lesson of segment_actions' "play", which wrote cleanly and was
@@ -475,8 +474,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_EPISODES_ID = 8310
     SETTINGS_SPOTLIGHT_ID = 8320
     SETTINGS_HOMEROWS_ID = 8330
-    SETTINGS_ADD_DISCOVER_ID = 8340
-    SETTINGS_ADD_GENRE_ID = 8350
+    # ONE "Add a row" tile, holding three groups. 8350 was a second tile
+    # ("Add a genre row") until the reference apps settled on a single
+    # grouped picker; the id is retired rather than reused so a stale
+    # rendered XML cannot resolve it to something else.
+    SETTINGS_ADD_ROW_ID = 8340
     SETTINGS_REGION_ID = 8360
     # Playback & Video (8400s) and Audio & Subtitles (8500s) each own a
     # scrolling grouplist of their own, 8490 / 8590.
@@ -484,7 +486,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_SEGMENT_IDS = (8410, 8420, 8430, 8440, 8450)
     # NEXT EPISODE sits in its own group above SEGMENTS; see
     # tokens.SETTINGS_NEXTUP_GROUP_H for why it is not a sixth row.
-    SETTINGS_NEXTUP_ID = 8460
     # Audio & Subtitles: primary + secondary per axis, mirroring the web and
     # desktop apps. preferred_*_languages is an ordered list and those clients
     # write TWO entries for a non-English locale, so a one-row page could
@@ -817,40 +818,24 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_SWITCH_PROFILE_ID, 1)
         self.settings_switch_server_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SWITCH_SERVER_ID, 1)
-        self.settings_quality_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_QUALITY_ID, 1)
         self.settings_direct_list = kodigui.ManagedControlList(
             self, self.SETTINGS_DIRECT_ONLY_ID, 1)
         self.settings_sign_out_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SIGN_OUT_ID, 1)
         self.settings_fox_list = kodigui.ManagedControlList(
             self, self.SETTINGS_FOX_ID, len(theme.PRESETS))
-        self.settings_rating_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_RATING_ID, 1)
         self.settings_episodes_list = kodigui.ManagedControlList(
             self, self.SETTINGS_EPISODES_ID, 1)
         self.settings_spotlight_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SPOTLIGHT_ID, 1)
-        self.settings_homerows_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_HOMEROWS_ID, home_rows.MAX_HOME_ROWS)
-        self.settings_add_discover_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_ADD_DISCOVER_ID, 1)
-        self.settings_add_genre_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_ADD_GENRE_ID, 1)
+        # NOTE: no settings_homerows_list any more. The home-row editor is
+        # nine groups of real buttons (home_rows.HOME_ROW_EDIT_IDS), because
+        # a list item cannot hold three focus targets. See
+        # fragments.settings_home_row_editor.
+        self.settings_add_row_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_ADD_ROW_ID, 1)
         self.settings_region_list = kodigui.ManagedControlList(
             self, self.SETTINGS_REGION_ID, 1)
-        self.settings_segment_lists = {
-            key: kodigui.ManagedControlList(self, cid, 1)
-            for (key, _l, _h), cid in zip(settings_options.SEGMENT_ROWS,
-                                          self.SETTINGS_SEGMENT_IDS)
-        }
-        self.settings_segment_by_id = {
-            cid: key
-            for (key, _l, _h), cid in zip(settings_options.SEGMENT_ROWS,
-                                          self.SETTINGS_SEGMENT_IDS)
-        }
-        self.settings_nextup_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_NEXTUP_ID, 1)
         self.settings_audiolang_list = kodigui.ManagedControlList(
             self, self.SETTINGS_AUDIOLANG_ID, 1)
         self.settings_audiolang2_list = kodigui.ManagedControlList(
@@ -1163,32 +1148,25 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_switch_profile()
         elif controlID == self.SETTINGS_SWITCH_SERVER_ID:
             self._settings_switch_server()
-        elif controlID == self.SETTINGS_QUALITY_ID:
-            self._settings_quality_clicked()
         elif controlID == self.SETTINGS_DIRECT_ONLY_ID:
             self._settings_direct_only_clicked()
         elif controlID == self.SETTINGS_SIGN_OUT_ID:
             self._settings_sign_out()
         elif controlID == self.SETTINGS_FOX_ID:
             self._settings_fox_clicked()
-        elif controlID == self.SETTINGS_RATING_ID:
-            self._settings_rating_clicked()
         elif controlID == self.SETTINGS_EPISODES_ID:
             self._settings_episodes_clicked()
         elif controlID == self.SETTINGS_SPOTLIGHT_ID:
             self._settings_spotlight_clicked()
-        elif controlID == self.SETTINGS_HOMEROWS_ID:
-            self._settings_home_row_clicked()
-        elif controlID == self.SETTINGS_ADD_DISCOVER_ID:
-            self._settings_add_discovery_row()
-        elif controlID == self.SETTINGS_ADD_GENRE_ID:
-            self._settings_add_genre_row()
+        elif controlID in settings_options.SEGMENTED_BY_ID:
+            self._settings_segmented_pressed(controlID)
+        elif (home_rows.HOME_ROW_EDIT_GROUP_IDS[0]
+              <= controlID <= home_rows.HOME_ROW_EDIT_IDS[-1][-1]):
+            self._settings_home_row_pressed(controlID)
+        elif controlID == self.SETTINGS_ADD_ROW_ID:
+            self._settings_add_row()
         elif controlID == self.SETTINGS_REGION_ID:
             self._settings_region_clicked()
-        elif controlID == self.SETTINGS_NEXTUP_ID:
-            self._settings_nextup_clicked()
-        elif controlID in self.settings_segment_by_id:
-            self._settings_segment_clicked(self.settings_segment_by_id[controlID])
         elif controlID in self.SETTINGS_LANGUAGE_ROWS:
             key, slot = self.SETTINGS_LANGUAGE_ROWS[controlID]
             self._settings_language_clicked(key, slot)
@@ -5035,6 +5013,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         page = self._settings_current_page()
         if page is None:
             return
+        # Sync the pane to the highlighted row first. On the remote this is a
+        # no-op -- the Up/Down handler above has already switched the page --
+        # but any path that moves the sidebar's selection WITHOUT an Up/Down
+        # leaves the two disagreeing: the row highlights and the pane keeps
+        # showing the previous page. SetFocus(8000,n) from a script does
+        # exactly that, and it produced two screenshots during the 2026-08-27
+        # session that looked like a real bug and were not. Idempotent, so
+        # making the honest path bulletproof costs nothing.
+        self._settings_show_page()
         target = settings_pages.RIGHT_TARGETS.get(page.key)
         if target:
             self.setFocusId(target)
@@ -5062,8 +5049,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_fill_privacy()
         self._settings_fill_device()
         self._settings_wire_account_nav()
-        self._settings_wire_playback_nav()
         self._settings_wire_appearance_nav()
+        self._settings_wire_segmented()
 
         _t0 = time.monotonic()
         client = self._get_client()
@@ -5649,6 +5636,151 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ("Off", {"show_card_ratings": False}),
     )
 
+    #: Title and one-line summary per segmented row, in the app's wording.
+    SEGMENTED_TEXT = {
+        "rating":  ("Rating badge", "Which score appears on posters"),
+        "quality": ("Streaming quality", "Auto adapts to your connection"),
+        "nextup":  ("Play the next episode", "What happens as an episode ends"),
+    }
+
+    def _settings_segmented_options(self, key: str):
+        """(label, value) for one segmented row, in display order.
+
+        Normalises three different source shapes: the rating segments carry
+        a preference PATCH rather than a scalar, and SEGMENT_ACTIONS /
+        AUTO_PLAY_NEXT_ACTIONS are (value, label) where the other two are
+        (label, value). Getting that pair backwards writes the label to the
+        server, which it rejects with a 400 -- so it is normalised once here
+        rather than at four call sites.
+        """
+        if key == "rating":
+            return list(self.SETTINGS_RATING_SEGMENTS)
+        if key == "quality":
+            return list(self.SETTINGS_QUALITY_SEGMENTS)
+        if key == "nextup":
+            return [(l, v) for v, l in settings_options.AUTO_PLAY_NEXT_ACTIONS]
+        return [(l, v) for v, l in settings_options.SEGMENT_ACTIONS]
+
+    def _settings_segmented_active(self, key: str) -> int:
+        """Which option is currently selected, as an index."""
+        if key == "rating":
+            return self._settings_rating_index(self._ensure_preferences())
+        playback = self._settings_playback()
+        if key == "quality":
+            return self._settings_quality_index(playback)
+        values = [v for _l, v in self._settings_segmented_options(key)]
+        if key == "nextup":
+            current = str(playback.get("auto_play_next") or "").lower()
+        else:
+            current = (playback.get("segment_actions") or {}).get(key, "ask")
+        try:
+            return values.index(current)
+        except ValueError:
+            # An unset or unknown value reads as the documented default:
+            # "auto" for next-up, "ask" for a skip segment.
+            return 0 if key == "nextup" else values.index("ask")
+
+    def _settings_fill_segmented(self):
+        """Window properties for all eight segmented rows.
+
+        Window rather than ListItem properties because these rows are groups
+        of real buttons now, not one-item lists -- see
+        fragments.settings_segmented_group.
+        """
+        hints = dict(self.SEGMENTED_TEXT)
+        for key, label, hint in settings_options.SEGMENT_ROWS:
+            hints[key] = (label, hint)
+        for key, _gid, _sids, prop in settings_options.SEGMENTED_GROUPS:
+            title, summary = hints.get(key, (key.title(), ""))
+            self.setProperty(prop + "_title", title)
+            self.setProperty(prop + "_summary", summary)
+            active = self._settings_segmented_active(key)
+            for idx, (seg_label, _value) in enumerate(
+                    self._settings_segmented_options(key)):
+                self.setProperty("{0}_seg{1}".format(prop, idx), seg_label)
+                self.setProperty("{0}_seg{1}_on".format(prop, idx),
+                                 "1" if idx == active else "")
+
+    def _settings_segmented_pressed(self, control_id: int):
+        """Pick the option that was pressed. No cycling: each option is its
+        own control now, so the viewer chooses directly, which is what the
+        reference app does and what makes a three-option row usable."""
+        found = settings_options.SEGMENTED_BY_ID.get(control_id)
+        if not found:
+            return
+        key, index = found
+        options = self._settings_segmented_options(key)
+        if not (0 <= index < len(options)):
+            return
+        _label, value = options[index]
+        if key == "rating":
+            self._settings_write(value)          # a preference patch
+        elif key == "quality":
+            self._settings_write({"playback": {"default_quality": value}})
+        elif key == "nextup":
+            self._settings_write({"playback": {"auto_play_next": value}})
+        else:
+            actions = dict(self._settings_playback().get("segment_actions") or {})
+            actions[key] = value
+            self._settings_write({"playback": {"segment_actions": actions}})
+        self._settings_fill_segmented()
+
+    def _settings_wire_segmented(self):
+        """Left/Right between a row's options, Left off the first one back to
+        the sidebar. Python, not XML: these buttons are grandchildren of a
+        grouplist, whose AddControl overrides its children's up/down and
+        leaves grandchildren resolving to nothing."""
+        try:
+            nav = self.getControl(self.SETTINGS_NAV_ID)
+        except Exception:                                       # noqa: BLE001
+            return
+        rows: dict = {}
+        for _key, _gid, sids, _prop in settings_options.SEGMENTED_GROUPS:
+            try:
+                btns = [self.getControl(i) for i in sids]
+            except Exception:                                   # noqa: BLE001
+                continue
+            for i, btn in enumerate(btns):
+                btn.controlLeft(btns[i - 1] if i else nav)
+                if i < len(btns) - 1:
+                    btn.controlRight(btns[i + 1])
+            rows[_key] = btns
+
+        # UP/DOWN as well as left/right. The pills are grandchildren of the
+        # appearance/playback grouplist, so their vertical navigation
+        # resolves to nothing and Kodi wraps them internally -- Down simply
+        # did nothing. Same trap the home-row editor hit.
+        #
+        # Keep the column where the next row is wide enough, clamped
+        # otherwise, so moving down a page of pills does not always dump
+        # focus on the first one.
+        def _join(above, below):
+            if not (above and below):
+                return
+            for i, btn in enumerate(above):
+                btn.controlDown(below[min(i, len(below) - 1)])
+            for i, btn in enumerate(below):
+                btn.controlUp(above[min(i, len(above) - 1)])
+
+        order = [k for k, _g, _s, _p in settings_options.SEGMENTED_GROUPS]
+        playback_chain = [k for k in order if k not in ("rating",)]
+        for a, b in zip(playback_chain, playback_chain[1:]):
+            _join(rows.get(a), rows.get(b))
+
+        # The rating row sits between "Add a row" and "Episodes remaining"
+        # on Appearance, not in the playback chain.
+        try:
+            add_row = self.getControl(self.SETTINGS_ADD_ROW_ID)
+            episodes = self.getControl(self.SETTINGS_EPISODES_ID)
+        except Exception:                                       # noqa: BLE001
+            return
+        for btn in rows.get("rating", []):
+            btn.controlUp(add_row)
+            btn.controlDown(episodes)
+        if rows.get("rating"):
+            add_row.controlDown(rows["rating"][0])
+            episodes.controlUp(rows["rating"][0])
+
     def _settings_rating_index(self, prefs: dict) -> int:
         if not prefs.get("show_card_ratings", True):
             return 2
@@ -5658,14 +5790,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Build both MEDIA CARDS rows from the profile's live preferences."""
         prefs = self._ensure_preferences()
 
-        rating = kodigui.ManagedListItem(label="Rating badge")
-        rating.setProperty("summary", "Which score appears on posters")
-        active = self._settings_rating_index(prefs)
-        for idx, (label, _patch) in enumerate(self.SETTINGS_RATING_SEGMENTS):
-            rating.setProperty("seg{0}".format(idx), label)
-            rating.setProperty("seg{0}_on".format(idx), "1" if idx == active else "")
-        self.settings_rating_list.reset()
-        self.settings_rating_list.addItems([rating])
+        self._settings_fill_segmented()
 
         episodes = kodigui.ManagedListItem(label="Episodes remaining")
         episodes.setProperty("summary", "Show how many episodes you have left on show posters")
@@ -5673,13 +5798,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "checked", "1" if prefs.get("show_unwatched_count", True) else "")
         self.settings_episodes_list.reset()
         self.settings_episodes_list.addItems([episodes])
-
-    def _settings_rating_clicked(self):
-        """Select CYCLES to the next segment -- see settings_segmented_row for
-        why Left/Right cannot do it."""
-        prefs = self._ensure_preferences()
-        nxt = (self._settings_rating_index(prefs) + 1) % len(self.SETTINGS_RATING_SEGMENTS)
-        self._settings_write(self.SETTINGS_RATING_SEGMENTS[nxt][1])
 
     def _settings_episodes_clicked(self):
         prefs = self._ensure_preferences()
@@ -5766,25 +5884,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         out.controlDown(direct)
         direct.controlUp(out)
 
-    def _settings_wire_playback_nav(self):
-        """QUALITY -> NEXT EPISODE, from Python.
-
-        Third pane to need this, and for the same reason as the other two:
-        every row here is a list inside a group inside the grouplist, so it
-        is a GRANDCHILD, outside the chain the grouplist maintains, and its
-        XML onup/ondown are overridden. See _settings_wire_appearance_nav.
-
-        Measured: without it, Down on Streaming quality does nothing at all
-        and NEXT EPISODE is unreachable from above."""
-        try:
-            quality = self.getControl(self.SETTINGS_QUALITY_ID)
-            nextup = self.getControl(self.SETTINGS_NEXTUP_ID)
-        except Exception:                                    # noqa: BLE001
-            log.warning("settings: could not wire the Playback pane's nav")
-            return
-        quality.controlDown(nextup)
-        nextup.controlUp(quality)
-
     def _settings_wire_appearance_nav(self):
         """Re-assert the two MEDIA CARDS rows' up/down from Python.
 
@@ -5803,24 +5902,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         Wiring it from Python survives the override that XML does not."""
         try:
             foxes = self.getControl(self.SETTINGS_FOX_ID)
-            rating = self.getControl(self.SETTINGS_RATING_ID)
+            # NOT SETTINGS_RATING_ID: the rating row is a group of pills now,
+            # and getControl on the deleted list RAISED -- aborting this whole
+            # try block, so even foxes->spotlight never got wired and Down
+            # from the fox grid did nothing. Reported 2026-08-27.
             episodes = self.getControl(self.SETTINGS_EPISODES_ID)
             spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
-            homerows = self.getControl(self.SETTINGS_HOMEROWS_ID)
             foxes.controlDown(spotlight)
             spotlight.controlUp(foxes)
-            spotlight.controlDown(homerows)
-            homerows.controlUp(spotlight)
-            add_discover = self.getControl(self.SETTINGS_ADD_DISCOVER_ID)
-            add_genre = self.getControl(self.SETTINGS_ADD_GENRE_ID)
-            homerows.controlDown(add_discover)
-            add_discover.controlUp(homerows)
-            add_discover.controlDown(add_genre)
-            add_genre.controlUp(add_discover)
-            add_genre.controlDown(rating)
-            rating.controlUp(add_genre)
-            rating.controlDown(episodes)
-            episodes.controlUp(rating)
+            # spotlight <-> first editor row and last editor row <-> the
+            # add tile are joined by _settings_wire_home_rows, which is the
+            # only place that knows how many rows the account actually has.
+            # add row <-> rating pills <-> episodes is joined by
+            # _settings_wire_segmented, which is the only place that knows
+            # which pills a segmented row has.
             region = self.getControl(self.SETTINGS_REGION_ID)
             episodes.controlDown(region)
             region.controlUp(episodes)
@@ -5849,13 +5944,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _settings_fill_home_screen(self):
         home = self._settings_home_screen()
 
+        # The note under the editor. From Python because $LOCALIZE in a
+        # window XML reads the ACTIVE SKIN's strings, not ours -- see the
+        # comment on the label in main.xml.tpl.
+        self.setProperty("home_rows_note", _(31122))
+
         spotlight = kodigui.ManagedListItem(label="Featured spotlight")
         spotlight.setProperty("summary", "Show the featured banner above your home rows")
         spotlight.setProperty("checked", "1" if home.get("show_hero", True) else "")
         self.settings_spotlight_list.reset()
         self.settings_spotlight_list.addItems([spotlight])
 
-        items = []
+        # Window properties, one set per SLOT: these rows are real controls
+        # now, not list items, so there is no ListItem to read from. A slot
+        # with an empty title hides itself, which also removes it from the
+        # grouplist's navigation chain.
+        shown = []
         for index, row in enumerate(home.get("rows") or []):
             title = home_rows.row_title(row, _)
             if not title:
@@ -5864,101 +5968,236 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 # we cannot fully name would reorder rows blind.
                 log.debug("settings: skipping unnameable home row {0}".format(row))
                 continue
-            enabled = row.get("enabled", True)
-            li = kodigui.ManagedListItem(label=title, data_source=index)
-            li.setProperty("checked", "1" if enabled else "")
-            li.setProperty("state", "On" if enabled else "Off")
-            items.append(li)
-        self.settings_homerows_list.reset()
-        self.settings_homerows_list.addItems(items)
-        self._settings_size_home_rows(len(items))
+            shown.append((index, title, row.get("enabled", True),
+                          row.get("type"), home_rows.row_removable(row)))
 
-    def _settings_size_home_rows(self, count: int):
-        """Fit the row list to the account's real row count.
-
-        Kodi cannot size a control from its content, but setHeight() exists,
-        so this is a measure-then-resize -- the same trick plex-for-kodi uses
-        in lib/windows/dropdown.py.
-
-        The list is the grouplist child directly, with no wrapping group --
-        one control with one height cannot drift from itself.
-
-        It is DECLARED at the maximum and shrunk here, never grown. Kodi
-        allocates a list's item slots from its declared height at load, so a
-        list declared at five rows and grown to eight gets the layout space
-        but not the extra slots: measured, it drew four rows inside a 512px
-        box while the grouplist correctly reserved all 512, leaving a gap that
-        looked like a layout bug and was really a missing-slots one.
-
-        Capped at what fits the viewport, and that cap is load-bearing rather
-        than tidy: a grouplist child taller than the viewport strands focus,
-        because the list has no overflow of its own to scroll and the
-        grouplist thinks its focused child is already at offset 0
-        (project_kodi_grouplist_scroll_limit). Past the cap the list keeps its
-        internal scroll instead, which is that memory's prescribed fallback.
-
-        In practice the cap never binds: MAX_HOME_ROWS is 9 and the viewport
-        holds 10. It is here so that raising one without the other cannot
-        quietly produce an unreachable row."""
-        visible = max(1, min(count, T.SETTINGS_HOMEROWS_MAX_VISIBLE))
-        height = visible * T.SETTINGS_HOMEROW_H
-        try:
-            self.getControl(self.SETTINGS_HOMEROWS_ID).setHeight(height)
-        except Exception:
-            pass
+        self._settings_home_slots = [i for i, _t, _e, _k, _r in shown]
+        # Say so LOUDLY rather than editing a list the viewer cannot see all
+        # of. MAX_HOME_ROWS sat at 9 while tofa's own default grew to 10, and
+        # the tenth row simply was not there -- no error, no gap, just a
+        # shorter list than the account holds.
+        if len(shown) > home_rows.MAX_HOME_ROWS:
+            log.warning(
+                "settings: account has {0} home rows but only {1} slots exist "
+                "-- raise home_rows.MAX_HOME_ROWS".format(
+                    len(shown), home_rows.MAX_HOME_ROWS))
+        for slot in range(home_rows.MAX_HOME_ROWS):
+            prefix = "homerow_{0}".format(slot)
+            if slot >= len(shown):
+                self.setProperty(prefix + "_title", "")
+                self.setProperty(prefix + "_can_up", "")
+                self.setProperty(prefix + "_can_down", "")
+                self.setProperty(prefix + "_checked", "")
+                self.setProperty(prefix + "_can_remove", "")
+                self.setProperty(prefix + "_sub", "")
+                continue
+            _index, title, enabled, kind, removable = shown[slot]
+            self.setProperty(prefix + "_title", title)
+            # The TEN rows an account starts with can only be switched off,
+            # never taken off the list -- every tofa app enforces that, and
+            # nothing in the row data marks them, so home_rows carries the
+            # list. Everything else the viewer put there can go.
+            #
+            # This is NOT "is it a builtin": two of the ten are typed
+            # `discovery`, indistinguishable in the payload from a Discover
+            # row added by hand.
+            self.setProperty(prefix + "_can_remove", "1" if removable else "")
+            # The subtitle rides with the remove button, not with the row
+            # TYPE. Checked on a 2x crop of the reference: its two default
+            # trending rows are typed `discovery` and carry no subtitle,
+            # while the trending row the viewer added carries "Discover".
+            # So the line is not "what kind of row is this" -- it is why
+            # this one can be taken off the list, which is only worth
+            # saying about a row that can.
+            self.setProperty(prefix + "_sub", {
+                "discovery": "Discover", "genre": "Genre",
+            }.get(kind, "") if removable else "")
+            self.setProperty(prefix + "_checked", "1" if enabled else "")
+            # The app dims the first row's up arrow and the last row's down.
+            # <enable> is bound to these, and Kodi SKIPS a disabled control
+            # when navigating, so the ends behave as well as look right.
+            self.setProperty(prefix + "_can_up", "" if slot == 0 else "1")
+            self.setProperty(prefix + "_can_down",
+                             "" if slot == len(shown) - 1 else "1")
+        self._settings_wire_home_rows(
+            len(shown), [r for _i, _t, _e, _k, r in shown])
 
     def _settings_spotlight_clicked(self):
         home = self._settings_home_screen()
         home["show_hero"] = not home.get("show_hero", True)
         self._settings_write_home(home)
 
-    def _settings_home_row_clicked(self):
-        """Select opens the three choices the app spreads across three
-        independently focusable controls per row. A Kodi list item cannot
-        offer a third focus target, and Left is taken by "back to the
-        sidebar" on this pane, so they live in the same floating panel 7.2
-        already uses for card actions."""
-        item = self.settings_homerows_list.getSelectedItem()
-        if item is None:
+    def _settings_wire_home_rows(self, count: int, removable=None):
+        """Chain the editor's buttons by hand, in both axes.
+
+        Two reasons XML cannot do this. CGUIControlGroupList::AddControl
+        OVERRIDES its direct children's up/down, and these buttons are
+        GRANDCHILDREN of the appearance grouplist, which is precisely the
+        case that resolves to nothing and makes Kodi wrap internally instead
+        of navigating away (reference_kodi_grouplist_children). And the last
+        VISIBLE row is only known at runtime, since the account decides how
+        many rows there are.
+
+        Vertical moves keep the COLUMN, the way the app does: up from the
+        middle button lands on the middle button above, not back at the
+        first control of the row.
+        """
+        try:
+            spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
+            add_row = self.getControl(self.SETTINGS_ADD_ROW_ID)
+            cols = [[self.getControl(cid)
+                     for cid in home_rows.HOME_ROW_EDIT_IDS[slot]]
+                    for slot in range(count)]
+        except Exception as exc:                                # noqa: BLE001
+            # Before onInit has built the controls, or a slot id that does
+            # not exist: nothing to wire, and this must never break the pane.
+            log.debug("settings: home row wiring skipped ({0!r})".format(exc))
             return
-        index = item.dataSource
+
+        removable = list(removable or [False] * count)
+
+        def usable(slot):
+            """Columns that can actually take focus on this row, LEFT TO
+            RIGHT as they are drawn.
+
+            Two separate things are being respected here. A disabled control
+            cannot take focus, so wiring INTO one is the same bug as aiming
+            focus at it -- the move silently does nothing. And the order is
+            the SCREEN order, not the order the ids happen to run in: remove
+            sits between the down arrow and the switch on screen, while its
+            id is the last of the four. Walking the id order instead sent
+            Left from the switch back to the UP ARROW, two columns away and
+            past the button it was meant to reach -- and since a press there
+            moves the row, that mis-wire did not just misfocus, it acted."""
+            out = []
+            if slot > 0:
+                out.append(home_rows.EDIT_UP)
+            if slot < count - 1:
+                out.append(home_rows.EDIT_DOWN)
+            if slot < len(removable) and removable[slot]:
+                out.append(home_rows.EDIT_REMOVE)
+            out.append(home_rows.EDIT_TOGGLE)
+            return out
+
+        for slot, row in enumerate(cols):
+            live = usable(slot)
+            for n, col in enumerate(live):
+                btn = row[col]
+                if n:
+                    btn.controlLeft(row[live[n - 1]])
+                else:
+                    # Leftmost column keeps the pane's rule: Left is "back
+                    # to the sidebar".
+                    btn.controlLeft(self.getControl(self.SETTINGS_NAV_ID))
+                if n < len(live) - 1:
+                    btn.controlRight(row[live[n + 1]])
+                # Vertically, keep the column when the neighbouring row also
+                # has it; otherwise fall to its toggle, which every row has.
+                for delta, fallback in ((-1, spotlight), (1, add_row)):
+                    near = slot + delta
+                    if 0 <= near < len(cols):
+                        target = row_at = cols[near]
+                        pick = (col if col in usable(near)
+                                else home_rows.EDIT_TOGGLE)
+                        target = row_at[pick]
+                    else:
+                        target = fallback
+                    (btn.controlUp if delta < 0 else btn.controlDown)(target)
+        if cols:
+            # The block's own ends, so the pane above and below still joins
+            # up -- landing on a control that can actually take focus. The
+            # FIRST row's up arrow is disabled by design, so aiming Down
+            # from the spotlight at cols[0][0] pointed at a dead control and
+            # Down did nothing. Same mistake as the focus-follow bug, one
+            # layer up. Mirrored for the last row's down arrow.
+            first = (cols[0][home_rows.EDIT_DOWN] if len(cols) > 1
+                     else cols[0][home_rows.EDIT_TOGGLE])
+            last = (cols[-1][home_rows.EDIT_UP] if len(cols) > 1
+                    else cols[-1][home_rows.EDIT_TOGGLE])
+            spotlight.controlDown(first)
+            add_row.controlUp(last)
+
+    #: control id -> (slot, what pressing it does)
+    def _settings_home_row_button(self, control_id: int):
+        for slot, ids in enumerate(home_rows.HOME_ROW_EDIT_IDS):
+            for action, cid in zip(("up", "down", "toggle", "remove"), ids):
+                if cid == control_id:
+                    return slot, action
+        return None, None
+
+    def _settings_home_row_pressed(self, control_id: int):
+        """Move a row, or turn it off, straight from the row itself.
+
+        No action panel any more: the three choices are three real buttons,
+        which is what the reference app shows and what a viewer expects to
+        find on the row rather than one Select deeper.
+        """
+        slot, action = self._settings_home_row_button(control_id)
+        if slot is None:
+            return
+        slots = getattr(self, "_settings_home_slots", [])
+        if not (0 <= slot < len(slots)):
+            return
+        index = slots[slot]
         home = self._settings_home_screen()
         rows = list(home.get("rows") or [])
         if not (0 <= index < len(rows)):
             return
-        enabled = rows[index].get("enabled", True)
 
-        keys = []
-        if index > 0:
-            keys.append(cardoptions.ROW_UP)
-        if index < len(rows) - 1:
-            keys.append(cardoptions.ROW_DOWN)
-        keys.append(cardoptions.ROW_OFF if enabled else cardoptions.ROW_ON)
-        if rows[index].get("type") != "builtin":
-            # A row the viewer added. The builtin set is fixed, so those can
-            # only be hidden; anything added from the two pickers below has to
-            # be removable or it accumulates with no way back.
-            keys.append(cardoptions.ROW_REMOVE)
-        # No Cancel row: Back already dismisses the panel (CardOptionsDialog
-        # .onAction), and a list of three real actions plus an escape hatch
-        # that the remote's own Back key duplicates is one row of noise. The
-        # Detail variant keeps its Cancel because it is opened from a BUTTON,
-        # where Back is less obviously "put this away".
-        choice = cardoptions.show(title=item.getLabel(),
-                                  subtitle="Where this row sits on Home, and whether it shows.",
-                                  keys=keys)
-        if choice is None:
-            return
-        if choice == cardoptions.ROW_UP:
-            rows[index - 1], rows[index] = rows[index], rows[index - 1]
-        elif choice == cardoptions.ROW_DOWN:
-            rows[index + 1], rows[index] = rows[index], rows[index + 1]
-        elif choice == cardoptions.ROW_REMOVE:
+        if action == "up" and slot > 0:
+            other = slots[slot - 1]
+            rows[other], rows[index] = rows[index], rows[other]
+        elif action == "down" and slot < len(slots) - 1:
+            other = slots[slot + 1]
+            rows[other], rows[index] = rows[index], rows[other]
+        elif action == "remove":
             del rows[index]
+        elif action == "toggle":
+            rows[index] = dict(rows[index], enabled=not rows[index].get("enabled", True))
         else:
-            rows[index] = dict(rows[index], enabled=not enabled)
+            return
         home["rows"] = rows
         self._settings_write_home(home)
+        # Follow the row, not the position: after a move the viewer is still
+        # thinking about the row they just moved, and leaving focus behind
+        # means the next press moves a DIFFERENT row.
+        if action == "remove":
+            # The row is gone. Land on whatever now occupies its slot, or the
+            # one above if it was the last -- never on the vanished row.
+            landed = min(slot, len(slots) - 2)
+            if landed < 0:
+                return
+            try:
+                self.setFocusId(
+                    home_rows.HOME_ROW_EDIT_IDS[landed][home_rows.EDIT_TOGGLE])
+            except Exception:                                   # noqa: BLE001
+                pass
+        elif action in ("up", "down"):
+            landed = slot - 1 if action == "up" else slot + 1
+            landed = max(0, min(landed, len(slots) - 1))
+            # The arrow the viewer just pressed may be DISABLED at the row's
+            # new position -- moving row 2 up makes it row 1, whose up arrow
+            # is dimmed by design, and the mirror case for the last row's
+            # down arrow. setFocusId on a disabled control does nothing, so
+            # focus was left stranded on the row that had moved away and the
+            # next Up escaped to the nav bar. Reported 2026-08-27.
+            #
+            # Follow the ROW to the nearest control that can actually hold
+            # focus: the pressed column first, then the other arrow, then the
+            # switch, which is never disabled.
+            last = len(slots) - 1
+            wanted = 0 if action == "up" else 1
+            order = [wanted, 1 - wanted, 2]
+            for col in order:
+                if col == 0 and landed == 0:
+                    continue        # up arrow is dimmed at the top
+                if col == 1 and landed == last:
+                    continue        # down arrow is dimmed at the bottom
+                try:
+                    self.setFocusId(home_rows.HOME_ROW_EDIT_IDS[landed][col])
+                except Exception:                               # noqa: BLE001
+                    continue
+                break
 
     def _settings_write_home(self, home: dict):
         """Send the WHOLE home_screen object, for the shallow-merge reason in
@@ -5970,27 +6209,35 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- Appearance: adding a row --------------------------------------
 
     def _settings_fill_add_rows(self):
-        """The two "add a row" actions. Static labels; what they can offer is
-        only known once the picker is opened, which is deliberate -- both
-        lists are a network call and this page must draw without one."""
-        discover = kodigui.ManagedListItem(label="Add a Discover row")
-        discover.setProperty("summary", "Any of the lists your Discover screen shows")
-        self.settings_add_discover_list.reset()
-        self.settings_add_discover_list.addItems([discover])
+        """The one "add a row" action. A static label; what it can offer is
+        only known once the picker is opened, which is deliberate -- the
+        shelf and genre lists are both a network call and this page must
+        draw without one."""
+        add = kodigui.ManagedListItem(label="Add a row")
+        # Not "a row you removed": the Home rows group offers Recently
+        # Released to anyone who does not have it, including a profile that
+        # predates the row and removed nothing. "not already here" is true
+        # of all three groups and says why the list is shorter than the
+        # Discover screen.
+        add.setProperty("summary",
+                        "Any Discover list, genre, or Home row not already here")
+        self.settings_add_row_list.reset()
+        self.settings_add_row_list.addItems([add])
 
-        genre = kodigui.ManagedListItem(label="Add a genre row")
-        genre.setProperty("summary", "A row of everything in your library from one genre")
-        self.settings_add_genre_list.reset()
-        self.settings_add_genre_list.addItems([genre])
+    def _settings_add_row(self):
+        """ONE picker over three groups -- Home rows, Discover, Genres --
+        rather than a button per kind.
 
-    def _settings_add_discovery_row(self):
-        """Offer the shelves this SERVER actually has, minus the ones already
-        on Home.
+        That is the reference apps' shape: the web app renders a single
+        select whose options are grouped under exactly these three labels,
+        and the tvOS app the same. What we had instead was two buttons, and
+        a Discover list annotated with the raw `kind` the server tags a
+        shelf with ("Now", "Availability"), which appears in no tofa app --
+        those are our Discover TAB names, not a category anyone else shows.
 
-        Keyed off `key`, never `list_type`: the latter is null on every shelf
-        added after the original seven (see api.discovery_page). The row entry
-        mirrors what the web app writes -- id "discover-<key>" -- so a row
-        added here and one added on the web are the same object.
+        Genres come from the library, Discover shelves from the server, and
+        the builtin group from what this add-on knows how to draw. Anything
+        already on Home is left out of all three.
         """
         # Lazy, same as every other playoptions caller here: it pulls in a
         # second WindowXML and nothing on this page needs it until a picker
@@ -6000,88 +6247,82 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if client is None:
             cardoptions.alert("Home Screen", "Can't reach your server.", error=True)
             return
+
+        home = self._settings_home_screen()
+        rows = list(home.get("rows") or [])
+        present = {r.get("id") for r in rows}
+        taken_lists = {r.get("discoveryList") for r in rows if r.get("type") == "discovery"}
+        taken_genres = {r.get("genre") for r in rows if r.get("type") == "genre"}
+
+        # Builtins first: no network, and it is the group the reference puts
+        # at the top.
+        builtins = [rid for rid in home_rows.ADDABLE_BUILTIN_IDS
+                    if rid not in present]
+
+        # A shelf list or a genre list that fails is not fatal -- the other
+        # groups are still worth offering, so each is fetched on its own and
+        # an error simply empties that group.
         try:
             shelves = (client.discovery_page() or {}).get("shelves") or []
         except http.ApiError as exc:
-            cardoptions.alert("Home Screen", exc.message, error=True)
-            return
+            log.warning("settings: discover shelves unavailable ({0})".format(exc.message))
+            shelves = []
+        # Keyed off `key`, never `list_type`: the latter is null on every
+        # shelf added after the original seven (see api.discovery_page). The
+        # row entry mirrors what the web app writes -- id "discover-<key>" --
+        # so a row added here and one added on the web are the same object.
+        offered_shelves = [s for s in shelves
+                           if s.get("key") and s["key"] not in taken_lists]
 
-        home = self._settings_home_screen()
-        rows = list(home.get("rows") or [])
-        taken = {r.get("discoveryList") for r in rows if r.get("type") == "discovery"}
-        offered = [s for s in shelves if s.get("key") and s["key"] not in taken]
-        if not offered:
-            cardoptions.alert("Home Screen",
-                              "Every Discover list your server offers is already on Home.")
-            return
-
-        index = playoptions.show_choice(
-            title="Add a Discover row", subtitle="",
-            rows=[{"label": s.get("title") or s["key"],
-                   "detail": (s.get("kind") or "").title()} for s in offered])
-        if index is None:
-            return
-        key = offered[index]["key"]
-        rows.append({"type": "discovery", "discoveryList": key,
-                     "id": "discover-{0}".format(key), "enabled": True})
-        home["rows"] = rows
-        self._settings_write_home(home)
-
-    def _settings_add_genre_row(self):
-        """Offer the library's own genres, minus those already on Home.
-
-        /media/genres returns NAMES, and `/media`'s genre filter takes the
-        name string directly, so the name is the whole key -- there is no id
-        to look up. The row's own `id` is a slug of it, purely so the entry
-        has a stable handle for the web app's list rendering; nothing on this
-        client reads it (see home_rows.row_title, which names a genre row from
-        `genre`)."""
-        # Lazy, same as every other playoptions caller here: it pulls in a
-        # second WindowXML and nothing on this page needs it until a picker
-        # is actually opened.
-        from . import playoptions
-        client = self._get_client()
-        if client is None:
-            cardoptions.alert("Home Screen", "Can't reach your server.", error=True)
-            return
         try:
             genres = client.genres() or []
         except http.ApiError as exc:
-            cardoptions.alert("Home Screen", exc.message, error=True)
-            return
-        genres = [g for g in genres if isinstance(g, str) and g]
+            log.warning("settings: genres unavailable ({0})".format(exc.message))
+            genres = []
+        offered_genres = [g for g in genres
+                          if isinstance(g, str) and g and g not in taken_genres]
 
-        home = self._settings_home_screen()
-        rows = list(home.get("rows") or [])
-        taken = {r.get("genre") for r in rows if r.get("type") == "genre"}
-        offered = [g for g in genres if g not in taken]
-        if not offered:
-            cardoptions.alert("Home Screen", "Every genre in your library is already on Home.")
+        groups = [
+            {"key": "builtin", "title": "Home rows",
+             "options": [{"label": _(home_rows.BUILTIN_ROW_LABELS[rid]),
+                          "detail": ""} for rid in builtins]},
+            {"key": "discovery", "title": "Discover",
+             "options": [{"label": s.get("title") or s["key"], "detail": ""}
+                         for s in offered_shelves]},
+            {"key": "genre", "title": "Genres",
+             "options": [{"label": g, "detail": ""} for g in offered_genres]},
+        ]
+        if not any(g["options"] for g in groups):
+            cardoptions.alert("Home Screen",
+                              "Every row your server offers is already on Home.")
             return
 
-        index = playoptions.show_choice(
-            title="Add a genre row", subtitle="",
-            rows=[{"label": g, "detail": ""} for g in offered])
-        if index is None:
+        picked = playoptions.show_grouped_choice(
+            title="Add a row", subtitle="", groups=groups)
+        if picked is None:
             return
-        genre = offered[index]
-        rows.append({"type": "genre", "genre": genre,
-                     "id": "genre-{0}".format(genre.lower().replace(" ", "-")),
-                     "enabled": True})
+        kind, index = picked
+
+        if kind == "builtin":
+            row_id = builtins[index]
+            rows.append({"type": "builtin", "id": row_id, "enabled": True})
+        elif kind == "discovery":
+            key = offered_shelves[index]["key"]
+            rows.append({"type": "discovery", "discoveryList": key,
+                         "id": "discover-{0}".format(key), "enabled": True})
+        else:
+            # /media/genres returns NAMES, and `/media`'s genre filter takes
+            # the name string directly, so the name is the whole key -- there
+            # is no id to look up. The row's own `id` is a slug of it, purely
+            # so the entry has a stable handle for the web app's list
+            # rendering; nothing on this client reads it (see
+            # home_rows.row_title, which names a genre row from `genre`).
+            genre = offered_genres[index]
+            rows.append({"type": "genre", "genre": genre,
+                         "id": "genre-{0}".format(genre.lower().replace(" ", "-")),
+                         "enabled": True})
         home["rows"] = rows
         self._settings_write_home(home)
-
-    # --- Playback & Video, Audio & Subtitles, Region --------------------
-    #
-    # Every option list here is hardcoded in resources/lib/settings_options.py
-    # because the API exposes none of them -- see that module's docstring for
-    # what was checked. The lists are the tofa web app's own, so a value set
-    # on the TV is one the web UI also offers.
-    #
-    # `playback` is the ONE deep-merged preference section, so these can patch
-    # into it without resending its siblings. `segment_actions` is still sent
-    # whole: how deep the server's merge goes below `playback` is not
-    # something we have tested, and the object is three keys.
 
     def _settings_playback(self) -> dict:
         return dict(self._ensure_preferences().get("playback") or {})
@@ -6091,63 +6332,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         # The API's contract: "A missing key means `auto` ... every client
         # must apply that default", so an untouched profile shows Auto
-        # selected rather than nothing selected.
-        current_next = str(playback.get("auto_play_next") or "").lower()
-        values = [v for v, _l in settings_options.AUTO_PLAY_NEXT_ACTIONS]
-        if current_next not in values:
-            current_next = "auto"
-        label, hint = settings_options.AUTO_PLAY_NEXT_ROW
-        nextup = kodigui.ManagedListItem(label=label)
-        nextup.setProperty("summary", hint)
-        for idx, (value, seg_label) in enumerate(
-                settings_options.AUTO_PLAY_NEXT_ACTIONS):
-            nextup.setProperty("seg{0}".format(idx), seg_label)
-            nextup.setProperty("seg{0}_on".format(idx),
-                               "1" if value == current_next else "")
-        self.settings_nextup_list.reset()
-        self.settings_nextup_list.addItems([nextup])
-
-        actions = (playback.get("segment_actions") or {})
-        for key, label, hint in settings_options.SEGMENT_ROWS:
-            mlist = self.settings_segment_lists.get(key)
-            if mlist is None:
-                continue
-            current = actions.get(key, "ask")
-            li = kodigui.ManagedListItem(label=label)
-            li.setProperty("summary", hint)
-            for idx, (value, seg_label) in enumerate(settings_options.SEGMENT_ACTIONS):
-                li.setProperty("seg{0}".format(idx), seg_label)
-                li.setProperty("seg{0}_on".format(idx), "1" if value == current else "")
-            mlist.reset()
-            mlist.addItems([li])
-
-    def _settings_nextup_clicked(self):
-        """Select cycles auto -> ask -> none, like the segment rows."""
-        playback = self._settings_playback()
-        values = [v for v, _l in settings_options.AUTO_PLAY_NEXT_ACTIONS]
-        current = str(playback.get("auto_play_next") or "").lower()
-        try:
-            nxt = values[(values.index(current) + 1) % len(values)]
-        except ValueError:
-            # Unset (or a value we do not know) reads as the default "auto",
-            # so the first press moves off it rather than re-selecting it.
-            nxt = values[1] if len(values) > 1 else values[0]
-        self._settings_write({"playback": {"auto_play_next": nxt}})
-        self._settings_fill_playback()
-        self._settings_fill_quality()
-
-    def _settings_segment_clicked(self, key: str):
-        """Select cycles, same as the rating badge and for the same reason."""
-        actions = dict(self._settings_playback().get("segment_actions") or {})
-        values = [v for v, _l in settings_options.SEGMENT_ACTIONS]
-        try:
-            nxt = values[(values.index(actions.get(key, "ask")) + 1) % len(values)]
-        except ValueError:
-            nxt = "ask"
-        actions[key] = nxt
-        self._settings_write({"playback": {"segment_actions": actions}})
-        self._settings_fill_playback()
-        self._settings_fill_quality()
+        self._settings_fill_segmented()
 
     def _settings_fill_audio(self):
         """Two sections, worded as the web and desktop apps word them --
@@ -6283,24 +6468,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return 0
 
     def _settings_fill_quality(self):
-        playback = self._settings_playback()
-        row = kodigui.ManagedListItem(label="Streaming quality")
-        row.setProperty("summary", "Auto adapts to your connection")
-        active = self._settings_quality_index(playback)
-        for idx, (label, _value) in enumerate(self.SETTINGS_QUALITY_SEGMENTS):
-            row.setProperty("seg{0}".format(idx), label)
-            row.setProperty("seg{0}_on".format(idx), "1" if idx == active else "")
-        self.settings_quality_list.reset()
-        self.settings_quality_list.addItems([row])
-
-    def _settings_quality_clicked(self):
-        """Select CYCLES, as the other segmented rows do."""
-        playback = self._settings_playback()
-        nxt = (self._settings_quality_index(playback) + 1) % len(
-            self.SETTINGS_QUALITY_SEGMENTS)
-        self._settings_write({"playback": {
-            "default_quality": self.SETTINGS_QUALITY_SEGMENTS[nxt][1]}})
-        self._settings_fill_quality()
+        self._settings_fill_segmented()
 
     def _settings_direct_only_clicked(self):
         """Flip CONNECTION's toggle. Device-local, so no server round trip --
