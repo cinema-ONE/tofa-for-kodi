@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.16" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.17" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,13 +25,25 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Play Next now always starts the next episode at the beginning. It could
-        occasionally begin a minute or two in instead, which happened because the
-        add-on handed Kodi the next episode without stopping the previous one
-        first. That shortcut existed to avoid a brief display-mode change between
-        episodes; if you would rather not see that change, Kodi's own setting
-        under Settings &gt; Player &gt; Videos &gt; "Adjust display refresh rate" has an
-        "On start" option that leaves the display alone when playback stops.
+      - You can re-arrange your Home screen. Settings &gt; Appearance gives every
+        row its own controls: move it up, move it down, switch it off, or take
+        it off the list if you put it there yourself. The ten rows every tofa
+        account starts with can be switched off but not removed, which is how
+        tofa's other apps behave. Adding a row is now one control listing
+        everything you can add, grouped into Discover lists, genres and Home
+        rows.
+      - If your Home screen has ten rows, the tenth one is now there. The
+        add-on had room for nine, so the last row simply did not appear, and
+        could not be reached in Settings either. A tofa account now starts with
+        ten rows, so this affected anyone who had not changed theirs.
+      - Settings that offer a few fixed choices now show all of them at once,
+        so you can go straight to the one you want instead of stepping through
+        the others. This covers the rating badge, preferred quality, whether to
+        play the next episode, and the five skip behaviours.
+      - An episode's own title now appears on the detail screen, at the start
+        of the line carrying the year and the rest of the details.
+      - The note under the Home screen row list showed a stray line of text
+        belonging to Kodi's skin instead of tofa's own wording.
     </news>
     <assets>
       <icon>icon.png</icon>
