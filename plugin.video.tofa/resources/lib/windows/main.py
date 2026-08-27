@@ -5037,6 +5037,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         page = self._settings_current_page()
         if page is None:
             return
+        # Sync the pane to the highlighted row first. On the remote this is a
+        # no-op -- the Up/Down handler above has already switched the page --
+        # but any path that moves the sidebar's selection WITHOUT an Up/Down
+        # leaves the two disagreeing: the row highlights and the pane keeps
+        # showing the previous page. SetFocus(8000,n) from a script does
+        # exactly that, and it produced two screenshots during the 2026-08-27
+        # session that looked like a real bug and were not. Idempotent, so
+        # making the honest path bulletproof costs nothing.
+        self._settings_show_page()
         target = settings_pages.RIGHT_TARGETS.get(page.key)
         if target:
             self.setFocusId(target)
