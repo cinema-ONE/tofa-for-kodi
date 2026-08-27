@@ -252,8 +252,7 @@ def render_main() -> str:
     # that chain.
     settings_homerow_editors = "".join(
         fragments.settings_home_row_editor(i) for i in range(home_rows.MAX_HOME_ROWS))
-    settings_add_discover_item, settings_add_discover_focused = fragments.settings_add_row(8340)
-    settings_add_genre_item, settings_add_genre_focused = fragments.settings_add_row(8350)
+    settings_add_row_item, settings_add_row_focused = fragments.settings_add_row(8340)
     # Value rows that open a picker: same shape as an action row, with the
     # current choice where the glyph would be.
     settings_region_item, settings_region_focused = fragments.settings_choice_row(
@@ -437,10 +436,8 @@ def render_main() -> str:
         settings_alwayssubs_focused=settings_alwayssubs_focused,
         settings_spotlight_item=settings_spotlight_item,
         settings_spotlight_focused=settings_spotlight_focused,
-        settings_add_discover_item=settings_add_discover_item,
-        settings_add_discover_focused=settings_add_discover_focused,
-        settings_add_genre_item=settings_add_genre_item,
-        settings_add_genre_focused=settings_add_genre_focused,
+        settings_add_row_item=settings_add_row_item,
+        settings_add_row_focused=settings_add_row_focused,
         **settings_seg_groups,
         settings_homerow_editors=settings_homerow_editors,
         settings_homerow_item=settings_homerow_item,

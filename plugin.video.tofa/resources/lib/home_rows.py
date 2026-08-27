@@ -42,6 +42,85 @@ BUILTIN_ROW_LABELS: dict[str, int] = {
     "suggested": 31064,
 }
 
+# ------------------------------------------------- the account's DEFAULTS --
+# The ten rows a tofa account starts with. Every tofa app REFUSES to remove
+# one of these -- you can only switch it off -- and Adrian confirmed the rule
+# holds on macOS, the web app, iOS and tvOS alike (2026-08-27).
+#
+# Read out of the web app's own bundle rather than inferred from a screenshot,
+# because nothing in the row data marks them: the two trending rows are typed
+# `discovery` exactly like a row a viewer added, and the API has no field
+# telling them apart. The web app carries the list client-side and so must we.
+#
+#     Bn = the eight builtin ids below
+#     Hn = the two discovery rows below
+#     Gn = new Set([...Bn, ...Hn.map(e => e.id)])
+#     Kn = e => Gn.has(e.id)          // "is a default row"
+#
+# A profile made before a row existed simply lacks it -- "The Kid" has eight
+# rows, not ten, because it predates the recently_released split. That is why
+# this is a PROTECTED set and not an expected one: never assume all ten are
+# present.
+HOME_ROW_DEFAULT_BUILTINS: tuple[str, ...] = (
+    "continue_watching",
+    "recent_movies",
+    "recent_tv",
+    "recently_released_movies",
+    "recently_released_tv",
+    "top_rated_movies",
+    "top_rated_tv",
+    "suggested",
+)
+HOME_ROW_DEFAULT_DISCOVERY: tuple[str, ...] = (
+    "discover-trending-movies",
+    "discover-trending-tv",
+)
+HOME_ROW_PROTECTED_IDS: frozenset = frozenset(
+    HOME_ROW_DEFAULT_BUILTINS + HOME_ROW_DEFAULT_DISCOVERY)
+
+# The builtin rows the editor may OFFER: every one it knows minus the eight
+# it can never remove. Today that is `recently_released` alone -- the mixed
+# movies-and-shows row the 0.9.29 split superseded but did not retire.
+#
+# Mirrors the web app's `Vn = zn.filter(e => !Bn.includes(e.id))`, quirk
+# included: a profile that never had `recently_released_tv` cannot gain it
+# here, because that id is protected and therefore never offered. Widening
+# this to "any builtin not currently present" would fix that and is
+# deliberately NOT done -- the preference blob is shared with four other
+# apps, and inventing an option none of them offers is how the row lists
+# drift apart.
+ADDABLE_BUILTIN_IDS: tuple[str, ...] = tuple(
+    row_id for row_id in BUILTIN_ROW_LABELS
+    if row_id not in HOME_ROW_DEFAULT_BUILTINS
+)
+
+
+def row_is_default(row: dict) -> bool:
+    """Is this one of the ten rows every account starts with?"""
+    return row.get("id") in HOME_ROW_PROTECTED_IDS
+
+
+def row_removable(row: dict) -> bool:
+    """May the viewer take this row OFF the list, as opposed to switching it
+    off? Mirrors the web app's `Jn`.
+
+    A default row never can. Anything else can, provided we recognise it:
+    a discovery row, a genre row, or a builtin from BUILTIN_ROW_LABELS.
+
+    A row matching none of those is one this add-on does not understand, and
+    it is left alone deliberately -- removing what we cannot name would
+    delete another app's row on the viewer's behalf.
+    """
+    if row_is_default(row):
+        return False
+    row_type = row.get("type")
+    if row_type in ("genre", "discovery"):
+        return True
+    if row.get("genre") or row.get("discoveryList"):
+        return True
+    return row_type == "builtin" and row.get("id") in BUILTIN_ROW_LABELS
+
+
 DISCOVERY_LIST_LABELS: dict[str, int] = {
     "trending-movies": 31080,
     "trending-tv": 31081,
@@ -52,12 +131,20 @@ DISCOVERY_LIST_LABELS: dict[str, int] = {
     "upcoming-movies": 31084,
 }
 
-# Fixed number of row slots main.xml.tpl (Home section) pre-declares. The
-# real account currently sends 8 rows (whoami's
-# preferences.home_screen.rows), leaving one spare slot. A "More to
-# Discover" 10th row would need bumping this to 10 and adding a matching
-# group/list pair to main.xml.tpl, following the id-increment rule below.
-MAX_HOME_ROWS = 9
+# Fixed number of row slots main.xml.tpl (Home section) pre-declares.
+#
+# WAS 9, on a note reading "the real account currently sends 8 rows, leaving
+# one spare slot". That went stale: tofa's DEFAULT home screen is now TEN
+# rows (eight builtins plus the two trending ones -- see
+# HOME_ROW_PROTECTED_IDS), so a profile created today overflowed by one
+# before it was touched at all. Caught 2026-08-27 by adding a tenth row and
+# watching it not appear -- not on Home, and not in the Settings editor
+# either, where its controls did not exist to focus.
+#
+# 16 now, matching MAX_DISCOVER_ROWS and for the same reason: a slot nobody
+# uses renders nothing, while running out drops a row in silence. Ten of the
+# sixteen are spoken for before the viewer adds a single genre row.
+MAX_HOME_ROWS = 16
 
 #: The home-screen EDITOR in Settings > Appearance: three focusable
 #: controls per row slot, laid out like the reference app -- move up, move
@@ -70,12 +157,16 @@ MAX_HOME_ROWS = 9
 #: grouplist of real buttons is the shape Kodi's own Estuary uses for
 #: SettingsCategory, and it is what makes three targets per row reachable.
 #:
-#: 8801/8802/8803 for slot 0, then +10 per slot. The 88xx block, NOT 84xx:
-#: Playback & Video already owns the 8400s (its segment ids are 8410-8450
-#: and its grouplist is 8490), and check_xml.py caught the collision the
-#: first time this was written. 88xx and 89xx were the lowest free blocks.
+#: 9101/9102/9103/9104 for slot 0, then +10 per slot.
+#:
+#: The block moved from 88xx when the slot count went to 16: 8800 + 10*15
+#: reaches 8950, and Playback & Video's segmented rows own 8900-8973. 84xx
+#: was never available either -- that pane's segments are 8410-8450 with its
+#: grouplist at 8490, and check_xml.py caught that collision the first time
+#: this was written. Above 9000 (the hero backdrop, the highest id in the
+#: window) there is nothing to collide with at all.
 HOME_ROW_EDIT_IDS: tuple[tuple[int, int, int, int], ...] = tuple(
-    (8801 + 10 * i, 8802 + 10 * i, 8803 + 10 * i, 8804 + 10 * i)
+    (9101 + 10 * i, 9102 + 10 * i, 9103 + 10 * i, 9104 + 10 * i)
     for i in range(MAX_HOME_ROWS)
 )
 
@@ -85,19 +176,24 @@ EDIT_UP, EDIT_DOWN, EDIT_TOGGLE, EDIT_REMOVE = 0, 1, 2, 3
 #: Slot i's wrapping group, so the whole row can be hidden when the account
 #: has fewer rows than slots.
 HOME_ROW_EDIT_GROUP_IDS: tuple[int, ...] = tuple(
-    8800 + 10 * i for i in range(MAX_HOME_ROWS)
+    9100 + 10 * i for i in range(MAX_HOME_ROWS)
 )
 
 # HOME_ROW_GROUP_IDS[i]/HOME_ROW_LIST_IDS[i] is slot i's (group, list)
 # control-id pair in the Home section of main.xml.tpl (rendered to
-# script-tofa-main.xml). Continues the increment already established by
-# the 3 original hardcoded rows (group 4100/list 4200, 4300/4400,
-# 4500/4600): group_id = 4000 + 100*(2i+1), list_id = group_id + 100. No
-# collisions with the hero block (4000-4005), the row region's own
+# script-tofa-main.xml).
+#
+# The stride was 200 per slot, inherited from the three original hardcoded
+# rows (4100/4200, 4300/4400, 4500/4600). Nine slots reached 5800 and a
+# tenth would have landed on 6000, which is Browse. Nothing needed those
+# ninety spare ids, so the stride is now 20 -- the same shape the Discover
+# rows use -- and sixteen slots fit in 4100-4410 with room over.
+#
+# No collisions with the hero block (4000-4005), the row region's own
 # grouplist (4090), the nav bar (2000/3000), the hero backdrop (9000), or
-# the kodigui sentinel (666).
-HOME_ROW_GROUP_IDS: tuple[int, ...] = tuple(4000 + 100 * (2 * i + 1) for i in range(MAX_HOME_ROWS))
-HOME_ROW_LIST_IDS: tuple[int, ...] = tuple(gid + 100 for gid in HOME_ROW_GROUP_IDS)
+# the kodigui sentinel (666). check_xml.py proves it per render.
+HOME_ROW_GROUP_IDS: tuple[int, ...] = tuple(4100 + 20 * i for i in range(MAX_HOME_ROWS))
+HOME_ROW_LIST_IDS: tuple[int, ...] = tuple(gid + 10 for gid in HOME_ROW_GROUP_IDS)
 
 
 # Discover's row slots. Sized for the LARGEST group tab rather than a fixed

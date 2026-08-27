@@ -459,7 +459,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: id does not error -- Kodi silently resolves to whichever comes first
     #: in the XML, so the segment row simply stops working. check_xml caught
     #: it; the screen did not.
-    SETTINGS_QUALITY_ID = 8470
     #: `playback.default_quality`, in the app's order. Both values verified
     #: against the live server by writing each and reading it back -- the
     #: lesson of segment_actions' "play", which wrote cleanly and was
@@ -475,8 +474,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_EPISODES_ID = 8310
     SETTINGS_SPOTLIGHT_ID = 8320
     SETTINGS_HOMEROWS_ID = 8330
-    SETTINGS_ADD_DISCOVER_ID = 8340
-    SETTINGS_ADD_GENRE_ID = 8350
+    # ONE "Add a row" tile, holding three groups. 8350 was a second tile
+    # ("Add a genre row") until the reference apps settled on a single
+    # grouped picker; the id is retired rather than reused so a stale
+    # rendered XML cannot resolve it to something else.
+    SETTINGS_ADD_ROW_ID = 8340
     SETTINGS_REGION_ID = 8360
     # Playback & Video (8400s) and Audio & Subtitles (8500s) each own a
     # scrolling grouplist of their own, 8490 / 8590.
@@ -484,7 +486,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_SEGMENT_IDS = (8410, 8420, 8430, 8440, 8450)
     # NEXT EPISODE sits in its own group above SEGMENTS; see
     # tokens.SETTINGS_NEXTUP_GROUP_H for why it is not a sixth row.
-    SETTINGS_NEXTUP_ID = 8460
     # Audio & Subtitles: primary + secondary per axis, mirroring the web and
     # desktop apps. preferred_*_languages is an ordered list and those clients
     # write TWO entries for a non-English locale, so a one-row page could
@@ -831,10 +832,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # nine groups of real buttons (home_rows.HOME_ROW_EDIT_IDS), because
         # a list item cannot hold three focus targets. See
         # fragments.settings_home_row_editor.
-        self.settings_add_discover_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_ADD_DISCOVER_ID, 1)
-        self.settings_add_genre_list = kodigui.ManagedControlList(
-            self, self.SETTINGS_ADD_GENRE_ID, 1)
+        self.settings_add_row_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_ADD_ROW_ID, 1)
         self.settings_region_list = kodigui.ManagedControlList(
             self, self.SETTINGS_REGION_ID, 1)
         self.settings_audiolang_list = kodigui.ManagedControlList(
@@ -1161,12 +1160,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_spotlight_clicked()
         elif controlID in settings_options.SEGMENTED_BY_ID:
             self._settings_segmented_pressed(controlID)
-        elif 8800 <= controlID <= 8800 + 10 * home_rows.MAX_HOME_ROWS:
+        elif (home_rows.HOME_ROW_EDIT_GROUP_IDS[0]
+              <= controlID <= home_rows.HOME_ROW_EDIT_IDS[-1][-1]):
             self._settings_home_row_pressed(controlID)
-        elif controlID == self.SETTINGS_ADD_DISCOVER_ID:
-            self._settings_add_discovery_row()
-        elif controlID == self.SETTINGS_ADD_GENRE_ID:
-            self._settings_add_genre_row()
+        elif controlID == self.SETTINGS_ADD_ROW_ID:
+            self._settings_add_row()
         elif controlID == self.SETTINGS_REGION_ID:
             self._settings_region_clicked()
         elif controlID in self.SETTINGS_LANGUAGE_ROWS:
@@ -5051,7 +5049,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_fill_privacy()
         self._settings_fill_device()
         self._settings_wire_account_nav()
-        self._settings_wire_playback_nav()
         self._settings_wire_appearance_nav()
         self._settings_wire_segmented()
 
@@ -5770,18 +5767,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         for a, b in zip(playback_chain, playback_chain[1:]):
             _join(rows.get(a), rows.get(b))
 
-        # The rating row sits between "Add a genre row" and "Episodes
-        # remaining" on Appearance, not in the playback chain.
+        # The rating row sits between "Add a row" and "Episodes remaining"
+        # on Appearance, not in the playback chain.
         try:
-            add_genre = self.getControl(self.SETTINGS_ADD_GENRE_ID)
+            add_row = self.getControl(self.SETTINGS_ADD_ROW_ID)
             episodes = self.getControl(self.SETTINGS_EPISODES_ID)
         except Exception:                                       # noqa: BLE001
             return
         for btn in rows.get("rating", []):
-            btn.controlUp(add_genre)
+            btn.controlUp(add_row)
             btn.controlDown(episodes)
         if rows.get("rating"):
-            add_genre.controlDown(rows["rating"][0])
+            add_row.controlDown(rows["rating"][0])
             episodes.controlUp(rows["rating"][0])
 
     def _settings_rating_index(self, prefs: dict) -> int:
@@ -5887,25 +5884,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         out.controlDown(direct)
         direct.controlUp(out)
 
-    def _settings_wire_playback_nav(self):
-        """QUALITY -> NEXT EPISODE, from Python.
-
-        Third pane to need this, and for the same reason as the other two:
-        every row here is a list inside a group inside the grouplist, so it
-        is a GRANDCHILD, outside the chain the grouplist maintains, and its
-        XML onup/ondown are overridden. See _settings_wire_appearance_nav.
-
-        Measured: without it, Down on Streaming quality does nothing at all
-        and NEXT EPISODE is unreachable from above."""
-        try:
-            quality = self.getControl(self.SETTINGS_QUALITY_ID)
-            nextup = self.getControl(self.SETTINGS_NEXTUP_ID)
-        except Exception:                                    # noqa: BLE001
-            log.warning("settings: could not wire the Playback pane's nav")
-            return
-        quality.controlDown(nextup)
-        nextup.controlUp(quality)
-
     def _settings_wire_appearance_nav(self):
         """Re-assert the two MEDIA CARDS rows' up/down from Python.
 
@@ -5932,14 +5910,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
             foxes.controlDown(spotlight)
             spotlight.controlUp(foxes)
-            add_discover = self.getControl(self.SETTINGS_ADD_DISCOVER_ID)
-            add_genre = self.getControl(self.SETTINGS_ADD_GENRE_ID)
-            # spotlight <-> first editor row and last editor row <-> add
-            # rows are joined by _settings_wire_home_rows, which is the only
-            # place that knows how many rows the account actually has.
-            add_discover.controlDown(add_genre)
-            add_genre.controlUp(add_discover)
-            # add_genre <-> rating pills <-> episodes is joined by
+            # spotlight <-> first editor row and last editor row <-> the
+            # add tile are joined by _settings_wire_home_rows, which is the
+            # only place that knows how many rows the account actually has.
+            # add row <-> rating pills <-> episodes is joined by
             # _settings_wire_segmented, which is the only place that knows
             # which pills a segmented row has.
             region = self.getControl(self.SETTINGS_REGION_ID)
@@ -5990,9 +5964,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 log.debug("settings: skipping unnameable home row {0}".format(row))
                 continue
             shown.append((index, title, row.get("enabled", True),
-                          row.get("type")))
+                          row.get("type"), home_rows.row_removable(row)))
 
-        self._settings_home_slots = [i for i, _t, _e, _k in shown]
+        self._settings_home_slots = [i for i, _t, _e, _k, _r in shown]
+        # Say so LOUDLY rather than editing a list the viewer cannot see all
+        # of. MAX_HOME_ROWS sat at 9 while tofa's own default grew to 10, and
+        # the tenth row simply was not there -- no error, no gap, just a
+        # shorter list than the account holds.
+        if len(shown) > home_rows.MAX_HOME_ROWS:
+            log.warning(
+                "settings: account has {0} home rows but only {1} slots exist "
+                "-- raise home_rows.MAX_HOME_ROWS".format(
+                    len(shown), home_rows.MAX_HOME_ROWS))
         for slot in range(home_rows.MAX_HOME_ROWS):
             prefix = "homerow_{0}".format(slot)
             if slot >= len(shown):
@@ -6003,15 +5986,27 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.setProperty(prefix + "_can_remove", "")
                 self.setProperty(prefix + "_sub", "")
                 continue
-            _index, title, enabled, kind = shown[slot]
+            _index, title, enabled, kind, removable = shown[slot]
             self.setProperty(prefix + "_title", title)
-            # A row the viewer ADDED can be removed; the builtin set is
-            # fixed and can only be hidden. The reference app marks the
-            # added ones with where they came from, under the title.
-            self.setProperty(prefix + "_can_remove",
-                             "" if kind == "builtin" else "1")
+            # The TEN rows an account starts with can only be switched off,
+            # never taken off the list -- every tofa app enforces that, and
+            # nothing in the row data marks them, so home_rows carries the
+            # list. Everything else the viewer put there can go.
+            #
+            # This is NOT "is it a builtin": two of the ten are typed
+            # `discovery`, indistinguishable in the payload from a Discover
+            # row added by hand.
+            self.setProperty(prefix + "_can_remove", "1" if removable else "")
+            # The subtitle rides with the remove button, not with the row
+            # TYPE. Checked on a 2x crop of the reference: its two default
+            # trending rows are typed `discovery` and carry no subtitle,
+            # while the trending row the viewer added carries "Discover".
+            # So the line is not "what kind of row is this" -- it is why
+            # this one can be taken off the list, which is only worth
+            # saying about a row that can.
             self.setProperty(prefix + "_sub", {
-                "discovery": "Discover", "genre": "Genre"}.get(kind, ""))
+                "discovery": "Discover", "genre": "Genre",
+            }.get(kind, "") if removable else "")
             self.setProperty(prefix + "_checked", "1" if enabled else "")
             # The app dims the first row's up arrow and the last row's down.
             # <enable> is bound to these, and Kodi SKIPS a disabled control
@@ -6020,7 +6015,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty(prefix + "_can_down",
                              "" if slot == len(shown) - 1 else "1")
         self._settings_wire_home_rows(
-            len(shown), [k != "builtin" for _i, _t, _e, k in shown])
+            len(shown), [r for _i, _t, _e, _k, r in shown])
 
     def _settings_spotlight_clicked(self):
         home = self._settings_home_screen()
@@ -6044,7 +6039,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """
         try:
             spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
-            add_discover = self.getControl(self.SETTINGS_ADD_DISCOVER_ID)
+            add_row = self.getControl(self.SETTINGS_ADD_ROW_ID)
             cols = [[self.getControl(cid)
                      for cid in home_rows.HOME_ROW_EDIT_IDS[slot]]
                     for slot in range(count)]
@@ -6057,17 +6052,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         removable = list(removable or [False] * count)
 
         def usable(slot):
-            """Columns that can actually take focus on this row. A disabled
-            control cannot, so wiring INTO one is the same bug as aiming
-            focus at it -- the move silently does nothing."""
+            """Columns that can actually take focus on this row, LEFT TO
+            RIGHT as they are drawn.
+
+            Two separate things are being respected here. A disabled control
+            cannot take focus, so wiring INTO one is the same bug as aiming
+            focus at it -- the move silently does nothing. And the order is
+            the SCREEN order, not the order the ids happen to run in: remove
+            sits between the down arrow and the switch on screen, while its
+            id is the last of the four. Walking the id order instead sent
+            Left from the switch back to the UP ARROW, two columns away and
+            past the button it was meant to reach -- and since a press there
+            moves the row, that mis-wire did not just misfocus, it acted."""
             out = []
             if slot > 0:
                 out.append(home_rows.EDIT_UP)
             if slot < count - 1:
                 out.append(home_rows.EDIT_DOWN)
-            out.append(home_rows.EDIT_TOGGLE)
             if slot < len(removable) and removable[slot]:
                 out.append(home_rows.EDIT_REMOVE)
+            out.append(home_rows.EDIT_TOGGLE)
             return out
 
         for slot, row in enumerate(cols):
@@ -6084,7 +6088,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     btn.controlRight(row[live[n + 1]])
                 # Vertically, keep the column when the neighbouring row also
                 # has it; otherwise fall to its toggle, which every row has.
-                for delta, fallback in ((-1, spotlight), (1, add_discover)):
+                for delta, fallback in ((-1, spotlight), (1, add_row)):
                     near = slot + delta
                     if 0 <= near < len(cols):
                         target = row_at = cols[near]
@@ -6106,7 +6110,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             last = (cols[-1][home_rows.EDIT_UP] if len(cols) > 1
                     else cols[-1][home_rows.EDIT_TOGGLE])
             spotlight.controlDown(first)
-            add_discover.controlUp(last)
+            add_row.controlUp(last)
 
     #: control id -> (slot, what pressing it does)
     def _settings_home_row_button(self, control_id: int):
@@ -6200,27 +6204,29 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- Appearance: adding a row --------------------------------------
 
     def _settings_fill_add_rows(self):
-        """The two "add a row" actions. Static labels; what they can offer is
-        only known once the picker is opened, which is deliberate -- both
-        lists are a network call and this page must draw without one."""
-        discover = kodigui.ManagedListItem(label="Add a Discover row")
-        discover.setProperty("summary", "Any of the lists your Discover screen shows")
-        self.settings_add_discover_list.reset()
-        self.settings_add_discover_list.addItems([discover])
+        """The one "add a row" action. A static label; what it can offer is
+        only known once the picker is opened, which is deliberate -- the
+        shelf and genre lists are both a network call and this page must
+        draw without one."""
+        add = kodigui.ManagedListItem(label="Add a row")
+        add.setProperty("summary", "A Discover list, a genre, or a row you removed")
+        self.settings_add_row_list.reset()
+        self.settings_add_row_list.addItems([add])
 
-        genre = kodigui.ManagedListItem(label="Add a genre row")
-        genre.setProperty("summary", "A row of everything in your library from one genre")
-        self.settings_add_genre_list.reset()
-        self.settings_add_genre_list.addItems([genre])
+    def _settings_add_row(self):
+        """ONE picker over three groups -- Home rows, Discover, Genres --
+        rather than a button per kind.
 
-    def _settings_add_discovery_row(self):
-        """Offer the shelves this SERVER actually has, minus the ones already
-        on Home.
+        That is the reference apps' shape: the web app renders a single
+        select whose options are grouped under exactly these three labels,
+        and the tvOS app the same. What we had instead was two buttons, and
+        a Discover list annotated with the raw `kind` the server tags a
+        shelf with ("Now", "Availability"), which appears in no tofa app --
+        those are our Discover TAB names, not a category anyone else shows.
 
-        Keyed off `key`, never `list_type`: the latter is null on every shelf
-        added after the original seven (see api.discovery_page). The row entry
-        mirrors what the web app writes -- id "discover-<key>" -- so a row
-        added here and one added on the web are the same object.
+        Genres come from the library, Discover shelves from the server, and
+        the builtin group from what this add-on knows how to draw. Anything
+        already on Home is left out of all three.
         """
         # Lazy, same as every other playoptions caller here: it pulls in a
         # second WindowXML and nothing on this page needs it until a picker
@@ -6230,88 +6236,82 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if client is None:
             cardoptions.alert("Home Screen", "Can't reach your server.", error=True)
             return
+
+        home = self._settings_home_screen()
+        rows = list(home.get("rows") or [])
+        present = {r.get("id") for r in rows}
+        taken_lists = {r.get("discoveryList") for r in rows if r.get("type") == "discovery"}
+        taken_genres = {r.get("genre") for r in rows if r.get("type") == "genre"}
+
+        # Builtins first: no network, and it is the group the reference puts
+        # at the top.
+        builtins = [rid for rid in home_rows.ADDABLE_BUILTIN_IDS
+                    if rid not in present]
+
+        # A shelf list or a genre list that fails is not fatal -- the other
+        # groups are still worth offering, so each is fetched on its own and
+        # an error simply empties that group.
         try:
             shelves = (client.discovery_page() or {}).get("shelves") or []
         except http.ApiError as exc:
-            cardoptions.alert("Home Screen", exc.message, error=True)
-            return
+            log.warning("settings: discover shelves unavailable ({0})".format(exc.message))
+            shelves = []
+        # Keyed off `key`, never `list_type`: the latter is null on every
+        # shelf added after the original seven (see api.discovery_page). The
+        # row entry mirrors what the web app writes -- id "discover-<key>" --
+        # so a row added here and one added on the web are the same object.
+        offered_shelves = [s for s in shelves
+                           if s.get("key") and s["key"] not in taken_lists]
 
-        home = self._settings_home_screen()
-        rows = list(home.get("rows") or [])
-        taken = {r.get("discoveryList") for r in rows if r.get("type") == "discovery"}
-        offered = [s for s in shelves if s.get("key") and s["key"] not in taken]
-        if not offered:
-            cardoptions.alert("Home Screen",
-                              "Every Discover list your server offers is already on Home.")
-            return
-
-        index = playoptions.show_choice(
-            title="Add a Discover row", subtitle="",
-            rows=[{"label": s.get("title") or s["key"],
-                   "detail": (s.get("kind") or "").title()} for s in offered])
-        if index is None:
-            return
-        key = offered[index]["key"]
-        rows.append({"type": "discovery", "discoveryList": key,
-                     "id": "discover-{0}".format(key), "enabled": True})
-        home["rows"] = rows
-        self._settings_write_home(home)
-
-    def _settings_add_genre_row(self):
-        """Offer the library's own genres, minus those already on Home.
-
-        /media/genres returns NAMES, and `/media`'s genre filter takes the
-        name string directly, so the name is the whole key -- there is no id
-        to look up. The row's own `id` is a slug of it, purely so the entry
-        has a stable handle for the web app's list rendering; nothing on this
-        client reads it (see home_rows.row_title, which names a genre row from
-        `genre`)."""
-        # Lazy, same as every other playoptions caller here: it pulls in a
-        # second WindowXML and nothing on this page needs it until a picker
-        # is actually opened.
-        from . import playoptions
-        client = self._get_client()
-        if client is None:
-            cardoptions.alert("Home Screen", "Can't reach your server.", error=True)
-            return
         try:
             genres = client.genres() or []
         except http.ApiError as exc:
-            cardoptions.alert("Home Screen", exc.message, error=True)
-            return
-        genres = [g for g in genres if isinstance(g, str) and g]
+            log.warning("settings: genres unavailable ({0})".format(exc.message))
+            genres = []
+        offered_genres = [g for g in genres
+                          if isinstance(g, str) and g and g not in taken_genres]
 
-        home = self._settings_home_screen()
-        rows = list(home.get("rows") or [])
-        taken = {r.get("genre") for r in rows if r.get("type") == "genre"}
-        offered = [g for g in genres if g not in taken]
-        if not offered:
-            cardoptions.alert("Home Screen", "Every genre in your library is already on Home.")
+        groups = [
+            {"key": "builtin", "title": "Home rows",
+             "options": [{"label": _(home_rows.BUILTIN_ROW_LABELS[rid]),
+                          "detail": ""} for rid in builtins]},
+            {"key": "discovery", "title": "Discover",
+             "options": [{"label": s.get("title") or s["key"], "detail": ""}
+                         for s in offered_shelves]},
+            {"key": "genre", "title": "Genres",
+             "options": [{"label": g, "detail": ""} for g in offered_genres]},
+        ]
+        if not any(g["options"] for g in groups):
+            cardoptions.alert("Home Screen",
+                              "Every row your server offers is already on Home.")
             return
 
-        index = playoptions.show_choice(
-            title="Add a genre row", subtitle="",
-            rows=[{"label": g, "detail": ""} for g in offered])
-        if index is None:
+        picked = playoptions.show_grouped_choice(
+            title="Add a row", subtitle="", groups=groups)
+        if picked is None:
             return
-        genre = offered[index]
-        rows.append({"type": "genre", "genre": genre,
-                     "id": "genre-{0}".format(genre.lower().replace(" ", "-")),
-                     "enabled": True})
+        kind, index = picked
+
+        if kind == "builtin":
+            row_id = builtins[index]
+            rows.append({"type": "builtin", "id": row_id, "enabled": True})
+        elif kind == "discovery":
+            key = offered_shelves[index]["key"]
+            rows.append({"type": "discovery", "discoveryList": key,
+                         "id": "discover-{0}".format(key), "enabled": True})
+        else:
+            # /media/genres returns NAMES, and `/media`'s genre filter takes
+            # the name string directly, so the name is the whole key -- there
+            # is no id to look up. The row's own `id` is a slug of it, purely
+            # so the entry has a stable handle for the web app's list
+            # rendering; nothing on this client reads it (see
+            # home_rows.row_title, which names a genre row from `genre`).
+            genre = offered_genres[index]
+            rows.append({"type": "genre", "genre": genre,
+                         "id": "genre-{0}".format(genre.lower().replace(" ", "-")),
+                         "enabled": True})
         home["rows"] = rows
         self._settings_write_home(home)
-
-    # --- Playback & Video, Audio & Subtitles, Region --------------------
-    #
-    # Every option list here is hardcoded in resources/lib/settings_options.py
-    # because the API exposes none of them -- see that module's docstring for
-    # what was checked. The lists are the tofa web app's own, so a value set
-    # on the TV is one the web UI also offers.
-    #
-    # `playback` is the ONE deep-merged preference section, so these can patch
-    # into it without resending its siblings. `segment_actions` is still sent
-    # whole: how deep the server's merge goes below `playback` is not
-    # something we have tested, and the object is three keys.
 
     def _settings_playback(self) -> dict:
         return dict(self._ensure_preferences().get("playback") or {})

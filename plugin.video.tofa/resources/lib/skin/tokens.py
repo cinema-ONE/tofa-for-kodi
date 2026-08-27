@@ -889,10 +889,11 @@ SETTINGS_HOMEROWS_MAX_VISIBLE = SETTINGS_GROUPLIST_H // SETTINGS_HOMEROW_H
 # the layout space but not the extra slots -- measured, it kept drawing five
 # rows inside a 512px box. Declared tall and shrunk, every slot exists.
 SETTINGS_HOMEROWS_H = SETTINGS_HOMEROWS_MAX_VISIBLE * SETTINGS_HOMEROW_H
-# The two "add a row" actions sit under the list, as they do in the app.
+# The "Add a row" action sits under the list, as it does in the app. It was
+# two tiles (Discover, genre) until the reference apps settled on one control
+# holding three groups; SETTINGS_HOMEADD_SECOND_Y and _GROUP_H went with the
+# second tile.
 SETTINGS_HOMEADD_H = 84
-SETTINGS_HOMEADD_SECOND_Y = SETTINGS_HOMEADD_H + 8
-SETTINGS_HOMEADD_GROUP_H = SETTINGS_HOMEADD_SECOND_Y + SETTINGS_HOMEADD_H + SETTINGS_GROUP_TRAIL
 # The spotlight toggle keeps the eyebrow, since it labels the section.
 SETTINGS_HOMESCREEN_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
 

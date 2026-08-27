@@ -1935,9 +1935,12 @@
                          out of the grouplist's chain. -->
 {settings_homerow_editors}
 
+                    <!-- ONE "Add a row", holding three groups. It was two
+                         tiles until the reference apps settled on a single
+                         grouped picker; 8350 is retired, not reused. -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_HOMEADD_GROUP_H}</height>
+                        <height>{SETTINGS_HOMEADD_H}</height>
                         <control type="list" id="8340">
                             <posx>0</posx>
                             <posy>0</posy>
@@ -1949,24 +1952,9 @@
                             <itemheight>{SETTINGS_HOMEADD_H}</itemheight>
                             <scrolltime>0</scrolltime>
 
-{settings_add_discover_item}
+{settings_add_row_item}
 
-{settings_add_discover_focused}
-                        </control>
-                        <control type="list" id="8350">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_HOMEADD_SECOND_Y}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_HOMEADD_H}</height>
-                            <onleft>8000</onleft>
-                            <onright>8350</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_HOMEADD_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_add_genre_item}
-
-{settings_add_genre_focused}
+{settings_add_row_focused}
                         </control>
                     </control>
 
