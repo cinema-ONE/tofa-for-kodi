@@ -1962,7 +1962,16 @@
                          editor. It carries two facts a viewer cannot infer
                          from the controls: that the list order IS the Home
                          order, and that turning a row off follows the
-                         account rather than staying on this device. -->
+                         account rather than staying on this device.
+
+                         The text arrives as a WINDOW PROPERTY, not as
+                         $LOCALIZE[31122]. Kodi resolves $LOCALIZE in a
+                         window XML against the ACTIVE SKIN's strings, and
+                         31000-31999 is the range skins use: Estuary's
+                         #31122 is "Unwatched TV Shows", which is exactly
+                         what this line displayed. It fails silently and
+                         differently per skin, so nothing in this add-on's
+                         XML may use $LOCALIZE; check_xml.py enforces it. -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
                         <height>{SETTINGS_HOMEROWS_NOTE_H}</height>
@@ -1974,7 +1983,7 @@
                             <aligny>center</aligny>
                             <font>tofa_font_metadata</font>
                             <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                            <label>$LOCALIZE[31122]</label>
+                            <label>$INFO[Window.Property(home_rows_note)]</label>
                         </control>
                     </control>
 

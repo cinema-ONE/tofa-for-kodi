@@ -458,6 +458,9 @@ def _resized_exact_problems(xml_paths: list) -> list:
     return problems
 
 
+_LOCALIZE = re.compile(r"\$LOCALIZE\[(\d+)\]")
+
+
 def check_basic(path: str) -> list[str]:
     """The subset of checks that apply to any XML document at all."""
     text = open(path, encoding="utf-8").read()
@@ -467,6 +470,19 @@ def check_basic(path: str) -> list[str]:
             problems.append(
                 "line %d: '--' inside an XML comment (use ';' or a comma)"
                 % _line_of(text, match.start()))
+    # $LOCALIZE in a window XML resolves against the ACTIVE SKIN's strings,
+    # never this add-on's, and 31000-31999 is precisely the range skins use
+    # for their own. Estuary's #31122 is "Unwatched TV Shows", which is what
+    # the home-row note under Settings displayed until 2026-08-27 -- no
+    # error, a plausible-looking string, and a different one per skin.
+    #
+    # Kodi's OWN strings (below 31000) would resolve, but there is no reason
+    # for this add-on to reach for one, so the check covers every id.
+    for match in _LOCALIZE.finditer(text):
+        problems.append(
+            "line %d: $LOCALIZE[%s] reads the ACTIVE SKIN's strings, not "
+            "ours; set a window property from Python with _(%s) instead"
+            % (_line_of(text, match.start()), match.group(1), match.group(1)))
     try:
         ET.parse(path)
     except ET.ParseError as exc:

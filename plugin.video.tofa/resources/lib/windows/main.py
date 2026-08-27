@@ -5944,6 +5944,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _settings_fill_home_screen(self):
         home = self._settings_home_screen()
 
+        # The note under the editor. From Python because $LOCALIZE in a
+        # window XML reads the ACTIVE SKIN's strings, not ours -- see the
+        # comment on the label in main.xml.tpl.
+        self.setProperty("home_rows_note", _(31122))
+
         spotlight = kodigui.ManagedListItem(label="Featured spotlight")
         spotlight.setProperty("summary", "Show the featured banner above your home rows")
         spotlight.setProperty("checked", "1" if home.get("show_hero", True) else "")
@@ -6209,7 +6214,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         shelf and genre lists are both a network call and this page must
         draw without one."""
         add = kodigui.ManagedListItem(label="Add a row")
-        add.setProperty("summary", "A Discover list, a genre, or a row you removed")
+        # Not "a row you removed": the Home rows group offers Recently
+        # Released to anyone who does not have it, including a profile that
+        # predates the row and removed nothing. "not already here" is true
+        # of all three groups and says why the list is shorter than the
+        # Discover screen.
+        add.setProperty("summary",
+                        "Any Discover list, genre, or Home row not already here")
         self.settings_add_row_list.reset()
         self.settings_add_row_list.addItems([add])
 
