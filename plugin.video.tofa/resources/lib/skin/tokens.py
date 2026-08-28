@@ -543,8 +543,15 @@ COLLECTION_TILE_W = 448
 COLLECTION_TILE_H = COLLECTION_TILE_W * 9 // 16    # 252
 COLLECTION_RADIUS = 14
 COLLECTION_GAP_X = 30
-COLLECTION_GAP_Y = 44
-COLLECTION_CAPTION_H = 86                          # fixed, so rows align
+# SPACE_LG. Was 44, an off-scale number that made sense when the caption
+# reserved two lines for the name and most tiles left the second one empty:
+# the row gap and that empty line read as one space. With a single-line
+# caption the 44 is the whole gap, and 32 puts it back on the scale.
+COLLECTION_GAP_Y = SPACE_LG
+# Fixed, so rows align: the 10px gap under the tile, one line of title, then
+# the count. 86 when the title reserved TWO lines -- which left a hole between
+# a one-line name and its count, and none at all when a name wrapped.
+COLLECTION_CAPTION_H = 10 + CAPTION_TITLE_H + 26
 COLLECTION_CELL_W = COLLECTION_TILE_W + COLLECTION_GAP_X
 COLLECTION_CELL_H = COLLECTION_TILE_H + COLLECTION_CAPTION_H + COLLECTION_GAP_Y
 COLLECTION_GRID_W = COLLECTION_COLS * COLLECTION_CELL_W
