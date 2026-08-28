@@ -2642,9 +2642,15 @@ def discover_tab_pill(
                         <texture border="27">capsule-h54.png</texture>
                         <visible>{active}</visible>
                     </control>
-                    <!-- Focus reads as a white outline over whichever fill is
+                    <!-- Focus reads as an outline over whichever fill is
                          showing, so a focused pill keeps its active/inactive
-                         colour identity instead of swapping to a third look. -->
+                         colour identity instead of swapping to a third look.
+
+                         White on the inactive fill; on_accent_color on the
+                         ACTIVE one, since white over an accent is not always
+                         visible. Measured over the 14 presets, a white
+                         outline scores 1.15 against Snow and under 2 against
+                         Amber, Tofa and Emerald. -->
                     <control type="image">
                         <posx>0</posx>
                         <posy>0</posy>
@@ -2652,7 +2658,16 @@ def discover_tab_pill(
                         <height>{h}</height>
                         <colordiffuse>white</colordiffuse>
                         <texture border="27">capsule-h54-outline.png</texture>
-                        <visible>Control.HasFocus({list_id})</visible>
+                        <visible>Control.HasFocus({list_id}) + !{active}</visible>
+                    </control>
+                    <control type="image">
+                        <posx>0</posx>
+                        <posy>0</posy>
+                        <width>{width}</width>
+                        <height>{h}</height>
+                        <colordiffuse>$INFO[Window.Property(on_accent_color)]</colordiffuse>
+                        <texture border="27">capsule-h54-outline.png</texture>
+                        <visible>Control.HasFocus({list_id}) + {active}</visible>
                     </control>
                     <control type="label">
                         <posx>0</posx>
@@ -4628,6 +4643,22 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
 
     The row's own focus wash/rim light up when ANY of its segments has
     focus, so the row still reads as one thing.
+
+    FOCUS IS AN OUTLINE OVER WHATEVER FILL IS THERE, drawn for the selected
+    segment as much as an unselected one. Discover's tab pills set that
+    grammar and say why: a focused pill keeps its own colour identity instead
+    of swapping to a third look. Before this the outline was accent-coloured
+    and gated on `!on`, so the SELECTED segment -- the one you are most
+    likely to be sitting on -- carried no focus mark at all. Reported
+    2026-08-28.
+
+    The outline is WHITE on the bare row surface and `on_accent_color` on top
+    of the accent fill, because white on an accent is not always visible:
+    measured over the 14 presets, a white outline scores 1.15 against Snow
+    (#F1EFE8) and 1.67-1.92 against Amber, Tofa and Emerald. Every one of
+    those is unreadable. `on_accent_color` is theme.on_accent_text(), which
+    already picks dark-navy or white by real WCAG contrast against the
+    CURRENT accent, so it is the one colour guaranteed to show on that fill.
     """
     TEXT_X = 18
     SEG_H = 38
@@ -4656,7 +4687,14 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
                             <visible>{focused} + !{on}</visible>
                             <posx>{x}</posx><posy>{Y}</posy>
                             <width>{seg_width}</width><height>{SEG_H}</height>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <colordiffuse>white</colordiffuse>
+                            <texture border="19">capsule-h38-outline.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{focused} + {on}</visible>
+                            <posx>{x}</posx><posy>{Y}</posy>
+                            <width>{seg_width}</width><height>{SEG_H}</height>
+                            <colordiffuse>$INFO[Window.Property(on_accent_color)]</colordiffuse>
                             <texture border="19">capsule-h38-outline.png</texture>
                         </control>
                         <control type="label">
