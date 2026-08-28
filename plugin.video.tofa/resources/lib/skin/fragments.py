@@ -4873,6 +4873,10 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     # 52 is a capsule height that actually ships an asset
     # (feedback_capsule_ninepatch_rule).
     RING_PAD = 7
+    # WHITE, not the accent. A switch that is ON is already an accent-filled
+    # capsule, so an accent ring around it says the same colour twice and
+    # focus stops being a separate signal. The settings segments' ring landed
+    # on white for the same reason; this matches it.
     ring = f"""
                         <control type="image">
                             <visible>Control.HasFocus({tog_id})</visible>
@@ -4880,7 +4884,7 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
                             <posy>{(H - 38) // 2 - RING_PAD}</posy>
                             <width>{SW_W + 2 * RING_PAD}</width>
                             <height>52</height>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <colordiffuse>white</colordiffuse>
                             <texture border="26">capsule-h52-outline.png</texture>
                         </control>"""
     switch = f"""
