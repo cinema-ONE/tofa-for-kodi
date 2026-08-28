@@ -37,23 +37,39 @@ def render_main() -> str:
     instead (see MainWindow._section_down_targets), since a fragment baked
     once into static XML can't vary by which section is visible."""
     row_kwargs: dict[str, str] = {}
-    home_blocks = []
-    for idx, list_id in enumerate(home_rows.HOME_ROW_LIST_IDS):
-        item_xml, focused_xml = fragments.poster_card(
-            list_id, has_progress=True, caption_field="caption_meta"
-        )
-        prev_id = home_rows.HOME_ROW_LIST_IDS[idx - 1] if idx else NAV_LIST_ID
-        next_id = (home_rows.HOME_ROW_LIST_IDS[idx + 1]
-                   if idx + 1 < len(home_rows.HOME_ROW_LIST_IDS) else list_id)
-        home_blocks.append(fragments.poster_row(
-            group_id=home_rows.HOME_ROW_GROUP_IDS[idx],
-            list_id=list_id,
-            title_property="row{0}_title".format(idx),
-            onup=prev_id, ondown=next_id,
-            item_xml=item_xml, focused_xml=focused_xml,
-            list_width=T.row_bleed_width(T.HOME_LEFT),
-        ))
-    row_kwargs["home_rows"] = "\n\n".join(home_blocks)
+
+    def _home_row_block(group_ids, list_ids):
+        """One full set of Home row slots, self-contained in its own chain.
+
+        Rendered TWICE -- once per "Featured spotlight" state -- because the
+        two states need two grouplist HEIGHTS and a grouplist's height cannot
+        be conditional. See home_rows.HOME_ROW_GROUP_IDS_NOHERO.
+
+        The two sets share their `row{i}_title` properties deliberately: only
+        the ids differ, so nothing that FILLS a row has to know which set is
+        live. Each chain is wired within its own ids, since the other set is
+        hidden and Kodi will not move focus onto a hidden control."""
+        blocks = []
+        for idx, list_id in enumerate(list_ids):
+            item_xml, focused_xml = fragments.poster_card(
+                list_id, has_progress=True, caption_field="caption_meta"
+            )
+            prev_id = list_ids[idx - 1] if idx else NAV_LIST_ID
+            next_id = list_ids[idx + 1] if idx + 1 < len(list_ids) else list_id
+            blocks.append(fragments.poster_row(
+                group_id=group_ids[idx],
+                list_id=list_id,
+                title_property="row{0}_title".format(idx),
+                onup=prev_id, ondown=next_id,
+                item_xml=item_xml, focused_xml=focused_xml,
+                list_width=T.row_bleed_width(T.HOME_LEFT),
+            ))
+        return "\n\n".join(blocks)
+
+    row_kwargs["home_rows"] = _home_row_block(
+        home_rows.HOME_ROW_GROUP_IDS, home_rows.HOME_ROW_LIST_IDS)
+    row_kwargs["home_rows_nohero"] = _home_row_block(
+        home_rows.HOME_ROW_GROUP_IDS_NOHERO, home_rows.HOME_ROW_LIST_IDS_NOHERO)
     grid_item, grid_focused = fragments.poster_card(
         6200, has_progress=False, caption_field="caption_meta",
         extra_bottom_pad=T.GRID_GAP_BROWSE,

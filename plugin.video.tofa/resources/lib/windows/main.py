@@ -306,6 +306,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         "settings_window": "settings",
     }
 
+    #: The row slots currently LIVE. There are two full sets, one per state
+    #: of "Featured spotlight", because the two states need two grouplist
+    #: heights and a grouplist's height cannot be conditional (see
+    #: home_rows.HOME_ROW_GROUP_IDS_NOHERO). This class value is only the
+    #: starting default; _home_apply_hero rebinds it per instance, and
+    #: everything else in here reads it rather than the module tuples.
     ROW_LIST_IDS = home_rows.HOME_ROW_LIST_IDS
 
     # Browse section control ids -- 6000-6299 block, kept collision-free
@@ -795,7 +801,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Built regardless of starting section (cheap, no HTTP): the row
         # lists' Down/Up focus chain ids are referenced by the static XML
         # even before Home is first shown.
-        for list_id in self.ROW_LIST_IDS:
+        # BOTH sets, not just the live one: the other set's ids are real
+        # controls in the XML from the moment the window loads, and a
+        # spotlight toggle makes them live without rebuilding the window.
+        for list_id in (home_rows.HOME_ROW_LIST_IDS
+                        + home_rows.HOME_ROW_LIST_IDS_NOHERO):
             self.row_lists[list_id] = kodigui.ManagedControlList(self, list_id, 6)
 
         # Same reasoning as the Home row lists above: built regardless of
@@ -1509,20 +1519,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         the web app, the macOS desktop player and the Android TV app all act
         on it, and ours drew a pixel-identical Home either way.
 
-        What goes is the foreground -- logo, title, metadata, ratings,
+        What goes is the foreground: logo, title, metadata, ratings,
         synopsis. **The backdrop stays**, and keeps following focus, which is
         what the Apple TV does; the Android app drops the backdrop too, and
         Adrian's call was to follow tvOS.
 
-        ONE property does all of it. The row list is declared at its full
-        height and a spacer child holds the rows down when the hero is
-        showing, so hiding the hero also hides the spacer and every row moves
-        up -- revealing the second row, which simply shifting the list could
-        not do. See tokens.HOME_HERO_SPACER_H for why it has to work that
-        way: a grouplist's height cannot be changed from the skin OR from
-        Python.
+        The rows then move between TWO grouplists, one per state, and this
+        rebinds ROW_LIST_IDS to whichever is now live. The duplication is
+        forced: with the hero up the rows get one row-block and with it off
+        they get the whole content area, that difference is the grouplist's
+        HEIGHT, and a grouplist's height cannot be set from the skin (no
+        conditional <height>) or from Python (no binding for
+        GUICONTROL_GROUPLIST). See home_rows.HOME_ROW_GROUP_IDS_NOHERO.
+
+        Both grouplists gate on this one property, and both sets of rows read
+        the same `row{i}_title` properties, so filling a row never has to
+        know which set it is filling.
         """
         self.setProperty("home_hero_off", "" if show else "1")
+        self.ROW_LIST_IDS = (home_rows.HOME_ROW_LIST_IDS if show
+                             else home_rows.HOME_ROW_LIST_IDS_NOHERO)
 
     def _home_load(self):
         # Timed because this runs on the ACTION thread: for however long it
@@ -6057,7 +6073,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # would not re-read the preference. The Android TV app gets this
         # wrong: its Home keeps the hero until the app is restarted, which
         # is what sent Adrian looking.
-        self._home_apply_hero(home["show_hero"])
+        #
+        # A full _home_load, not just the property: the two states are two
+        # different grouplists (see _home_apply_hero), so the set that has
+        # just become live is still empty and its d-pad chain unwired. The
+        # cost lands on a settings click rather than on Home, and the row
+        # fetches come back off the same cache the first load warmed.
+        self._home_load()
 
     def _settings_wire_home_rows(self, count: int, removable=None):
         """Chain the editor's buttons by hand, in both axes.
