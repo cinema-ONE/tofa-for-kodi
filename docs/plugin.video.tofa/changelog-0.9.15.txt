@@ -1,9 +1,0 @@
-- Browse's Collections list now opens straight away. On a large library it
-  had to prepare every single collection before it could show you the
-  first one, which meant a wait of several seconds each time you opened
-  the section -- and much longer the first time. It now prepares only what
-  is on screen, and the rest as you scroll to it.
-- If you change Kodi skin, tofa now offers to add its fonts to the new
-  skin. Previously, saying no to that once meant you were never asked
-  again, even on a different skin where the fonts really were missing, and
-  tofa's own screens were left using whatever the skin happened to supply.
