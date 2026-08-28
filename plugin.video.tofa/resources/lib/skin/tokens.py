@@ -237,6 +237,46 @@ ROW_LIST_X = -HPAD
 # focused card does not move. Measured both ways.
 ROW_BLOCK_H = ROW_H + ROW_GAP
 
+# Where the Home row region sits, and how much of the screen it gets. TWO
+# geometries, because "Featured spotlight" (preferences.home_screen.show_hero)
+# hides the hero's FOREGROUND and gives the rows the space it was using.
+#
+# The backdrop is deliberately NOT part of this: the reference app keeps
+# loading and showing the focused card's backdrop with the spotlight off, and
+# only drops the logo, title, metadata and synopsis. Confirmed by Adrian on
+# his own Apple TV, 2026-08-28.
+#
+# 156 is not a guess. Our first row header sits 15px into the row block, and
+# the Android TV app puts that header at y=171 with the hero off (measured off
+# a screencap), so 171-15 = 156 -- which is also HOME_LEFT, the content inset.
+# The taller block then shows 1.67 rows where the hero geometry shows one,
+# matching what the Android app draws.
+#
+# Python OWNS these at runtime (main._home_apply_hero), because Kodi cannot
+# change a control's height by condition. The template reads the same tokens
+# for its starting state so the two can never disagree -- the trap recorded in
+# project_hero_title_fallback_size, where a runtime setPosition silently beat
+# the template.
+# ONE region, always: it starts under the nav bar and runs to the bottom of
+# the screen, which is the rule Discover's row list follows too (posy 252,
+# height 828 = 1080-252).
+HOME_ROWS_Y = HOME_LEFT
+HOME_ROWS_H = SCREEN_H - HOME_ROWS_Y
+
+# ...and a SPACER as the list's first child pushes the rows down to where the
+# hero geometry wants them. It is visible exactly when the hero is, so the
+# two states are one <visible> condition and nothing has to be resized --
+# which matters because a grouplist's height cannot be changed at all: skin
+# XML has no conditional height, and Kodi's Python binding has no wrapper for
+# GUICONTROL_GROUPLIST (see reference_kodi_layout_traps).
+#
+# A grouplist lays out only its VISIBLE children -- the same mechanism the
+# settings pane's row editor already leans on, where a slot with no title
+# drops out of the chain. So hiding the spacer moves every row up by its
+# height and the list keeps scrolling correctly, because the viewport was
+# always the full 924.
+HOME_HERO_SPACER_H = 525 - HOME_ROWS_Y
+
 # Rows regions run to the bottom of the screen now; the margin under the
 # last caption comes from ROW_BLOCK_H's trailing pad instead.
 # Search's shelves sit at an ABSOLUTE 382 (parent group 6800's 324 + a local
@@ -503,8 +543,15 @@ COLLECTION_TILE_W = 448
 COLLECTION_TILE_H = COLLECTION_TILE_W * 9 // 16    # 252
 COLLECTION_RADIUS = 14
 COLLECTION_GAP_X = 30
-COLLECTION_GAP_Y = 44
-COLLECTION_CAPTION_H = 86                          # fixed, so rows align
+# SPACE_LG. Was 44, an off-scale number that made sense when the caption
+# reserved two lines for the name and most tiles left the second one empty:
+# the row gap and that empty line read as one space. With a single-line
+# caption the 44 is the whole gap, and 32 puts it back on the scale.
+COLLECTION_GAP_Y = SPACE_LG
+# Fixed, so rows align: the 10px gap under the tile, one line of title, then
+# the count. 86 when the title reserved TWO lines -- which left a hole between
+# a one-line name and its count, and none at all when a name wrapped.
+COLLECTION_CAPTION_H = 10 + CAPTION_TITLE_H + 26
 COLLECTION_CELL_W = COLLECTION_TILE_W + COLLECTION_GAP_X
 COLLECTION_CELL_H = COLLECTION_TILE_H + COLLECTION_CAPTION_H + COLLECTION_GAP_Y
 COLLECTION_GRID_W = COLLECTION_COLS * COLLECTION_CELL_W

@@ -3672,7 +3672,7 @@ def collection_card(list_id: int) -> tuple[str, str]:
 
     "A collection is a set, not a title" -- so this is the one LANDSCAPE
     16:9 tile in an app of 2:3 portraits, and its numbers are the spec's
-    verbatim (tile 448, radius 14, caption 86 fixed so rows align). The
+    verbatim (tile 448, radius 14, a fixed caption so rows align). The
     Android TV app lays its own out at exactly the same values, measured
     off a live uiautomator dump.
 
@@ -3683,9 +3683,10 @@ def collection_card(list_id: int) -> tuple[str, str]:
                    itself the spec asks for, which Kodi cannot produce
       neither   -> plate plus the film-stack glyph
 
-    The caption is a fixed 86 whatever the name's length, which is what
-    keeps a row of tiles aligned when one name wraps and its neighbour
-    does not."""
+    The caption is a fixed height whatever the name's length, which is what
+    keeps a row of tiles aligned. It used to reserve TWO lines for the name;
+    it now holds one that marquees, so the count line sits directly under
+    every name instead of under the taller of two possibilities."""
     W, H = T.COLLECTION_TILE_W, T.COLLECTION_TILE_H
     CELL_W, CELL_H = T.COLLECTION_CELL_W, T.COLLECTION_CELL_H
     CAP_TOP = H + 10
@@ -3751,18 +3752,65 @@ def collection_card(list_id: int) -> tuple[str, str]:
     # and the meta line ~10px as well as growing them. Focusing a collection
     # nudged its own caption out of line with every unfocused caption beside
     # it in the row.
-    def _caption() -> str:
-        return f"""
-                        <control type="textbox">
+    def _caption(active: bool) -> str:
+        """ONE line, and it marquees while the tile has focus.
+
+        It was a 56-high textbox, i.e. two lines reserved whether or not the
+        name needed them, with the count line pinned below the reserve. So a
+        one-line name -- most of them -- showed a hole between itself and its
+        count, while a name that did wrap sat tight against it: the two
+        neighbours in a row did not even agree. Reported 2026-08-28.
+
+        A single line cannot show a long name in 448px, so the focused copy
+        scrolls, which is how every other caption in this add-on handles the
+        same problem.
+
+        TWO COPIES WITH COMPLEMENTARY GATES, not one control with <scroll>:
+        focusedlayout renders for a list's ACTIVE item even when the cursor
+        is elsewhere, so an ungated marquee scrolls in the background
+        forever. <scroll> is a plain boolean with no condition of its own.
+        Same construction and same reason as poster_visual(), which spells it
+        out at length. EM SPACES in the suffix because Kodi strips ordinary
+        whitespace, and a short name does not scroll at all -- Kodi only
+        marquees a label that overruns its box.
+        """
+        def _title(scrolling: bool) -> str:
+            # The gate is Control.HasFocus(LIST), which is true for the whole
+            # grid at once -- it says the cursor is in this list, NOT which
+            # tile it is on. Only the focusedlayout narrows it to one tile,
+            # since Kodi renders that layout for the active item alone. So
+            # the scrolling copy may only ever be emitted there: putting the
+            # pair in both layouts made every long name in the grid marquee
+            # while a different tile was focused.
+            gate = ("" if scrolling else "!") + f"Control.HasFocus({list_id})"
+            marquee = ("""
+                            <scroll>true</scroll>
+                            <scrollsuffix>\u2003\u2003\u2003</scrollsuffix>""" if scrolling else "")
+            return f"""
+                        <control type="label">
+                            <visible>{gate}</visible>
                             <posy>{CAP_TOP}</posy>
                             <width>{W}</width>
-                            <height>56</height>
+                            <height>{T.CAPTION_TITLE_H}</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>{marquee}
+                            <label>$INFO[ListItem.Label]</label>
+                        </control>"""
+
+        plain = f"""
+                        <control type="label">
+                            <posy>{CAP_TOP}</posy>
+                            <width>{W}</width>
+                            <height>{T.CAPTION_TITLE_H}</height>
                             <font>tofa_font_poster_title</font>
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[ListItem.Label]</label>
-                        </control>
+                        </control>"""
+        title = (_title(True) + _title(False)) if active else plain
+
+        return f"""{title}
                         <control type="label">
-                            <posy>{CAP_TOP + 56}</posy>
+                            <posy>{CAP_TOP + T.CAPTION_TITLE_H}</posy>
                             <width>{W}</width>
                             <height>26</height>
                             <font>tofa_font_metadata</font>
@@ -3823,13 +3871,13 @@ def collection_card(list_id: int) -> tuple[str, str]:
     item = f"""                <itemlayout width="{CELL_W}" height="{CELL_H}">
                     <control type="group">
                         <posx>{GLOW_PAD}</posx>
-                        <posy>{GLOW_PAD}</posy>{_art("")}{_caption()}
+                        <posy>{GLOW_PAD}</posy>{_art("")}{_caption(False)}
                     </control>
                 </itemlayout>"""
     focused = f"""                <focusedlayout width="{CELL_W}" height="{CELL_H}">
                     <control type="group">
                         <posx>{GLOW_PAD}</posx>
-                        <posy>{GLOW_PAD}</posy>{glow}{_art(ZOOM)}{rim}{_caption()}
+                        <posy>{GLOW_PAD}</posy>{glow}{_art(ZOOM)}{rim}{_caption(True)}
                     </control>
                 </focusedlayout>"""
     return item, focused

@@ -1501,6 +1501,29 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # HOME SECTION
     # ==================================================================
 
+    def _home_apply_hero(self, show: bool) -> None:
+        """Show or hide the hero FOREGROUND, and give the rows the space.
+
+        "Featured spotlight" is `preferences.home_screen.show_hero`, and this
+        add-on was the only tofa client that ignored it: measured 2026-08-28,
+        the web app, the macOS desktop player and the Android TV app all act
+        on it, and ours drew a pixel-identical Home either way.
+
+        What goes is the foreground -- logo, title, metadata, ratings,
+        synopsis. **The backdrop stays**, and keeps following focus, which is
+        what the Apple TV does; the Android app drops the backdrop too, and
+        Adrian's call was to follow tvOS.
+
+        ONE property does all of it. The row list is declared at its full
+        height and a spacer child holds the rows down when the hero is
+        showing, so hiding the hero also hides the spacer and every row moves
+        up -- revealing the second row, which simply shifting the list could
+        not do. See tokens.HOME_HERO_SPACER_H for why it has to work that
+        way: a grouplist's height cannot be changed from the skin OR from
+        Python.
+        """
+        self.setProperty("home_hero_off", "" if show else "1")
+
     def _home_load(self):
         # Timed because this runs on the ACTION thread: for however long it
         # takes, the window is frozen and keypresses are dropped, not
@@ -1513,6 +1536,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         client = self._get_client()
         if not client:
             return
+        self._home_apply_hero(
+            (self._settings_home_screen()).get("show_hero", True))
 
         rows_pref = ((self._ensure_preferences().get("home_screen") or {}).get("rows")) or []
 
@@ -6026,6 +6051,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         home = self._settings_home_screen()
         home["show_hero"] = not home.get("show_hero", True)
         self._settings_write_home(home)
+        # Straight away, not on the next launch. Settings and Home are the
+        # same window here, so the Home controls are there to update -- and
+        # Home is loaded ONCE (_loaded_sections), so switching back to it
+        # would not re-read the preference. The Android TV app gets this
+        # wrong: its Home keeps the hero until the app is restarted, which
+        # is what sent Adrian looking.
+        self._home_apply_hero(home["show_hero"])
 
     def _settings_wire_home_rows(self, count: int, removable=None):
         """Chain the editor's buttons by hand, in both axes.
