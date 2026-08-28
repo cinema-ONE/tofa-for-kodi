@@ -4669,9 +4669,11 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
     TEXT_X = 18
     SEG_H = 38
     GAP = 6
-    # The focus ring sits OUTSIDE the segment. 3 all round keeps it inside
-    # the 6px gap, so a focused segment's ring never reaches its neighbour.
-    RING_PAD = 3
+    # The focus ring sits OUTSIDE the segment. 2 all round, which is the
+    # stroke's own width, so the ring's INNER edge lands flush on the
+    # segment: at 3 a 1px line of row surface showed between the two.
+    # Still inside the 6px gap, so a ring never reaches its neighbour.
+    RING_PAD = 2
     n = len(seg_ids)
     total = n * seg_width + (n - 1) * GAP
     X0 = width - 28 - total
@@ -4698,7 +4700,7 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
                             <width>{seg_width + 2 * RING_PAD}</width>
                             <height>{SEG_H + 2 * RING_PAD}</height>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="22">capsule-h44-outline.png</texture>
+                            <texture border="21">capsule-h42-outline.png</texture>
                         </control>
                         <control type="label">
                             <posx>{x}</posx><posy>{Y}</posy>
@@ -4872,20 +4874,23 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     # h52 outline against the 38-high switch = a 7px inset all round, and
     # 52 is a capsule height that actually ships an asset
     # (feedback_capsule_ninepatch_rule).
-    RING_PAD = 7
+    # Same ring as the settings segments, same asset, same 2px pad: both
+    # controls are 38 high, and 2 is the stroke's own width, so the ring
+    # sits flush on the switch with no row surface showing between them.
+    #
     # WHITE, not the accent. A switch that is ON is already an accent-filled
     # capsule, so an accent ring around it says the same colour twice and
-    # focus stops being a separate signal. The settings segments' ring landed
-    # on white for the same reason; this matches it.
+    # focus stops being a separate signal.
+    RING_PAD = 2
     ring = f"""
                         <control type="image">
                             <visible>Control.HasFocus({tog_id})</visible>
                             <posx>{TOG_X - RING_PAD}</posx>
-                            <posy>{(H - 38) // 2 - RING_PAD}</posy>
+                            <posy>{(H - SH) // 2 - RING_PAD}</posy>
                             <width>{SW_W + 2 * RING_PAD}</width>
-                            <height>52</height>
+                            <height>{SH + 2 * RING_PAD}</height>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="26">capsule-h52-outline.png</texture>
+                            <texture border="21">capsule-h42-outline.png</texture>
                         </control>"""
     switch = f"""
                         <control type="image">
