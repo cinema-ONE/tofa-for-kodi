@@ -21092,13 +21092,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9103)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9103)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9101">
                             <posx>766</posx><posy>3</posy>
@@ -21315,13 +21315,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9113)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9113)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9111">
                             <posx>766</posx><posy>3</posy>
@@ -21538,13 +21538,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9123)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9123)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9121">
                             <posx>766</posx><posy>3</posy>
@@ -21761,13 +21761,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9133)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9133)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9131">
                             <posx>766</posx><posy>3</posy>
@@ -21984,13 +21984,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9143)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9143)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9141">
                             <posx>766</posx><posy>3</posy>
@@ -22207,13 +22207,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9153)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9153)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9151">
                             <posx>766</posx><posy>3</posy>
@@ -22430,13 +22430,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9163)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9163)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9161">
                             <posx>766</posx><posy>3</posy>
@@ -22653,13 +22653,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9173)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9173)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9171">
                             <posx>766</posx><posy>3</posy>
@@ -22876,13 +22876,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9183)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9183)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9181">
                             <posx>766</posx><posy>3</posy>
@@ -23099,13 +23099,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9193)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9193)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9191">
                             <posx>766</posx><posy>3</posy>
@@ -23322,13 +23322,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9203)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9203)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9201">
                             <posx>766</posx><posy>3</posy>
@@ -23545,13 +23545,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9213)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9213)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9211">
                             <posx>766</posx><posy>3</posy>
@@ -23768,13 +23768,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9223)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9223)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9221">
                             <posx>766</posx><posy>3</posy>
@@ -23991,13 +23991,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9233)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9233)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9231">
                             <posx>766</posx><posy>3</posy>
@@ -24214,13 +24214,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9243)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9243)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9241">
                             <posx>766</posx><posy>3</posy>
@@ -24437,13 +24437,13 @@
                             <texture>circle.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(9253)</visible>
                             <posx>974</posx>
                             <posy>11</posy>
                             <width>76</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(9253)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-76x42.png</texture>
                         </control>
                         <control type="button" id="9251">
                             <posx>766</posx><posy>3</posy>
@@ -24682,12 +24682,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8901)</visible>
-                            <posx>584</posx><posy>33</posy>
+                            <posx>584</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8901)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>586</posx><posy>35</posy>
@@ -24742,12 +24743,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8902)</visible>
-                            <posx>740</posx><posy>33</posy>
+                            <posx>740</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8902)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>742</posx><posy>35</posy>
@@ -24802,12 +24804,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8903)</visible>
-                            <posx>896</posx><posy>33</posy>
+                            <posx>896</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8903)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>898</posx><posy>35</posy>
@@ -25360,12 +25363,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8911)</visible>
-                            <posx>740</posx><posy>33</posy>
+                            <posx>740</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8911)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>742</posx><posy>35</posy>
@@ -25420,12 +25424,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8912)</visible>
-                            <posx>896</posx><posy>33</posy>
+                            <posx>896</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8912)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>898</posx><posy>35</posy>
@@ -25528,12 +25533,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8921)</visible>
-                            <posx>509</posx><posy>33</posy>
+                            <posx>509</posx>
+                            <posy>33</posy>
                             <width>179</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8921)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-179x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>511</posx><posy>35</posy>
@@ -25588,12 +25594,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8922)</visible>
-                            <posx>690</posx><posy>33</posy>
+                            <posx>690</posx>
+                            <posy>33</posy>
                             <width>179</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8922)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-179x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>692</posx><posy>35</posy>
@@ -25648,12 +25655,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8923)</visible>
-                            <posx>871</posx><posy>33</posy>
+                            <posx>871</posx>
+                            <posy>33</posy>
                             <width>179</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8923)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-179x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>873</posx><posy>35</posy>
@@ -25756,12 +25764,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8931)</visible>
-                            <posx>584</posx><posy>33</posy>
+                            <posx>584</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8931)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>586</posx><posy>35</posy>
@@ -25816,12 +25825,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8932)</visible>
-                            <posx>740</posx><posy>33</posy>
+                            <posx>740</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8932)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>742</posx><posy>35</posy>
@@ -25876,12 +25886,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8933)</visible>
-                            <posx>896</posx><posy>33</posy>
+                            <posx>896</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8933)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>898</posx><posy>35</posy>
@@ -25970,12 +25981,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8941)</visible>
-                            <posx>584</posx><posy>33</posy>
+                            <posx>584</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8941)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>586</posx><posy>35</posy>
@@ -26030,12 +26042,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8942)</visible>
-                            <posx>740</posx><posy>33</posy>
+                            <posx>740</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8942)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>742</posx><posy>35</posy>
@@ -26090,12 +26103,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8943)</visible>
-                            <posx>896</posx><posy>33</posy>
+                            <posx>896</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8943)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>898</posx><posy>35</posy>
@@ -26184,12 +26198,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8951)</visible>
-                            <posx>584</posx><posy>33</posy>
+                            <posx>584</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8951)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>586</posx><posy>35</posy>
@@ -26244,12 +26259,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8952)</visible>
-                            <posx>740</posx><posy>33</posy>
+                            <posx>740</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8952)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>742</posx><posy>35</posy>
@@ -26304,12 +26320,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8953)</visible>
-                            <posx>896</posx><posy>33</posy>
+                            <posx>896</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8953)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>898</posx><posy>35</posy>
@@ -26398,12 +26415,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8961)</visible>
-                            <posx>584</posx><posy>33</posy>
+                            <posx>584</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8961)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>586</posx><posy>35</posy>
@@ -26458,12 +26476,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8962)</visible>
-                            <posx>740</posx><posy>33</posy>
+                            <posx>740</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8962)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>742</posx><posy>35</posy>
@@ -26518,12 +26537,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8963)</visible>
-                            <posx>896</posx><posy>33</posy>
+                            <posx>896</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8963)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>898</posx><posy>35</posy>
@@ -26612,12 +26632,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8971)</visible>
-                            <posx>584</posx><posy>33</posy>
+                            <posx>584</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8971)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>586</posx><posy>35</posy>
@@ -26672,12 +26693,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8972)</visible>
-                            <posx>740</posx><posy>33</posy>
+                            <posx>740</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8972)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>742</posx><posy>35</posy>
@@ -26732,12 +26754,13 @@
                             <texture>pill-cap-right.png</texture>
                         </control>
                         <control type="image">
-                            <visible>Control.HasFocus(8973)</visible>
-                            <posx>896</posx><posy>33</posy>
+                            <posx>896</posx>
+                            <posy>33</posy>
                             <width>154</width>
                             <height>42</height>
+                            <visible>Control.HasFocus(8973)</visible>
                             <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
+                            <texture>pill-outline-154x42.png</texture>
                         </control>
                         <control type="label">
                             <posx>898</posx><posy>35</posy>
