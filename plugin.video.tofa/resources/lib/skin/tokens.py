@@ -237,6 +237,31 @@ ROW_LIST_X = -HPAD
 # focused card does not move. Measured both ways.
 ROW_BLOCK_H = ROW_H + ROW_GAP
 
+# Where the Home row region sits, and how much of the screen it gets. TWO
+# geometries, because "Featured spotlight" (preferences.home_screen.show_hero)
+# hides the hero's FOREGROUND and gives the rows the space it was using.
+#
+# The backdrop is deliberately NOT part of this: the reference app keeps
+# loading and showing the focused card's backdrop with the spotlight off, and
+# only drops the logo, title, metadata and synopsis. Confirmed by Adrian on
+# his own Apple TV, 2026-08-28.
+#
+# 156 is not a guess. Our first row header sits 15px into the row block, and
+# the Android TV app puts that header at y=171 with the hero off (measured off
+# a screencap), so 171-15 = 156 -- which is also HOME_LEFT, the content inset.
+# The taller block then shows 1.67 rows where the hero geometry shows one,
+# matching what the Android app draws.
+#
+# Python OWNS these at runtime (main._home_apply_hero), because Kodi cannot
+# change a control's height by condition. The template reads the same tokens
+# for its starting state so the two can never disagree -- the trap recorded in
+# project_hero_title_fallback_size, where a runtime setPosition silently beat
+# the template.
+HOME_ROWS_Y = 525
+HOME_ROWS_H = ROW_BLOCK_H
+HOME_ROWS_Y_NOHERO = HOME_LEFT
+HOME_ROWS_H_NOHERO = SCREEN_H - HOME_ROWS_Y_NOHERO
+
 # Rows regions run to the bottom of the screen now; the margin under the
 # last caption comes from ROW_BLOCK_H's trailing pad instead.
 # Search's shelves sit at an ABSOLUTE 382 (parent group 6800's 324 + a local

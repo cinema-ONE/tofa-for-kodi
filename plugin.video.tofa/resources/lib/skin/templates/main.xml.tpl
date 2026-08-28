@@ -116,6 +116,15 @@
                  this group) is untouched; the logo compensates below to keep
                  its own baseline. The 20px this frees goes to the rows,
                  whose last caption was running off the bottom edge. -->
+            <!-- Hidden by "Featured spotlight" (home_screen.show_hero).
+                 The whole FOREGROUND goes: logo, title, metadata, ratings,
+                 synopsis. The backdrop above stays, and keeps following
+                 focus, which is what the reference app does. main.py moves
+                 the rows up to take the space.
+
+                 Gated on a property that means HIDDEN, so a window that has
+                 not read the preference yet shows the hero rather than
+                 flashing an empty screen. -->
             <control type="group" id="4000">
                 <posx>{HOME_LEFT}</posx>
                 <posy>239</posy>
@@ -152,7 +161,14 @@
                      A <visible> condition is re-evaluated every frame, and
                      Kodi holds the hide back until the Hidden animation has
                      finished playing, which is exactly the dip. -->
-                <visible>!String.IsEqual(Window.Property(hero_swapping),1)</visible>
+                <!-- The second clause is "Featured spotlight" (see the
+                     comment on this group). It is merged into THIS condition
+                     rather than added as another <visible> on the group: a
+                     control may only carry one, and a second silently wins
+                     or loses with nothing to say which. Merging also means
+                     switching the setting off dissolves the hero out through
+                     the animations below, instead of it vanishing. -->
+                <visible>!String.IsEqual(Window.Property(hero_swapping),1) + String.IsEmpty(Window.Property(home_hero_off))</visible>
                 <animation effect="fade" start="100" end="0"
                            time="{HERO_TEXT_DISSOLVE_MS}">Hidden</animation>
                 <animation effect="fade" start="0" end="100"
@@ -280,11 +296,20 @@
                  shelf a pixel taller than the viewport meant to hold it. The
                  extra pixel falls past the screen edge, so this is a
                  consistency fix rather than a visible one. -->
+            <!-- A plain GROUP around the row list, purely so Python can
+                 move it: Kodi's Python binding covers GUICONTROL_GROUP but
+                 NOT grouplist (Window.cpp's control-type switch), so
+                 getControl on 4090 raises "Unknown control type for
+                 python". The grouplist keeps its own posx/posy at 0 inside
+                 this. -->
+            <control type="group" id="4080">
+                <posx>0</posx>
+                <posy>0</posy>
             <control type="grouplist" id="4090">
                 <posx>{HOME_LEFT}</posx>
-                <posy>525</posy>
+                <posy>{HOME_ROWS_Y}</posy>
                 <width>{HOME_ROWS_W}</width>
-                <height>{ROW_BLOCK_H}</height>
+                <height>{HOME_ROWS_H}</height>
                 <orientation>vertical</orientation>
                 <itemgap>0</itemgap>
                 <scrolltime>{SCROLLTIME}</scrolltime>
@@ -294,6 +319,7 @@
                  Window.Property set per slot; the whole group hides via
                  <visible> when that property is empty. -->
 {home_rows}
+            </control>
             </control>
         </control>
 

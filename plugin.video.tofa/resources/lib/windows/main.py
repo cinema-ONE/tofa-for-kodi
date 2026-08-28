@@ -1501,6 +1501,45 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # HOME SECTION
     # ==================================================================
 
+    def _home_apply_hero(self, show: bool) -> None:
+        """Show or hide the hero FOREGROUND, and give the rows the space.
+
+        "Featured spotlight" is `preferences.home_screen.show_hero`, and this
+        add-on was the only tofa client that ignored it: measured 2026-08-28,
+        the web app, the macOS desktop player and the Android TV app all act
+        on it, and ours drew a pixel-identical Home either way.
+
+        What goes is the foreground -- logo, title, metadata, ratings,
+        synopsis. **The backdrop stays**, and keeps following focus. That is
+        the reference app's behaviour, checked by Adrian on his own Apple TV;
+        the Android app drops the backdrop too, and his call was to follow
+        tvOS.
+
+        The height has to move at RUNTIME. Kodi can reposition a control by
+        condition (a zero-time slide) but cannot resize one, and the row
+        region is exactly one row tall in the hero geometry -- so sliding it
+        up alone would leave the bottom third of the screen empty instead of
+        showing the second row the space now allows.
+        """
+        self.setProperty("home_hero_off", "" if show else "1")
+        # The WRAPPER moves, not the grouplist. Kodi's Python binding has no
+        # wrapper for grouplist -- Window.cpp's control-type switch covers
+        # GUICONTROL_GROUP but not GUICONTROL_GROUPLIST -- so getControl on
+        # the list itself raises "Unknown control type for python", which is
+        # exactly how this first failed.
+        #
+        # It is a shift, not a resize, for the same reason: the list's HEIGHT
+        # is out of reach, so the row region stays one row tall and simply
+        # sits higher. See DIVERGENCES.
+        dy = 0 if show else (T.HOME_ROWS_Y_NOHERO - T.HOME_ROWS_Y)
+        try:
+            self.getControl(home_rows.HOME_ROWS_SHIFT_ID).setPosition(0, dy)
+        except Exception as exc:                                # noqa: BLE001
+            # Before onInit has built the controls, or a section that never
+            # drew: the property above is still correct, and the next
+            # _home_load() will set the geometry.
+            log.debug("home: hero geometry skipped ({0!r})".format(exc))
+
     def _home_load(self):
         # Timed because this runs on the ACTION thread: for however long it
         # takes, the window is frozen and keypresses are dropped, not
@@ -1513,6 +1552,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         client = self._get_client()
         if not client:
             return
+        self._home_apply_hero(
+            (self._settings_home_screen()).get("show_hero", True))
 
         rows_pref = ((self._ensure_preferences().get("home_screen") or {}).get("rows")) or []
 
@@ -6026,6 +6067,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         home = self._settings_home_screen()
         home["show_hero"] = not home.get("show_hero", True)
         self._settings_write_home(home)
+        # Straight away, not on the next launch. Settings and Home are the
+        # same window here, so the Home controls are there to update -- and
+        # Home is loaded ONCE (_loaded_sections), so switching back to it
+        # would not re-read the preference. The Android TV app gets this
+        # wrong: its Home keeps the hero until the app is restarted, which
+        # is what sent Adrian looking.
+        self._home_apply_hero(home["show_hero"])
 
     def _settings_wire_home_rows(self, count: int, removable=None):
         """Chain the editor's buttons by hand, in both axes.
