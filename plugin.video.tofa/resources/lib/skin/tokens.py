@@ -257,10 +257,25 @@ ROW_BLOCK_H = ROW_H + ROW_GAP
 # for its starting state so the two can never disagree -- the trap recorded in
 # project_hero_title_fallback_size, where a runtime setPosition silently beat
 # the template.
-HOME_ROWS_Y = 525
-HOME_ROWS_H = ROW_BLOCK_H
-HOME_ROWS_Y_NOHERO = HOME_LEFT
-HOME_ROWS_H_NOHERO = SCREEN_H - HOME_ROWS_Y_NOHERO
+# ONE region, always: it starts under the nav bar and runs to the bottom of
+# the screen, which is the rule Discover's row list follows too (posy 252,
+# height 828 = 1080-252).
+HOME_ROWS_Y = HOME_LEFT
+HOME_ROWS_H = SCREEN_H - HOME_ROWS_Y
+
+# ...and a SPACER as the list's first child pushes the rows down to where the
+# hero geometry wants them. It is visible exactly when the hero is, so the
+# two states are one <visible> condition and nothing has to be resized --
+# which matters because a grouplist's height cannot be changed at all: skin
+# XML has no conditional height, and Kodi's Python binding has no wrapper for
+# GUICONTROL_GROUPLIST (see reference_kodi_layout_traps).
+#
+# A grouplist lays out only its VISIBLE children -- the same mechanism the
+# settings pane's row editor already leans on, where a slot with no title
+# drops out of the chain. So hiding the spacer moves every row up by its
+# height and the list keeps scrolling correctly, because the viewport was
+# always the full 924.
+HOME_HERO_SPACER_H = 525 - HOME_ROWS_Y
 
 # Rows regions run to the bottom of the screen now; the margin under the
 # last caption comes from ROW_BLOCK_H's trailing pad instead.

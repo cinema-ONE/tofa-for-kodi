@@ -296,15 +296,6 @@
                  shelf a pixel taller than the viewport meant to hold it. The
                  extra pixel falls past the screen edge, so this is a
                  consistency fix rather than a visible one. -->
-            <!-- A plain GROUP around the row list, purely so Python can
-                 move it: Kodi's Python binding covers GUICONTROL_GROUP but
-                 NOT grouplist (Window.cpp's control-type switch), so
-                 getControl on 4090 raises "Unknown control type for
-                 python". The grouplist keeps its own posx/posy at 0 inside
-                 this. -->
-            <control type="group" id="4080">
-                <posx>0</posx>
-                <posy>0</posy>
             <control type="grouplist" id="4090">
                 <posx>{HOME_LEFT}</posx>
                 <posy>{HOME_ROWS_Y}</posy>
@@ -314,12 +305,23 @@
                 <itemgap>0</itemgap>
                 <scrolltime>{SCROLLTIME}</scrolltime>
 
+                <!-- Holds the rows down at the hero geometry. Hidden when
+                     "Featured spotlight" is off, and a grouplist lays out
+                     only its VISIBLE children, so every row moves up by this
+                     much and the second one comes into view. That is the
+                     whole mechanism: no control is resized, because a
+                     grouplist's height cannot be. -->
+                <control type="group" id="4085">
+                    <visible>String.IsEmpty(Window.Property(home_hero_off))</visible>
+                    <width>{HOME_ROWS_W}</width>
+                    <height>{HOME_HERO_SPACER_H}</height>
+                </control>
+
             <!-- Server-driven rows: up to 9 slots (see
                  resources/lib/home_rows.py). Header text comes from a
                  Window.Property set per slot; the whole group hides via
                  <visible> when that property is empty. -->
 {home_rows}
-            </control>
             </control>
         </control>
 

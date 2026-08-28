@@ -192,11 +192,10 @@ HOME_ROW_EDIT_GROUP_IDS: tuple[int, ...] = tuple(
 # No collisions with the hero block (4000-4005), the row region's own
 # grouplist (4090), the nav bar (2000/3000), the hero backdrop (9000), or
 # the kodigui sentinel (666). check_xml.py proves it per render.
-#: The row slots' grouplist, and the plain GROUP wrapped around it.
-#: main.py moves the WRAPPER when the hero is hidden: Kodi's Python binding
-#: has no grouplist type, so 4090 itself cannot be fetched from Python.
+#: The row slots' grouplist, and the spacer child that holds them down at
+#: the hero geometry (hidden when "Featured spotlight" is off).
 HOME_ROWS_GROUPLIST_ID = 4090
-HOME_ROWS_SHIFT_ID = 4080
+HOME_HERO_SPACER_ID = 4085
 
 HOME_ROW_GROUP_IDS: tuple[int, ...] = tuple(4100 + 20 * i for i in range(MAX_HOME_ROWS))
 HOME_ROW_LIST_IDS: tuple[int, ...] = tuple(gid + 10 for gid in HOME_ROW_GROUP_IDS)

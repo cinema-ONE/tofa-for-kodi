@@ -1510,35 +1510,19 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         on it, and ours drew a pixel-identical Home either way.
 
         What goes is the foreground -- logo, title, metadata, ratings,
-        synopsis. **The backdrop stays**, and keeps following focus. That is
-        the reference app's behaviour, checked by Adrian on his own Apple TV;
-        the Android app drops the backdrop too, and his call was to follow
-        tvOS.
+        synopsis. **The backdrop stays**, and keeps following focus, which is
+        what the Apple TV does; the Android app drops the backdrop too, and
+        Adrian's call was to follow tvOS.
 
-        The height has to move at RUNTIME. Kodi can reposition a control by
-        condition (a zero-time slide) but cannot resize one, and the row
-        region is exactly one row tall in the hero geometry -- so sliding it
-        up alone would leave the bottom third of the screen empty instead of
-        showing the second row the space now allows.
+        ONE property does all of it. The row list is declared at its full
+        height and a spacer child holds the rows down when the hero is
+        showing, so hiding the hero also hides the spacer and every row moves
+        up -- revealing the second row, which simply shifting the list could
+        not do. See tokens.HOME_HERO_SPACER_H for why it has to work that
+        way: a grouplist's height cannot be changed from the skin OR from
+        Python.
         """
         self.setProperty("home_hero_off", "" if show else "1")
-        # The WRAPPER moves, not the grouplist. Kodi's Python binding has no
-        # wrapper for grouplist -- Window.cpp's control-type switch covers
-        # GUICONTROL_GROUP but not GUICONTROL_GROUPLIST -- so getControl on
-        # the list itself raises "Unknown control type for python", which is
-        # exactly how this first failed.
-        #
-        # It is a shift, not a resize, for the same reason: the list's HEIGHT
-        # is out of reach, so the row region stays one row tall and simply
-        # sits higher. See DIVERGENCES.
-        dy = 0 if show else (T.HOME_ROWS_Y_NOHERO - T.HOME_ROWS_Y)
-        try:
-            self.getControl(home_rows.HOME_ROWS_SHIFT_ID).setPosition(0, dy)
-        except Exception as exc:                                # noqa: BLE001
-            # Before onInit has built the controls, or a section that never
-            # drew: the property above is still correct, and the next
-            # _home_load() will set the geometry.
-            log.debug("home: hero geometry skipped ({0!r})".format(exc))
 
     def _home_load(self):
         # Timed because this runs on the ACTION thread: for however long it
