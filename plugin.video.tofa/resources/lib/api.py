@@ -56,6 +56,22 @@ def _worth_retrying(exc: http.ApiError) -> bool:
     return exc.status in (502, 503, 504) or exc.error in _RELAY_DOWN
 
 
+def _is_profile_token_401(exc: http.ApiError) -> bool:
+    """Is this the server refusing our PROFILE token specifically?
+
+    Matched on the message rather than the status alone, because a 401 that
+    is really about the ACCOUNT means "sign in again" and must not be
+    swallowed by a profile-token retry. The server's text, read off a box:
+
+        HTTP 401 unauthorized: Unauthorized: Invalid or expired profile token
+
+    Note it says "Invalid OR expired" for both causes, so the message cannot
+    tell a rotated token from a dead one. That is fine -- the caller decides
+    by whether disk holds something DIFFERENT to try.
+    """
+    return exc.status == 401 and "profile token" in (exc.message or "").lower()
+
+
 class MediaServerClient:
     def __init__(
         self,
@@ -179,6 +195,62 @@ class MediaServerClient:
         kwargs: dict[str, Any] = {"params": params, "json_body": json_body, "headers": self._headers()}
         if timeout is not None:
             kwargs["timeout"] = timeout
+        try:
+            return self._attempt(method, path, kwargs, want_response, try_fallback)
+        except http.ApiError as exc:
+            # A profile token that ROTATED under us, not one that expired.
+            # See _adopt_rotated_token: exactly one retry, and only when
+            # there is a different token to retry WITH.
+            if not _is_profile_token_401(exc) or not self._adopt_rotated_token():
+                raise
+            kwargs["headers"] = self._headers()
+            return self._attempt(method, path, kwargs, want_response, try_fallback)
+
+    def _adopt_rotated_token(self) -> bool:
+        """Take on a profile token another component banked, after the server
+        refused ours.
+
+        Server 0.9.30's sliding unlock rotates the token, and a rotation
+        INVALIDATES the one it replaced immediately. Every client built
+        before that moment is still holding the dead one -- and a client is
+        built once per window and kept for its lifetime, so a long binge
+        outlives its own token while the unlock on disk is perfectly alive.
+
+        Measured on the LibreELEC NUC, 2026-08-28: rotations banked at
+        16:58:52 and 19:58:55, and the episode-changeover writes at 18:06:29
+        -- an hour and a half INSIDE the token's validity, between two
+        successful rotations -- refused with `401 Invalid or expired profile
+        token`. Nothing had expired; the player was simply presenting the
+        token it was born with.
+
+        Answers True only when disk holds a DIFFERENT token, which is what
+        makes this safe to retry on: a token that is merely dead reads the
+        same on disk as in memory, so it retries nothing and the 401 stands.
+        """
+        try:
+            fresh = auth.load()
+        except Exception as exc:                                # noqa: BLE001
+            log.debug(f"api: could not re-read tokens.json after a 401: {exc!r}")
+            return False
+        if not fresh.profile_token or fresh.profile_token == self.profile_token:
+            return False
+        self.profile_token = fresh.profile_token
+        self.profile_token_expires_at = fresh.profile_token_expires_at
+        log.info("api: profile token had been rotated elsewhere; adopted it and retrying")
+        return True
+
+    def _attempt(
+        self,
+        method: str,
+        path: str,
+        kwargs: dict[str, Any],
+        want_response: bool,
+        try_fallback: bool,
+    ) -> Any:
+        """One request, with the server fallback that has always been here.
+
+        Split out of _request only so the rotated-token retry above can run
+        the whole thing again, fallback included, with new headers."""
         try:
             resp = http.request_response(self.session, method, f"{self.base_url}{path}", **kwargs)
             return resp if want_response else http.body_of(resp)
