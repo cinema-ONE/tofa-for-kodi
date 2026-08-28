@@ -53,12 +53,29 @@ def fetch_one(client: MediaServerClient, file_id: str) -> Optional[dict]:
         return None
 
 
+#: The server refuses more than this many ids per
+#: `/api/v1/media/progress/batch` call, with `HTTP 400 bad_request: Maximum
+#: 500 media file IDs per batch request`.
+#:
+#: **It is not in the spec.** `BatchProgressRequest` declares
+#: `media_file_ids` as a plain array with no `maxItems`, so this number comes
+#: from the server's own error text, read off a box -- the usual rule that
+#: the spec may lag the server, never lead it. If a future server raises the
+#: cap, sending fewer than it allows still works; sending more never does.
+BATCH_LIMIT = 500
+
+
 def fetch_many(client: MediaServerClient, file_ids: list, *,
                required: bool = False) -> dict[str, dict]:
-    """{file_id: record} for a whole row in ONE request.
+    """{file_id: record} for a whole row, in as FEW requests as the server allows.
 
     A per-card call would put twenty round trips on the GUI thread every time
-    Home came back to the front.
+    Home came back to the front. One call for everything does not work
+    either, past BATCH_LIMIT: seen on the NUC 2026-08-28, a show with 801
+    playable episodes made Detail ask about all 801 at once, the server
+    answered 400, and `_next_up_episode` could not work out which episode to
+    offer. So: chunked, and the chunk size is the server's limit rather than
+    anything tuned -- fewer round trips is the whole point of batching.
 
     An empty map on failure reads as "none of these has been watched" -- a
     claim about the LIBRARY that the request never actually established.
@@ -67,18 +84,32 @@ def fetch_many(client: MediaServerClient, file_ids: list, *,
     something already correct. Measured cost of not having this, 2026-08-09:
     a profile token that expired mid-episode 401'd this call, and the Detail
     page underneath went back to offering S1 E1 on a show whose S1 E14 had
-    just been watched."""
+    just been watched.
+
+    **A chunk that fails discards the chunks that succeeded**, deliberately.
+    A partial map is the same lie as an empty one, only harder to reason
+    about: the ids in the failed chunk would come back as "not watched"
+    while their neighbours came back true, so a caller repainting a season
+    would tick some episodes and silently un-tick others. All-or-nothing
+    keeps the contract this function already documents -- either these are
+    the answers, or there are none."""
     wanted = [f for f in dict.fromkeys(file_ids) if f]
     if not wanted:
         return {}
-    try:
-        resp = client.media_progress_batch(wanted) or {}
-    except http.ApiError as exc:
-        log.warning(f"progress: batch read failed for {len(wanted)} files: {exc}")
-        if required:
-            raise
-        return {}
-    return {p.get("media_file_id"): p for p in (resp.get("items") or []) if p.get("media_file_id")}
+    found: dict[str, dict] = {}
+    for start in range(0, len(wanted), BATCH_LIMIT):
+        chunk = wanted[start:start + BATCH_LIMIT]
+        try:
+            resp = client.media_progress_batch(chunk) or {}
+        except http.ApiError as exc:
+            log.warning(f"progress: batch read failed for {len(chunk)} "
+                        f"of {len(wanted)} files: {exc}")
+            if required:
+                raise
+            return {}
+        found.update({p.get("media_file_id"): p
+                      for p in (resp.get("items") or []) if p.get("media_file_id")})
+    return found
 
 
 def position_of(record: Optional[dict]) -> tuple[int, bool]:
