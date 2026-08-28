@@ -2644,7 +2644,22 @@ def discover_tab_pill(
                     </control>
                     <!-- Focus reads as a white outline over whichever fill is
                          showing, so a focused pill keeps its active/inactive
-                         colour identity instead of swapping to a third look. -->
+                         colour identity instead of swapping to a third look.
+
+                         NOT the outside ring the settings segments use. A
+                         pill here is a LIST ITEM, and Kodi clips a list's
+                         content to the list's own rectangle: drawn at -6 the
+                         ring came back as four corner arcs with the straight
+                         runs cut off. Tried 2026-08-28.
+
+                         White rather than on_accent_color for the active
+                         pill, though white scores only 1.15:1 on the Snow
+                         accent. A dark outline fixes that number and looks
+                         worse on the other thirteen: the stroke's flanks are
+                         21-60% opaque, so a dark ring on an accent fill is
+                         speckled with the fill's own colour along the
+                         curves. Fixing it properly needs the pill rebuilt so
+                         a ring can sit outside it. -->
                     <control type="image">
                         <posx>0</posx>
                         <posy>0</posy>
@@ -4628,10 +4643,37 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
 
     The row's own focus wash/rim light up when ANY of its segments has
     focus, so the row still reads as one thing.
+
+    FOCUS IS A RING AROUND THE SEGMENT, not an outline on it. Every segment
+    gets one, selected or not: before this the outline was gated on `!on`,
+    so the SELECTED segment -- the likeliest place to be sitting -- carried
+    no focus mark at all. Reported 2026-08-28.
+
+    Drawn OUTSIDE the segment, which is the whole point. An outline on the
+    pill puts a stroke on top of the accent fill, and the stroke is
+    anti-aliased: measured off capsule-h38-outline, its cross-section runs
+    152/255/226/53, so the flank facing the fill lets 40-79% of the bright
+    colour through. A dark ring drawn there is visibly speckled with the
+    pill's own colour on the curved shoulders -- reported, and reproduced at
+    8x. Stacking copies compounds the alpha but cannot reach opaque.
+
+    Outside, there is nothing under the ring but the row surface, so the
+    anti-aliasing blends dark-on-dark and one colour works for every accent.
+    That also retires the per-accent outline colour this first tried: a
+    white outline ON the fill scores 1.15:1 against Snow and under 2:1
+    against Amber, Tofa and Emerald.
+
+    Same shape as the home-row toggle's ring a few rows up, which has always
+    drawn its focus outside the switch for the same reason.
     """
     TEXT_X = 18
     SEG_H = 38
     GAP = 6
+    # The focus ring sits OUTSIDE the segment. 2 all round, which is the
+    # stroke's own width, so the ring's INNER edge lands flush on the
+    # segment: at 3 a 1px line of row surface showed between the two.
+    # Still inside the 6px gap, so a ring never reaches its neighbour.
+    RING_PAD = 2
     n = len(seg_ids)
     total = n * seg_width + (n - 1) * GAP
     X0 = width - 28 - total
@@ -4653,11 +4695,12 @@ def settings_segmented_group(group_id: int, seg_ids: tuple, *,
                             <texture border="19">capsule-h38.png</texture>
                         </control>
                         <control type="image">
-                            <visible>{focused} + !{on}</visible>
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{seg_width}</width><height>{SEG_H}</height>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <texture border="19">capsule-h38-outline.png</texture>
+                            <visible>{focused}</visible>
+                            <posx>{x - RING_PAD}</posx><posy>{Y - RING_PAD}</posy>
+                            <width>{seg_width + 2 * RING_PAD}</width>
+                            <height>{SEG_H + 2 * RING_PAD}</height>
+                            <colordiffuse>white</colordiffuse>
+                            <texture border="21">capsule-h42-outline.png</texture>
                         </control>
                         <control type="label">
                             <posx>{x}</posx><posy>{Y}</posy>
@@ -4831,16 +4874,23 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     # h52 outline against the 38-high switch = a 7px inset all round, and
     # 52 is a capsule height that actually ships an asset
     # (feedback_capsule_ninepatch_rule).
-    RING_PAD = 7
+    # Same ring as the settings segments, same asset, same 2px pad: both
+    # controls are 38 high, and 2 is the stroke's own width, so the ring
+    # sits flush on the switch with no row surface showing between them.
+    #
+    # WHITE, not the accent. A switch that is ON is already an accent-filled
+    # capsule, so an accent ring around it says the same colour twice and
+    # focus stops being a separate signal.
+    RING_PAD = 2
     ring = f"""
                         <control type="image">
                             <visible>Control.HasFocus({tog_id})</visible>
                             <posx>{TOG_X - RING_PAD}</posx>
-                            <posy>{(H - 38) // 2 - RING_PAD}</posy>
+                            <posy>{(H - SH) // 2 - RING_PAD}</posy>
                             <width>{SW_W + 2 * RING_PAD}</width>
-                            <height>52</height>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <texture border="26">capsule-h52-outline.png</texture>
+                            <height>{SH + 2 * RING_PAD}</height>
+                            <colordiffuse>white</colordiffuse>
+                            <texture border="21">capsule-h42-outline.png</texture>
                         </control>"""
     switch = f"""
                         <control type="image">
