@@ -252,30 +252,23 @@ ROW_BLOCK_H = ROW_H + ROW_GAP
 # The taller block then shows 1.67 rows where the hero geometry shows one,
 # matching what the Android app draws.
 #
-# Python OWNS these at runtime (main._home_apply_hero), because Kodi cannot
-# change a control's height by condition. The template reads the same tokens
-# for its starting state so the two can never disagree -- the trap recorded in
-# project_hero_title_fallback_size, where a runtime setPosition silently beat
-# the template.
-# ONE region, always: it starts under the nav bar and runs to the bottom of
-# the screen, which is the rule Discover's row list follows too (posy 252,
-# height 828 = 1080-252).
-HOME_ROWS_Y = HOME_LEFT
-HOME_ROWS_H = SCREEN_H - HOME_ROWS_Y
-
-# ...and a SPACER as the list's first child pushes the rows down to where the
-# hero geometry wants them. It is visible exactly when the hero is, so the
-# two states are one <visible> condition and nothing has to be resized --
-# which matters because a grouplist's height cannot be changed at all: skin
-# XML has no conditional height, and Kodi's Python binding has no wrapper for
-# GUICONTROL_GROUPLIST (see reference_kodi_layout_traps).
+# TWO regions, and TWO grouplists to hold them -- see
+# home_rows.HOME_ROW_GROUP_IDS_NOHERO for why the duplication is unavoidable
+# and what the cheaper attempt broke.
 #
-# A grouplist lays out only its VISIBLE children -- the same mechanism the
-# settings pane's row editor already leans on, where a slot with no title
-# drops out of the chain. So hiding the spacer moves every row up by its
-# height and the list keeps scrolling correctly, because the viewport was
-# always the full 924.
-HOME_HERO_SPACER_H = 525 - HOME_ROWS_Y
+# With the hero showing, the rows get exactly ONE row-block, starting below
+# it. The list is then the same height as its content, so it cannot scroll at
+# all -- which is precisely what keeps it off the hero. 0.9.18 replaced this
+# with one tall list plus a spacer, and the first press of Down drew Continue
+# Watching over the hero's logo and synopsis.
+HOME_ROWS_Y = 525
+HOME_ROWS_H = ROW_BLOCK_H
+
+# With the hero off the rows take the whole content area, and 924 shows the
+# 1.67 rows the Android app draws. Same rule Discover's list follows (posy
+# 252, height 828 = 1080-252).
+HOME_ROWS_Y_NOHERO = HOME_LEFT
+HOME_ROWS_H_NOHERO = SCREEN_H - HOME_ROWS_Y_NOHERO
 
 # Rows regions run to the bottom of the screen now; the margin under the
 # last caption comes from ROW_BLOCK_H's trailing pad instead.

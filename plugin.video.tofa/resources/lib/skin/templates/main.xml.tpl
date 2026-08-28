@@ -288,14 +288,24 @@
                 </control>
             </control>
 
-            <!-- Vertically-scrolling rows region; hero block above stays
-                 fixed. grouplist auto-scrolls to keep the focused group
-                 within its declared height, clipping the rest. -->
-            <!-- Height IS one row, as the token, so the two can't drift:
-                 it was a hand-typed 535 against a ROW_H of 536, leaving each
-                 shelf a pixel taller than the viewport meant to hold it. The
-                 extra pixel falls past the screen edge, so this is a
-                 consistency fix rather than a visible one. -->
+            <!-- Vertically-scrolling rows region; the hero block above
+                 stays fixed. A grouplist auto-scrolls to keep the focused
+                 group inside its declared height and CLIPS the rest, which
+                 is the whole reason there are two of these: the clip is what
+                 keeps a scrolled row off the hero, and it is the control's
+                 own height. That height cannot be conditional; see
+                 home_rows.HOME_ROW_GROUP_IDS_NOHERO for the full reasoning
+                 and for what 0.9.18's single-list version broke.
+
+                 Both carry the same row{{i}}_title properties, so only
+                 MainWindow.ROW_LIST_IDS knows which set is live. -->
+
+            <!-- SPOTLIGHT ON: one row-block, below the hero. The list is
+                 exactly as tall as one row, so it cannot scroll into the
+                 hero even in principle.
+                 Height IS the token, so the two can't drift: it was a
+                 hand-typed 535 against a ROW_H of 536, leaving each shelf a
+                 pixel taller than the viewport meant to hold it. -->
             <control type="grouplist" id="4090">
                 <posx>{HOME_LEFT}</posx>
                 <posy>{HOME_ROWS_Y}</posy>
@@ -304,24 +314,28 @@
                 <orientation>vertical</orientation>
                 <itemgap>0</itemgap>
                 <scrolltime>{SCROLLTIME}</scrolltime>
+                <visible>String.IsEmpty(Window.Property(home_hero_off))</visible>
 
-                <!-- Holds the rows down at the hero geometry. Hidden when
-                     "Featured spotlight" is off, and a grouplist lays out
-                     only its VISIBLE children, so every row moves up by this
-                     much and the second one comes into view. That is the
-                     whole mechanism: no control is resized, because a
-                     grouplist's height cannot be. -->
-                <control type="group" id="4085">
-                    <visible>String.IsEmpty(Window.Property(home_hero_off))</visible>
-                    <width>{HOME_ROWS_W}</width>
-                    <height>{HOME_HERO_SPACER_H}</height>
-                </control>
-
-            <!-- Server-driven rows: up to 9 slots (see
+            <!-- Server-driven rows, one group per slot (see
                  resources/lib/home_rows.py). Header text comes from a
                  Window.Property set per slot; the whole group hides via
                  <visible> when that property is empty. -->
 {home_rows}
+            </control>
+
+            <!-- SPOTLIGHT OFF: the rows take the whole content area, which
+                 is where the second shelf comes from. -->
+            <control type="grouplist" id="4490">
+                <posx>{HOME_LEFT}</posx>
+                <posy>{HOME_ROWS_Y_NOHERO}</posy>
+                <width>{HOME_ROWS_W}</width>
+                <height>{HOME_ROWS_H_NOHERO}</height>
+                <orientation>vertical</orientation>
+                <itemgap>0</itemgap>
+                <scrolltime>{SCROLLTIME}</scrolltime>
+                <visible>!String.IsEmpty(Window.Property(home_hero_off))</visible>
+
+{home_rows_nohero}
             </control>
         </control>
 

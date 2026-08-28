@@ -192,13 +192,38 @@ HOME_ROW_EDIT_GROUP_IDS: tuple[int, ...] = tuple(
 # No collisions with the hero block (4000-4005), the row region's own
 # grouplist (4090), the nav bar (2000/3000), the hero backdrop (9000), or
 # the kodigui sentinel (666). check_xml.py proves it per render.
-#: The row slots' grouplist, and the spacer child that holds them down at
-#: the hero geometry (hidden when "Featured spotlight" is off).
+#: TWO row regions, and therefore two full sets of row slots -- one for each
+#: state of "Featured spotlight".
+#:
+#: The hero leaves the rows exactly one row-block of screen; with the hero
+#: off they get the whole content area and show 1.67 rows. That is a
+#: difference in the grouplist's HEIGHT, and a grouplist's height cannot be
+#: changed from either side: skin XML has no conditional <height>, and Kodi's
+#: Python binding has no wrapper for GUICONTROL_GROUPLIST (getControl on one
+#: raises "Unknown control type for python"). Two controls, each with its own
+#: <visible>, is the only way to have both.
+#:
+#: 0.9.18 tried to avoid the duplication with ONE tall list and a spacer child
+#: hidden with the hero. It laid out correctly at rest and broke the moment
+#: the list scrolled: a grouplist draws its content from its own top edge, so
+#: scrolling down drew the rows over the hero's logo, title and synopsis.
+#:
+#: Both sets carry the SAME `row{i}_title` window properties, so nothing that
+#: fills a row has to know which set is live -- only MainWindow.ROW_LIST_IDS
+#: does, and it swaps with the setting.
 HOME_ROWS_GROUPLIST_ID = 4090
-HOME_HERO_SPACER_ID = 4085
+HOME_ROWS_GROUPLIST_ID_NOHERO = 4490
 
 HOME_ROW_GROUP_IDS: tuple[int, ...] = tuple(4100 + 20 * i for i in range(MAX_HOME_ROWS))
 HOME_ROW_LIST_IDS: tuple[int, ...] = tuple(gid + 10 for gid in HOME_ROW_GROUP_IDS)
+
+#: The hero-off set. 4500-4810, clear of the hero block (4000-4005), the two
+#: grouplists (4090/4490), the hero-on slots (4100-4410) and Browse (6000+).
+#: check_xml.py proves it per render.
+HOME_ROW_GROUP_IDS_NOHERO: tuple[int, ...] = tuple(
+    4500 + 20 * i for i in range(MAX_HOME_ROWS))
+HOME_ROW_LIST_IDS_NOHERO: tuple[int, ...] = tuple(
+    gid + 10 for gid in HOME_ROW_GROUP_IDS_NOHERO)
 
 
 # Discover's row slots. Sized for the LARGEST group tab rather than a fixed
