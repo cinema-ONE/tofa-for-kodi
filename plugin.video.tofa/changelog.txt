@@ -1,3 +1,9 @@
+0.9.19
+- The banner at the top of Home no longer gets covered by the first row.
+  Moving down from it in 0.9.18 slid the row up over the banner, leaving its
+  title, logo and description tangled together and unreadable. Switching
+  "Featured spotlight" off still hands that space to your rows.
+
 0.9.18
 - Settings > Appearance > "Featured spotlight" now does something on this
   device. It had no effect here, even though switching it off still changed
