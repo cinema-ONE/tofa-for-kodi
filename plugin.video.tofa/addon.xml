@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.17" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.18" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,25 +25,21 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - You can re-arrange your Home screen. Settings &gt; Appearance gives every
-        row its own controls: move it up, move it down, switch it off, or take
-        it off the list if you put it there yourself. The ten rows every tofa
-        account starts with can be switched off but not removed, which is how
-        tofa's other apps behave. Adding a row is now one control listing
-        everything you can add, grouped into Discover lists, genres and Home
-        rows.
-      - If your Home screen has ten rows, the tenth one is now there. The
-        add-on had room for nine, so the last row simply did not appear, and
-        could not be reached in Settings either. A tofa account now starts with
-        ten rows, so this affected anyone who had not changed theirs.
-      - Settings that offer a few fixed choices now show all of them at once,
-        so you can go straight to the one you want instead of stepping through
-        the others. This covers the rating badge, preferred quality, whether to
-        play the next episode, and the five skip behaviours.
-      - An episode's own title now appears on the detail screen, at the start
-        of the line carrying the year and the rest of the details.
-      - The note under the Home screen row list showed a stray line of text
-        belonging to Kodi's skin instead of tofa's own wording.
+      - Settings &gt; Appearance &gt; "Featured spotlight" now does something on this
+        device. It had no effect here, even though switching it off still changed
+        what your other tofa apps showed. Turning it off hides the large banner at
+        the top of Home -- its title, logo and description -- and gives the space
+        to your rows, so another row fits on screen. The artwork behind it stays,
+        and still follows whichever card you are on.
+      - Whichever option you are on in Settings now has an outline around it, so
+        you can see where you are before you press anything. This covers the
+        choices under Playback &amp; Video, the rating badge under Appearance, and the
+        switches beside your Home screen rows.
+      - Browse &gt; Collections puts each collection's name on a single line now,
+        with the number of titles directly beneath it. Space was kept for a second
+        line whether or not a name needed one, which left a gap under every name
+        that fitted on one. A name too long to fit scrolls while you are on it.
+        The rows also sit closer together, so more collections fit on screen.
     </news>
     <assets>
       <icon>icon.png</icon>
