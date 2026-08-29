@@ -1,7 +1,7 @@
 """What we ask the server to DELIVER on a transcode, matched to the route.
 
-Without `audio_fidelity` the server uses what its own API docs call "the
-legacy stereo-AAC pipeline". Measured against Hugo (DTS-HD MA 7.1 + AC3 5.1)
+Without `audio_fidelity` the server falls back to its older stereo AAC
+path. Measured against Hugo (DTS-HD MA 7.1 + AC3 5.1)
 on 2026-08-12, forcing any quality below Original delivered
 
     CODECS="avc1.640020,mp4a.40.2"   CHANNELS="2"     stereo AAC

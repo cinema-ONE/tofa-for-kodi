@@ -334,7 +334,7 @@ def gen_person_glow(photo: int) -> None:
 
 
 # 7.3's Top Result hero poster. A DIFFERENT size from the grid poster above,
-# not a variant of it: the spec says "bare poster 220x330pt" and the live
+# not a variant of it: 7.3 asks for a bare 220x330pt poster and the live
 # Apple TV measures exactly that (ratio 0.667), against the grid card's
 # 252x378. Its own mask/border/glow/placeholder, for the same reason
 # person-border ships one file per photo size -- Kodi scales a texture's

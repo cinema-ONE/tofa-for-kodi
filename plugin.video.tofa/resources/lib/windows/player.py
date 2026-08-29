@@ -120,8 +120,8 @@ _TICK_S = 0.2
 _AUDIO_CONFIRM_S = 2.0
 
 # 8.3's Next Up rail. The countdown is a stated hard contract; the lead is
-# "~30s before content end", which the spec allows stretching to 6 minutes
-# only when an outro MARKER says where the credits start.
+# 30s out, which 8.3 allows stretching to 6 minutes only when an outro
+# MARKER says where the credits start.
 #
 # This used to say the server exposed no such marker, and take the 30s
 # unconditionally. It does expose one: outro segments arrive on the QuickView
