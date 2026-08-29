@@ -115,9 +115,8 @@ class CapabilityProfile:
     max_bitrate: Optional[int] = None
     include_native_subtitle_rendition: Optional[bool] = None
     dolby_vision_supported: Optional[bool] = None
-    #: Only meaningful together. Absent, the server uses what its docs call
-    #: "the legacy stereo-AAC pipeline" -- so a forced quality tier costs you
-    #: surround. Set them from the OUTPUT ROUTE via for_device(), never by
+    #: Only meaningful together. Absent, the server falls back to its older
+    #: stereo AAC path -- so a forced quality tier costs you surround. Set them from the OUTPUT ROUTE via for_device(), never by
     #: hand: asking for a rendition this player cannot take would turn a
     #: stereo downgrade into silence. See capabilities.audio_delivery.
     audio_fidelity: Optional[str] = None

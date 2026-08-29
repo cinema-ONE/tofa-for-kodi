@@ -8,8 +8,8 @@ token stops expiring mid-film in the first place.
 Server 0.9.30. When a heartbeat to /stream/s/{id}/progress carries an
 `X-Profile-Token` nearing expiry, the 204 answers with a replacement in
 `X-Profile-Token` and its RFC 3339 expiry in `X-Profile-Token-Expires-At`.
-The sliding stops a day after the PIN was first typed; headers are absent
-otherwise.
+The sliding is bounded rather than endless -- a session long enough still
+meets the PIN pad again -- and the headers are absent otherwise.
 
 What blocked us until now was on OUR side: `http.request_json` returned
 `resp.json()`, so the headers were gone before any caller could look. Hence

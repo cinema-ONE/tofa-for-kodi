@@ -80,8 +80,13 @@ def get_account(session, connect_url: str, cloud_access_token: str) -> dict[str,
 
 def create_server_session(session, connect_url: str, cloud_access_token: str, server_id: str) -> dict[str, Any]:
     """POST /servers/{id}/server-session -- exchanges the cloud token for a
-    durable server-scoped token pair (30-day access / 90-day refresh), no
-    further approval needed."""
+    long-lived pair scoped to one server, no further approval needed.
+
+    Both lifetimes come back on the wire in the grant (`expires_in`, and the
+    refresh window with it); read them from there rather than trusting a
+    number written down here. Roughly: a month for the access token and
+    three for the refresh, which is what makes a signed-in client touch the
+    cloud about monthly instead of every quarter-hour."""
     return http.request_json(
         session,
         "POST",
@@ -97,14 +102,14 @@ def refresh_cloud(session, connect_url: str, cloud_refresh_token: str) -> dict[s
 
     The cloud counterpart to `refresh()` below, and deliberately a separate
     endpoint: the cloud session and the per-server session are different
-    families and the server-scoped refresh token is rejected here (the
-    lookup is scoped to `server_id IS NULL`), so the two can never be
-    swapped for one another.
+    families, and a server-scoped refresh token is refused here, so the two
+    can never be swapped for one another. That is observed behaviour -- how
+    the server tells the two families apart is its own business, and not
+    something this client should be writing down.
 
-    The refresh token only rotates once it has aged past the server's
-    rotation threshold -- younger ones come back unchanged -- so the caller
-    must persist whatever `refresh_token` this returns rather than assuming
-    a new one."""
+    The refresh token comes back UNCHANGED until it is old enough for the
+    server to replace it, so the caller must persist whatever
+    `refresh_token` this returns rather than assuming a new one."""
     return http.request_json(
         session,
         "POST",

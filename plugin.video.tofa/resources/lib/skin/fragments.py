@@ -2725,8 +2725,8 @@ def discover_tab_pill(
 #
 # 7.9.3 locks the open frame's HEIGHT to the poster height and lets its width
 # fall out of 16:9. Doing it the other way round -- width first, height
-# derived -- leaves the lead squat in a hole, which is why 7.9.3 rules it out
-# explicitly. So these are derived in that order, not typed. At
+# derived -- gives the lead card badly wrong proportions, which is why 7.9.3
+# rules that order out explicitly. So these are derived in that order, not typed. At
 # POSTER_H=378 that is the same 672 they were before.
 DISCOVER_FOCUS_ART_H = T.POSTER_H
 DISCOVER_FOCUS_ART_W = DISCOVER_FOCUS_ART_H * 16 // 9
@@ -2794,9 +2794,9 @@ def discover_card(
                              there is no version of this that scales the cell
                              without deforming its picture.
 
-                             7.9.5's own reduce-motion clause is "the card
-                             simply IS its new size", which is exactly what
-                             happens now, so this is a sanctioned path rather
+                             7.9.5's reduce-motion clause asks for exactly
+                             this: no tween, the card just arrives at the
+                             new size. So this is a sanctioned path rather
                              than a gap. The DISSOLVE below stays.
 
                              Before rebuilding this, read 5bc3af9: the three
@@ -2840,9 +2840,9 @@ def discover_card(
                              the ONLY half of 7.9.5 this card plays: the
                              width swap was built, shipped and removed
                              (2026-08-13, see the focusedlayout's note). The
-                             card simply IS its new size, which is 7.9.5's
-                             own reduce-motion wording, and the dissolve is
-                             what sells the change.
+                             card just arrives at the new size, which is what
+                             7.9.5's reduce-motion clause asks for, and the
+                             dissolve is what sells the change.
 
                              450ms, the WHOLE clock, and it used to be 158.
                              That 158 was 0.35 of the clock, which is what
