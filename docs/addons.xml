@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.20" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.21" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -26,16 +26,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - A show with hundreds of episodes offers the right episode to play next
-        again. Past about five hundred episodes the detail screen could not work
-        out how far you had got, so it fell back to offering the first episode of
-        series one however deep into the show you were.
-      - A PIN-locked profile keeps a record of what you watch through a long
-        evening. After a few hours the add-on could quietly stop being able to
-        save anything: an episode you had just finished was not marked as
-        watched, and Continue watching went on offering it from where you left
-        it hours earlier. Your profile stayed unlocked throughout, so nothing on
-        screen said it had happened.
+      - Internal maintenance only. Nothing about the add-on behaves differently.
     </news>
     <assets>
       <icon>icon.png</icon>
@@ -47,7 +38,7 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/05-player.jpg</screenshot>
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
-  <size>9288961</size><path>plugin.video.tofa/plugin.video.tofa-0.9.20.zip</path></extension>
+  <size>9288900</size><path>plugin.video.tofa/plugin.video.tofa-0.9.21.zip</path></extension>
 </addon>
 <addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.19" provider-name="cinemaONE">
   <requires>
