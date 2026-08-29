@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.19" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.20" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,10 +25,16 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - The banner at the top of Home no longer gets covered by the first row.
-        Moving down from it in 0.9.18 slid the row up over the banner, leaving its
-        title, logo and description tangled together and unreadable. Switching
-        "Featured spotlight" off still hands that space to your rows.
+      - A show with hundreds of episodes offers the right episode to play next
+        again. Past about five hundred episodes the detail screen could not work
+        out how far you had got, so it fell back to offering the first episode of
+        series one however deep into the show you were.
+      - A PIN-locked profile keeps a record of what you watch through a long
+        evening. After a few hours the add-on could quietly stop being able to
+        save anything: an episode you had just finished was not marked as
+        watched, and Continue watching went on offering it from where you left
+        it hours earlier. Your profile stayed unlocked throughout, so nothing on
+        screen said it had happened.
     </news>
     <assets>
       <icon>icon.png</icon>
