@@ -69,6 +69,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import textwrap
 import urllib.parse
@@ -534,6 +535,37 @@ def repo_zip_problems() -> list[str]:
             problems.append("%s names %s; REPO_VERSION is %s (%s)"
                             % (rel, ", ".join(wrong), REPO_VERSION, wanted))
     return problems
+
+
+def public_set_gate() -> int:
+    """`check_public_set.py` in full, which CI structurally cannot run.
+
+    It compares this tree against tofa's confidential documents, and those
+    must never reach a runner, so CI runs only its `--markers` half. That
+    left the QUOTE half with no automatic home, and it went red from
+    2026-08-16 to 2026-08-29 without anyone noticing -- two comments quoting
+    13 tokens of TV-DESIGN.md, carried into every release from 0.9.3 on.
+
+    Publishing is the last moment the tree is still ours, and it happens
+    beside the vault, so the gate belongs here. It is not a substitute for
+    the pre-push hook (`tools/hooks/pre-push`), which catches the same thing
+    before the prose is public rather than a release later.
+
+    **A checkout with no vault CANNOT publish, deliberately.** The checker
+    treats "compared against nothing" as a failure rather than a pass, and a
+    publish that skipped the comparison is precisely the release this gate
+    exists to stop. Point `TOFA_VAULT` at the vault, or publish from the
+    machine that has one."""
+    checker = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "check_public_set.py")
+    done = subprocess.run([sys.executable, checker], text=True,
+                          capture_output=True)
+    if done.returncode:
+        sys.stdout.write(done.stdout)
+        sys.stderr.write(done.stderr)
+        print("\nnot publishing a tree that quotes tofa's documents, or one "
+              "the gate could not compare against them at all")
+    return done.returncode
 
 
 def do_check() -> int:
@@ -1131,6 +1163,8 @@ def do_publish(base_url: str | None, out_dir: str,
         return 1
     if do_check():
         print("not publishing a version that does not check out")
+        return 1
+    if public_set_gate():
         return 1
 
     version = current_version()
