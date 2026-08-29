@@ -9,6 +9,21 @@ Four commands, all fast, none needing Kodi:
     python3 tools/check_xml_comments.py         # the one XML rule Kodi will not tell you about
     python3 -m compileall -q plugin.video.tofa
 
+And once per clone:
+
+    git config core.hooksPath tools/hooks
+
+That installs a pre-push hook running `check_public_set.py` in full -- about a
+second and a half, and the only automatic home the QUOTE half has. CI cannot
+run it: it compares this tree against tofa's confidential documents, which
+must never reach a runner, so the workflow runs `--markers` alone. Without the
+hook the quote gate is a manual check, and a manual check is one nobody runs
+-- it went red from 2026-08-16 to 2026-08-29 with two comments quoting 13
+tokens of the design document, which shipped in every release from 0.9.3 on.
+Push is the last moment that prose is still ours; a public history is not
+something a later edit can clean. `release.py publish` runs the same gate as
+a backstop.
+
 `check_xml.py` exists because each thing it catches is a SILENT failure: Kodi
 does not reject them, log them, or draw anything that looks like an error --
 it renders something subtly wrong, which is exactly what survives a

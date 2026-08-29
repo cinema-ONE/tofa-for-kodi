@@ -1,0 +1,35 @@
+#!/bin/sh
+# Refuse to push a tree that reproduces tofa's confidential prose.
+#
+# CI cannot do this. `check_public_set.py` compares this tree against tofa's
+# private documents, and those must never reach a runner, so the workflow runs
+# only its `--markers` half. The QUOTE half therefore has no automatic home --
+# and it went red from 2026-08-16 to 2026-08-29 with nobody noticing, because
+# a manual check is a check nobody runs. Two comments quoted 13 tokens of
+# TV-DESIGN.md and shipped in every release from 0.9.3 on.
+#
+# Push is the moment the prose stops being ours, which makes it the right
+# place: one second and a half, and a quotation caught here never reaches a
+# public history that no later edit can clean.
+#
+# `release.py publish` runs the same gate, as the backstop for a push that got
+# through with --no-verify.
+#
+# A checkout with NO vault beside it fails here, deliberately. The checker
+# treats "compared against nothing" as a failure, not a pass. Set TOFA_VAULT
+# if yours lives somewhere unguessable.
+#
+# Install:  git config core.hooksPath tools/hooks
+
+root=$(git rev-parse --show-toplevel) || exit 1
+
+if ! python3 "$root/tools/check_public_set.py"; then
+    echo
+    echo "pre-push: NOT pushing -- the tree quotes tofa's documents, or the"
+    echo "gate had nothing to compare it against."
+    echo
+    echo "Paraphrase the run it names, or set TOFA_VAULT if the vault is"
+    echo "somewhere this could not find it. \`git push --no-verify\` overrides,"
+    echo "and \`release.py publish\` will catch it again if you do."
+    exit 1
+fi
