@@ -603,7 +603,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._active_genre = self.ALL_GENRES
         self._browse_sort_idx = 0           # index into BROWSE_SORT_OPTIONS
         # The sort keys THIS server accepts, straight off the facets response
-        # ("clients render real options instead of hardcoded tables"). None
+        # (the whole point of the facets route: render what the server
+        # offers, never a table baked in here). None
         # until a facets response has been seen -- which is not the same as
         # empty, and is why this is not just a set: an older server that says
         # nothing must keep getting the full local table rather than none of
@@ -4101,7 +4102,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # -- which meant Down from the pills into the row and then Up again
         # skipped the pill row entirely and jumped to the nav bar, losing the
         # group you were in. 7.9.2's focus gate is explicit that arriving
-        # from outside "lands on the group you're ON", and the tab row can't
+        # from outside must land on the group you are IN, and the tab row can't
         # be a single control (four text-hugging pill widths, one <itemwidth>
         # per Kodi list), so the target changes with the tab and has to be
         # wired here rather than in XML.

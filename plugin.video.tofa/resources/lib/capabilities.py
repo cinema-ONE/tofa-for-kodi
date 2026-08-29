@@ -193,9 +193,9 @@ def audio_delivery() -> dict:
     `{"audio_sink_channels": int|None, "audio_fidelity": str|None}`, ready to
     go straight into the capability profile.
 
-    WHY THIS EXISTS. Without `audio_fidelity` the server uses what its own
-    API docs call "the legacy stereo-AAC pipeline", and that is not a
-    footnote -- measured against Hugo (DTS-HD MA 7.1 + AC3 5.1) on
+    WHY THIS EXISTS. Without `audio_fidelity` the server falls back to its
+    older stereo AAC path, and that is not a footnote -- measured against
+    Hugo (DTS-HD MA 7.1 + AC3 5.1) on
     2026-08-12, forcing any quality below Original delivered:
 
         CODECS="avc1.640020,mp4a.40.2"   CHANNELS="2"    stereo AAC
@@ -588,7 +588,7 @@ def _output_refresh(fps, caps: dict) -> float:
     """The refresh rate the file will be shown at, or 0.0 when unknown.
 
     Returns 0.0 whenever `fps` is missing, which today is ALWAYS: the server
-    carries `display_frame_rate` ("frame rate a display should switch to")
+    carries `display_frame_rate` (the rate a display ought to switch to)
     but leaves it null on every file measured (144/144, 2026-08-01). The
     logic is here and inert so it lights up the day the field is populated,
     and every caller drops the axis on 0.0.

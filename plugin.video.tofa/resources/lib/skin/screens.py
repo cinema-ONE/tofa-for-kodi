@@ -615,8 +615,8 @@ def render_detail() -> str:
         title="No cast information",
         message="We don't have credits for this title yet.",
     )
-    # The error flavour 9.7 defines separately -- "couldn't reach the server"
-    # is not the same answer as "there is nothing", even though our first pass
+    # The error flavour 9.7 defines separately -- not reaching the server is
+    # not the same answer as having nothing, even though our first pass
     # rendered one sentence for both. No Apple TV capture of this one exists,
     # so only the wording is ours; the layout is the shared scaffold.
     similar_empty = fragments.empty_state(

@@ -51,7 +51,7 @@ DEFAULT_CONTAINERS = "mkv,mp4,m2ts,ts,avi,mov,webm"
 #: reason, and because no server re-encodes TO them.
 #:
 #: `h264` stays as the last rung rather than being left to the server's
-#: "omitted means legacy H.264" default, so the fallback is something we said
+#: own default of legacy H.264, so the fallback is something we said
 #: rather than something we were handed. Setting this to "" reproduces the
 #: pre-0.9.32 behaviour exactly, which is the escape hatch if a box ever
 #: turns out not to cope.

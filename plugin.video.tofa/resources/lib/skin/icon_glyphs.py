@@ -35,7 +35,7 @@ LAYERS = 0xE529
 # Crew, and for More Like This a box under two thin rules, which is
 # gallery-vertical-end rather than the `layers` we had approximated it with.
 USERS = 0xE1A4
-# 9.7's error flavour asks for a "connectivity/warning glyph".
+# 9.7's error flavour asks for a glyph reading as connectivity or warning.
 TRIANGLE_ALERT = 0xE193
 GALLERY_VERTICAL_END = 0xE4D2
 SHUFFLE = 0xE15E

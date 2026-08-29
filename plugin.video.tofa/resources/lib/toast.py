@@ -4,7 +4,7 @@
 `xbmcgui.Dialog().notification()` draws in the HOST skin, which is the same
 objection 9.2 raises against a modal for a wrong PIN: it is not our surface,
 it does not look like the app, and no animation we write can reach it (so
-8.9's "all toasts fade <300ms" is unreachable through it by construction).
+8.9's sub-300ms toast fade is unreachable through it by construction).
 
     from .. import toast
     toast.show("Could not request this title")

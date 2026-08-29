@@ -80,9 +80,9 @@ TEXT_TERTIARY = "0x6BFFFFFF"    # eyebrows, "no art" placeholder glyphs -- measu
 # `ratings.tier`" the design spec names in its cross-client roster
 # (web `tofaRatings.ts` / Apple `TofaRatingQuality` / ATV
 # `TofaColors.ratingQuality` / tofa-tv `qualityTier`) -- it is not a Kodi
-# facility, Kodi has no tier concept of its own. The spec's clause is
-# "change all or none": these three values may only move together with the
-# other clients, never unilaterally.
+# facility, Kodi has no tier concept of its own. The spec is all-or-nothing
+# here: these three values may only move together with the other clients,
+# never unilaterally.
 #
 # Deliberately NOT the status triad (success/warning/error). The spec's own
 # reasoning, quoted because it is the whole argument: "a score is a quality

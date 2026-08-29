@@ -127,8 +127,8 @@ class MediaServerClient:
 
     def resolve_url(self, url: str) -> str:
         """stream_url is server-relative (e.g.
-        `/api/v1/stream/{id}/direct?st=...`), despite the API spec calling
-        it a "ready-to-use URL".
+        `/api/v1/stream/{id}/direct?st=...`), despite the API spec
+        describing it as ready to use as it stands.
 
         NOT urljoin, which is wrong the moment a base URL has a path of its
         own: RFC 3986 says an absolute-path reference REPLACES the base's

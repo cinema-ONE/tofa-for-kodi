@@ -2206,8 +2206,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # real Apple TV app (Besenbinden, which has neither) and is wrong
         # there: the app keeps both and answers them with 9.7's scaffold. The
         # spec agrees as far as it goes -- 7.1 makes exactly one tab
-        # conditional, "(Episodes omitted for movies)", and says nothing
-        # about the rest.
+        # conditional -- the episodes one, dropped for a movie -- and says
+        # nothing about the rest.
         self._tabs = ["cast", "about", "more"]
         if self.getProperty("is_tv"):
             self._tabs.insert(0, "episodes")
@@ -2276,7 +2276,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
 
         # 10.2 names the episode grid as required card-options coverage
-        # ("Home, Discover, Search, episode grid"), and More Like This is an
+        # (alongside Home, Discover and Search), and More Like This is an
         # ordinary poster shelf. Cast and Crew are deliberately absent: a
         # person is not a title and none of 7.2's actions apply to one.
         if aid == xbmcgui.ACTION_CONTEXT_MENU:
@@ -3175,7 +3175,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return {
             "watched": "1" if completed else "",
             "progress_fill": fill,
-            # 7.1's meta line: "E5 - 42m - 4K - 12m left".
+            # 7.1's meta line: episode, runtime, resolution, time left.
             "caption": _dot_join(
                 u"E{0}".format(num) if num is not None else "",
                 _runtime_str(runtime_minutes),

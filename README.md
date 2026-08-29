@@ -80,13 +80,26 @@ confidential and live in a private sibling checkout. A missing file is the
 intended state, not an incomplete clone.
 
 The pointers stay because they are what makes the code navigable. What may
-not travel is a private document's *prose*, and `tools/check_public_set.py`
-gates on exactly that: it indexes every eight-token run of each private
-source and sweeps this file set. A handful of short lines do survive
-deliberately, with tofa's agreement -- "A collection is a set, not a title",
-a founder decision on rating iconography, two or three measurements -- and
-each is quote-marked and credited to its section where it appears. Nothing
-longer than a line, and nothing passed off as ours.
+not travel is a private document's *wording*, and `tools/check_public_set.py`
+gates on it two ways: it indexes every eight-token run of each private source
+and sweeps this file set, and it flags any three-word phrase a comment puts
+in quotation marks that appears verbatim in one of tofa's documents.
+
+**Nothing is quoted from them at all.** Earlier this arrangement allowed a
+handful of short quoted lines, credited to their section. That was tofa's to
+allow and they had allowed it, but a threshold that permits a little is a
+threshold somebody has to keep judging, and in practice it drifted: quoted
+spec lines accumulated across the tree, every one under the limit, and a
+thirteen-word run went unnoticed for a fortnight because the surrounding
+habit made it look normal. So the rule is now the simple one. Say what the
+section requires in our own words, cite the section, and let anyone who
+holds the document check us against it.
+
+The exception is text this app puts on a screen and values a server sends on
+the wire. tofa's design document contains "Mark as Watched" for the same
+reason our code does, and a comment that cannot name the row it is about is
+not a comment. Those are allowlisted by name in the checker, so a new one
+has to be added on purpose.
 
 ## Development
 
