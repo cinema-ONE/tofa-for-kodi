@@ -1,3 +1,6 @@
+0.9.21
+- Internal maintenance only. Nothing about the add-on behaves differently.
+
 0.9.20
 - A show with hundreds of episodes offers the right episode to play next
   again. Past about five hundred episodes the detail screen could not work
