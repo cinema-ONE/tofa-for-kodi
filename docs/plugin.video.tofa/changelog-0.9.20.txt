@@ -1,0 +1,10 @@
+- A show with hundreds of episodes offers the right episode to play next
+  again. Past about five hundred episodes the detail screen could not work
+  out how far you had got, so it fell back to offering the first episode of
+  series one however deep into the show you were.
+- A PIN-locked profile keeps a record of what you watch through a long
+  evening. After a few hours the add-on could quietly stop being able to
+  save anything: an episode you had just finished was not marked as
+  watched, and Continue watching went on offering it from where you left
+  it hours earlier. Your profile stayed unlocked throughout, so nothing on
+  screen said it had happened.
