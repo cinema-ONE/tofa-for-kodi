@@ -102,8 +102,8 @@ NAV_AVATAR_SHADOW_Y = NAV_AVATAR_Y - NAV_AVATAR_SHADOW_PAD
 # also reconciles the row that mixes the two card forms: 7.9.3 locks the open
 # 16:9 frame's HEIGHT to the poster's and derives 378 -> 672, which is
 # already what DISCOVER_FOCUS_ART_* uses. At the old 372 the portrait and
-# wide cards in the SAME Discover row were 6px different, against 7.9.3's
-# "both forms are the same total height".
+# wide cards in the SAME Discover row were 6px different, which 7.9.3 rules
+# out -- it wants the two card forms coming out to one height overall.
 #
 # Measured live off the real app at ~257 wide (2026-07-31, gutter detection
 # on native-1080p captures); 252 + a soft edge either side is the same

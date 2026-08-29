@@ -519,8 +519,8 @@ def gen_discover_open_scrim() -> None:
       horizontal  92% -> 72% at 34% -> 12% at 68% -> clear
       bottom-up   55% at the bottom edge -> clear 44% of the way up
     then the whole thing scaled by the shipped strength dial 0.6. The dial is
-    not decoration: at full strength the one open card is the only filtered
-    artwork in its row and reads dimmer than the plain posters either side of
+    not decoration: at full strength the one open card carries the only
+    treated art on that row and reads dimmer than the plain posters beside
     it, which is the consistency question this card always has to answer.
 
     Canvas-tinted rather than black, per 7.9.4's "canvas-tinted stops" --
