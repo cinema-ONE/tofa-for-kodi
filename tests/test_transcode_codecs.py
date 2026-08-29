@@ -1,6 +1,6 @@
 """What we let the server RE-ENCODE to (`transcode_video_codecs`, 0.9.32).
 
-The parameter names the codecs this client can decode when the server has
+The parameter lists what this box is able to play back once the server has
 already decided to re-encode the video. Omitting it means the server's legacy
 H.264, which is what every release before this one got.
 

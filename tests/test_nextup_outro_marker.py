@@ -1,7 +1,7 @@
 """8.3's rail opens at the outro marker, and 8.5 stops offering that moment.
 
-The spec's lead is "~30s before content end ABSENT an outro marker, clamped
-<=6min from true end" -- so 30s is the fallback, not the rule. player.py took
+The spec asks for 30s out when nothing marks the outro, and never more than
+six minutes early whatever does -- so 30s is the FALLBACK, not the rule. player.py took
 the fallback unconditionally because the marker was believed not to exist; it
 arrives on the QuickView segments response, which 8.5 was already reading.
 

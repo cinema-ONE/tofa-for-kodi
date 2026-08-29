@@ -4697,9 +4697,10 @@ class PlayerWindow(kodigui.ControlledDialog):
     def _next_up_reveal_ms(self) -> int:
         """The position 8.3's rail opens at.
 
-        The plain reading of the spec is "~30s before content end absent an
-        outro marker, clamped <=6min from true end" -- so the 30s is the
-        FALLBACK and the marker is the real answer. player.py used to take
+        The spec asks for the rail 30s out when nothing marks the outro,
+        and never more than six minutes early whatever does -- so the 30s is
+        the FALLBACK and the marker is the real answer. (Paraphrased on
+        purpose: 8.3's own wording is tofa's, and this file is public.) player.py used to take
         the fallback unconditionally, on the recorded grounds that the server
         exposed no outro marker. It does now: they arrive on the QuickView
         segments response, which is why they were not found under a name like
