@@ -588,7 +588,7 @@ def _output_refresh(fps, caps: dict) -> float:
     """The refresh rate the file will be shown at, or 0.0 when unknown.
 
     Returns 0.0 whenever `fps` is missing, which today is ALWAYS: the server
-    carries `display_frame_rate` ("frame rate a display should switch to")
+    carries `display_frame_rate` (the rate a display ought to switch to)
     but leaves it null on every file measured (144/144, 2026-08-01). The
     logic is here and inert so it lights up the day the field is populated,
     and every caller drops the axis on 0.0.

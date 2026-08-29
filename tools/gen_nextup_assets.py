@@ -4,7 +4,8 @@ Kodi has no arc primitive and cannot draw a sweep from a number, so the ring
 is a pre-rendered frame per step and Python picks the texture -- the same
 technique the poster cards' progress strips use, in polar form.
 
-8.3: "ring ~48pt, stroke 2-4pt, accent on accent-22% track, sweep from -90".
+8.3 asks for a ring of about 48pt with a 2-4pt stroke, the accent sweeping
+from twelve o'clock over a track of the accent at 22%.
 The track is a full ring in one file; each frame carries only the SWEEP, so
 the two can be tinted independently at runtime (the track is the accent at
 22%, the sweep the accent at full) without baking either colour in.
@@ -68,8 +69,8 @@ def _ring_image(sweep_degrees: float) -> Image.Image:
     d = ImageDraw.Draw(im)
     inset = STROKE * S // 2
     box = [inset, inset, size - 1 - inset, size - 1 - inset]
-    # -90 is 12 o'clock in Pillow's convention too, so 8.3's "sweep from -90"
-    # is the start angle as written.
+    # -90 is 12 o'clock in Pillow's convention too, so 8.3's start angle
+    # carries over as written.
     d.arc(box, start=-90, end=-90 + sweep_degrees, fill="white", width=STROKE * S)
     return im.resize((RING * ASSET_SCALE, RING * ASSET_SCALE), Image.LANCZOS)
 
@@ -102,7 +103,8 @@ def gen_still_mask() -> None:
         STILL_W, STILL_H, STILL_RADIUS))
 
 
-# 8.3 also asks for a "shadow black ~50% r24" under the still. Deliberately
+# 8.3 also asks for a soft black shadow at about 50%, radius 24, under the
+# still. Deliberately
 # NOT generated: the rail's own edge scrim already puts the still on an
 # 84%-black backing, so a 50%-black shadow has almost nothing left to
 # darken. Measured on a live frame it moved the pixels just outside the

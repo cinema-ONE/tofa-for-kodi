@@ -131,7 +131,7 @@ _AUDIO_CONFIRM_S = 2.0
 NEXT_UP_LEAD_S = 30.0
 NEXT_UP_LEAD_MARKER_MAX_S = 360.0
 NEXT_UP_COUNTDOWN_S = 20.0
-# 8.3 asks for focus to land on Play Next "~150-200ms after reveal", i.e.
+# 8.3 asks for focus to land on Play Next 150-200ms after the reveal, i.e.
 # after the slide-in, so the button does not appear pre-pressed mid-flight.
 NEXT_UP_AUTOFOCUS_S = 0.2
 # How long focus stays parked on a button whose own click handler hid it,
@@ -259,7 +259,7 @@ _PREVIEW_W = 240
 # 8.2's bubble: "320pt wide 16:9 ... 64pt above the bar".
 _PREVIEW_TILE_W = 320
 _PREVIEW_TILE_H = 180
-# 8.2: "64pt above the bar". The track sits at 937, so the bubble's BOTTOM
+# 8.2 puts the preview 64pt above the bar. The track sits at 937, so its BOTTOM
 # is 873 and its top 180 above that.
 _PREVIEW_TILE_Y = 693
 # Where the timecode goes when a thumbnail is showing: below the bubble,
@@ -1449,7 +1449,7 @@ class PlayerWindow(kodigui.ControlledDialog):
     #: heights; a list whose height is not a whole number of pitches simply
     #: drops its last row, because Kodi draws floor(height / step) of them.
     _PANEL_ROW_GAP = 10
-    # 8.4 says "max scroll 460pt", but the real app grows a long list nearly
+    # 8.4 caps the scroll at 460pt, but the real app grows a long list nearly
     # to the top of the screen before it scrolls -- measured on Wuthering
     # Heights, whose subtitle panel reaches y=8. The cap is that, not 460.
     _PANEL_ROWS_MAX_H = 740
@@ -2406,8 +2406,8 @@ class PlayerWindow(kodigui.ControlledDialog):
                     pass                    # window went away mid-tick
             return
 
-    # 8.5: "pad 28h, icon 18pt + label", pinned to the transport bar's
-    # right cluster, which is 1900 on this canvas.
+    # 8.5: 28 of horizontal padding, an 18pt icon, then the label, pinned to
+    # the transport bar's right cluster, which is 1900 on this canvas.
     _SKIP_RIGHT = 1900
     _SKIP_PAD_X = 28
     _SKIP_ICON_W = 24
@@ -3781,7 +3781,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         """Whether this track is one the `full.idx`/`full.sub` routes serve.
 
         BOTH halves are required. The routes answer 400 for anything that is
-        not "a paired VobSub sidecar", and an EMBEDDED `dvd_subtitle` -- an
+        not a VobSub sidecar pair, and an EMBEDDED `dvd_subtitle` -- an
         old disc rip muxed into the container -- is a real thing that reaches
         the URL path whenever the server is transcoding and Kodi therefore
         has no subtitle stream to select. Asking for `.idx` there would turn

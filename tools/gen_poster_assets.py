@@ -60,9 +60,9 @@ _MEDIA_DIR = os.path.join(
 
 POSTER_W, POSTER_H = 252, 378  # keep in step with skin/tokens.py
 
-# Corner radii come from the spec, not from eyeballing the app. 4 puts
-# "TV poster cards" at 14 and 7.9.3 states the open card's outright:
-# "its width falls out of 16:9 (378 -> 672, radius 12)".
+# Corner radii come from the spec, not from eyeballing the app. 4 puts the
+# TV poster cards at 14, and 7.9.3 gives the open card's outright: height
+# fixed, width falling out of 16:9 at 378 -> 672, radius 12.
 #
 # These are directly applicable rather than needing the half-density scaling
 # 3/6's numbers do, because 7.9's own geometry is already our canvas:
@@ -267,7 +267,7 @@ def gen_badge_outline() -> None:
 # reserves for it, leaving a hard-edged collar of flat accent around each
 # photo. The single-size assets are gone; the names carry the size now so
 # the next person_card() caller at a new size cannot silently reuse one.
-#   180  Search's Actors shelf (7.3, "circular headshots 180pt"; the live
+#   180  Search's Actors shelf (7.3 asks for round 180pt headshots; the live
 #        app measures 181 on a 256 pitch). It was 130 -- nobody's number,
 #        ~28% under both the spec and the app.
 PERSON_PHOTOS = (190, 180)
@@ -523,7 +523,7 @@ def gen_discover_open_scrim() -> None:
     treated art on that row and reads dimmer than the plain posters beside
     it, which is the consistency question this card always has to answer.
 
-    Canvas-tinted rather than black, per 7.9.4's "canvas-tinted stops" --
+    Tinted to the canvas rather than black, which is what 7.9.4 asks for --
     a black scrim over a blue-tinted canvas greys the artwork's shadows.
 
     Built 1:1 because it's drawn through discover-wide-mask.png; a stretched

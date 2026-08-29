@@ -17,8 +17,8 @@ That makes this module the single source of truth the generator imports, so
 the asset set and the runtime set cannot drift apart.
 
 The server's own MediaFormatInfo is the input, never re-derived ffprobe
-fields -- see tracks.py and the API's "clients prefer it over re-deriving"
-note. `audio.short_label` is what the server already computes as the compact
+fields -- the API is explicit that a client should take its value rather
+than work one out again; see tracks.py. `audio.short_label` is what the server already computes as the compact
 form, so the mapping below is presentation only.
 """
 from __future__ import annotations

@@ -368,7 +368,7 @@ SEARCH_HISTORY_H = SEARCH_HISTORY_ROWS * SEARCH_HISTORY_ROW_H
 
 SEARCH_SECTION_BAND = 65
 
-# 7.3's Actors shelf: "circular headshots 180pt". The live Apple TV measures
+# 7.3's Actors shelf asks for round 180pt headshots. The live Apple TV measures
 # a 181px photo on a 256 pitch; ours were 130 on 170, ~28% under both. The
 # photo size picks the person-border/glow asset pair, so it must be one of
 # gen_poster_assets.py's PERSON_PHOTOS.
@@ -449,7 +449,7 @@ HERO_CROSSFADE_MS = 300
 #
 # Deliberately half of HERO_CROSSFADE_MS rather than its own number, so the
 # two halves of the hero cannot drift apart -- the failure 7.9.5 names, where
-# a row "visibly changes width mid-transition" because two clocks disagreed.
+# a row is caught changing width mid-transition because two clocks disagreed.
 HERO_TEXT_DISSOLVE_MS = HERO_CROSSFADE_MS // 2
 
 # Browse's 5-column grid. Derived rather than typed so the grid follows
@@ -602,7 +602,8 @@ CAST_PHOTO = 190
 CAST_COLS = 6
 CAST_PANEL_W = CAST_COLS * CAST_TILE
 
-# 2's status triad, semantic ONLY: "never use red outside status/destructive".
+# 2's status triad, semantic ONLY: red belongs to status and destructive
+# actions and nowhere else.
 # Distinct from the rating quality ramp in windows/theme.py, whose own comment
 # insists the two never move together -- a score is a reading, not an alarm.
 # Only the red is needed so far; add the others here when something uses them.

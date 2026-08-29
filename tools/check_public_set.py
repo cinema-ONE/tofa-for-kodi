@@ -401,6 +401,71 @@ def scan_markers() -> list[tuple[str, int, str, str]]:
 
 # ------------------------------------------------------------------ main --
 
+#: Phrases that may appear in quotation marks even though tofa's documents
+#: also contain them, because they are NOT tofa's prose: they are text this
+#: app puts on a screen, or a value the server sends on the wire. The design
+#: document contains "Mark as Watched" for the same reason our code does --
+#: it is the label a viewer reads -- and a comment that cannot name the row
+#: it is about is not a comment. An ALLOWLIST rather than a pattern, for the
+#: same reason ALLOWED_IPS is one: the phrase that matters is the one nobody
+#: has typed yet, and it should have to be added on purpose.
+QUOTED_ON_SCREEN = {
+    "0 min left", "n min left", "nn min left", "min left",
+    "3d frame packed", "3d side by side", "a z then",
+    "add to library", "director s cut", "dolby truehd dolby atmos",
+    "dts hd m", "go to details", "in your library", "mark as watched",
+    "more like this", "not in library", "not in your library",
+    "pair this tv", "play if in library", "remove from continue watching",
+    "tofa for kodi", "who s watching",
+}
+
+#: A quotation of three words or more is a quotation. The 8-token PROSE gate
+#: above cannot see these -- it looks for long runs of borrowed sentences,
+#: and a design instruction is four words and a number. That gap is what let
+#: quoted spec lines accumulate across the tree until 2026-08-29, every one
+#: of them under the threshold and none of them ever failing a run.
+QUOTED_MIN_WORDS = 3
+_QUOTED = re.compile(r'"([^"\n]{10,140})"')
+
+
+def scan_quoted_phrases() -> list[tuple[str, int, str, str]]:
+    """Double-quoted phrases in COMMENTS that appear verbatim in a tofa
+    source. Comments only: a string literal in the code is text the add-on
+    uses, not a citation, and QUOTED_ON_SCREEN covers the labels a comment
+    legitimately names."""
+    sources = {}
+    for rel, whose, _why in PRIVATE_SOURCES:
+        if whose != "tofa" or VAULT is None:
+            continue
+        body = read(os.path.join(VAULT, rel))
+        if body is not None:
+            sources[rel] = " ".join(words_with_lines(body)[0])
+    found = []
+    for path in candidates():
+        if not path.endswith(".py"):
+            continue
+        body = read(os.path.join(ROOT, path))
+        if body is None:
+            continue
+        for number, line in enumerate(body.split("\n"), 1):
+            if not line.strip().startswith("#"):
+                continue
+            for match in _QUOTED.finditer(line):
+                raw = match.group(1)
+                phrase = " ".join(words_with_lines(raw)[0])
+                if len(phrase.split()) < QUOTED_MIN_WORDS:
+                    continue
+                if phrase in QUOTED_ON_SCREEN:
+                    continue
+                for rel, text in sources.items():
+                    if phrase in text:
+                        found.append((os.path.relpath(path, ROOT)
+                                      if os.path.isabs(path) else path,
+                                      number, raw, rel))
+                        break
+    return found
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("-n", type=int, default=DEFAULT_N,
@@ -471,6 +536,17 @@ def main() -> int:
             print("    A pass here would mean 'nothing was compared', not "
                   "'nothing was quoted'.")
         problems += len(blind)
+
+    if do_quotes:
+        quoted = scan_quoted_phrases()
+        for path, line, raw, rel in quoted:
+            print("%s:%d  quotes %s\n    \"%s\"" % (path, line, rel, raw))
+        print("\nQUOTED PHRASES: %d comment(s) quoting a tofa source" % len(quoted))
+        if quoted:
+            print("    Say it in our own words. The section pointer stays --"
+                  " that is what makes\n    the code navigable -- but the"
+                  " document's wording does not travel.")
+        problems += len(quoted)
 
     if do_markers:
         found = scan_markers()

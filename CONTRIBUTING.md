@@ -74,6 +74,18 @@ that matters is the one nobody has typed yet.
 Without the private checkout it has nothing to compare quotations against and
 says so; the identifier half still runs, and is the half that matters here.
 
+**Do not quote those documents, at any length.** Cite the section and say
+what it requires in your own words: `8.4 caps the scroll at 460pt`, never
+`8.4 says "max scroll 460pt"`. The checker's second half enforces it -- any
+three-word phrase a comment puts in quotation marks that also appears in one
+of tofa's documents fails the run. The eight-token half cannot see these; a
+design instruction is four words and a number, which is how quoted spec
+lines accumulated across the tree unnoticed until 2026-08-29.
+
+Text the app puts on screen is not a quotation of theirs -- a comment has to
+be able to name the row it is about -- and `QUOTED_ON_SCREEN` in the checker
+lists those by name. Add to it deliberately, or not at all.
+
 Where this client knowingly does something other than the spec or the shipped
 apps, record it in the private `internal-docs/DIVERGENCES.md` as well as at
 the code. Three reasons recur and are worth naming: **Kodi cannot** (a

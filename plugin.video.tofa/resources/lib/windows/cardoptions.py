@@ -60,9 +60,9 @@ ROW_REMOVE = "row_remove"
 # something is last before Cancel.
 _CATALOG = {
     # 6 establishes "Resume/Play" as ONE action whose label follows watch
-    # state. 7.2 writes this row as "Play (if in library)", which names the
-    # CONDITION rather than fixing the word, so the panel follows the same
-    # rule the detail hero already does: the two must never disagree about
+    # state. 7.2 makes the row conditional on the title being in the library,
+    # naming the CONDITION rather than fixing the word, so the panel follows
+    # the same rule the detail hero already does: the two must never disagree about
     # the same action on the same title, which is what prompted this.
     #
     # Whether a given title SHOULD read Resume is a separate question about

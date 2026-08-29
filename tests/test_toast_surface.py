@@ -2,7 +2,7 @@
 
 Every toast used to be `xbmcgui.Dialog().notification()`, drawn by the HOST
 skin -- the same objection 9.2 raises against a modal for a wrong PIN, and
-the reason 8.9's "all toasts fade <300ms" was unreachable: no animation we
+the reason 8.9's sub-300ms toast fade was unreachable: no animation we
 write can reach a control we do not own.
 
 The player's copy of the block is HAND-WRITTEN, because script-tofa-player
@@ -52,7 +52,7 @@ check("neither copy uses an unqualified lookup",
       and f"Window.Property({toast.PROPERTY})" not in PLAYER)
 
 
-# 3. 8.9: "all toasts fade <300ms". Both directions, both copies.
+# 3. 8.9 wants every toast fading in under 300ms. Both directions, both copies.
 def toast_block(xml):
     """The toast's own group. Anchored on the FIRST mention of the property,
     which is the group's <visible>, not the label 20 lines below it."""

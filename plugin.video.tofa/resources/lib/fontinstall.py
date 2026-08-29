@@ -150,7 +150,7 @@ FONTS: dict[str, tuple[str, int, str]] = {
     # The eyebrow has no size in 7.3 (it gives weight, tracking and colour
     # only); 14 is the cap-10 equivalent. It is NOT tofa_font_eyebrow, which
     # is 17 and caps at 12.4 -- visibly heavier than the app's.
-    # 7.3's "quiet Results for <query>" caption. REGULAR, not the semibold
+    # 7.3's understated results caption for a query. REGULAR, not the semibold
     # tofa_font_section_title it used to borrow: side by side against the app
     # that role was both a weight and a size too heavy.
     #

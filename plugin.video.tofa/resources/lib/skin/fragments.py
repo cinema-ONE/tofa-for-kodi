@@ -2435,8 +2435,9 @@ def empty_state(
     indent: str = "                    ",
 ) -> str:
     """9.7's empty scaffold: centred column, icon then title then message.
-    "The only one -- never bespoke per screen", so anything that needs to say
-    "there is nothing here" calls this rather than typing three labels again.
+    9.7 allows exactly one of these and no per-screen variants, so anything
+    needing to say there is nothing here calls this rather than typing three
+    labels again.
 
     The first hand-typed copy (More Like This) is what proved the point: it
     set the title in FONT_HEADING, which is 57px in a 40px-high slot 48px
@@ -2470,7 +2471,7 @@ def empty_state(
     scaffold from properties instead of emitting one block per sentence.
 
     `flavour` is 9.7's own split. "empty": neutral glyph at white 42%, white
-    title, "no red anywhere". "error": the icon AND the title go status-red
+    title, and no red at all. "error": the icon AND the title go status-red
     (2's `#f87171`, the semantic triad -- deliberately NOT the rating ramp's
     softer red, whose own comment forbids the two moving together). 9.7 also
     gives the error flavour a glass "Retry" button, which nothing here has
@@ -3670,15 +3671,15 @@ def _action_pill_label(label_x: int, label_w: int, height: int,
 def collection_card(list_id: int) -> tuple[str, str]:
     """7.5's collections index tile.
 
-    "A collection is a set, not a title" -- so this is the one LANDSCAPE
-    16:9 tile in an app of 2:3 portraits, and its numbers are the spec's
-    verbatim (tile 448, radius 14, a fixed caption so rows align). The
+    A collection is a set rather than a title, which is why this is the one
+    LANDSCAPE 16:9 tile in an app of 2:3 portraits; its numbers are the
+    spec's own (tile 448, radius 14, a fixed caption so rows align). The
     Android TV app lays its own out at exactly the same values, measured
     off a live uiautomator dump.
 
     7.5's artwork ladder, in the order it gives:
       backdrop  -> scaled and cropped to the tile, the normal case
-      poster    -> FITTED, never cropped ("never crop a poster to 16:9"),
+      poster    -> FITTED, never cropped, which 7.5 requires outright,
                    over a dimmed plate standing in for the blurred copy of
                    itself the spec asks for, which Kodi cannot produce
       neither   -> plate plus the film-stack glyph
@@ -3894,7 +3895,7 @@ def collection_card(list_id: int) -> tuple[str, str]:
 #   sidebar row      solid accent fill, DARK label      (59C3BD / 104D51)
 #   detail-pane row  accent-tinted glass, ACCENT label  (254145 / 73C2BE)
 #
-# 6 describes the second one as "solid accent fill with dark text" -- that is
+# 6 wants the second one filled with the accent and lettered dark -- that is
 # true of the sidebar and not of the detail pane. The shipped app disagrees
 # with its own spec here and the app wins (feedback_apple_tv_source_of_truth).
 
@@ -4616,7 +4617,7 @@ def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
     Y = (T.SETTINGS_ACTION_ROW_H - SH) // 2
     KNOB = 30
 
-    # 7.10.3 asks for the knob to travel in "~160ms ease-out". KODI CANNOT
+    # 7.10.3 asks for the knob to travel in about 160ms, eased out. KODI CANNOT
     # DO IT, measured twice rather than assumed -- see ANIMATION.md. The knob
     # is two controls parked at each end and swapped by <visible> on a
     # ListItem property, because nothing can move a control from Python. A
@@ -5398,7 +5399,7 @@ TOAST_X = (1920 - TOAST_W) // 2
 TOAST_Y = 40
 TOAST_PAD_H = 18      # 8.9: "pad 18h/10v"
 TOAST_FADE_IN = 180
-TOAST_FADE_OUT = 250  # 8.9: "all toasts fade <300ms"
+TOAST_FADE_OUT = 250  # 8.9 wants every toast fading in under 300ms
 TOAST_PROPERTY = "tofa_toast"
 
 
