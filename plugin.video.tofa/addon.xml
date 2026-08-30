@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.22" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.23" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,12 +25,16 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - The detail screen now says what shape a film is: a "2.39:1" badge beside the
-        resolution and sound, and the name of that shape under About. A widescreen
-        film stored in a 16:9 file used to be described as 16:9, because that is
-        what the file says; this reads the picture inside the frame instead.
-      - More room under the Critics and Audience scores on the About panel. The
-        format badges sat almost against them.
+      - Built against tofa media server 0.9.34. An older server is not refused and
+        most of the add-on carries on working, but it now says so once per session,
+        the same as it always has when it meets a server older than it was built
+        for.
+      - More titles now name their shape. A film or series whose file is stored
+        already cropped to the picture -- with no black bars inside the frame --
+        showed no aspect ratio at all on the detail page. It now says 2.39:1 or
+        2.00:1 like everything else, under About as well, and on each episode.
+      - "Plays as" no longer promises HDR10+ on a television that cannot show it.
+        On those sets a Dolby Vision film now correctly reads as HDR10.
     </news>
     <assets>
       <icon>icon.png</icon>
