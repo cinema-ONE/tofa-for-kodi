@@ -33,7 +33,16 @@ from . import log
 #: 0.9.33: `client_render_embedded_vobsub_subtitles` -- an older server
 #: ignores the flag and a DirectPlay file's embedded VobSub tracks stay
 #: out of the subtitle panel, which reads as this client losing them.
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 33)
+#:
+#: 0.9.34: NO feature, which makes this the exception to the rule above.
+#: The vendored spec moved to 0.9.34, and the spec may lag the floor but
+#: never lead it -- a newer spec means we hold a contract we do not claim
+#: to support. 0.9.34's one client-facing addition, `audio_lane_mode` on
+#: /stream/{id}/info, is OPT-IN: omitting it still advertises every audio
+#: lane, measured against a live 0.9.34 server, so nothing here changed
+#: behaviour. Adopt the parameter and this entry earns its keep; until
+#: then it is bookkeeping, and honest to say so.
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 34)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,

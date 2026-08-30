@@ -47,7 +47,7 @@ it.
 Server compatibility
 --------------------
 
-Built against tofa media server 0.9.33. Older servers are not refused, but
+Built against tofa media server 0.9.34. Older servers are not refused, but
 they are not supported either: this add-on carries no backward-compatibility
 paths, so on an older server some screens will be missing or wrong rather
 than degrading gracefully. It says so once per session when it sees one.
