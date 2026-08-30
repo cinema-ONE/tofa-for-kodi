@@ -52,18 +52,31 @@ check("no format block still falls back",
 # --- projection ratio on the hero -------------------------------------
 # 16:9 IS shown here, unlike on a card: the hero has room, and on a detail
 # page "1.78:1" is a fact rather than clutter.
-out = L(f({}, res="1080p")) ; out2 = L({"format": {"resolution_label": "1080p",
-        "video": {}, "picture_aspect_ratio": 1.78, "audio": None}})
-check("16:9 is stated on the hero", out2 == ["1080p", "1.78:1"], str(out2))
-scope = {"format": {"resolution_label": "4K", "video": {}, "audio": None,
-                    "picture_aspect_ratio": 2.39}}
+#
+# The ratio comes from the file's PROBED PICTURE AREA, not from `format`.
+# This used to pass `picture_aspect_ratio` inside the format block, which is
+# a field the server never puts there -- it lives on the stream negotiation --
+# so the badge these tests asserted could not fire in the real app.
+flat = {"format": {"resolution_label": "1080p", "video": {}, "audio": None},
+        "active_width": 1920, "active_height": 1080}
+check("16:9 is stated on the hero", L(flat) == ["1080p", "1.78:1"], str(L(flat)))
+scope = {"format": {"resolution_label": "4K", "video": {}, "audio": None},
+         "active_width": 3840, "active_height": 1600}
 check("scope reads 2.39:1", L(scope) == ["4K", "2.39:1"], str(L(scope)))
-odd = {"format": {"resolution_label": "4K", "video": {}, "audio": None,
-                  "picture_aspect_ratio": 2.30}}
-check("an unsnapped ratio is silent", L(odd) == ["4K"], str(L(odd)))
+check("2.40 is the SAME chip as 2.39, not its own",
+      L({"format": {"resolution_label": "4K", "video": {}, "audio": None},
+         "active_width": 3840, "active_height": 1608}) == ["4K", "2.39:1"])
+odd = {"format": {"resolution_label": "4K", "video": {}, "audio": None},
+       "active_width": 1882, "active_height": 1080}
+check("an unnameable shape is silent", L(odd) == ["4K"], str(L(odd)))
+check("an unprobed file is silent, not a guess from the frame",
+      L({"format": {"resolution_label": "4K", "video": {}, "audio": None}}) == ["4K"])
+check("`other` never gets a ratio at all",
+      L({"format": {"resolution_label": "1080p", "video": {}, "audio": None},
+         "active_width": 1920, "active_height": 800}, "other") == ["1080p"])
 full = {"format": {"resolution_label": "4K", "audio": None,
-                   "video": {"stereo_3d_label": "3D Frame-Packed"},
-                   "picture_aspect_ratio": 2.39}}
+                   "video": {"stereo_3d_label": "3D Frame-Packed"}},
+        "active_width": 3840, "active_height": 1600}
 check("3D then aspect, both after resolution",
       L(full) == ["4K", "3D Frame-Packed", "2.39:1"], str(L(full)))
 

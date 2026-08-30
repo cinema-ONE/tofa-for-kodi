@@ -611,11 +611,23 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # ON for a server that doesn't send the key, matching how
         # theme.card_rating_text() treats its own.
         show_badges = self._ensure_preferences().get("show_format_badges", True)
-        badges = (self._format_badge_labels(chosen_file)
+        media_type = (self.media or {}).get("media_type") or ""
+        badges = (self._format_badge_labels(chosen_file, media_type)
                   if (show_badges and chosen_file) else [])
-        for i in range(4):
+        # FIVE slots, not four. The aspect chip made the longest real row
+        # resolution + aspect + DV + base layer + audio, which overflowed a
+        # 4-slot row on 6 of 72 films sampled -- and the badge it truncated
+        # was the LAST one, the audio, on exactly the discs someone chose for
+        # their sound.
+        for i in range(5):
             self.setProperty("badge_{0}_label".format(i + 1), badges[i] if i < len(badges) else "")
         self._layout_format_badges(badges)
+        # What the shape IS goes in About's FACTS column, not under the chips
+        # here. The reference app's About left column ends at the badge row
+        # with nothing beneath it, and its right column is exactly this kind
+        # of labelled fact (RELEASED / RUNTIME / GENRES / STUDIOS / RATED).
+        # Captured 2026-08-30, internal-docs/atv-reference/detail-about-dense.png.
+        self._aspect_chip = next((b for b in badges if b.endswith(":1")), "")
         # "Plays as X": the device-capability caveat, now that capabilities.py
         # can ask Kodi what this box will actually output. It is NOT a
         # restatement of the file -- an early attempt filled it from the
@@ -726,8 +738,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: strings look like two different things.
     #: Four slots, not three: a Dolby Vision disc shows its base layer too,
     #: so the longest row is resolution + DV + base + audio.
-    BADGE_CONTROLS = ((5112, 5113), (5114, 5115), (5116, 5117), (5118, 5119))
-    ABOUT_BADGE_CONTROLS = ((6610, 6611), (6612, 6613), (6614, 6615), (6616, 6617))
+    BADGE_CONTROLS = ((5112, 5113), (5114, 5115), (5116, 5117), (5118, 5119),
+                      (5120, 5121))
+    ABOUT_BADGE_CONTROLS = ((6610, 6611), (6612, 6613), (6614, 6615),
+                            (6616, 6617), (6618, 6619))
     BADGE_PAD = 13
     BADGE_GAP = 12
 
@@ -759,7 +773,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             x += width + self.BADGE_GAP
 
     @staticmethod
-    def _format_badge_labels(f: dict) -> list:
+    def _format_badge_labels(f: dict, media_type: str = "") -> list:
         """The hero's badge row, taken from the server's own MediaFormatInfo.
 
         All of this used to be re-derived here from raw ffprobe fields, which
@@ -816,12 +830,26 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             badges.append(video["stereo_3d_label"])
 
         # Projection ratio, next to the resolution for the same reason: both
-        # describe the rectangle. 16:9 IS shown here, unlike on a card --
-        # the hero has room, and on a detail page "1.78:1" is a fact rather
-        # than clutter. `picture_aspect_ratio` is the picture inside the
-        # frame, so a 2.39 film in a full-frame remux reads 2.39, which is
-        # the whole point of the field.
-        aspect = fmt_badges.aspect_badge(fmt.get("picture_aspect_ratio"))
+        # describe the rectangle. 16:9 IS shown here, unlike on a card -- the
+        # hero has room, and on a detail page "1.78:1" is a fact rather than
+        # clutter.
+        #
+        # Read from the file's PROBED PICTURE AREA, not from
+        # `picture_aspect_ratio`. This used to ask `format` for that field and
+        # so never drew anything at all: the server puts it on
+        # PlaybackInfoResponse, the stream negotiation, and not on the media
+        # file -- and fills it lazily on first playback besides, which a
+        # Detail page for an unplayed title can never wait for. `active_*` is
+        # on the file, needs no playback, and covered 92% of the library.
+        #
+        # NOT for `other`. That bucket is 2,773 demo clips, calibration
+        # patterns and single concert tracks; 35% of them do not snap to any
+        # ratio, and the ones that do are 1.78 and mean nothing. The
+        # vocabulary here -- scope, widescreen, Academy -- describes
+        # theatrical presentation, which an HDR test pattern is not.
+        aspect = ("" if media_type == "other"
+                  else fmt_badges.aspect_from_active(f.get("active_width"),
+                                                     f.get("active_height")))
         if aspect:
             badges.append(aspect)
 
@@ -1255,8 +1283,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # (already set this render pass) -- just shown at a different position.
         self.setProperty("about_tagline", media.get("tagline") or "")
         self.setProperty("about_synopsis", media.get("overview") or "")
-        facts = self._about_facts(media)
-        for i in range(5):
+        facts = self._about_facts(media, getattr(self, "_aspect_chip", ""))
+        for i in range(6):
             eyebrow, value = facts[i] if i < len(facts) else ("", "")
             self.setProperty("fact_{0}_eyebrow".format(i + 1), eyebrow)
             self.setProperty("fact_{0}_value".format(i + 1), value)
@@ -1269,8 +1297,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     ABOUT_COLUMN = (
         ("tagline",  168, (6600,), 36),
         ("synopsis", 204, (6601,), 290),
-        ("ratings",  494, (6602,), 34),
-        ("badges",   528, (6603,), 0),
+        # 59, not 34. The ratings LABEL is 24px tall but its ink sits low in
+        # that box, so a 34px pitch left only SEVEN pixels of air under
+        # "Critics 72 . Audience 75" before the chip pills started -- the
+        # reference leaves 32 (ink ends y479, pill starts y511;
+        # internal-docs/atv-reference/detail-about-dense.png). The hero stack
+        # was never wrong here, which is why this went unnoticed: HERO_STACK
+        # reaches 33px on the same two blocks. Measured, not guessed.
+        ("ratings",  494, (6602,), 59),
+        ("badges",   553, (6603,), 0),
     )
 
     def _layout_about_column(self):
@@ -1318,7 +1353,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return mli
 
     @staticmethod
-    def _about_facts(media: dict) -> list:
+    def _about_facts(media: dict, aspect_chip: str = "") -> list:
         # Fixed positional slots (fact_N_eyebrow/value, N=1..5), filled
         # left-to-right skipping absent fields -- same convention as
         # _render_format_badges(); Kodi controls can't size from text length.
@@ -1335,6 +1370,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         studios = media.get("studios") or []
         add("STUDIO(S)", u", ".join(studios[:2]))
         add("RATED", media.get("content_rating"))
+        # LAST, after the five the reference app shows. The others describe
+        # the work; this one describes its presentation, and appending keeps
+        # the reference's own order untouched rather than pushing STUDIO(S)
+        # and RATED down to make room for it.
+        if aspect_chip:
+            note = fmt_badges.aspect_note(aspect_chip, media.get("media_type") or "")
+            add("ASPECT RATIO", f"{aspect_chip} · {note}" if note else aspect_chip)
         return facts
 
     # ------------------------------------------------------------------

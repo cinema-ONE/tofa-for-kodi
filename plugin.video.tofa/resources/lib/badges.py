@@ -70,9 +70,24 @@ CARD_BADGES = ("4K", "3D", "DV", "HDR10+", "HDR10", "HLG", "HDR",
                # anywhere that wants to state the shape outright.
                "2.39:1", "2.35:1", "1.85:1", "1.78:1", "1.66:1", "1.33:1")
 
-#: picture_aspect_ratio -> chip. Keyed on the snapped value, so a float that
-#: the server did NOT snap (an oddity outside 2% of any canonical ratio) gets
-#: no chip rather than a spurious one.
+#: Every projection ratio we will name, and the ONLY source of aspect chips.
+#: Five wider than the server's own canonical set (2.00, 2.20, 2.55, 2.76 and
+#: 1.37), because that set leaves real shapes unnamed. 2.00 is 14% of the TV
+#: titles measured -- Univisium, the modern streaming shape -- and 1.37 is
+#: Academy proper, which is NOT 1.33: 3 Godfathers (1948) probes 1.370.
+ASPECT_RATIOS = (2.76, 2.55, 2.39, 2.35, 2.20, 2.00, 1.85, 1.78, 1.66, 1.37, 1.33)
+
+#: How close a measurement must sit to be called that ratio. ONE percent, not
+#: the server's two, and the difference is the point: 2.35 and 2.39 are only
+#: 1.7% apart, so a 2% window merges the two most distinguishable scope
+#: standards there are. Measured across 114 films, +/-1% separates them
+#: cleanly AND still names 112 of the 114.
+ASPECT_TOLERANCE = 0.01
+
+#: Kept only so `ASPECT_BADGES.values()` still enumerates the chips an ASSET
+#: exists for -- tools/gen_badge_assets.py and check_badges.py walk
+#: CARD_BADGES, and the card path filters against it. The RATIO decision no
+#: longer lives here; see ASPECT_RATIOS.
 ASPECT_BADGES = {
     2.39: "2.39:1", 2.35: "2.35:1", 1.85: "1.85:1",
     1.78: "1.78:1", 1.66: "1.66:1", 1.33: "1.33:1",
@@ -80,17 +95,109 @@ ASPECT_BADGES = {
 
 
 def aspect_badge(ratio) -> str:
-    """The chip for a snapped projection ratio, or "" for anything else.
+    """The chip for a measured picture ratio, or "" for a shape we can't name.
 
-    Exact-matches the canonical set rather than rounding: the server has
-    already decided whether this picture IS 2.39, and a client that rounds
-    2.30 up to 2.35 would be inventing a verdict the server declined to
-    make."""
+    Snaps to the NEAREST entry in ASPECT_RATIOS, never the first one within
+    tolerance: the +/-1% windows around 2.35 and 2.39 overlap, and a
+    first-match walk sweeps the whole 2.34-2.36 cluster into 2.39.
+
+    **2.39 and 2.40 are deliberately ONE entry.** The measured scope cluster
+    runs continuously from 2.388 to 2.418 with no gap in it, because
+    1920/2.39 = 803.3 -- an encoder crops to 802 or 804 rows where 2.40 crops
+    to 800. The difference between "2.39" and "2.40" is two to four pixel rows
+    of encoder crop, not a fact about the film, and splitting them would print
+    an encoding artefact as though it described the picture.
+
+    Anything still outside tolerance gets nothing, and that silence is
+    load-bearing: it means the probe found a shape we do not recognise (a bad
+    frame, a variable-ratio title), and printing the raw measurement would
+    dress a measurement error up as a fact. Two of 114 films land here."""
     try:
-        value = round(float(ratio), 2)
+        value = float(ratio)
     except (TypeError, ValueError):
         return ""
-    return ASPECT_BADGES.get(value, "")
+    if value <= 0:
+        return ""
+    best = min(ASPECT_RATIOS, key=lambda c: abs(value - c) / c)
+    if abs(value - best) / best > ASPECT_TOLERANCE:
+        return ""
+    return "{0:.2f}:1".format(best)
+
+
+def aspect_from_active(width, height) -> str:
+    """The chip for a file's PROBED PICTURE AREA (`active_width`/`_height`).
+
+    This is the field to read, NOT `display_aspect_ratio`: that describes the
+    coded frame with the hard-matted bars included, so a 2.39 film in a
+    full-frame remux reports 1.78 and every scope title in the library would
+    badge as 16:9.
+
+    The server's own `picture_aspect_ratio` answers this already snapped, but
+    it lives on PlaybackInfoResponse -- the stream negotiation -- and is
+    filled lazily on first playback, so a Detail page cannot get it for a
+    title nobody has played yet. `active_*` sits on the media file itself,
+    needs no playback, and was populated for 92% of the library when
+    measured."""
+    try:
+        w, h = float(width), float(height)
+    except (TypeError, ValueError):
+        return ""
+    if w <= 0 or h <= 0:
+        return ""
+    return aspect_badge(w / h)
+
+
+#: The value of About's ASPECT RATIO fact, rendered as "<chip> . <note>".
+#: KEEP THESE SHORT. The fact slot is a single 660px label with no wrap,
+#: so an over-long value ellipsises: the first draft ran to "2.39:1 . "
+#: "Anamorphic scope, the modern Panavision ratio" and clipped on screen.
+#: Measured against "Marvel Studios, Kevin Feige Productions", which is the
+#: longest value known to render whole; every entry here sits under it.
+#:
+#: NAMES A RATIO, NEVER A CAMERA. An aspect ratio constrains the frame and
+#: says nothing about how a film was shot: 28 Years Later (2025) measures
+#: 2.759, the Ultra Panavision 70 ratio, and was photographed on iPhones with
+#: anamorphic adapters. A flat "Ultra Panavision 70" as a standalone label
+#: would be checkably wrong on it.
+#:
+#: What keeps these honest is the EYEBROW. The row reads "ASPECT RATIO /
+#: 2.76:1 . Ultra Panavision 70", so the process name is scoped to the ratio
+#: by the label above it rather than by padding every value with the word
+#: "ratio" -- which is what the first draft did, and what pushed the longest
+#: value past the slot. If one of these is ever lifted OUT of the facts column
+#: and shown without that eyebrow, the wording has to grow the word back.
+#:
+#: Adrian's call was to keep the recognisable names because that is what film
+#: enthusiasts know these shapes by, in preference to a neutral description.
+ASPECT_NOTES = {
+    "2.76:1": "Ultra Panavision 70",
+    "2.55:1": "Original CinemaScope",
+    "2.39:1": "Anamorphic scope (Panavision)",
+    "2.35:1": "Anamorphic scope (pre-1970)",
+    "2.20:1": "70mm roadshow (Todd-AO)",
+    "2.00:1": "Univisium",
+    "1.85:1": "Widescreen, flat",
+    "1.78:1": "16:9 widescreen",
+    "1.66:1": "European widescreen",
+    "1.37:1": "Academy",
+    "1.33:1": "Academy",
+}
+
+#: The one note that depends on WHAT it is rather than what shape it is.
+#: ~1.33 arrives at the same number down two unrelated roads: a 1948 feature
+#: is Academy, an 1980s television series is 4:3, and calling the latter
+#: "Academy" is simply wrong about the world.
+ASPECT_NOTES_TV = {
+    "1.33:1": "4:3, television",
+    "1.37:1": "4:3, television",
+}
+
+
+def aspect_note(chip: str, media_type: str = "") -> str:
+    """The About sentence for a chip, or "" when there is nothing to add."""
+    if media_type == "tv" and chip in ASPECT_NOTES_TV:
+        return ASPECT_NOTES_TV[chip]
+    return ASPECT_NOTES.get(chip, "")
 
 #: How many fit down the left edge of a poster before they reach the caption.
 MAX_CARD_BADGES = 3

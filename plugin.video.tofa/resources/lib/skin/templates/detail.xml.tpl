@@ -338,6 +338,26 @@
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[Window.Property(badge_4_label)]</label>
                         </control>
+                        <control type="image" id="5120">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>150</width>
+                            <height>34</height>
+                            <colordiffuse>{BORDER}</colordiffuse>
+                            <texture border="4">white-square-rounded.png</texture>
+                            <visible>!String.IsEmpty(Window.Property(badge_5_label))</visible>
+                        </control>
+                        <control type="label" id="5121">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>150</width>
+                            <height>34</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(badge_5_label)]</label>
+                        </control>
                     </control>
 
                     <!-- "Plays as X": what the audio will actually come out
@@ -1301,7 +1321,7 @@
                          left saying otherwise. -->
                     <control type="group" id="6603">
                         <posx>100</posx>
-                        <posy>528</posy>
+                        <posy>553</posy>
                         <control type="image" id="6610">
                             <posx>0</posx>
                             <width>150</width>
@@ -1374,9 +1394,31 @@
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[Window.Property(badge_4_label)]</label>
                         </control>
+                        <control type="image" id="6618">
+                            <posx>316</posx>
+                            <width>200</width>
+                            <height>34</height>
+                            <colordiffuse>{BORDER}</colordiffuse>
+                            <texture border="4">white-square-rounded.png</texture>
+                            <visible>!String.IsEmpty(Window.Property(badge_5_label))</visible>
+                        </control>
+                        <control type="label" id="6619">
+                            <posx>316</posx>
+                            <width>200</width>
+                            <height>34</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(badge_5_label)]</label>
+                        </control>
                     </control>
 
-                    <!-- Facts panel: 5 fixed slots, stacked vertically. -->
+                    <!-- Facts panel: 6 fixed slots, stacked vertically at a 92px
+                         pitch. The sixth is the projection ratio, which the
+                         reference app does not carry at all; see
+                         detail.py:_about_facts() for why it is appended last
+                         rather than slotted among the five it does. -->
                     <control type="group">
                         <posx>1160</posx>
                         <posy>170</posy>
@@ -1474,6 +1516,25 @@
                                 <font>tofa_font_button</font>
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                                 <label>$INFO[Window.Property(fact_5_value)]</label>
+                            </control>
+                        </control>
+                        <control type="group">
+                            <posy>460</posy>
+                            <visible>!String.IsEmpty(Window.Property(fact_6_value))</visible>
+                            <control type="label">
+                                <width>660</width>
+                                <height>22</height>
+                                <font>tofa_font_eyebrow</font>
+                                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                                <label>| $INFO[Window.Property(fact_6_eyebrow)]</label>
+                            </control>
+                            <control type="label">
+                                <posy>26</posy>
+                                <width>660</width>
+                                <height>34</height>
+                                <font>tofa_font_button</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <label>$INFO[Window.Property(fact_6_value)]</label>
                             </control>
                         </control>
                     </control>
