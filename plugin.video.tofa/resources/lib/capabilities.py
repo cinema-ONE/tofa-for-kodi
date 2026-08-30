@@ -82,7 +82,11 @@ _PASSTHROUGH_SETTING = {
 }
 #: videoplayer.allowedhdrformats is a list of enabled advanced HDR outputs.
 #: Values come from the setting's own options: 0 = Dolby Vision, 1 = HDR10+.
+#: It is an ALLOW-LIST, never a capability -- the LibreELEC NUC answers
+#: [0, 1] on a panel whose SupportedHdrTypes is only "HDR10, HLG". Both
+#: formats need the display to say yes AND this list to permit it.
 _DV_HDR_FORMAT = 0
+_HDR10_PLUS_FORMAT = 1
 
 #: Atmos rides a carrier, and which carrier decides which setting applies.
 _ATMOS_CARRIER_SETTING = {
@@ -368,7 +372,8 @@ def video() -> dict:
 #: Capability doesn't come and go with a screensaver, so it only ever
 #: upgrades here -- a sleeping display can't talk us out of what the box
 #: already proved it could do.
-_BEST: dict = {"hdr_types": "", "dolby_vision": False, "hdr_capable": False}
+_BEST: dict = {"hdr_types": "", "dolby_vision": False, "hdr_capable": False,
+               "hdr10_plus": False}
 
 
 def _build_video() -> dict:
@@ -382,6 +387,8 @@ def _build_video() -> dict:
     #  - coreelec.amlogic.disabledolbyvision, CoreELEC-only, a hard off.
     allowed = _setting("videoplayer.allowedhdrformats")
     dv_allowed = True if allowed is None else (_DV_HDR_FORMAT in allowed)
+    hdr10_plus_allowed = (True if allowed is None
+                          else (_HDR10_PLUS_FORMAT in allowed))
     dv_disabled = bool(_setting("coreelec.amlogic.disabledolbyvision"))
     # "Adjust display HDR mode" (Settings / Player / Videos / Playback). Its
     # PRESENCE means the display is HDR-capable -- Kodi only registers it
@@ -397,6 +404,11 @@ def _build_video() -> dict:
     hdr_capable = hdr_switching is not None or bool(hdr_types)
     dolby_vision = (("dolby vision" in hdr_types.lower())
                     and bool(hdr_switching) and dv_allowed and not dv_disabled)
+    # "hdr10+", not "hdr10": the plain string is a PREFIX of the plus one, so
+    # a loose `"hdr10" in types` is True on the NUC's "HDR10, HLG" and would
+    # promise dynamic metadata a panel without it cannot show.
+    hdr10_plus = (("hdr10+" in hdr_types.lower())
+                  and bool(hdr_switching) and hdr10_plus_allowed)
     # Upgrade-only: keep the best answer this box has given us.
     if hdr_capable:
         _BEST["hdr_capable"] = True
@@ -404,6 +416,8 @@ def _build_video() -> dict:
         _BEST["hdr_types"] = hdr_types
     if dolby_vision:
         _BEST["dolby_vision"] = True
+    if hdr10_plus:
+        _BEST["hdr10_plus"] = True
     return {
         # False only when Kodi answered nothing at all -- the difference
         # between "no" and "couldn't ask".
@@ -414,6 +428,7 @@ def _build_video() -> dict:
         "hdr_capable": _BEST["hdr_capable"] or hdr_capable,
         "hdr_enabled": bool(hdr_switching),
         "dolby_vision": _BEST["dolby_vision"] or dolby_vision,
+        "hdr10_plus": _BEST["hdr10_plus"] or hdr10_plus,
         "modes": modes,
         "max_height": max((m[1] for m in modes), default=0),
         # What the screen is showing RIGHT NOW. With mode switching off this
@@ -488,6 +503,13 @@ def _whitelist_modes() -> list:
     return out
 
 
+#: Server-side dynamic-range labels this module has to reason about by NAME.
+#: They come from `format.video.label` / `base_layer_label` and are the
+#: server's own strings, not ours -- see project_plays_as_and_dv_badges.
+_HDR10_PLUS_LABEL = "HDR10+"
+_HDR10_LABEL = "HDR10"
+
+
 def dynamic_range_label(video_format: dict, caps: dict | None = None) -> str:
     """The badge for a file's dynamic range, as THIS display will show it.
 
@@ -497,18 +519,36 @@ def dynamic_range_label(video_format: dict, caps: dict | None = None) -> str:
     `base_layer_label`: a 4K disc carries its DV encode over an HDR10+ base,
     and a detail surface is meant to show that base as well.
 
+    THE BASE LAYER IS A CLAIM TOO. Falling back to it is not the end of the
+    check -- a 4K disc's DV rides an HDR10+ base, and a display that cannot
+    do HDR10+ shows plain HDR10. Reported on the LibreELEC NUC, which
+    answers `SupportedHdrTypes` "HDR10, HLG" and was being promised "Plays
+    as HDR10+" on Lucky. So the resolved label is checked in its own right,
+    and a file whose OWN range is `hdr10_plus` (20 in the library, no DV
+    layer at all) goes through the same check rather than past it.
+
     Downgrades whenever we could ASK and the answer was no -- which
     includes a box with no HDR path at all, like Kodi on Linux. The only
     case that keeps the file's own label is `known` False, meaning Kodi
     answered nothing and we are guessing.
     """
-    label = (video_format or {}).get("label") or ""
-    if (video_format or {}).get("dynamic_range") != "dolby_vision":
+    video_format = video_format or {}
+    label = video_format.get("label") or ""
+    dynamic_range = video_format.get("dynamic_range")
+    if dynamic_range in (None, "sdr"):
         return label
     caps = caps if caps is not None else video()
-    if not caps.get("known", True) or caps.get("dolby_vision"):
-        return label
-    return video_format.get("base_layer_label") or label
+    if not caps.get("known", True):
+        return label                       # couldn't ask; don't invent an answer
+    if dynamic_range == "dolby_vision" and not caps.get("dolby_vision"):
+        label = video_format.get("base_layer_label") or label
+    if label == _HDR10_PLUS_LABEL and not caps.get("hdr10_plus"):
+        # HDR10+ IS HDR10 plus dynamic metadata, so an HDR10 panel shows the
+        # static base rather than nothing. Only downgrade this far when the
+        # box has an HDR path at all; when it does not, plays_as() says SDR
+        # for the whole row and this label never gets used.
+        return _HDR10_LABEL if caps.get("hdr_capable") else label
+    return label
 
 
 #: The shorthand is only honest for the EXACT mode. 1920x1080 is "1080p";
