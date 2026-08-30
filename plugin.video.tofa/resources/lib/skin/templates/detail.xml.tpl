@@ -338,6 +338,26 @@
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[Window.Property(badge_4_label)]</label>
                         </control>
+                        <control type="image" id="5120">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>150</width>
+                            <height>34</height>
+                            <colordiffuse>{BORDER}</colordiffuse>
+                            <texture border="4">white-square-rounded.png</texture>
+                            <visible>!String.IsEmpty(Window.Property(badge_5_label))</visible>
+                        </control>
+                        <control type="label" id="5121">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>150</width>
+                            <height>34</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(badge_5_label)]</label>
+                        </control>
                     </control>
 
                     <!-- "Plays as X": what the audio will actually come out
@@ -1374,6 +1394,39 @@
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[Window.Property(badge_4_label)]</label>
                         </control>
+                        <control type="image" id="6618">
+                            <posx>316</posx>
+                            <width>200</width>
+                            <height>34</height>
+                            <colordiffuse>{BORDER}</colordiffuse>
+                            <texture border="4">white-square-rounded.png</texture>
+                            <visible>!String.IsEmpty(Window.Property(badge_5_label))</visible>
+                        </control>
+                        <control type="label" id="6619">
+                            <posx>316</posx>
+                            <width>200</width>
+                            <height>34</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(badge_5_label)]</label>
+                        </control>
+                    </control>
+                    <!-- What the projection ratio IS, under the chip that
+                         names it. About only: the hero states the shape,
+                         this explains it, and there is no room up there for
+                         a sentence. Empty for a title whose picture did not
+                         snap to a ratio we can name, and the block packs
+                         away with the rest of the column when it is. -->
+                    <control type="label" id="6604">
+                        <posx>100</posx>
+                        <posy>572</posy>
+                        <width>980</width>
+                        <height>24</height>
+                        <font>tofa_font_poster_title</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(about_aspect_note)]</label>
                     </control>
 
                     <!-- Facts panel: 5 fixed slots, stacked vertically. -->
