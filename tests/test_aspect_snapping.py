@@ -72,15 +72,23 @@ check("nonsense is silent", badges.aspect_from_active("wide", "ish") == "")
 check("a negative is silent", badges.aspect_badge(-2.39) == "")
 
 # --- the notes ---------------------------------------------------------
-# They name a RATIO, never a camera. 28 Years Later measures 2.759 and was
-# shot on iPhones with anamorphic adapters, so a flat "Ultra Panavision 70"
-# would be checkably wrong; "the Ultra Panavision 70 ratio" names the format
-# that defined the shape without claiming this title used it.
+# They name a RATIO, never a camera. 28 Years Later measures 2.759 and was shot
+# on iPhones with anamorphic adapters, so the process name is only honest
+# because the ASPECT RATIO eyebrow above it scopes what is being named.
 check("every chip we can draw has a note",
       all(badges.aspect_note("{0:.2f}:1".format(r)) for r in badges.ASPECT_RATIOS))
 check("the 2.76 note names the ratio, not the camera",
-      badges.aspect_note("2.76:1") == "The Ultra Panavision 70 ratio",
+      badges.aspect_note("2.76:1") == "Ultra Panavision 70",
       badges.aspect_note("2.76:1"))
+# The fact slot is a single 660px label with no wrap. Measured against the
+# longest value known to render whole, so a future edit cannot quietly clip.
+from resources.lib import textmetrics as _tm
+_BUDGET = _tm.text_width("Marvel Studios, Kevin Feige Productions")
+for _r in badges.ASPECT_RATIOS:
+    _chip = "{0:.2f}:1".format(_r)
+    _val = f"{_chip} \u00b7 {badges.aspect_note(_chip)}"
+    check(f"the {_chip} fact value fits its slot",
+          _tm.text_width(_val) <= _BUDGET, f"{_tm.text_width(_val)} > {_BUDGET}: {_val}")
 check("no chip, no note", badges.aspect_note("") == "")
 check("an unknown chip has no note", badges.aspect_note("1.19:1") == "")
 
@@ -90,7 +98,7 @@ check("an unknown chip has no note", badges.aspect_note("1.19:1") == "")
 check("a film at 1.37 is Academy",
       "Academy" in badges.aspect_note("1.37:1", "movie"))
 check("a series at 1.33 is 4:3, not Academy",
-      badges.aspect_note("1.33:1", "tv") == "4:3, the original television shape",
+      badges.aspect_note("1.33:1", "tv") == "4:3, television",
       badges.aspect_note("1.33:1", "tv"))
 check("a film at 1.33 is still Academy",
       "Academy" in badges.aspect_note("1.33:1", "movie"))

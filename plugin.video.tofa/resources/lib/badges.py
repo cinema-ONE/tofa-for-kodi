@@ -147,31 +147,40 @@ def aspect_from_active(width, height) -> str:
     return aspect_badge(w / h)
 
 
-#: The About line under the chip. Chip alone on the hero; this only ever
-#: appears on About, where there is room to say what the shape IS.
+#: The value of About's ASPECT RATIO fact, rendered as "<chip> . <note>".
+#: KEEP THESE SHORT. The fact slot is a single 660px label with no wrap,
+#: so an over-long value ellipsises: the first draft ran to "2.39:1 . "
+#: "Anamorphic scope, the modern Panavision ratio" and clipped on screen.
+#: Measured against "Marvel Studios, Kevin Feige Productions", which is the
+#: longest value known to render whole; every entry here sits under it.
 #:
-#: NAMES A RATIO, NEVER A CAMERA -- and the phrasing is doing that work
-#: deliberately. An aspect ratio constrains the frame and says nothing about
-#: how a film was shot: 28 Years Later (2025) measures 2.759, the Ultra
-#: Panavision 70 ratio, and was photographed on iPhones with anamorphic
-#: adapters. "Ultra Panavision 70" as a flat label would be checkably wrong
-#: there; "the Ultra Panavision 70 ratio" names the format that DEFINED the
-#: shape without claiming this title used it. Adrian's call was to keep the
-#: recognisable names because that is what film enthusiasts know them by, and
-#: this wording keeps them while staying true -- the same discipline as never
-#: describing a file's provenance from its shape.
+#: NAMES A RATIO, NEVER A CAMERA. An aspect ratio constrains the frame and
+#: says nothing about how a film was shot: 28 Years Later (2025) measures
+#: 2.759, the Ultra Panavision 70 ratio, and was photographed on iPhones with
+#: anamorphic adapters. A flat "Ultra Panavision 70" as a standalone label
+#: would be checkably wrong on it.
+#:
+#: What keeps these honest is the EYEBROW. The row reads "ASPECT RATIO /
+#: 2.76:1 . Ultra Panavision 70", so the process name is scoped to the ratio
+#: by the label above it rather than by padding every value with the word
+#: "ratio" -- which is what the first draft did, and what pushed the longest
+#: value past the slot. If one of these is ever lifted OUT of the facts column
+#: and shown without that eyebrow, the wording has to grow the word back.
+#:
+#: Adrian's call was to keep the recognisable names because that is what film
+#: enthusiasts know these shapes by, in preference to a neutral description.
 ASPECT_NOTES = {
-    "2.76:1": "The Ultra Panavision 70 ratio",
-    "2.55:1": "The original CinemaScope ratio",
-    "2.39:1": "Anamorphic scope, the modern Panavision ratio",
-    "2.35:1": "Anamorphic scope, the CinemaScope standard before 1970",
-    "2.20:1": "The 70mm roadshow ratio, as used by Todd-AO",
+    "2.76:1": "Ultra Panavision 70",
+    "2.55:1": "Original CinemaScope",
+    "2.39:1": "Anamorphic scope (Panavision)",
+    "2.35:1": "Anamorphic scope (pre-1970)",
+    "2.20:1": "70mm roadshow (Todd-AO)",
     "2.00:1": "Univisium",
-    "1.85:1": "Widescreen, the flat cinema standard",
+    "1.85:1": "Widescreen, flat",
     "1.78:1": "16:9 widescreen",
     "1.66:1": "European widescreen",
-    "1.37:1": "Academy, the sound-era standard",
-    "1.33:1": "Academy, the pre-widescreen shape",
+    "1.37:1": "Academy",
+    "1.33:1": "Academy",
 }
 
 #: The one note that depends on WHAT it is rather than what shape it is.
@@ -179,8 +188,8 @@ ASPECT_NOTES = {
 #: is Academy, an 1980s television series is 4:3, and calling the latter
 #: "Academy" is simply wrong about the world.
 ASPECT_NOTES_TV = {
-    "1.33:1": "4:3, the original television shape",
-    "1.37:1": "4:3, the original television shape",
+    "1.33:1": "4:3, television",
+    "1.37:1": "4:3, television",
 }
 
 

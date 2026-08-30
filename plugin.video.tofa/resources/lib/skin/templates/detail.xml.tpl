@@ -1413,23 +1413,12 @@
                             <label>$INFO[Window.Property(badge_5_label)]</label>
                         </control>
                     </control>
-                    <!-- What the projection ratio IS, under the chip that
-                         names it. About only: the hero states the shape,
-                         this explains it, and there is no room up there for
-                         a sentence. Empty for a title whose picture did not
-                         snap to a ratio we can name, and the block packs
-                         away with the rest of the column when it is. -->
-                    <control type="label" id="6604">
-                        <posx>100</posx>
-                        <posy>572</posy>
-                        <width>980</width>
-                        <height>24</height>
-                        <font>tofa_font_poster_title</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(about_aspect_note)]</label>
-                    </control>
 
-                    <!-- Facts panel: 5 fixed slots, stacked vertically. -->
+                    <!-- Facts panel: 6 fixed slots, stacked vertically at a 92px
+                         pitch. The sixth is the projection ratio, which the
+                         reference app does not carry at all; see
+                         detail.py:_about_facts() for why it is appended last
+                         rather than slotted among the five it does. -->
                     <control type="group">
                         <posx>1160</posx>
                         <posy>170</posy>
@@ -1527,6 +1516,25 @@
                                 <font>tofa_font_button</font>
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                                 <label>$INFO[Window.Property(fact_5_value)]</label>
+                            </control>
+                        </control>
+                        <control type="group">
+                            <posy>460</posy>
+                            <visible>!String.IsEmpty(Window.Property(fact_6_value))</visible>
+                            <control type="label">
+                                <width>660</width>
+                                <height>22</height>
+                                <font>tofa_font_eyebrow</font>
+                                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                                <label>| $INFO[Window.Property(fact_6_eyebrow)]</label>
+                            </control>
+                            <control type="label">
+                                <posy>26</posy>
+                                <width>660</width>
+                                <height>34</height>
+                                <font>tofa_font_button</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <label>$INFO[Window.Property(fact_6_value)]</label>
                             </control>
                         </control>
                     </control>

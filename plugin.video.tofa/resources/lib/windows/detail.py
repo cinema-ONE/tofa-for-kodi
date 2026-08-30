@@ -622,12 +622,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         for i in range(5):
             self.setProperty("badge_{0}_label".format(i + 1), badges[i] if i < len(badges) else "")
         self._layout_format_badges(badges)
-        # About says what the shape IS; the hero row just names it. Only ever
-        # the About column, and only when the chip is there to explain.
-        aspect_chip = next((b for b in badges if b.endswith(":1")), "")
-        self.setProperty("about_aspect_note",
-                         fmt_badges.aspect_note(aspect_chip, media_type)
-                         if aspect_chip else "")
+        # What the shape IS goes in About's FACTS column, not under the chips
+        # here. The reference app's About left column ends at the badge row
+        # with nothing beneath it, and its right column is exactly this kind
+        # of labelled fact (RELEASED / RUNTIME / GENRES / STUDIOS / RATED).
+        # Captured 2026-08-30, internal-docs/atv-reference/detail-about-dense.png.
+        self._aspect_chip = next((b for b in badges if b.endswith(":1")), "")
         # "Plays as X": the device-capability caveat, now that capabilities.py
         # can ask Kodi what this box will actually output. It is NOT a
         # restatement of the file -- an early attempt filled it from the
@@ -1283,8 +1283,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # (already set this render pass) -- just shown at a different position.
         self.setProperty("about_tagline", media.get("tagline") or "")
         self.setProperty("about_synopsis", media.get("overview") or "")
-        facts = self._about_facts(media)
-        for i in range(5):
+        facts = self._about_facts(media, getattr(self, "_aspect_chip", ""))
+        for i in range(6):
             eyebrow, value = facts[i] if i < len(facts) else ("", "")
             self.setProperty("fact_{0}_eyebrow".format(i + 1), eyebrow)
             self.setProperty("fact_{0}_value".format(i + 1), value)
@@ -1298,8 +1298,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ("tagline",  168, (6600,), 36),
         ("synopsis", 204, (6601,), 290),
         ("ratings",  494, (6602,), 34),
-        ("badges",   528, (6603,), 44),
-        ("aspect",   572, (6604,), 0),
+        ("badges",   528, (6603,), 0),
     )
 
     def _layout_about_column(self):
@@ -1318,7 +1317,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "synopsis": bool(self.getProperty("about_synopsis")),
             "ratings": bool(self.getProperty("hero_ratings_line")),
             "badges": bool(self.getProperty("badge_1_label")),
-            "aspect": bool(self.getProperty("about_aspect_note")),
         }
         shift = 0
         for name, posy, ids, pitch in self.ABOUT_COLUMN:
@@ -1348,7 +1346,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return mli
 
     @staticmethod
-    def _about_facts(media: dict) -> list:
+    def _about_facts(media: dict, aspect_chip: str = "") -> list:
         # Fixed positional slots (fact_N_eyebrow/value, N=1..5), filled
         # left-to-right skipping absent fields -- same convention as
         # _render_format_badges(); Kodi controls can't size from text length.
@@ -1365,6 +1363,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         studios = media.get("studios") or []
         add("STUDIO(S)", u", ".join(studios[:2]))
         add("RATED", media.get("content_rating"))
+        # LAST, after the five the reference app shows. The others describe
+        # the work; this one describes its presentation, and appending keeps
+        # the reference's own order untouched rather than pushing STUDIO(S)
+        # and RATED down to make room for it.
+        if aspect_chip:
+            note = fmt_badges.aspect_note(aspect_chip, media.get("media_type") or "")
+            add("ASPECT RATIO", f"{aspect_chip} · {note}" if note else aspect_chip)
         return facts
 
     # ------------------------------------------------------------------
