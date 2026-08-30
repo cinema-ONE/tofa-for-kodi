@@ -1,0 +1,6 @@
+- The detail screen now says what shape a film is: a "2.39:1" badge beside the
+  resolution and sound, and the name of that shape under About. A widescreen
+  film stored in a 16:9 file used to be described as 16:9, because that is
+  what the file says; this reads the picture inside the frame instead.
+- More room under the Critics and Audience scores on the About panel. The
+  format badges sat almost against them.
