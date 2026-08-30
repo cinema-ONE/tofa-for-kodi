@@ -840,16 +840,25 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # PlaybackInfoResponse, the stream negotiation, and not on the media
         # file -- and fills it lazily on first playback besides, which a
         # Detail page for an unplayed title can never wait for. `active_*` is
-        # on the file, needs no playback, and covered 92% of the library.
+        # on the file and needs no playback. It covers 89.3% of the library,
+        # measured over all 49,672 files (the 92% first quoted here was a
+        # 114-film sample and did not see how much TV is unprobed).
         #
         # NOT for `other`. That bucket is 2,773 demo clips, calibration
         # patterns and single concert tracks; 35% of them do not snap to any
         # ratio, and the ones that do are 1.78 and mean nothing. The
         # vocabulary here -- scope, widescreen, Academy -- describes
         # theatrical presentation, which an HDR test pattern is not.
+        #
+        # `aspect_from_file`, not `aspect_from_active`: the probe covers 89.3%
+        # of the library and the remainder is mostly pre-matted scope and
+        # Univisium, whose stored frame already IS the picture. Reading only
+        # the probe left those titles with no ratio at all while our own stats
+        # overlay showed one -- Lucky (3840x1606) and Lioness (3840x1920) were
+        # both reported that way. The fallback's guards, and what it cannot
+        # claim, are in badges.aspect_from_stored_frame.
         aspect = ("" if media_type == "other"
-                  else fmt_badges.aspect_from_active(f.get("active_width"),
-                                                     f.get("active_height")))
+                  else fmt_badges.aspect_from_file(f))
         if aspect:
             badges.append(aspect)
 

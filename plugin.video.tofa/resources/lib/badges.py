@@ -135,9 +135,9 @@ def aspect_from_active(width, height) -> str:
     The server's own `picture_aspect_ratio` answers this already snapped, but
     it lives on PlaybackInfoResponse -- the stream negotiation -- and is
     filled lazily on first playback, so a Detail page cannot get it for a
-    title nobody has played yet. `active_*` sits on the media file itself,
-    needs no playback, and was populated for 92% of the library when
-    measured."""
+    title nobody has played yet. `active_*` sits on the media file itself and
+    needs no playback. It is populated for 89.3% of the library, measured over
+    all 49,672 files; when it is absent see `aspect_from_stored_frame`."""
     try:
         w, h = float(width), float(height)
     except (TypeError, ValueError):
@@ -145,6 +145,79 @@ def aspect_from_active(width, height) -> str:
     if w <= 0 or h <= 0:
         return ""
     return aspect_badge(w / h)
+
+
+#: Shapes a CONTAINER comes in. A file whose display ratio is one of these is
+#: telling you about its box, not necessarily about its picture -- 16:9 and 4:3
+#: are what a remux is stored in, and 1.37 is what anamorphic 4:3 broadcast
+#: material computes to (Doctor Who's 704x528 at PAR reads 1.36-1.38 where the
+#: picture is 1.33). Never fall back to the display ratio on one of these.
+_CONTAINER_RATIOS = (1.78, 1.33, 1.37)
+
+
+def _is_container_ratio(value) -> bool:
+    return any(abs(value - c) / c <= ASPECT_TOLERANCE for c in _CONTAINER_RATIOS)
+
+
+def aspect_from_stored_frame(resolution, display_aspect_ratio) -> str:
+    """The chip for a file whose STORED FRAME is already the picture.
+
+    The probe (`active_*`) is the authority and this never competes with it --
+    `aspect_from_file` only reaches here when the probe has not run. Two
+    guards, both necessary:
+
+    **Square pixels.** `resolution` is the coded rectangle and
+    `display_aspect_ratio` is what it displays as; when they agree the file has
+    square pixels and the stored frame IS the displayed frame, so the ratio is
+    arithmetic rather than inference. When they disagree the file is
+    anamorphic and the display ratio is a PAR calculation we should not dress
+    up as a measurement.
+
+    **Not a container shape.** See `_CONTAINER_RATIOS`. A 2.39 film stored in a
+    16:9 remux reports 1.78 here, which is exactly the wrong answer the probe
+    exists to correct -- measured across the library, a 1.78 display ratio is
+    the true picture only 54.5% of the time.
+
+    WHAT THIS CANNOT CLAIM. It is inference, not measurement, and the library
+    offers no way to check it: across all 49,672 files, EVERY probed file has a
+    container-shaped display ratio and EVERY scope-shaped one is unprobed, so
+    the two populations do not overlap and there is no labelled case to score
+    against. Sibling episodes are not a substitute -- shows genuinely change
+    shape between episodes (Away stores 3840x1744, exactly its 2.20, beside a
+    sibling that probes 2.39), so a disagreement there is the show, not the
+    rule.
+
+    The residual risk is a file stored at a scope shape that is STILL matted
+    inside that frame -- we would name the frame and under-report the picture
+    by one tier. That is a smaller error than the 1.78 this replaces, and it
+    cannot happen at all for the case this exists for: a file cropped to its
+    own picture, which is how Lucky (3840x1606, 2.39) and Lioness (3840x1920,
+    2.00) are stored, and which no probe had touched."""
+    try:
+        width, height = (int(n) for n in str(resolution).lower().split("x"))
+        display = float(display_aspect_ratio)
+    except (TypeError, ValueError, AttributeError):
+        return ""
+    if width <= 0 or height <= 0 or display <= 0:
+        return ""
+    if abs(width / height - display) / display > ASPECT_TOLERANCE:
+        return ""                                   # anamorphic: not ours to name
+    if _is_container_ratio(display):
+        return ""                                   # the box, not the picture
+    return aspect_badge(display)
+
+
+def aspect_from_file(f: dict) -> str:
+    """The projection-ratio chip for a media file, probe first.
+
+    `active_*` when the server has probed the picture area, and otherwise the
+    stored frame when that frame is unambiguously the picture. 10.7% of the
+    library is unprobed and most of it is pre-matted scope and Univisium, so
+    without the second half those titles show no ratio at all while our own
+    stats overlay -- which has always fallen back this way -- shows one."""
+    return (aspect_from_active(f.get("active_width"), f.get("active_height"))
+            or aspect_from_stored_frame(f.get("resolution"),
+                                        f.get("display_aspect_ratio")))
 
 
 #: The value of About's ASPECT RATIO fact, rendered as "<chip> . <note>".
