@@ -1321,7 +1321,7 @@
                          left saying otherwise. -->
                     <control type="group" id="6603">
                         <posx>100</posx>
-                        <posy>528</posy>
+                        <posy>553</posy>
                         <control type="image" id="6610">
                             <posx>0</posx>
                             <width>150</width>

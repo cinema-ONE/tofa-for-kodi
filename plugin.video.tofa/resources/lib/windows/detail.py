@@ -1297,8 +1297,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     ABOUT_COLUMN = (
         ("tagline",  168, (6600,), 36),
         ("synopsis", 204, (6601,), 290),
-        ("ratings",  494, (6602,), 34),
-        ("badges",   528, (6603,), 0),
+        # 59, not 34. The ratings LABEL is 24px tall but its ink sits low in
+        # that box, so a 34px pitch left only SEVEN pixels of air under
+        # "Critics 72 . Audience 75" before the chip pills started -- the
+        # reference leaves 32 (ink ends y479, pill starts y511;
+        # internal-docs/atv-reference/detail-about-dense.png). The hero stack
+        # was never wrong here, which is why this went unnoticed: HERO_STACK
+        # reaches 33px on the same two blocks. Measured, not guessed.
+        ("ratings",  494, (6602,), 59),
+        ("badges",   553, (6603,), 0),
     )
 
     def _layout_about_column(self):
