@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.23" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.24" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,16 +25,12 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Built against tofa media server 0.9.34. An older server is not refused and
-        most of the add-on carries on working, but it now says so once per session,
-        the same as it always has when it meets a server older than it was built
-        for.
-      - More titles now name their shape. A film or series whose file is stored
-        already cropped to the picture -- with no black bars inside the frame --
-        showed no aspect ratio at all on the detail page. It now says 2.39:1 or
-        2.00:1 like everything else, under About as well, and on each episode.
-      - "Plays as" no longer promises HDR10+ on a television that cannot show it.
-        On those sets a Dolby Vision film now correctly reads as HDR10.
+      - Less work while a film plays. The player was asking Kodi the same question
+        five times a second in a way that turned out to be expensive on a set-top
+        box; it now asks a cheaper one. Nothing looks different -- it simply leaves
+        more of the box free for the picture.
+      - The Rewatch button on a title's page shows a replay arrow. It had been
+        showing a toggle switch.
     </news>
     <assets>
       <icon>icon.png</icon>
