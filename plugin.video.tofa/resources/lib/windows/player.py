@@ -4564,6 +4564,41 @@ class PlayerWindow(kodigui.ControlledDialog):
     # a skin the user installed, so it needs asking first -- see
     # feedback_consent_before_touching_outside. Not done.
 
+    # `<zorder>` ON OUR OWN WINDOW: TRIED 2026-08-31, NO EFFECT.
+    #
+    # The obvious remaining idea, and the one an outside suggestion pointed
+    # at: if Kodi's chrome cannot be closed, out-RANK it. It reads like it
+    # should work. `GUIWindowManager::RenderPass` sorts `m_activeDialogs`
+    # with a stable_sort on GetRenderOrder before drawing; `<zorder>` is
+    # parsed at GUIWindow.cpp:227, AFTER SetDefaults() at :187, so it is not
+    # overwritten by the RENDER_ORDER_DIALOG default; and skins really do use
+    # it -- Estuary's DialogNotification declares `<zorder>3</zorder>` while
+    # DialogBusy, DialogSlider and DialogSelect declare none and so sit at
+    # the default 1, TIED with us, where a stable sort keeps activation order
+    # and Kodi's later dialog wins. That tie is a tidy explanation of "I see
+    # the Estuary spinner".
+    #
+    # Measured on local Kodi against a live player and Estuary's
+    # notification, which is the one Kodi dialog that reliably RENDERS on
+    # demand (`ActivateWindow(busydialog)` does not raise it at all -- Kodi
+    # drives that one internally -- Estuary ships no DialogVideoOSD.xml, and
+    # an empty selectdialog paints nothing):
+    #
+    #     our <zorder>2</zorder>   notification (3) drawn ON TOP
+    #     our <zorder>4</zorder>   notification (3) drawn ON TOP, unchanged
+    #
+    # Our own chrome rendered correctly in both frames, so the window was
+    # live and drawing. WHY it does not take is UNRESOLVED: nothing in
+    # CGUIDialogKaiToast overrides render order, and chasing it through the
+    # Python window wrappers (WindowDialogMixin, InterceptorDialog) found no
+    # override either. Recorded as measured-no-effect rather than explained.
+    #
+    # AND IT WOULD NOT HAVE BEEN THE WIN ANYWAY. This window is mostly
+    # TRANSPARENT. Sorting above Kodi's chrome only draws our pixels over
+    # theirs; their spinner still shows through everywhere we are clear.
+    # Closing the dialog does something ordering structurally cannot, which
+    # is why _close_kodi_osd stays whatever else is tried.
+
     def _tick(self):
         now = time.monotonic()
         if self._restore_focus_at and now >= self._restore_focus_at:
