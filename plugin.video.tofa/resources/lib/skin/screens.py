@@ -680,8 +680,17 @@ def render_detail() -> str:
         visible="!String.IsEmpty(Window.Property(show_rewatch)) + !String.IsEmpty(Window.Property(pills_packed))",
         # 11: rewatch is `arrow.counterclockwise` / Replay. It had no icon
         # at all before.
+        #
+        # NAMED, not a raw codepoint. It shipped as a hardcoded 0xE18B,
+        # which is Lucide `toggle-left` -- a toggle SWITCH, drawn on the pill
+        # where the reference app draws a counterclockwise arrow. Every other
+        # raw codepoint in this file and the static XMLs was checked against
+        # tools/lucide_font_src/codepoints.json at the same time and they are
+        # all correct; this was the only one. `rotate-ccw` is also what the
+        # player's -10s button uses, which is what the app does too.
         label_xml=fragments.action_pill_content(
-            PILL_W, "Rewatch", "&#xE18B;", height=PILL_H),
+            PILL_W, "Rewatch", "&#x{0:X};".format(icon_glyphs.ROTATE_CCW),
+            height=PILL_H),
     )
     # Fourth pill: the EDITION/version selector, matching the real app's
     # action row (Play / Options / Watchlist / [box] 4K). File selection used
