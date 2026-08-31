@@ -558,6 +558,48 @@ def _stats_mode_from_notification(data) -> Optional[str]:
     return None
 
 
+#: The chrome we close on sight, BY WINDOW ID. Ids from Kodi's own
+#: `xbmc/guilib/WindowIDs.h`; the names are the same core table
+#: `xbmc/input/WindowTranslator.cpp` uses to resolve `Dialog.Close(<name>)`.
+#: Both are Kodi's, not the skin's, so this is skin-independent in exactly
+#: the way the old `Window.IsActive(<name>)` form was -- and blind in the
+#: same way too: a skin's OWN custom windows (Estuary hangs
+#: Custom_1109_TopBarOverlay off the seek bar) are not core dialogs and
+#: neither form has ever seen them.
+#:
+#: WHY IDS AND NOT NAMES. `xbmc.getCondVisibility()` costs the same no
+#: matter what you ask it -- measured on the AM6B+ during DirectPlay of a
+#: 4K DV remux, `getCondVisibility("true")` and
+#: `getCondVisibility("Window.IsActive(videoosd)")` both take ~8.4ms wall /
+#: ~2ms CPU, against 54us for `getCurrentWindowDialogId()`. Four calls cost
+#: the same as one, so trimming this list would have bought nothing; the
+#: expense is the entry point. At the 200ms tick that was ~1% of a core and
+#: 4% of every tick spent asking a question whose answer is almost always
+#: no.
+#:
+#: A TIGHT LOOP READS 15.7us FOR THE SAME CALL -- 600x cheaper than the real
+#: cadence, because back-to-back calls hit a cache that 200ms apart does not.
+#: Benchmark this at the cadence it actually runs at or it will look free.
+#:
+#: ONLY THE TOPMOST DIALOG is visible to this, where the old form tested
+#: four independently. That is sound rather than a compromise: a dialog that
+#: needs closing is one drawing OVER our chrome, which means Kodi raised it
+#: after us and it IS the top; one below us is hidden behind our own player
+#: and harms nothing. Every symptom this exists for was reported as
+#: something drawn on top.
+#:
+#: OUR OWN WINDOW IS USUALLY THE TOP DIALOG and is deliberately absent here.
+#: Kodi allocates add-on windows dynamically from 13000
+#: (`getNextAvailableWindowId`) -- the player sampled as 13002 on the AM6B+ --
+#: so its id cannot be hardcoded and must not be: an id that is not in this
+#: map simply does nothing, which is the common case and the cheap one.
+_KODI_CHROME_IDS = {
+    12901: "videoosd",              # WINDOW_DIALOG_VIDEO_OSD
+    10138: "busydialog",            # WINDOW_DIALOG_BUSY
+    10160: "busydialognocancel",    # WINDOW_DIALOG_BUSY_NOCANCEL
+    10145: "sliderdialog",          # WINDOW_DIALOG_SLIDER
+}
+
 class PlayerWindow(kodigui.ControlledDialog):
     # No dismissOnClose: that is ControlledWindow's native-window teardown.
     # A dialog's doClose() already removes it, and there is no window
@@ -4421,13 +4463,20 @@ class PlayerWindow(kodigui.ControlledDialog):
         """
         if self._closing:
             return
-        for dialog in ("videoosd", "busydialog", "busydialognocancel",
-                       "sliderdialog"):
-            try:
-                if xbmc.getCondVisibility(f"Window.IsActive({dialog})"):
-                    xbmc.executebuiltin(f"Dialog.Close({dialog},true)")
-            except Exception:                               # noqa: BLE001
-                pass
+        # ONE id read, not four condition evaluations. See _KODI_CHROME_IDS
+        # for the measurements; `getCondVisibility` costs ~8.4ms per tick on
+        # the AM6B+ where this costs ~54us.
+        try:
+            top = xbmcgui.getCurrentWindowDialogId()
+        except Exception:                                   # noqa: BLE001
+            return
+        name = _KODI_CHROME_IDS.get(top)
+        if not name:
+            return
+        try:
+            xbmc.executebuiltin(f"Dialog.Close({name},true)")
+        except Exception:                                   # noqa: BLE001
+            pass
 
     # `playerprocessinfo` IS KODI'S, and we no longer take it.
     #
