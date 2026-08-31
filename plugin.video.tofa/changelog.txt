@@ -1,3 +1,11 @@
+0.9.24
+- Less work while a film plays. The player was asking Kodi the same question
+  five times a second in a way that turned out to be expensive on a set-top
+  box; it now asks a cheaper one. Nothing looks different -- it simply leaves
+  more of the box free for the picture.
+- The Rewatch button on a title's page shows a replay arrow. It had been
+  showing a toggle switch.
+
 0.9.23
 - Built against tofa media server 0.9.34. An older server is not refused and
   most of the add-on carries on working, but it now says so once per session,
