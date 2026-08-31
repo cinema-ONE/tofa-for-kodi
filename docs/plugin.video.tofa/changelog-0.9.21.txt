@@ -1,1 +1,0 @@
-- Internal maintenance only. Nothing about the add-on behaves differently.
