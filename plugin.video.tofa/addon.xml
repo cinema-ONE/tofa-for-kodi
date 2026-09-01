@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.24" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.25" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -25,12 +25,14 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Less work while a film plays. The player was asking Kodi the same question
-        five times a second in a way that turned out to be expensive on a set-top
-        box; it now asks a cheaper one. Nothing looks different -- it simply leaves
-        more of the box free for the picture.
-      - The Rewatch button on a title's page shows a replay arrow. It had been
-        showing a toggle switch.
+      - One press of Up brings you back from a title's episodes or cast to the
+        buttons at the top of its page. It used to take two.
+      - A long episode title or cast name scrolls while it is highlighted, rather
+        than stopping at three dots. The rows on Home have always done this; the
+        episodes and the cast on a title's page now do it too.
+      - Removing something from Continue watching leaves the highlight where it
+        was, and the next title moves into the space. It used to jump back to the
+        first title on the row.
     </news>
     <assets>
       <icon>icon.png</icon>
