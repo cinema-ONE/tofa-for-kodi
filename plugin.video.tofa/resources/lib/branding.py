@@ -54,3 +54,15 @@ def app_name() -> str:
 def app_version() -> str:
     """The add-on's version, e.g. "0.9.1"."""
     return _addon_attr("version", "0.0.0")
+
+
+def app_id() -> str:
+    """The add-on's id, e.g. "plugin.video.tofa".
+
+    Same value as `getAddonInfo("id")` and it cannot disagree -- Kodi reads
+    the attribute this parses. Preferred because it does not need an Addon
+    handle: the id is wanted at IMPORT time (kodigui's window-property
+    prefix), and asking Kodi for it there is exactly the lookup that fails
+    while an update swaps the add-on out. See addonref.py.
+    """
+    return _addon_attr("id", "plugin.video.tofa")

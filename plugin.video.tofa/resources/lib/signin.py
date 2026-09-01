@@ -15,16 +15,15 @@ import time
 import zlib
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-from . import auth, cloud, http
+from . import addonref, auth, branding, cloud, http
 from .windows import cardoptions, kodigui, theme
 
-ADDON = xbmcaddon.Addon()
-ADDON_NAME = ADDON.getAddonInfo("name")
-_ = ADDON.getLocalizedString
+# Both lazy, see addonref.py.
+ADDON = addonref.ADDON
+_ = addonref.localize
 
 _QR_FILENAME = "signin_qr.png"
 
@@ -41,7 +40,7 @@ _QUIET_ZONE_MODULES = 4
 
 
 def _notify(message: str, icon: str = xbmcgui.NOTIFICATION_INFO) -> None:
-    xbmcgui.Dialog().notification(ADDON_NAME, message, icon)
+    xbmcgui.Dialog().notification(branding.app_name(), message, icon)
 
 
 def _qr_svg_to_png(svg: str) -> bytes | None:
@@ -115,7 +114,6 @@ class SignInDialog(kodigui.BaseDialog):
     self-refreshing countdown."""
 
     xmlFile = "script-tofa-signin.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

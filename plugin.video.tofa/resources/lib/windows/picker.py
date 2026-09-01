@@ -23,7 +23,6 @@ from ..skin import icon_glyphs
 
 class PickerDialog(kodigui.BaseDialog):
     xmlFile = "script-tofa-picker.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

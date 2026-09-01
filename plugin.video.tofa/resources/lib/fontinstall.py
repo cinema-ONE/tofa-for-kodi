@@ -49,7 +49,7 @@ import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-from . import log
+from . import addonref, log
 
 # Bump whenever FONTS or the bundled .ttf files change. Idempotency only
 # checks for this marker, not actual content, so a version number must
@@ -64,10 +64,10 @@ from . import log
 FONT_SET_VERSION = 25
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
-ADDON = xbmcaddon.Addon()
-ADDON_NAME = ADDON.getAddonInfo("name")
-ADDON_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo("path"))
-_ = ADDON.getLocalizedString
+# All lazy, see addonref.py -- this module's import-time Addon lookup is the
+# one that reached a television. ADDON_NAME was defined here and never read.
+ADDON = addonref.ADDON
+_ = addonref.localize
 
 # tofa_font_<role> -> (source .ttf in resources/skins/Main/fonts/, size, style)
 # Inter Tight's sizes below are ~2x Kodi's old font12/13/30 fallback-font
@@ -241,7 +241,15 @@ FONTS: dict[str, tuple[str, int, str]] = {
     "tofa_font_icons_29": ("lucide-icons.ttf", 29, "Regular"),
 }
 
-_SOURCE_FONTS_DIR = os.path.join(ADDON_PATH, "resources", "skins", "Main", "fonts")
+def _source_fonts_dir() -> str:
+    """Where our .ttf files live inside the installed add-on.
+
+    A function, not a constant: it derives from getAddonInfo("path"), and
+    reading that at import is what addonref.py exists to stop.
+    """
+    return os.path.join(
+        xbmcvfs.translatePath(ADDON.getAddonInfo("path")),
+        "resources", "skins", "Main", "fonts")
 
 
 def _font_entry_xml(name: str, filename: str, size: int, style: str) -> str:
@@ -341,7 +349,7 @@ def _inject_fonts(skin_path: str, font_xml_files: list[str]) -> None:
     xbmcvfs.mkdirs(fonts_dir)
     for source_filename in {f[0] for f in FONTS.values()}:
         shutil.copyfile(
-            os.path.join(_SOURCE_FONTS_DIR, source_filename),
+            os.path.join(_source_fonts_dir(), source_filename),
             os.path.join(fonts_dir, f"tofa_{source_filename}"),
         )
 

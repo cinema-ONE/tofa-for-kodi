@@ -152,7 +152,6 @@ def option_keys(
 
 class CardOptionsDialog(kodigui.BaseDialog):
     xmlFile = "script-tofa-cardoptions.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920
@@ -252,7 +251,6 @@ class AlertDialog(kodigui.BaseDialog):
     <textbox>, which cannot live in a list item."""
 
     xmlFile = "script-tofa-alert.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

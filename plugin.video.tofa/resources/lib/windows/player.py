@@ -606,7 +606,6 @@ class PlayerWindow(kodigui.ControlledDialog):
     # underneath of ours to pop by mistake.
 
     xmlFile = "script-tofa-player.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

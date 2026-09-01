@@ -19,7 +19,6 @@ kodigui.setGlobalProperty('background.splash', '')
 
 class BackgroundWindow(kodigui.BaseWindow):
     xmlFile = 'script-tofa-background.xml'
-    path = kodigui.ADDON.getAddonInfo('path')
     theme = 'Main'
     res = '1080i'
     width = 1920

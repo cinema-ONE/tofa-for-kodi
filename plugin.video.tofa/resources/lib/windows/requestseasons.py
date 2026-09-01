@@ -20,7 +20,6 @@ from ..skin import icon_glyphs
 
 class RequestSeasonsDialog(kodigui.BaseDialog):
     xmlFile = "script-tofa-requestseasons.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

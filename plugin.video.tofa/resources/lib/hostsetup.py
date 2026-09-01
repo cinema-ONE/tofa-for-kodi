@@ -42,14 +42,15 @@ from __future__ import annotations
 from typing import Callable, NamedTuple
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 
-from . import fontinstall, hostconfig, log, seekbarpatch
+from . import addonref, branding, fontinstall, hostconfig, log, seekbarpatch
 
-ADDON = xbmcaddon.Addon()
-ADDON_NAME = ADDON.getAddonInfo("name")
-_ = ADDON.getLocalizedString
+# Both lazy, both for the same reason -- see addonref.py. This module is the
+# one the cinema box's toast came through: service.py imports it, it imports
+# fontinstall, and either could land inside an update's swap window.
+ADDON = addonref.ADDON
+_ = addonref.localize
 
 HOSTCONFIG_DECLINED_SETTING = "hostconfig_declined_version"
 
@@ -239,7 +240,8 @@ def _ask_consent(wanted: list[_Concern]) -> bool:
     # "Install" only reads correctly when something is being installed. When
     # the fonts are already in, nothing is, so the button says "Apply".
     yeslabel = _(31039) if _FONTS in wanted else _(31106)
-    return bool(xbmcgui.Dialog().yesno(ADDON_NAME, body, yeslabel=yeslabel, nolabel=_(31042)))
+    return bool(xbmcgui.Dialog().yesno(
+        branding.app_name(), body, yeslabel=yeslabel, nolabel=_(31042)))
 
 
 def _outstanding(forced: bool) -> list[_Concern]:
@@ -294,7 +296,7 @@ def setup_interactive() -> None:
     to do, rather than appearing to have ignored the button."""
     try:
         if not _outstanding(forced=True):
-            xbmcgui.Dialog().ok(ADDON_NAME, _(31043))
+            xbmcgui.Dialog().ok(branding.app_name(), _(31043))
             return
     except Exception as exc:
         log.warning(f"hostsetup: could not inspect the host: {exc}")

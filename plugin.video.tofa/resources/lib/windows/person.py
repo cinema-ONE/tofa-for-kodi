@@ -48,7 +48,6 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # on a real Back, instead of leaving it for GC. Without it a pushed
     # window lingers behind whatever the user backs out to.
     dismissOnClose = True
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920
