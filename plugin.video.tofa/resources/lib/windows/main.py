@@ -1738,13 +1738,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         the rows hidden first -- on the ACTION thread, so the window is
         frozen and keypresses are dropped rather than queued for the whole
         of it. Paying that to restate one card would be worse than the
-        problem. Remove-from-Continue-Watching still takes the full reload;
-        it changes the row's LENGTH, which is the case below.
+        problem.
 
         Falls back to the full load when the row comes back EMPTY, because
         an empty row has to hide its header and hand its Down target to the
         row beneath -- nav rewiring that _home_load already owns and that is
         not worth a second implementation for the last-episode case.
+
+        Serves Remove from Continue Watching as well as Mark as Watched. A
+        removal SHORTENS the row rather than restating a card in place, and
+        that needs nothing extra here: reset()/addItems() rebuilds to the
+        new length and `keep` is clamped to it, so dismissing the last card
+        lands on the new last one instead of running off the end.
         """
         list_id = getattr(self, "_cw_list_id", None)
         mlist = self.row_lists.get(list_id) if list_id else None
@@ -4383,10 +4388,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     self._browse_reload_keeping_position()
             elif picked == cardoptions.REMOVE_FROM_CW and media_id:
                 client.dismiss_media(media_id)
-                # Reload rather than hiding the item locally: the row is
+                # Refetch rather than hiding the item locally: the row is
                 # server-ordered and dropping one card client-side would
                 # leave the rest stale on the next arrival anyway.
-                self._home_load()
+                #
+                # The ROW, not _home_load(). A full reload rebuilt every
+                # shelf and put the viewer back on the first card of the
+                # first row, which is a long way from the card they had just
+                # dismissed -- and Mark as Watched, one entry up the same
+                # menu, already kept its slot. Now both do: the row closes
+                # up and the next title slides into the slot under the
+                # cursor. Reported from the box 2026-09-01.
+                if kind == "cw":
+                    self._home_refresh_cw_row(client)
+                else:
+                    self._home_load()
         except http.ApiError as exc:
             kodigui.ERROR("main.py: card option {0} failed: {1}".format(picked, exc))
 

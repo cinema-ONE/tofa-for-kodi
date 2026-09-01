@@ -1401,7 +1401,40 @@ def person_card(
                         <texture>{rim_texture}</texture>
                         <animation effect="zoom" start="100" end="104.5" center="{zoom_center}" time="140" tween="cubic" easing="out">Focus</animation>
                     </control>
+                    <!-- TWO COPIES WITH COMPLEMENTARY GATES, not one
+                         control with <scroll>. Same technique, same reason
+                         and same suffix as poster_card()'s title;
+                         focusedlayout renders for the grid's ACTIVE cell
+                         even when the cursor is off on the tab bar, and
+                         Kodi's <scroll> carries no condition of its own.
+
+                         Measured before adding: at 26px semibold a full
+                         name overruns this box rarely on Detail (290px)
+                         and readily on Search's Actors row (256px);
+                         "Jean-Claude Van Damme" is 300px, "Arnold
+                         Schwarzenegger" 284. Rare is the point: those are
+                         precisely the names that were being ellipsized,
+                         and a name that fits does not scroll at all.
+
+                         Centring is safe next to <scroll>: a label that
+                         overruns has no slack left to centre within, so
+                         the two never apply at once. Same note as
+                         _action_pill_label(). -->
                     <control type="label">
+                        <visible>Control.HasFocus({list_id})</visible>
+                        <posx>0</posx>
+                        <posy>{name_y}</posy>
+                        <width>{cell_width}</width>
+                        <height>26</height>
+                        <align>center</align>
+                        <font>tofa_font_row_title</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <scroll>true</scroll>
+                        <scrollsuffix>\u2003\u2003\u2003</scrollsuffix>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <visible>!Control.HasFocus({list_id})</visible>
                         <posx>0</posx>
                         <posy>{name_y}</posy>
                         <width>{cell_width}</width>
@@ -1728,7 +1761,29 @@ def episode_card(list_id: int) -> tuple[str, str]:
                         <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                         <label>$INFO[ListItem.Property(caption)]</label>
                     </control>
+                    <!-- TWO COPIES WITH COMPLEMENTARY GATES, not one
+                         control with <scroll>. Same technique, same reason
+                         and same suffix as poster_card()'s title: an episode
+                         name outruns 330px easily, focusedlayout renders for
+                         the grid's ACTIVE cell even when the cursor is off
+                         on the season rail or the tab bar, and Kodi's
+                         <scroll> is a plain boolean with no condition of its
+                         own. Ungated, the grid's current cell marqueed to
+                         itself in the background. -->
                     <control type="label">
+                        <visible>Control.HasFocus({list_id})</visible>
+                        <posx>{_EP_PAD}</posx>
+                        <posy>{title_y}</posy>
+                        <width>{EPISODE_THUMB_W}</width>
+                        <height>28</height>
+                        <font>tofa_font_poster_title</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <scroll>true</scroll>
+                        <scrollsuffix>\u2003\u2003\u2003</scrollsuffix>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <visible>!Control.HasFocus({list_id})</visible>
                         <posx>{_EP_PAD}</posx>
                         <posy>{title_y}</posy>
                         <width>{EPISODE_THUMB_W}</width>

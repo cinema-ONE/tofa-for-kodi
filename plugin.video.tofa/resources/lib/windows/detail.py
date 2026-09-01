@@ -157,6 +157,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     DISCOVER_LIST = 6310
     SEASON_SIDEBAR_LIST = 6400
     EPISODE_GRID_PANEL = 6410
+    TAB_IDS = (TAB_EPISODES, TAB_CAST, TAB_ABOUT, TAB_MORE)
+    #: Everything on page 2 that is NOT the tab bar -- i.e. the controls
+    #: BELOW it. Arriving at a tab from one of these is an Up press that
+    #: Kodi's own nav already served; arriving from a page-1 pill is a
+    #: Down press. onFocus has to tell those apart -- see _tab_just_arrived.
+    PAGE2_BODY_IDS = (CAST_LIST, CREW_LIST, SIMILAR_LIST, DISCOVER_LIST,
+                      SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL)
 
     def __init__(self, *args, **kwargs):
         # Popped before super() so they don't reach xbmcgui.WindowXML.
@@ -2297,8 +2304,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # this keypress, which makes "just arrived at a tab via successful
         # native nav" and "was already on the tab, native nav to page 1
         # failed" indistinguishable by focus id alone -- both read as
-        # focus == the tab. _tab_just_arrived (set in onFocus on a genuine
-        # transition onto a tab, consumed by the first Up press after)
+        # focus == the tab. _tab_just_arrived (set in onFocus when the tab
+        # was reached from BELOW, consumed by the first Up press after)
         # disambiguates: only a second, real "still here" Up press flips
         # to page 1.
         aid = action.getId()
@@ -2357,9 +2364,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("detailpage", "page2")
             self.setFocusId(tab)
             return
-        if aid == xbmcgui.ACTION_MOVE_UP and focus in (
-            self.TAB_CAST, self.TAB_ABOUT, self.TAB_MORE, self.TAB_EPISODES
-        ):
+        if aid == xbmcgui.ACTION_MOVE_UP and focus in self.TAB_IDS:
             if self._tab_just_arrived:
                 # Native nav already landed focus correctly this press;
                 # nothing more to do.
@@ -2411,15 +2416,19 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "episode_synopsis", (episode.get("overview") or "").strip())
 
     def onFocus(self, controlID):
-        tabs = (self.TAB_CAST, self.TAB_ABOUT, self.TAB_MORE, self.TAB_EPISODES)
-        self._tab_just_arrived = controlID in tabs and self._prev_focus_id not in tabs
+        # Armed only for an arrival from BELOW -- a page-2 body control.
+        # That is the one case where Kodi's native Up nav has already done
+        # the right thing (cast list -> tab bar) and the tab should hold.
+        #
+        # An arrival from a page-1 pill is the opposite: it was a DOWN
+        # press, so the next Up is the viewer asking to leave page 2, and
+        # arming the flag there swallowed it -- Down then Up needed TWO Ups
+        # to get back to the hero. Reported from the box 2026-09-01.
+        self._tab_just_arrived = (controlID in self.TAB_IDS
+                                  and self._prev_focus_id in self.PAGE2_BODY_IDS)
         self._prev_focus_id = controlID
 
-        if controlID in (
-            self.TAB_CAST, self.TAB_ABOUT, self.TAB_MORE, self.TAB_EPISODES,
-            self.CAST_LIST, self.CREW_LIST, self.SIMILAR_LIST, self.DISCOVER_LIST,
-            self.SEASON_SIDEBAR_LIST, self.EPISODE_GRID_PANEL,
-        ):
+        if controlID in self.TAB_IDS + self.PAGE2_BODY_IDS:
             self.setProperty("detailpage", "page2")
         else:
             self.setProperty("detailpage", "page1")
