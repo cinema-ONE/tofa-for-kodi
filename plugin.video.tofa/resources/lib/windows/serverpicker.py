@@ -14,13 +14,13 @@ Layout and measurements live in skin/static/script-tofa-serverpicker.xml.
 """
 from __future__ import annotations
 
-import xbmcaddon
 import xbmcgui
 
 from . import kodigui, theme
+from .. import addonref
 from ..skin import icon_glyphs
 
-_ = xbmcaddon.Addon().getLocalizedString
+_ = addonref.localize  # lazy, see addonref.py
 
 #: How much of a server id fits on one card line, in characters. A mono font
 #: is the only reason this can be counted rather than measured -- textmetrics
@@ -49,7 +49,6 @@ def middle_ellipsis(text: str, max_chars: int = ID_MAX_CHARS) -> str:
 
 class ServerPickerDialog(kodigui.BaseDialog):
     xmlFile = "script-tofa-serverpicker.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

@@ -104,7 +104,6 @@ class SplashWindow(kodigui.BaseWindow):
     # and Kodi reports the resulting miss as "XML File for Window is missing"
     # rather than as a bad path.
     xmlFile = "script-tofa-splash.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
 

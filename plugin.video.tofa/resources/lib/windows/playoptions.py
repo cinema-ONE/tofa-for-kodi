@@ -211,7 +211,6 @@ class PlaybackOptionsDialog(kodigui.BaseDialog):
     _pick_once = False
 
     xmlFile = "script-tofa-playoptions.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

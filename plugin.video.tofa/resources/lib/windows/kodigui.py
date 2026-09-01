@@ -26,13 +26,18 @@ import time
 import traceback
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-ADDON = xbmcaddon.Addon()
-ADDON_ID = ADDON.getAddonInfo("id")
-PROFILE = xbmcvfs.translatePath(ADDON.getAddonInfo("profile"))
+from .. import addonref, branding
+
+#: The handle twenty other modules read through (kodigui.ADDON.getAddonInfo
+#: and friends). Lazy: see addonref.py for the RuntimeError it dodges while
+#: Kodi swaps the add-on out during an update.
+ADDON = addonref.ADDON
+#: Parsed from addon.xml rather than asked of Kodi. This one is read at
+#: IMPORT time by background.py, which is exactly where that lookup fails.
+ADDON_ID = branding.app_id()
 
 # Generic on/off/trigger pub-sub -- minimal local stand-in for
 # plexnet.signalsmixin.SignalsMixin (plex-for-kodi's util.APP used it only
@@ -85,6 +90,28 @@ def ERROR(message, *args):
         message = message.format(*args)
     xbmc.log(u"[plugin.video.tofa] {0}".format(message), xbmc.LOGERROR)
     xbmc.log(traceback.format_exc(), xbmc.LOGERROR)
+
+
+def addon_path():
+    """Where the add-on is installed, resolved on first use.
+
+    Every window class used to carry its own
+    `path = kodigui.ADDON.getAddonInfo("path")` -- fourteen copies of one
+    value, each evaluated in a CLASS BODY and therefore at import time,
+    which is the lookup addonref.py exists to defer. They are gone; the
+    base class's empty default now means "ours", and open()/create() fill
+    it in when a window is actually built.
+    """
+    return ADDON.getAddonInfo("path")
+
+
+def profile_dir():
+    """`addon_data/plugin.video.tofa/`, resolved on first use.
+
+    A Kodi path, so unlike ADDON_ID it cannot be parsed out of addon.xml; a
+    function rather than a constant for the reason addonref.py gives.
+    """
+    return xbmcvfs.translatePath(ADDON.getAddonInfo("profile"))
 
 
 def setGlobalProperty(key, value):
@@ -165,6 +192,8 @@ MONITOR = _Monitor()
 
 class BaseFunctions(object):
     xmlFile = ''
+    #: Empty means "the add-on's own directory", filled in by open()/create()
+    #: via addon_path(). A subclass sets this only to point somewhere else.
     path = ''
     theme = ''
     res = '720p'
@@ -198,10 +227,10 @@ class BaseFunctions(object):
         if hostsetup.ensure_host_setup():
             return None
         build.ensure_rendered()
-        path = cls.path
+        path = cls.path or addon_path()
         aggressive = kwargs.pop('aggressive', False)
         if os.getenv("INSTALLATION_DIR_AVOID_WRITE"):
-            path = PROFILE
+            path = profile_dir()
         window = cls(cls.xmlFile, path, cls.theme, cls.res, **kwargs)
         window.modal(aggressive=aggressive)
         return window
@@ -215,9 +244,9 @@ class BaseFunctions(object):
             return None
         build.ensure_rendered()
         # Use the user addon data directory in installations where the extension installation directory is not writable
-        path = cls.path
+        path = cls.path or addon_path()
         if os.getenv("INSTALLATION_DIR_AVOID_WRITE"):
-            path = PROFILE
+            path = profile_dir()
         window = cls(cls.xmlFile, path, cls.theme, cls.res, **kwargs)
 
         if show:
@@ -1395,7 +1424,7 @@ class MultiWindow(object):
         return self._next
 
     def _setupCurrent(self, cls):
-        self._current = cls(cls.xmlFile, cls.path, cls.theme, cls.res)
+        self._current = cls(cls.xmlFile, cls.path or addon_path(), cls.theme, cls.res)
         self._current.onFirstInit = self._onFirstInit
         self._current.onReInit = self.onReInit
         self._current.onClick = self.onClick

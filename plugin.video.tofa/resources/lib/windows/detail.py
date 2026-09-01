@@ -19,7 +19,6 @@ import math
 import time
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 
 from . import cardoptions, cards, focusmemory, kodigui, person, playoptions, profile_select, theme
@@ -36,7 +35,6 @@ from ..profile import CapabilityProfile
 from ..skin import icon_glyphs
 from ..skin import tokens as T
 
-ADDON = xbmcaddon.Addon()
 
 
 def _dot_join(*parts) -> str:
@@ -124,7 +122,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     dismissOnClose = True
 
     xmlFile = "script-tofa-detail.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

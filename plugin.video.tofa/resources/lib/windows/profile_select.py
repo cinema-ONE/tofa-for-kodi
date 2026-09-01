@@ -19,15 +19,14 @@ import threading
 import time
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 
-from .. import api, auth, avatar_presets, http, log
+from .. import addonref, api, auth, avatar_presets, http, log
 from .. import profiles as profiles_api
 from ..api import MediaServerClient
 from . import kodigui, theme
 
-_ = xbmcaddon.Addon().getLocalizedString
+_ = addonref.localize  # lazy, see addonref.py
 
 class ProfileCanceled(Exception):
     """Raised when the user backs out of profile selection -- callers treat
@@ -92,7 +91,6 @@ def _resolve_avatar_photos(session, tok: auth.Tokens, profiles: list) -> dict:
 
 class ProfileDialog(kodigui.BaseDialog):
     xmlFile = "script-tofa-profile.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

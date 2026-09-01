@@ -28,10 +28,9 @@ import time
 from typing import Optional
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 
-from . import api, auth, http, log, toast
+from . import addonref, api, auth, http, log, toast
 from .api import MediaServerClient
 
 HANDOFF_PROPERTY = "plugin.video.tofa.pending_session"
@@ -62,9 +61,9 @@ PROGRESS_TIMEOUT_SECONDS = 5.0
 # reaches here. See _regression_unconfirmed.
 POSITION_REGRESSION_MS = 60_000
 
-ADDON = xbmcaddon.Addon()
-ADDON_NAME = ADDON.getAddonInfo("name")
-_ = ADDON.getLocalizedString
+# Lazy, see addonref.py. ADDON and ADDON_NAME were both defined here and
+# neither was ever read; only the string lookup survives.
+_ = addonref.localize
 
 
 def stash_pending_session(file_id: str, media_id: Optional[str], session_id: str, session_token: str) -> None:

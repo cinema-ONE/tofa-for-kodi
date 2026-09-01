@@ -15,12 +15,11 @@ import time
 import urllib.parse
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 
 from . import (cardoptions, cards, focusmemory, kodigui, navbar, profile_select,
                splash, theme)
-from .. import (api, artcache, auth, cloud, episodes, home_rows, http, langcodes, log,
+from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http, langcodes, log,
                 textmetrics,
                 playbackprefs, prefetch, progress, regional, search_history,
                 serverversion, settings_options, settings_pages, signin)
@@ -29,8 +28,9 @@ from ..api import MediaServerClient
 from ..skin import icon_glyphs
 from ..skin import tokens as T
 
-ADDON = xbmcaddon.Addon()
-_ = ADDON.getLocalizedString
+# Lazy, see addonref.py. ADDON was defined here only to bind this; the
+# windows read the handle through kodigui.ADDON.
+_ = addonref.localize
 
 
 def _dot_join(*parts) -> str:
@@ -287,7 +287,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     dismissOnClose = True
 
     xmlFile = "script-tofa-main.xml"
-    path = kodigui.ADDON.getAddonInfo("path")
     theme = "Main"
     res = "1080i"
     width = 1920

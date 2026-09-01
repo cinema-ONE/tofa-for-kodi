@@ -11,21 +11,21 @@ import urllib.parse
 from typing import Any, Optional
 
 import xbmc
-import xbmcaddon
 import xbmcgui
 import xbmcplugin
 
-from resources.lib import api, artcache, auth, cloud, home_rows, http, listing, log, monitor, playback, signin
+from resources.lib import (addonref, api, artcache, auth, branding, cloud, home_rows, http,
+                           listing, log, monitor, playback, signin)
 from resources.lib.api import MediaServerClient
 from resources.lib.profile import CapabilityProfile
 from resources.lib.windows import profile_select
 
-ADDON = xbmcaddon.Addon()
-ADDON_NAME = ADDON.getAddonInfo("name")
+# Both lazy, see resources/lib/addonref.py.
+ADDON = addonref.ADDON
 HANDLE = int(sys.argv[1])
 BASE_URL = sys.argv[0]
 
-_ = ADDON.getLocalizedString
+_ = addonref.localize
 
 
 def build_url(**params) -> str:
@@ -46,7 +46,7 @@ def get_client() -> MediaServerClient:
 
 
 def notify(message: str, icon: str = xbmcgui.NOTIFICATION_INFO) -> None:
-    xbmcgui.Dialog().notification(ADDON_NAME, message, icon)
+    xbmcgui.Dialog().notification(branding.app_name(), message, icon)
 
 
 # --------------------------------------------------------------------------
@@ -559,7 +559,7 @@ def action_play(params: dict[str, str]) -> None:
             # of any dependency on resources/lib/windows/ -- and a viewer
             # who reached it is browsing Kodi's own file list, where a
             # system dialog is the native thing anyway.
-            xbmcgui.Dialog().ok(ADDON_NAME, str(exc))
+            xbmcgui.Dialog().ok(branding.app_name(), str(exc))
             xbmcplugin.setResolvedUrl(HANDLE, False, xbmcgui.ListItem())
             return
 
