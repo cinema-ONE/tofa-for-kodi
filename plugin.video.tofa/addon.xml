@@ -3,6 +3,26 @@
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
+    <!-- The .ttf files our screens name. A dependency, not bundled, because
+         Kodi resolves a font FILE against every enabled kodi.resource.font
+         add-on but never against a plugin's own directory. See
+         resources/lib/fontinstall.py.
+
+         BOTH attributes, and minversion is the load-bearing one. Kodi keeps
+         an already-installed dependency unless it fails
+         CAddonInfo::MeetsVersion(versionMin, version), which is
+             !(versionMin > installed.version || version < installed.minversion)
+         so `version` is an ABI statement about the dependency, and
+         `minversion` is the only floor on it. With minversion absent, a user
+         sitting on an older resource.font.tofa is "good enough" forever, and
+         a newly added font file would reach them only whenever the repo's
+         own update timer happened to notice; until then this add-on names a
+         file that is not there, which draws as tofu.
+
+         SO: adding or changing a font means bumping resource.font.tofa's
+         version AND this minversion to match. tests/test_font_resource_addon.py
+         fails if they drift. -->
+    <import addon="resource.font.tofa" minversion="1.0.0" version="1.0.0"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>video</provides>

@@ -1,5 +1,5 @@
 """Codepoints for the subset of Lucide's prebuilt icon font
-(resources/skins/Main/fonts/lucide-icons.ttf, registered as
+(resource.font.tofa/resources/tofa_lucide-icons.ttf, registered as
 tofa_font_icons_<size> by fontinstall.py) actually wired into the UI.
 
 Source of truth for the full 2027-icon map is

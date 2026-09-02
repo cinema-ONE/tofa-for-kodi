@@ -21,8 +21,8 @@ validation.
 
 Dev-only tool, not shipped with the add-on and never imported by it. Needs
 the three local fonts in tools/icon_reference_fonts/ (committed, see that
-directory's own LICENSE.txt) plus resources/skins/Main/fonts/
-lucide-icons.ttf (the add-on's own real font) and tools/lucide_font_src/
+directory's own LICENSE.txt) plus resource.font.tofa/resources/
+tofa_lucide-icons.ttf (the add-on's own real font) and tools/lucide_font_src/
 codepoints.json (the full Lucide name<->codepoint catalog, dev reference
 only per that directory's own README).
 """
@@ -37,7 +37,8 @@ _TOOLS_DIR = os.path.dirname(__file__)
 _ADDON_DIR = os.path.join(_TOOLS_DIR, "..", "plugin.video.tofa")
 _OUTPUT_PATH = os.path.join(_TOOLS_DIR, "icon_reference.html")
 
-_LUCIDE_TTF = os.path.join(_ADDON_DIR, "resources", "skins", "Main", "fonts", "lucide-icons.ttf")
+_LUCIDE_TTF = os.path.join(_ADDON_DIR, "..", "resource.font.tofa", "resources",
+                           "tofa_lucide-icons.ttf")
 _CODEPOINTS_JSON = os.path.join(_TOOLS_DIR, "lucide_font_src", "codepoints.json")
 _ICON_GLYPHS_PY = os.path.join(_ADDON_DIR, "resources", "lib", "skin", "icon_glyphs.py")
 

@@ -57,7 +57,11 @@ import xml.etree.ElementTree as ET
 _ADDON = os.path.join(os.path.dirname(__file__), "..", "plugin.video.tofa")
 _SKIN_DIR = os.path.join(_ADDON, "resources", "skins")
 _MEDIA_DIR = os.path.join(_SKIN_DIR, "Main", "media")
-_FONT_DIR = os.path.join(_SKIN_DIR, "Main", "fonts")
+#: The fonts live in resource.font.tofa now, prefixed so the active skin's
+#: own fonts/ cannot shadow them -- see fontinstall.py's docstring.
+_FONT_DIR = os.path.join(os.path.dirname(__file__), "..",
+                         "resource.font.tofa", "resources")
+_FONT_PREFIX = "tofa_"
 _FONTINSTALL = os.path.join(_ADDON, "resources", "lib", "fontinstall.py")
 
 _COMMENT = re.compile(r"<!--(.*?)-->", re.S)
@@ -500,12 +504,13 @@ def main() -> int:
     failed = 0
 
     missing_ttf = [f for f in _font_files()
-                   if not os.path.exists(os.path.join(_FONT_DIR, f))]
+                   if not os.path.exists(os.path.join(_FONT_DIR, _FONT_PREFIX + f))]
     if missing_ttf:
         failed += 1
         print("resources/lib/fontinstall.py")
         for name in sorted(set(missing_ttf)):
-            print("    FONTS names %s, which is not in fonts/" % name)
+            print("    FONTS names %s, which resource.font.tofa does not ship"
+                  " as %s%s" % (name, _FONT_PREFIX, name))
 
     exact_problems = _exact_asset_problems()
     if exact_problems:
