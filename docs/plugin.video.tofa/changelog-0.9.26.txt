@@ -1,0 +1,7 @@
+- The add-on no longer copies its fonts into the skin you are using. They
+  travel in a small companion add-on instead, which Kodi installs alongside
+  this one, and any copies an earlier version left behind are cleared away.
+  Nothing looks different; there is simply less of us in your skin.
+- An error message no longer appears while the add-on updates itself. A new
+  version arriving while the old one was still closing down could put a Kodi
+  error notice on screen for a moment. Nothing was affected by it.
