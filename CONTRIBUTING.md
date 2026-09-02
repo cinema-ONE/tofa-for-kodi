@@ -346,3 +346,31 @@ recorded nowhere else, and squashing throws it away.
 ## For everyone else
 
 Open an issue or a PR. There is no formal process beyond that yet.
+
+### Adding or changing a font
+
+The `.ttf` files live in `resource.font.tofa`, not in the plugin, because Kodi
+resolves a font FILE against every enabled `kodi.resource.font` add-on but
+never against a plugin's own directory. Four steps, and the third is the one
+that is easy to miss:
+
+1. Put the file in `resource.font.tofa/resources/`, named `tofa_<name>.ttf`.
+   **The prefix is load-bearing, not namespacing** — `LoadTTF()` searches the
+   active skin's own `fonts/` first and takes the first path that exists, so a
+   bare `RobotoMono-Regular.ttf` would silently render the skin's copy.
+2. Bump `resource.font.tofa/addon.xml`'s version.
+3. Bump `plugin.video.tofa/addon.xml`'s `<import ... minversion="...">` to
+   match. **`minversion` is the only attribute that binds**: Kodi keeps an
+   already-installed dependency unless it fails
+   `MeetsVersion(versionMin, version)`, and `version` is a statement about the
+   dependency's ABI rather than a floor. Leave it stale and the new file
+   reaches users only when the repo's update timer notices — until then the
+   add-on names a file that is not there, which draws as tofu.
+4. If a font NAME, size or style changed, add it to `FONTS` in
+   `resources/lib/fontinstall.py` and bump `FONT_SET_VERSION`, which is what
+   re-injects the declarations into the active skin. A file whose CONTENT
+   changed but whose declaration did not needs no bump — that is the point of
+   splitting the files out — though Kodi loads fonts once, so the new bytes
+   take effect at its next restart rather than immediately.
+
+`tests/test_font_resource_addon.py` fails if steps 2 and 3 drift apart.

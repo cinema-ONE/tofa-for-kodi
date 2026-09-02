@@ -76,6 +76,10 @@ from . import addonref, log
 # through this mechanism -- they're bespoke full-color SVGs rasterized to
 # PNG (see tools/gen_avatar_assets.py), and a font glyph can only ever be
 # one solid color, which can't reproduce multi-color artwork.
+#: The add-on the .ttf files ship in. Must match plugin.video.tofa's
+#: <import> and resource.font.tofa's own id.
+FONT_ADDON_ID = "resource.font.tofa"
+
 FONT_SET_VERSION = 25
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
@@ -384,6 +388,80 @@ DECLINED_SETTING = "fonts_declined_version"
 #: Declining on one skin says nothing about a skin the user has not switched
 #: to yet, where the fonts really are absent. hostsetup owns the format.
 SKIN_DECLINED_SETTING = "fonts_declined_skins"
+
+
+#: Set once a sweep has run in this Kodi process. The stale copies can only
+#: appear from a version of THIS add-on that predates the font resource, so
+#: once they are gone they do not come back, and re-walking the skin on
+#: every window open would be work for nothing.
+_pruned_this_session = False
+
+
+def prune_stale_skin_fonts() -> int:
+    """Delete `tofa_*.ttf` left in the active skin by an older version.
+
+    UPGRADE PATH, and it is not optional. Before the fonts moved into
+    resource.font.tofa, `_inject_fonts()` copied them into the active skin's
+    `fonts/` -- and `LoadTTF()` searches that directory BEFORE any font
+    resource, returning the first path that exists (`CheckFont()`
+    short-circuits). So an existing install keeps rendering from its stale
+    copies and the add-on's own files are never reached.
+
+    That is invisible today, because the bytes are identical. It stops being
+    invisible the first time a font is CORRECTED: the fix would ship in the
+    resource add-on and never reach anyone who had the old version, which is
+    exactly the class of bug FONT_SET_VERSION exists to prevent. Measured on
+    local Kodi rather than assumed -- a deliberately wrong file at an
+    earlier-searched path won, and Kodi's own `fontcache.xml` recorded it as
+    the family it had loaded.
+
+    No consent, deliberately. Consent was for ADDING our files to a skin the
+    user installed; taking them out again is that permission being released,
+    not a new one being taken. Nothing else is touched: only the `tofa_`
+    prefix, only `.ttf`, only that one directory.
+
+    Returns the number of files removed.
+    """
+    global _pruned_this_session
+    if _pruned_this_session:
+        return 0
+    _pruned_this_session = True
+    try:
+        # Never strand the screens: if the resource add-on cannot supply the
+        # files, the stale copies are the only ones there are. A disabled or
+        # not-yet-installed dependency is a real state during an update.
+        try:
+            xbmcaddon.Addon(FONT_ADDON_ID)
+        except RuntimeError:
+            log.warning("fontinstall: %s unavailable, leaving the skin's font "
+                        "copies in place" % FONT_ADDON_ID)
+            return 0
+
+        skin_id = xbmc.getSkinDir()
+        skin_path = xbmcvfs.translatePath(xbmcaddon.Addon(skin_id).getAddonInfo("path"))
+        fonts_dir = os.path.join(skin_path, "fonts")
+        if not os.path.isdir(fonts_dir):
+            return 0
+        removed = 0
+        for name in os.listdir(fonts_dir):
+            if not name.startswith("tofa_") or not name.endswith(".ttf"):
+                continue
+            try:
+                os.remove(os.path.join(fonts_dir, name))
+                removed += 1
+            except OSError as exc:
+                # A read-only skin is the ordinary case on CoreELEC, and
+                # there the injected copy lives in the writable duplicate
+                # anyway. Nothing is broken by a copy we cannot remove; it
+                # is the same bytes.
+                log.debug("fontinstall: could not remove %s: %s" % (name, exc))
+        if removed:
+            log.info("fontinstall: removed %d stale font file(s) from %s; they "
+                     "come from %s now" % (removed, skin_id, FONT_ADDON_ID))
+        return removed
+    except Exception as exc:                                # noqa: BLE001
+        log.warning("fontinstall: could not prune stale skin fonts: %s" % exc)
+        return 0
 
 
 def fonts_needed() -> bool:

@@ -263,6 +263,13 @@ def ensure_host_setup(forced: bool = False) -> bool:
 
     `forced` is the Settings row, which asks again after a decline."""
     try:
+        # BEFORE the consent check, and unconditionally: this only REMOVES
+        # font files an older version of this add-on copied into the skin,
+        # which now shadow the resource add-on that supersedes them. Asking
+        # would be asking permission to stop doing the thing permission was
+        # given for. See fontinstall.prune_stale_skin_fonts.
+        fontinstall.prune_stale_skin_fonts()
+
         wanted = _outstanding(forced)
         if not wanted:
             return False
