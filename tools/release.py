@@ -82,6 +82,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import checkouts  # noqa: E402  (sibling module in tools/)
 ADDON_DIR = os.path.join(ROOT, "plugin.video.tofa")
 ADDON_XML = os.path.join(ADDON_DIR, "addon.xml")
+
+#: The font RESOURCE add-on, published alongside the plugin because the
+#: plugin <import>s it. Kodi will not install a plugin whose dependency the
+#: repository does not carry, so leaving this out breaks the plugin's own
+#: install rather than merely losing its fonts. It has no changelog and no
+#: version of its own to bump on a plugin release -- its version moves only
+#: when the FONTS THEMSELVES change, which is the point of splitting it out.
+FONT_ADDON_ID = "resource.font.tofa"
+FONT_ADDON_DIR = os.path.join(ROOT, FONT_ADDON_ID)
+FONT_ADDON_XML = os.path.join(FONT_ADDON_DIR, "addon.xml")
 CHANGELOG = os.path.join(ADDON_DIR, "changelog.txt")
 DIST = os.path.join(ROOT, "dist")
 
@@ -687,6 +697,50 @@ def package_files() -> list[tuple[str, str]]:
     return out
 
 
+def read_font_addon_xml() -> str:
+    with open(FONT_ADDON_XML, "r", encoding="utf-8") as handle:
+        return handle.read()
+
+
+def font_addon_version() -> str:
+    """The font add-on's own version, read from its addon.xml."""
+    xml = read_font_addon_xml()
+    match = re.search(r'<addon[^>]*\sversion="([^"]+)"', xml)
+    if not match:
+        raise SystemExit("%s has no version attribute" % FONT_ADDON_XML)
+    return match.group(1)
+
+
+def font_addon_files() -> list[tuple[str, str]]:
+    """(path on disk, path inside the zip) for the font add-on."""
+    out = []
+    for base, dirs, files in os.walk(FONT_ADDON_DIR):
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+        for name in sorted(files):
+            path = os.path.join(base, name)
+            rel = os.path.relpath(path, FONT_ADDON_DIR)
+            if _should_skip(rel):
+                continue
+            out.append((path, os.path.join(FONT_ADDON_ID, rel)))
+    return out
+
+
+def do_package_font_addon() -> str:
+    """Build the font add-on's zip and return its path.
+
+    Always rebuilt, for the reason do_publish() gives about the plugin's own
+    zip: the version string does not move during development, so a stale
+    artifact of the right name is exactly what dist/ tends to hold.
+    """
+    version = font_addon_version()
+    os.makedirs(DIST, exist_ok=True)
+    target = os.path.join(DIST, "%s-%s.zip" % (FONT_ADDON_ID, version))
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path, arcname in font_addon_files():
+            archive.write(path, arcname)
+    return target
+
+
 def do_package() -> int:
     if do_check():
         print("not packaging a version that does not check out")
@@ -709,7 +763,7 @@ def do_package() -> int:
 # ---------------------------------------------------------------- publish --
 
 
-def declared_assets(xml: str) -> list[tuple[str, str]]:
+def declared_assets(xml: str, addon_dir: str | None = None) -> list[tuple[str, str]]:
     """(source on disk, path relative to the add-on) for every <assets> entry.
 
     Which artwork exists is addon.xml's to say, not this file's to assume --
@@ -729,7 +783,7 @@ def declared_assets(xml: str) -> list[tuple[str, str]]:
     if not block:
         return []
     found = re.findall(r"<(\w+)>\s*([^<]+?)\s*</\1>", block.group(1))
-    return [(os.path.join(ADDON_DIR, rel), rel) for _tag, rel in found]
+    return [(os.path.join(addon_dir or ADDON_DIR, rel), rel) for _tag, rel in found]
 
 
 def _digest(path: str) -> str:
@@ -1201,6 +1255,19 @@ def do_publish(base_url: str | None, out_dir: str,
     # way back off a bad release. Carried BEFORE the repository add-on's entry
     # only because it reads better in the file; Kodi does not care.
     entries.extend(_carry_previous(out_dir, version, keep))
+
+    # The font resource add-on. Published EVERY time, not only when its
+    # version moves: the plugin <import>s it, and Kodi refuses to install an
+    # add-on whose dependency its repository cannot supply -- so an index
+    # missing this entry breaks the plugin's install outright rather than
+    # merely leaving it without fonts. Only ONE version is ever offered;
+    # there is no rolling back a font file independently of the plugin that
+    # names it.
+    font_xml = read_font_addon_xml()
+    font_zip = do_package_font_addon()
+    rel, size = _stage(out_dir, FONT_ADDON_ID, font_zip,
+                       declared_assets(font_xml, FONT_ADDON_DIR), None)
+    entries.append(_index_entry(font_xml, rel, size))
 
     # The repository add-on, built from scratch each time so its URLs cannot
     # drift from what this run was told.

@@ -28,7 +28,10 @@ except ImportError:                                     # pragma: no cover
 
 _TOOLS = os.path.dirname(os.path.abspath(__file__))
 _ADDON = os.path.join(_TOOLS, "..", "plugin.video.tofa")
-_FONTS = os.path.join(_ADDON, "resources", "skins", "Main", "fonts")
+# The fonts moved out of the plugin into resource.font.tofa, which is the
+# add-on Kodi resolves a font FILE against; they are prefixed there so the
+# active skin's own fonts/ cannot shadow one. See fontinstall.py.
+_FONTS = os.path.join(_TOOLS, "..", "resource.font.tofa", "resources")
 _OUT = os.path.join(_ADDON, "resources", "lib", "textmetrics.py")
 
 BIG_SCALE = 100
@@ -41,8 +44,8 @@ _CHARS = [chr(c) for c in range(32, 127)] + [
 
 # (table name, font role it serves, .ttf, size)
 _TABLES = [
-    ("_ADVANCE", "tofa_font_metadata", "inter_tight_regular.ttf", 23),
-    ("_ADVANCE_HERO_TITLE", "tofa_font_hero_title", "inter_tight_bold.ttf", 61),
+    ("_ADVANCE", "tofa_font_metadata", "tofa_inter_tight_regular.ttf", 23),
+    ("_ADVANCE_HERO_TITLE", "tofa_font_hero_title", "tofa_inter_tight_bold.ttf", 61),
 ]
 
 

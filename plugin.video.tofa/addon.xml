@@ -3,6 +3,11 @@
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
+    <!-- The .ttf files our screens name. A dependency, not bundled, because
+         Kodi resolves a font FILE against every enabled kodi.resource.font
+         add-on but never against a plugin's own directory. See
+         resources/lib/fontinstall.py. -->
+    <import addon="resource.font.tofa" version="1.0.0"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>video</provides>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="resource.font.tofa" name="tofa fonts" version="1.0.0" provider-name="cinemaONE">
+  <requires>
+    <import addon="kodi.resource" version="1.0.0"/>
+  </requires>
+  <extension point="kodi.resource.font"/>
+  <!-- xbmc.addon.metadata, NOT the kodi.addon.metadata that Kodi's own
+       resource add-ons use. Both are accepted by Kodi, but release.py's
+       _index_entry() finds this element by name to add <path> and <size>,
+       and raises rather than publishing an entry Kodi could list but not
+       download. Keep the two add-ons spelling it the same way. -->
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">Fonts for the tofa for Kodi add-on</summary>
+    <description lang="en_GB">The typefaces the tofa for Kodi add-on draws its own screens in: Inter Tight, Roboto Mono and the Lucide icon set.
+
+Installed automatically as a dependency of tofa for Kodi. It provides font files and nothing else: no screens, no settings, and nothing runs. It is not useful on its own.
+
+Kodi looks inside enabled font resources for any font file it cannot find in the active skin, so tofa's screens can name these files without a copy of them being placed in the skin.</description>
+    <platform>all</platform>
+    <license>SIL Open Font License 1.1; ISC License</license>
+    <assets>
+      <icon>icon.png</icon>
+    </assets>
+  </extension>
+</addon>

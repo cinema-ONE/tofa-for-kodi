@@ -96,7 +96,7 @@ stated at another density or predates the app, and the app wins), and
 ## For the tofa team: graphical assets
 
 - **Icons are GLYPHS, not images.** All sixteen are drawn from
-  `resources/skins/Main/fonts/lucide-icons.ttf`, built by
+  `resource.font.tofa/resources/tofa_lucide-icons.ttf`, built by
   `tools/lucide_font_src/`, through the `tofa_font_icons_*` roles. A new icon
   is a request for a glyph in that font, not a PNG -- an image would be the
   only icon in the app that does not scale with its text.

@@ -1,10 +1,25 @@
-"""Injects tofa's bundled fonts into whichever Kodi skin is currently active.
-Kodi's `GUIFontManager` only ever loads `Font.xml` from the active skin --
-there is no supported way for an add-on to ship fonts for its own
-`WindowXMLDialog` screens. Same hack a Kodi dev documented on the official
-forum in 2013 (https://forum.kodi.tv/showthread.php?tid=174694) and it still
-holds: copy font files + append namespaced `<font>` entries into the active
-skin's own `Font.xml`, then restart (fonts only load once).
+"""Declares tofa's fonts in whichever Kodi skin is currently active.
+
+Kodi's `GUIFontManager` only ever loads `Font.xml` from the active skin, so
+there is no supported way for an add-on to DECLARE a font name its own
+`WindowXML` screens can refer to. Same hack a Kodi dev documented on the
+official forum in 2013 (https://forum.kodi.tv/showthread.php?tid=174694):
+append namespaced `<font>` entries to the active skin's own `Font.xml`, then
+restart, because fonts load once.
+
+**The font FILES are not copied anywhere.** They ship in `resource.font.tofa`,
+a `kodi.resource.font` add-on imported as a dependency, and `LoadTTF()`
+resolves a bare filename against every ENABLED font resource before giving
+up (`GUIFontManager.cpp`, the `AddonType::RESOURCE_FONT` loop). That half of
+the mechanism has existed since 2017 (`1317f0f7ac`) and is present in every
+Kodi we support -- verified in the 21.3-Omega tag and in the CoreELEC fork
+the boxes run. Only the DECLARATION has no add-on route, which is what
+xbmc/xbmc#29028 adds for 22 RC1 and what keeps this file alive for 21.
+
+Its resolution order is why every file is named `tofa_*`: the active skin's
+own `fonts/` directory is searched FIRST, so a bare `RobotoMono-Regular.ttf`
+would silently render the skin's copy instead of ours. The prefix is not
+cosmetic namespacing.
 
 Nothing is written without consent. The dialog comes FIRST, before any file
 is copied or any Font.xml touched, because this edits a skin the user
@@ -69,7 +84,9 @@ _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 ADDON = addonref.ADDON
 _ = addonref.localize
 
-# tofa_font_<role> -> (source .ttf in resources/skins/Main/fonts/, size, style)
+# tofa_font_<role> -> (.ttf as shipped in resource.font.tofa, size, style)
+# The filenames here are BARE; _font_entry_xml() writes the tofa_ prefix
+# the files actually carry on disk.
 # Inter Tight's sizes below are ~2x Kodi's old font12/13/30 fallback-font
 # equivalents, not a typo: its unusually generous vertical metrics/leading
 # make it render visibly smaller than Kodi's fallback font at the same
@@ -241,17 +258,6 @@ FONTS: dict[str, tuple[str, int, str]] = {
     "tofa_font_icons_29": ("lucide-icons.ttf", 29, "Regular"),
 }
 
-def _source_fonts_dir() -> str:
-    """Where our .ttf files live inside the installed add-on.
-
-    A function, not a constant: it derives from getAddonInfo("path"), and
-    reading that at import is what addonref.py exists to stop.
-    """
-    return os.path.join(
-        xbmcvfs.translatePath(ADDON.getAddonInfo("path")),
-        "resources", "skins", "Main", "fonts")
-
-
 def _font_entry_xml(name: str, filename: str, size: int, style: str) -> str:
     return (
         f"        <font>\n"
@@ -345,14 +351,16 @@ def ensure_writable_skin_path(skin_id: str, current_path: str) -> str:
 
 
 def _inject_fonts(skin_path: str, font_xml_files: list[str]) -> None:
-    fonts_dir = os.path.join(skin_path, "fonts")
-    xbmcvfs.mkdirs(fonts_dir)
-    for source_filename in {f[0] for f in FONTS.values()}:
-        shutil.copyfile(
-            os.path.join(_source_fonts_dir(), source_filename),
-            os.path.join(fonts_dir, f"tofa_{source_filename}"),
-        )
+    """Write the `<font>` declarations, and ONLY those.
 
+    `skin_path` is unused and kept because the signature reads as "inject
+    into this skin"; the files it used to copy there now come from
+    resource.font.tofa. What that buys, beyond 1.9 MB not being written into
+    a skin the user installed: a changed .ttf stops being a skin write at
+    all. It ships as an ordinary dependency update, so only a change to the
+    DECLARATIONS -- a name, size or style -- still needs a FONT_SET_VERSION
+    bump and the consent-and-restart path behind it.
+    """
     block = _VERSION_MARKER + "\n" + "".join(_font_entry_xml(name, *spec) for name, spec in FONTS.items())
     for path in font_xml_files:
         with open(path, "r", encoding="utf-8") as f:

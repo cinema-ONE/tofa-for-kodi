@@ -9,7 +9,7 @@ Pinned to **1.27.0** for reproducibility -- don't fetch `@latest`, codepoint
 assignments can shift between releases as icons are added/removed.
 
 The actual font file used at runtime lives at
-`plugin.video.tofa/resources/skins/Main/fonts/lucide-icons.ttf` (shipped
+`resource.font.tofa/resources/tofa_lucide-icons.ttf` (shipped
 with the add-on, registered via `resources/lib/fontinstall.py`). This
 `codepoints.json` is dev-reference only, for looking up a new icon's
 codepoint when adding one -- see `resources/lib/skin/icon_glyphs.py` for

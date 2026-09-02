@@ -15,6 +15,7 @@ import time
 import urllib.parse
 
 import xbmc
+import xbmcaddon
 import xbmcgui
 
 from . import (cardoptions, cards, focusmemory, kodigui, navbar, profile_select,
@@ -6637,10 +6638,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _settings_licences_clicked(self):
         """The attribution the bundled licences require, not their full text.
 
-        The full texts DO ship -- resources/skins/Main/fonts/OFL.txt and
-        media/LUCIDE_LICENSE.txt -- which is what the SIL OFL and ISC actually
-        oblige. What they also oblige is reproducing the copyright notices,
-        and those are what this shows.
+        The full texts DO ship -- OFL.txt travels with the fonts themselves
+        in resource.font.tofa, and media/LUCIDE_LICENSE.txt is ours -- which
+        is what the SIL OFL and ISC actually oblige. What they also oblige is
+        reproducing the copyright notices, and those are what this shows.
 
         Not the whole files: the alert's textbox does not scroll, so ninety
         lines of licence arrive clipped mid-sentence, which is worse than a
@@ -6650,11 +6651,23 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         Copyright lines are READ FROM the files rather than restated here, so
         a font swap that updates OFL.txt updates this too."""
         notices = []
-        for label, relative, keep in (
-            ("SIL Open Font License 1.1", "skins/Main/fonts/OFL.txt", 5),
-            ("ISC License", "skins/Main/media/LUCIDE_LICENSE.txt", 3),
+        for label, addon_id, relative, keep in (
+            # OFL.txt sits beside the .ttf files it covers, which is in the
+            # font RESOURCE add-on rather than here; a licence that travelled
+            # separately from its fonts would be the thing to go stale.
+            ("SIL Open Font License 1.1", "resource.font.tofa", "OFL.txt", 5),
+            ("ISC License", None, "skins/Main/media/LUCIDE_LICENSE.txt", 3),
         ):
-            path = os.path.join(kodigui.ADDON.getAddonInfo("path"), "resources", relative)
+            try:
+                base = (xbmcaddon.Addon(addon_id).getAddonInfo("path") if addon_id
+                        else kodigui.ADDON.getAddonInfo("path"))
+            except RuntimeError as exc:
+                # A dependency Kodi could not resolve. Same outcome as an
+                # unreadable file: name the licence, skip the holders.
+                log.warning("settings: {0} not installed: {1}".format(addon_id, exc))
+                notices.append(label)
+                continue
+            path = os.path.join(base, "resources", relative)
             try:
                 with open(path, "r", encoding="utf-8") as handle:
                     head = [line.strip() for line in handle.readlines()[:keep]]

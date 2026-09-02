@@ -11,7 +11,7 @@ the note on text_width below).
 """
 from __future__ import annotations
 
-# tofa_font_metadata: inter_tight_regular.ttf @ 23
+# tofa_font_metadata: tofa_inter_tight_regular.ttf @ 23
 _ADVANCE_FONT = "tofa_font_metadata"
 _ADVANCE_SIZE = 23
 _ADVANCE_FALLBACK = 11.99
@@ -209,7 +209,7 @@ _ADVANCE = {
     'ÿ': 11.72,
 }
 
-# tofa_font_hero_title: inter_tight_bold.ttf @ 61
+# tofa_font_hero_title: tofa_inter_tight_bold.ttf @ 61
 _ADVANCE_HERO_TITLE_FONT = "tofa_font_hero_title"
 _ADVANCE_HERO_TITLE_SIZE = 61
 _ADVANCE_HERO_TITLE_FALLBACK = 34.42

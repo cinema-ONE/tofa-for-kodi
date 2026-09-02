@@ -45,7 +45,7 @@ import sys
 _TOOLS_DIR = os.path.dirname(__file__)
 _ADDON_DIR = os.path.join(_TOOLS_DIR, "..", "plugin.video.tofa")
 _OUTPUT_PATH = os.path.join(_TOOLS_DIR, "design_language.html")
-_FONTS_DIR = os.path.join(_ADDON_DIR, "resources", "skins", "Main", "fonts")
+_FONTS_DIR = os.path.join(_ADDON_DIR, "..", "resource.font.tofa", "resources")
 
 # The add-on's own modules are the source of truth for every value below.
 # tokens.py is deliberately stdlib-only, so it imports cleanly out here;
@@ -263,12 +263,12 @@ def _verify_against_sources(html: str) -> None:
 
 def main() -> None:
     fonts = {
-        "inter_reg": _b64(os.path.join(_FONTS_DIR, "inter_tight_regular.ttf")),
-        "inter_semi": _b64(os.path.join(_FONTS_DIR, "inter_tight_semibold.ttf")),
-        "inter_bold": _b64(os.path.join(_FONTS_DIR, "inter_tight_bold.ttf")),
-        "lucide": _b64(os.path.join(_FONTS_DIR, "lucide-icons.ttf")),
-        "mono_reg": _b64(os.path.join(_FONTS_DIR, "RobotoMono-Regular.ttf")),
-        "mono_bold": _b64(os.path.join(_FONTS_DIR, "RobotoMono-Bold.ttf")),
+        "inter_reg": _b64(os.path.join(_FONTS_DIR, "tofa_inter_tight_regular.ttf")),
+        "inter_semi": _b64(os.path.join(_FONTS_DIR, "tofa_inter_tight_semibold.ttf")),
+        "inter_bold": _b64(os.path.join(_FONTS_DIR, "tofa_inter_tight_bold.ttf")),
+        "lucide": _b64(os.path.join(_FONTS_DIR, "tofa_lucide-icons.ttf")),
+        "mono_reg": _b64(os.path.join(_FONTS_DIR, "tofa_RobotoMono-Regular.ttf")),
+        "mono_bold": _b64(os.path.join(_FONTS_DIR, "tofa_RobotoMono-Bold.ttf")),
     }
 
     # Geometry and colour come from tokens.py so the page can't restate them
