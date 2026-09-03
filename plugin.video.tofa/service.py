@@ -44,7 +44,7 @@ import time
 
 import xbmc
 
-from resources.lib import artcache, auth, hostsetup, http, log
+from resources.lib import addonref, artcache, auth, hostsetup, http, log
 from resources.lib.monitor import TofaPlayer
 
 TICK_SECONDS = 10
@@ -70,22 +70,34 @@ def main() -> None:
     sweep_due = time.monotonic() + SWEEP_FIRST_DELAY_S
 
     while not kodi_monitor.abortRequested():
-        if auth.is_signed_in():
-            try:
-                auth.ensure_fresh(session)
-            except auth.NotSignedIn:
-                pass
-            except http.ApiError as exc:
-                log.warning(f"service: refresh failed: {exc}")
-        player.tick()
-        if time.monotonic() >= sweep_due:
-            # Inline, not on a thread: it is a few thousand stat calls (8ms
-            # for 2261 files, measured) and this loop has 10s to spare. A
-            # thread here would only be one more thing for Kodi to wait on
-            # at shutdown, which artcache's workers already taught us to
-            # avoid.
-            _sweep()
-            sweep_due = time.monotonic() + SWEEP_EVERY_S
+        try:
+            if auth.is_signed_in():
+                try:
+                    auth.ensure_fresh(session)
+                except auth.NotSignedIn:
+                    pass
+                except http.ApiError as exc:
+                    log.warning(f"service: refresh failed: {exc}")
+            player.tick()
+            if time.monotonic() >= sweep_due:
+                # Inline, not on a thread: it is a few thousand stat calls
+                # (8ms for 2261 files, measured) and this loop has 10s to
+                # spare. A thread here would only be one more thing for Kodi
+                # to wait on at shutdown, which artcache's workers already
+                # taught us to avoid.
+                _sweep()
+                sweep_due = time.monotonic() + SWEEP_EVERY_S
+        except RuntimeError as exc:
+            # Kodi is replacing this add-on: it has deregistered our id, the
+            # new version's service is about to start, and any Kodi call from
+            # here on raises. That is the end of THIS process's job, not a
+            # failure -- and letting it raise out of main() is what put
+            # Kodi's error notification on the television during the 0.9.27
+            # update. Any other RuntimeError is still a bug and still shows.
+            if not addonref.is_swap_error(exc):
+                raise
+            log.info("service: this add-on is being replaced; stopping quietly")
+            return
         if kodi_monitor.waitForAbort(TICK_SECONDS):
             break
 
