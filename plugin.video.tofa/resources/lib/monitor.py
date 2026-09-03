@@ -567,6 +567,11 @@ class TofaPlayer(xbmc.Player):
             client.report_telemetry(
                 self._session["session_id"], self._session["session_token"],
                 payload, timeout=PROGRESS_TIMEOUT_SECONDS)
+            # The server logs nothing for a 204 and the admin session list
+            # carries no telemetry, so this line is the only trace that a
+            # report went out at all. Debug level: one line per ~30s.
+            log.debug(f"monitor: telemetry {kind} sent (state={payload['player_state']}, "
+                      f"rebuffers={payload['qoe']['rebuffer_count']})")
         except http.ApiError as exc:
             if getattr(exc, "status", None) == 429:
                 self._telemetry_muted_until = now + TELEMETRY_BACKOFF_S
