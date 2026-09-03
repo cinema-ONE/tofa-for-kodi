@@ -53,10 +53,24 @@ def _addon() -> xbmcaddon.Addon:
     return xbmcaddon.Addon()
 
 
+_PROFILE_DIR: str | None = None
+
+
 def _profile_dir() -> str:
-    path = xbmcvfs.translatePath(_addon().getAddonInfo("profile"))
-    xbmcvfs.mkdirs(path)
-    return path
+    """`addon_data/plugin.video.tofa/`, resolved ONCE per process.
+
+    It cannot change while Kodi runs, and resolving it on every call put an
+    xbmcaddon.Addon() lookup on the service's tick path -- which is exactly
+    the call that raises `Unknown addon id` while Kodi replaces this add-on,
+    and how the 0.9.27 update reached the television as an error toast.
+    Cached only on success: a call that lands in the window raises here and
+    the next one resolves."""
+    global _PROFILE_DIR
+    if _PROFILE_DIR is None:
+        path = xbmcvfs.translatePath(_addon().getAddonInfo("profile"))
+        xbmcvfs.mkdirs(path)
+        _PROFILE_DIR = path
+    return _PROFILE_DIR
 
 
 def token_file_path() -> str:

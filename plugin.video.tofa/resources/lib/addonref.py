@@ -63,6 +63,20 @@ class _LazyAddon:
 ADDON = _LazyAddon()
 
 
+def is_swap_error(exc: BaseException) -> bool:
+    """Is this the RuntimeError Kodi raises while it is replacing this add-on?
+
+    `Unknown addon id 'plugin.video.tofa'` is the one signature. Deferring
+    the module-level lookups (above) closed the IMPORT-time exposure; this
+    is for the run-time one, which the 0.9.26 -> 0.9.27 update on the cinema
+    box showed to be just as real: the outgoing service's tick loop called
+    auth.is_signed_in() inside the window, xbmcaddon.Addon() raised out of
+    main(), and Kodi put its error notification on the television. A long-
+    lived loop has to recognise this and stop quietly -- it is being
+    replaced, not failing."""
+    return isinstance(exc, RuntimeError) and "Unknown addon id" in str(exc)
+
+
 def localize(string_id: int) -> str:
     """Drop-in for a module-level `_ = ADDON.getLocalizedString`."""
     return addon().getLocalizedString(string_id)
