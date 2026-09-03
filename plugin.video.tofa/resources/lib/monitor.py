@@ -321,15 +321,28 @@ class TofaPlayer(xbmc.Player):
         self._last_reported_position_ms = position_ms
         return False
 
-    def _end_session(self) -> None:
+    def _end_session(self, *, retired: bool = False) -> None:
+        """Forget the session here, and tell the server only if nobody has.
+
+        `/stopped` retires the session on the server, so the DELETE that used
+        to follow it answered 410 on every single stop -- five of five on the
+        cinema box's log for 2026-09-02, logged as a failure each time.
+        `retired` says the server has already been told (by `/stopped`, or by
+        answering 410 to it, which means the same thing); then there is
+        nothing left to delete. The error path and the natural end still
+        send it, because there nothing else has spoken for the session, and
+        a 410 there is "already gone", not a failure."""
         if not self._session:
             return
-        client = self._client()
+        client = self._client() if not retired else None
         if client:
             try:
                 client.end_session(self._session["session_id"], self._session["session_token"])
             except http.ApiError as exc:
-                self._log_api_error("end_session", exc)
+                if getattr(exc, "status", None) == 410:
+                    log.debug("monitor: end_session: already gone")
+                else:
+                    self._log_api_error("end_session", exc)
         self._session = None
         self._is_paused = False
         self._last_position_ms = 0
@@ -409,11 +422,18 @@ class TofaPlayer(xbmc.Player):
             # then end_session); this is the same sequence.
             self._report()
             self._telemetry(telemetry.SESSION_END)
+            retired = False
             if client:
                 try:
                     client.report_stopped(self._session["session_id"], self._session["session_token"])
+                    retired = True
                 except http.ApiError as exc:
+                    # 410 means the server retired it before we could -- the
+                    # window's own close-out, or a reap. Same outcome.
+                    retired = getattr(exc, "status", None) == 410
                     self._log_api_error("report_stopped", exc)
+            self._end_session(retired=retired)
+            return
         self._end_session()
 
     def onPlayBackEnded(self) -> None:
