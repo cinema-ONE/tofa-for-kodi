@@ -1,0 +1,15 @@
+- Updating the add-on no longer shows a brief error message while the new
+  version installs. 0.9.26 closed one cause; this closes the other, in the
+  background service. Because the version being replaced is the one running
+  during an update, this fix takes effect from the update after this one.
+- The Home screen now shows the same rows as the other tofa apps: the
+  default rows a profile is missing (Recently Released Movies and TV Shows on
+  older profiles) appear at the end, as they do on the web and on macOS.
+- Discover rows on Home and in Settings > Appearance carry the server's own
+  names -- "Trending Shows", "New Series Worth Starting" -- so a row reads
+  the same in the "Add a row" list, in the editor and on Home.
+- New "Leaving soon" row (server 0.9.35): titles the server's lifecycle
+  rules have flagged, with the date each one leaves. Add it under Settings >
+  Appearance > Home screen.
+- Suggested for You reads "Popular on Your Server" while the server has too
+  little watch history to personalise it, as in the other apps.

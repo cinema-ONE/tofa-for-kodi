@@ -1,8 +1,0 @@
-- One press of Up brings you back from a title's episodes or cast to the
-  buttons at the top of its page. It used to take two.
-- A long episode title or cast name scrolls while it is highlighted, rather
-  than stopping at three dots. The rows on Home have always done this; the
-  episodes and the cast on a title's page now do it too.
-- Removing something from Continue watching leaves the highlight where it
-  was, and the next title moves into the space. It used to jump back to the
-  first title on the row.
