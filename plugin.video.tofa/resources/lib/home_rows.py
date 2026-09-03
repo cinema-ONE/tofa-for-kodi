@@ -37,6 +37,12 @@ BUILTIN_ROW_LABELS: dict[str, int] = {
     # would simply have shown two fewer rows.
     "recently_released_movies": 31112,
     "recently_released_tv": 31113,
+    # Server 0.9.35's lifecycle feature: titles the server's own rules have
+    # flagged for removal, from GET /lifecycle/leaving-soon. The web app
+    # offers it under "Home rows" and draws it only when the server reports
+    # the `lifecycle` capability; an older server answers 404, which
+    # fetch_builtin_row turns into an empty row, and an empty row hides.
+    "leaving_soon": 31123,
     "top_rated_movies": 31062,
     "top_rated_tv": 31063,
     "suggested": 31064,
@@ -79,8 +85,10 @@ HOME_ROW_PROTECTED_IDS: frozenset = frozenset(
     HOME_ROW_DEFAULT_BUILTINS + HOME_ROW_DEFAULT_DISCOVERY)
 
 # The builtin rows the editor may OFFER: every one it knows minus the eight
-# it can never remove. Today that is `recently_released` alone -- the mixed
-# movies-and-shows row the 0.9.29 split superseded but did not retire.
+# it can never remove. Today that is `recently_released` -- the mixed
+# movies-and-shows row the 0.9.29 split superseded but did not retire -- and
+# `leaving_soon` (0.9.35), which the caller drops on a server without the
+# `lifecycle` capability, as the web app does.
 #
 # Mirrors the web app's `Vn = zn.filter(e => !Bn.includes(e.id))`, quirk
 # included: a profile that never had `recently_released_tv` cannot gain it
@@ -93,6 +101,64 @@ ADDABLE_BUILTIN_IDS: tuple[str, ...] = tuple(
     row_id for row_id in BUILTIN_ROW_LABELS
     if row_id not in HOME_ROW_DEFAULT_BUILTINS
 )
+
+
+def normalize_home_screen(home: dict | None) -> dict:
+    """The home_screen preference as every tofa app READS it, which is not
+    quite as it is stored.
+
+    Mirrors the web app's normaliser (`$n` in its bundle, 0.9.35): the stored
+    rows keep their order, and then every one of the ten default rows the
+    profile LACKS is appended at the end, enabled -- the eight builtins first,
+    then the two trending discovery rows. A profile that predates the
+    recently_released split therefore still shows both halves of it, on Home
+    and in the editor, on the web, on macOS and here. The first time the
+    editor saves, the appended rows are written back, which is also what the
+    web app does.
+
+    Returns a NEW dict {show_hero, rows} and never touches the input. Rows
+    without a string `id` are dropped, as the web drops them; `enabled`
+    defaults to True; a row's type is inferred from its fields the same way.
+    """
+    defaults = ([{"id": rid, "type": "builtin", "enabled": True}
+                 for rid in HOME_ROW_DEFAULT_BUILTINS]
+                + [{"id": "discover-" + key[len("discover-"):], "type": "discovery",
+                    "enabled": True, "discoveryList": key[len("discover-"):]}
+                   for key in HOME_ROW_DEFAULT_DISCOVERY])
+    home = home if isinstance(home, dict) else {}
+    show_hero = home.get("show_hero")
+    if not isinstance(show_hero, bool):
+        show_hero = True
+    stored = home.get("rows")
+    if not isinstance(stored, list) or not stored:
+        return {"show_hero": show_hero, "rows": defaults}
+    rows: list[dict] = []
+    for row in stored:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str):
+            continue
+        row_type = row.get("type")
+        if row_type not in ("genre", "discovery"):
+            row_type = "builtin"
+        out = {"id": row["id"], "type": row_type,
+               "enabled": row.get("enabled") if isinstance(row.get("enabled"), bool) else True}
+        if row.get("genre"):
+            out["genre"] = row["genre"]
+        if row.get("discoveryList"):
+            out["discoveryList"] = row["discoveryList"]
+        rows.append(out)
+    present = {r["id"] for r in rows}
+    for default in defaults:
+        if default["id"] not in present:
+            rows.append(dict(default))
+    return {"show_hero": show_hero, "rows": rows}
+
+
+def deslug(list_type: str) -> str:
+    """"new-noteworthy-tv" -> "New Noteworthy TV". The last-resort name for a
+    shelf whose title nothing supplied; `str.title()` alone would write "Tv",
+    which is not how anyone writes it."""
+    words = list_type.replace("-", " ").replace("_", " ").split()
+    return " ".join("TV" if w.lower() == "tv" else w.capitalize() for w in words)
 
 
 def row_is_default(row: dict) -> bool:
@@ -306,17 +372,22 @@ DISCOVER_TAB_LIST_IDS: tuple[int, ...] = tuple(6900 + 10 * i for i in range(len(
 # module stays free of that dependency. See fragments.discover_tab_positions().
 
 
-def row_title(row: dict, localize) -> str:
+def row_title(row: dict, localize, shelf_titles: dict | None = None) -> str:
     """A display name for one `home_screen.rows` entry, WITHOUT touching the
     network.
 
-    _home_load() names rows too, but it can only do so while it is already
-    fetching them -- a discovery row it does not have a local label for falls
-    back to the title the server sent with the shelf. The Settings editor
-    lists rows before anything is fetched and must never block on HTTP to
-    draw a label, so it de-slugs the list type instead ("trending-movies" ->
-    "Trending Movies"). The two agree wherever a local label exists, which is
-    every builtin and the original seven shelves.
+    A discovery row is named by the SERVER: `shelf_titles` is the key ->
+    title map read off /discovery/page (the window keeps one, filled by
+    whichever of Home or the editor fetched the page first). That is the
+    order the web app uses too -- its local map is only the fallback for a
+    page that failed -- and it is what keeps the editor, the "Add a row"
+    picker and Home saying the same name. Before this the editor de-slugged
+    the key and so read "New Noteworthy Tv" for the shelf every other surface
+    calls "New Series Worth Starting", and Home said "Trending TV Shows" where
+    the apps say "Trending Shows".
+
+    The local label map is the fallback, and deslug() the fallback's fallback,
+    so the editor still draws without a network call.
 
     Returns "" for a row this add-on does not understand, so callers can skip
     it the same way _home_load() does rather than showing a blank line.
@@ -329,10 +400,13 @@ def row_title(row: dict, localize) -> str:
         list_type = row.get("discoveryList")
         if not list_type:
             return ""
+        title = (shelf_titles or {}).get(list_type)
+        if title:
+            return title
         label_id = DISCOVERY_LIST_LABELS.get(list_type)
         if label_id:
             return localize(label_id)
-        return list_type.replace("-", " ").replace("_", " ").title()
+        return deslug(list_type)
     if row_type == "genre":
         return row.get("genre") or ""
     return ""

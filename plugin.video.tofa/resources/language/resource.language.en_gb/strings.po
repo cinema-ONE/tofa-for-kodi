@@ -482,3 +482,11 @@ msgstr ""
 msgctxt "#31122"
 msgid "Rows appear on Home in this order. Turning one off hides it everywhere you sign in, on every tofa app."
 msgstr ""
+
+msgctxt "#31123"
+msgid "Leaving soon"
+msgstr ""
+
+msgctxt "#31124"
+msgid "Popular on Your Server"
+msgstr ""
