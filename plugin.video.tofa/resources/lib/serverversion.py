@@ -42,7 +42,7 @@ from . import log
 #: lane, measured against a live 0.9.34 server, so nothing here changed
 #: behaviour. Adopt the parameter and this entry earns its keep; until
 #: then it is bookkeeping, and honest to say so.
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 34)
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 35)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,
