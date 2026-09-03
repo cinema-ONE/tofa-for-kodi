@@ -1,3 +1,20 @@
+0.9.27
+- Your server can now see how a Kodi stream is doing. The Activity page
+  used to say "This client doesn't report live metrics" beside a Kodi
+  session; it now shows the player's state, how many seconds of video
+  Kodi has buffered ahead, and whether playback has stalled -- so whoever
+  runs the server can tell a healthy stream from a struggling one at a
+  glance, and has real numbers to go on when something does go wrong.
+  Kodi cannot measure dropped frames or network throughput, so those two
+  tiles stay empty rather than showing a guess. Everything reported goes
+  to your own media server and nowhere else, as the Privacy page says.
+- Stopping playback tells the server once instead of twice. The second
+  message was always answered "already stopped"; it is no longer sent.
+- Built against tofa media server 0.9.35. An older server is not refused
+  and the add-on carries on working, but it now says so once per session,
+  the same as it always has when it meets a server older than it was
+  built for. Nothing else changes in this release on account of it.
+
 0.9.26
 - The add-on no longer copies its fonts into the skin you are using. They
   travel in a small companion add-on instead, which Kodi installs alongside

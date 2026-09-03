@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.26" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.27" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,13 +45,21 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - The add-on no longer copies its fonts into the skin you are using. They
-        travel in a small companion add-on instead, which Kodi installs alongside
-        this one, and any copies an earlier version left behind are cleared away.
-        Nothing looks different; there is simply less of us in your skin.
-      - An error message no longer appears while the add-on updates itself. A new
-        version arriving while the old one was still closing down could put a Kodi
-        error notice on screen for a moment. Nothing was affected by it.
+      - Your server can now see how a Kodi stream is doing. The Activity page
+        used to say "This client doesn't report live metrics" beside a Kodi
+        session; it now shows the player's state, how many seconds of video
+        Kodi has buffered ahead, and whether playback has stalled -- so whoever
+        runs the server can tell a healthy stream from a struggling one at a
+        glance, and has real numbers to go on when something does go wrong.
+        Kodi cannot measure dropped frames or network throughput, so those two
+        tiles stay empty rather than showing a guess. Everything reported goes
+        to your own media server and nowhere else, as the Privacy page says.
+      - Stopping playback tells the server once instead of twice. The second
+        message was always answered "already stopped"; it is no longer sent.
+      - Built against tofa media server 0.9.35. An older server is not refused
+        and the add-on carries on working, but it now says so once per session,
+        the same as it always has when it meets a server older than it was
+        built for. Nothing else changes in this release on account of it.
     </news>
     <assets>
       <icon>icon.png</icon>
