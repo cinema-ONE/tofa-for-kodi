@@ -42,7 +42,20 @@ from . import log
 #: lane, measured against a live 0.9.34 server, so nothing here changed
 #: behaviour. Adopt the parameter and this entry earns its keep; until
 #: then it is bookkeeping, and honest to say so.
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 34)
+#:
+#: 0.9.35: NO feature adopted yet, same rule as 0.9.34. The spec moved to
+#: 0.9.35 (14 endpoints added, none removed) and the only structural change
+#: to a route this client calls is on the subtitle sidecars: `full.vtt`
+#: and `full.ass` take a `wait` query (default true, so nothing changes
+#: for us) and every subtitle response now carries an
+#: `X-Tofa-Subtitle-Time-Basis` header whose values the spec does not
+#: describe. That header exists because 0.9.35 put every converted stream
+#: and its subtitles on one content timeline; whether Kodi's own offset
+#: handling still lines up after a mid-title resume on a transcode is the
+#: open question, not settled by this bump. Both of Adrian's servers were on
+#: 0.9.35 when this was raised, so nobody here meets the notice.
+
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 35)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,
