@@ -176,6 +176,11 @@ check("the last heartbeat is sent before the session is retired",
 check("...and telemetry's session_end goes out before the retirement as well",
       p.client.calls.index("telemetry:session_end") < p.client.calls.index("stopped"),
       str(p.client.calls))
+# /stopped retires the session; the DELETE that used to follow it answered
+# 410 on every stop. Nothing else may be said to a retired session.
+check("...and nothing follows the retirement",
+      p.client.calls[-1] == "stopped" and "end_session" not in p.client.calls,
+      str(p.client.calls))
 check("...and it still carries the real position",
       p.client.session_writes == [123_000], str(p.client.session_writes))
 

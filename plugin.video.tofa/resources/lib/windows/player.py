@@ -3158,20 +3158,29 @@ class PlayerWindow(kodigui.ControlledDialog):
             log.warning(f"player: could not write outgoing progress: {exc!r}")
         if not (session_id and session_token):
             return
-        for what, call in (("report_stopped", self.client.report_stopped),
-                           ("end_session", self.client.end_session)):
-            try:
-                call(session_id, session_token)
-            except http.ApiError as exc:
-                # 410 is the END STATE WE WANTED, not a failure: the session
-                # is already gone, which is what report_stopped just did to
-                # it. monitor.py's _log_api_error draws the same distinction
-                # for the same reason -- warning about it once per episode
-                # would make a healthy binge look broken.
-                log_fn = log.debug if exc.status == 410 else log.warning
-                log_fn(f"player: outgoing {what}: {exc}")
-            except Exception as exc:                        # noqa: BLE001
-                log.warning(f"player: outgoing {what} failed: {exc!r}")
+        # /stopped retires the session. The DELETE that used to follow it
+        # unconditionally answered 410 on every stop -- the end state we
+        # wanted, and logged as such, but a round trip to say nothing. Now it
+        # goes only when /stopped could not: a 410 from /stopped means the
+        # server got there first (the monitor's own stop, or a reap), and a
+        # DELETE after that would 410 for the same reason.
+        try:
+            self.client.report_stopped(session_id, session_token)
+            return
+        except http.ApiError as exc:
+            log_fn = log.debug if exc.status == 410 else log.warning
+            log_fn(f"player: outgoing report_stopped: {exc}")
+            if exc.status == 410:
+                return
+        except Exception as exc:                            # noqa: BLE001
+            log.warning(f"player: outgoing report_stopped failed: {exc!r}")
+        try:
+            self.client.end_session(session_id, session_token)
+        except http.ApiError as exc:
+            log_fn = log.debug if exc.status == 410 else log.warning
+            log_fn(f"player: outgoing end_session: {exc}")
+        except Exception as exc:                            # noqa: BLE001
+            log.warning(f"player: outgoing end_session failed: {exc!r}")
 
     # WHY WE ALWAYS STOP BEFORE STARTING THE NEXT EPISODE.
     #
