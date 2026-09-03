@@ -49,7 +49,29 @@ def _card_meta_left(item: dict) -> str:
     if season is not None and episode is not None:
         return theme.accent_in_accent(episodes.number_label(
             season, episode, item.get("episode_number_end")))
+    # A Leaving soon card says when, as the web app's does ("Leaves 12 Sep");
+    # the row's items carry no year.
+    leaves = _leaves_label(item.get("delete_after"))
+    if leaves:
+        return leaves
     return _item_year(item)
+
+
+def _leaves_label(delete_after) -> str:
+    """"2026-09-12T03:00:00Z" -> "Leaves 12 Sep". Day-first, as we write
+    dates; blank for anything unparseable rather than a raw timestamp."""
+    if not isinstance(delete_after, str) or len(delete_after) < 10:
+        return ""
+    try:
+        month = int(delete_after[5:7])
+        day = int(delete_after[8:10])
+    except ValueError:
+        return ""
+    if not 1 <= month <= 12 or not 1 <= day <= 31:
+        return ""
+    months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    return "Leaves {0} {1}".format(day, months[month - 1])
 
 
 def _item_year(item: dict) -> str:
@@ -629,6 +651,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._server_capabilities: set = set()  # from GET /api/v1/system/info, see _ensure_capabilities()
         self._capabilities_loaded = False
         self._preferences: dict | None = None  # whoami's preferences, see _ensure_preferences()
+        # /discovery/page shelf key -> title, filled by whichever of Home or
+        # the Settings editor fetched the page first. The server names a
+        # discovery row on every surface (home_rows.row_title).
+        self._shelf_titles: dict[str, str] = {}
         self._settings_languages: list | None = None  # /media/facets languages, see _settings_language_facet()
         self._settings_identity: dict | None = None  # cloud GET /v1/me, see _settings_account_identity()
         self._browse_shuffle_seed: int | None = None  # for Sort="random"'s stable pagination, see _browse_sort_clicked()
@@ -1556,13 +1582,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._home_apply_hero(
             (self._settings_home_screen()).get("show_hero", True))
 
-        rows_pref = ((self._ensure_preferences().get("home_screen") or {}).get("rows")) or []
-
-        # Same fallback as addon.py's show_root_menu(): an account with no
-        # home_screen preference at all still gets Continue Watching, not a
-        # blank Home.
-        if not rows_pref:
-            rows_pref = [{"enabled": True, "type": "builtin", "id": "continue_watching"}]
+        # As every tofa app reads it: the stored rows, then each default row
+        # the profile lacks. A profile with no preference at all gets the ten
+        # defaults, which is also what the web app shows it.
+        rows_pref = self._settings_home_screen()["rows"]
 
         # HIDE EVERY ROW BEFORE REBUILDING IT. Each row group is gated on
         # `row{N}_title` (see the XML), so clearing them takes the rows off
@@ -1607,6 +1630,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 row_kind = "cw" if row_id == "continue_watching" else "library"
                 row_title = _(label_id)
                 items = self._home_fetch_builtin_row(client, row_id)
+                # A Suggested row the server could not personalise (thin
+                # watch history) is "Popular on Your Server" in the web app;
+                # the flag rides with the items (prefetch.SuggestedItems).
+                if row_id == "suggested" and getattr(items, "personalized", True) is False:
+                    row_title = _(31124)
             elif row_type == "discovery":
                 list_type = row.get("discoveryList")
                 if not list_type:
@@ -1620,11 +1648,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     log.debug(f"main.py: home_screen discovery row {list_type} not offered by this server")
                     continue
                 items = shelf["items"]
-                # Server-supplied title first: since 0.9.25 the Settings
-                # home-screen editor can add any of the 32 shelves, so the
-                # local label map only covers the original 7.
-                label_id = home_rows.DISCOVERY_LIST_LABELS.get(list_type)
-                row_title = _(label_id) if label_id else shelf["title"]
+                # The SERVER names a discovery row -- "Trending Shows", not
+                # our "Trending TV Shows" -- with the local label only as
+                # the fallback for a page that sent none. Same order as the
+                # editor and the picker, so the three agree.
+                row_title = home_rows.row_title(row, _, self._shelf_titles) or shelf["title"]
             elif row_type == "genre":
                 # Added from the Settings home-screen editor as
                 # {type: "genre", genre: <name>}; the genre's own name is
@@ -1825,6 +1853,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 for key in (s.get("key"), s.get("list_type")):
                     if key:
                         shelves.setdefault(key, entry)
+                        if entry["title"]:
+                            self._shelf_titles.setdefault(key, entry["title"])
             if shelves:
                 return shelves
         try:
@@ -5997,7 +6027,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # See api.update_preferences().
 
     def _settings_home_screen(self) -> dict:
-        return dict(self._ensure_preferences().get("home_screen") or {})
+        """The home_screen preference as READ -- stored rows plus the
+        defaults the profile lacks (home_rows.normalize_home_screen). Both
+        Home and the editor draw from this, and a save writes it back whole,
+        which is exactly what the web app does with its own normalised
+        list."""
+        return home_rows.normalize_home_screen(
+            self._ensure_preferences().get("home_screen"))
 
     def _settings_fill_home_screen(self):
         home = self._settings_home_screen()
@@ -6019,7 +6055,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # grouplist's navigation chain.
         shown = []
         for index, row in enumerate(home.get("rows") or []):
-            title = home_rows.row_title(row, _)
+            title = home_rows.row_title(row, _, self._shelf_titles)
             if not title:
                 # Same rule _home_load() follows: a row type this add-on does
                 # not understand is skipped, never guessed at. Editing a list
@@ -6327,8 +6363,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         # Builtins first: no network, and it is the group the reference puts
         # at the top.
+        # Leaving soon exists only where the server's lifecycle feature
+        # does; the web app gates the row on the same capability.
         builtins = [rid for rid in home_rows.ADDABLE_BUILTIN_IDS
-                    if rid not in present]
+                    if rid not in present
+                    and (rid != "leaving_soon" or self._has_capability("lifecycle"))]
 
         # A shelf list or a genre list that fails is not fatal -- the other
         # groups are still worth offering, so each is fetched on its own and
@@ -6344,6 +6383,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # so a row added here and one added on the web are the same object.
         offered_shelves = [s for s in shelves
                            if s.get("key") and s["key"] not in taken_lists]
+        for s in shelves:
+            if s.get("key") and s.get("title"):
+                self._shelf_titles.setdefault(s["key"], s["title"])
 
         try:
             genres = client.genres() or []
@@ -6384,14 +6426,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         else:
             # /media/genres returns NAMES, and `/media`'s genre filter takes
             # the name string directly, so the name is the whole key -- there
-            # is no id to look up. The row's own `id` is a slug of it, purely
-            # so the entry has a stable handle for the web app's list
-            # rendering; nothing on this client reads it (see
-            # home_rows.row_title, which names a genre row from `genre`).
+            # is no id to look up. The row's `id` is `genre:<name>`, the
+            # exact form the web app writes, so a row added here and one
+            # added there are the same object to every app's de-duplication
+            # (the earlier `genre-<slug>` form is still read fine: nothing
+            # names a genre row from its id, see home_rows.row_title).
             genre = offered_genres[index]
             rows.append({"type": "genre", "genre": genre,
-                         "id": "genre-{0}".format(genre.lower().replace(" ", "-")),
-                         "enabled": True})
+                         "id": "genre:{0}".format(genre), "enabled": True})
         home["rows"] = rows
         self._settings_write_home(home)
 

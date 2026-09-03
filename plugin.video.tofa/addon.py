@@ -225,6 +225,8 @@ def _builtin_row_url(row_id: str) -> Optional[str]:
         return build_url(action="browse", media_type="tv", page=1, sort="rating", order="desc")
     if row_id == "suggested":
         return build_url(action="suggested")
+    if row_id == "leaving_soon":
+        return build_url(action="leaving_soon")
     return None
 
 
@@ -234,7 +236,10 @@ def show_root_menu() -> None:
 
     rows: list[dict[str, Any]] = []
     try:
-        rows = (((client.whoami().get("preferences") or {}).get("home_screen") or {}).get("rows")) or []
+        # As every tofa app reads it: the stored rows plus the defaults the
+        # profile lacks (home_rows.normalize_home_screen).
+        rows = home_rows.normalize_home_screen(
+            (client.whoami().get("preferences") or {}).get("home_screen"))["rows"]
     except http.ApiError as exc:
         log.debug(f"could not load home_screen preference, falling back to defaults: {exc.message}")
 
@@ -393,6 +398,22 @@ def action_search() -> None:
     if not movies:
         notify(_(31041))
     for media in movies:
+        if media.get("media_type") == "tv":
+            listing.add_show_item(HANDLE, client, build_url, media, xbmcplugin.addDirectoryItem)
+        else:
+            listing.add_movie_item(HANDLE, client, build_url, media, xbmcplugin.addDirectoryItem)
+    xbmcplugin.endOfDirectory(HANDLE)
+
+
+def show_leaving_soon() -> None:
+    """The titles the server's lifecycle rules have flagged for removal
+    (server 0.9.35). LeavingSoonItem carries `media_id` where a media
+    summary carries `id`; mapped so the listing helpers see one shape."""
+    client = get_client()
+    xbmcplugin.setContent(HANDLE, "videos")
+    for it in client.leaving_soon() or []:
+        media = dict(it)
+        media.setdefault("id", it.get("media_id"))
         if media.get("media_type") == "tv":
             listing.add_show_item(HANDLE, client, build_url, media, xbmcplugin.addDirectoryItem)
         else:
@@ -678,6 +699,8 @@ def run() -> None:
             show_libraries()
         elif action == "suggested":
             show_suggested()
+        elif action == "leaving_soon":
+            show_leaving_soon()
         elif action == "discover":
             show_discover_categories()
         elif action == "discover_list":

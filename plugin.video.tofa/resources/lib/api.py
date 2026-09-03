@@ -549,6 +549,13 @@ class MediaServerClient:
         row)."""
         return self._get("/api/v1/users/me/suggested")
 
+    def leaving_soon(self) -> Any:
+        """Server 0.9.35, capability `lifecycle`: the titles the server's own
+        lifecycle rules have flagged for removal, each `{media_id, title,
+        media_type, poster_path, delete_after}`. Feeds the `leaving_soon`
+        Home row. An older server answers 404."""
+        return self._get("/api/v1/lifecycle/leaving-soon")
+
     def genres(self, media_type: Optional[str] = None, library_id: Optional[str] = None) -> Any:
         """List of genre *names* (not ids) -- `/media`'s `genre` param takes
         the name string directly."""

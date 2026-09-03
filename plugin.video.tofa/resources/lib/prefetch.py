@@ -42,6 +42,12 @@ _rows: dict[str, list] = {}
 _warmed = False
 
 
+class SuggestedItems(list):
+    """The Suggested row's items, carrying the server's `personalized` flag
+    (False on the cold-start fallback) so the row can be titled from it."""
+    personalized: bool = True
+
+
 def fetch_builtin_row(client: MediaServerClient, row_id: str) -> list:
     """The items for one builtin Home row.
 
@@ -55,7 +61,23 @@ def fetch_builtin_row(client: MediaServerClient, row_id: str) -> list:
             return client.continue_watching() or []
         if row_id == "suggested":
             resp = client.suggested() or {}
-            return (resp.get("items") if isinstance(resp, dict) else resp) or []
+            if isinstance(resp, dict):
+                # The flag rides with the items so the row can be titled
+                # from it: the web app calls a non-personalised Suggested row
+                # "Popular on Your Server", and so do we.
+                items = SuggestedItems(resp.get("items") or [])
+                items.personalized = resp.get("personalized") is not False
+                return items
+            return resp or []
+        if row_id == "leaving_soon":
+            # LeavingSoonItem is not a MediaSummary: its id is `media_id`,
+            # and `delete_after` is what the card's caption shows. Mapped to
+            # the card shape here so the row builder needs no special case.
+            return [{"id": it.get("media_id"), "title": it.get("title") or "",
+                     "media_type": it.get("media_type"),
+                     "poster_path": it.get("poster_path"),
+                     "delete_after": it.get("delete_after"), "available": True}
+                    for it in (client.leaving_soon() or []) if isinstance(it, dict)]
         if row_id == "recent_movies":
             resp = client.media_list(media_type="movie", sort="added_at", order="desc", page=1, per_page=25)
             return (resp or {}).get("items") or []
@@ -126,11 +148,9 @@ def warm() -> None:
         # the preferences are consumed on first read -- see take_preferences.
         _client, _preferences = client, preferences
 
-        rows = ((preferences.get("home_screen") or {}).get("rows")) or []
-        if not rows:
-            # The same default Home falls back to, so the commonest account
-            # shape is prefetched too rather than being the one that is not.
-            rows = [{"enabled": True, "type": "builtin", "id": "continue_watching"}]
+        # The same list Home will build -- the stored rows plus every default
+        # the profile lacks -- so what gets warmed is what gets drawn.
+        rows = home_rows.normalize_home_screen(preferences.get("home_screen"))["rows"]
         slots = 0
         for row in rows:
             if slots >= home_rows.MAX_HOME_ROWS:
