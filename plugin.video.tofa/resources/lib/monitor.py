@@ -30,7 +30,7 @@ from typing import Optional
 import xbmc
 import xbmcgui
 
-from . import addonref, api, auth, http, log, toast
+from . import addonref, api, auth, http, log, telemetry, toast
 from .api import MediaServerClient
 
 HANDOFF_PROPERTY = "plugin.video.tofa.pending_session"
@@ -60,6 +60,19 @@ PROGRESS_TIMEOUT_SECONDS = 5.0
 # an ordinary rewind clears the baseline via onPlayBackSeek long before it
 # reaches here. See _regression_unconfirmed.
 POSITION_REGRESSION_MS = 60_000
+
+#: Telemetry cadence, in ticks of service.py's ~10s loop: a heartbeat every
+#: third tick. The route answers 429 when it is fed too often; a heartbeat
+#: is the one report that carries nothing a later one will not, so it is
+#: the one to ration. State changes and the session's start and end go
+#: immediately. On a 429 the whole channel goes quiet for TELEMETRY_BACKOFF_S.
+TELEMETRY_HEARTBEAT_TICKS = 3
+TELEMETRY_BACKOFF_S = 120.0
+#: How long the position may sit still before it counts as a rebuffer for
+#: the QoE counters. Deliberately shorter than the 8.6 chip's delay in the
+#: window: this is a measurement, not a piece of chrome, and a two-second
+#: freeze is a stall whether or not it was worth telling the viewer about.
+TELEMETRY_STALL_AFTER_S = 2.0
 
 # Lazy, see addonref.py. ADDON and ADDON_NAME were both defined here and
 # neither was ever read; only the string lookup survives.
@@ -153,6 +166,11 @@ class TofaPlayer(xbmc.Player):
         self._last_reported_position_ms: Optional[int] = None
         self._regression_held = False
         self._opening_timeout_warned_for: Optional[str] = None
+        # -- telemetry ----------------------------------------------------
+        self._qoe = telemetry.QoE()
+        self._telemetry_ticks = 0
+        self._telemetry_muted_until = 0.0
+        self._stalled_since: Optional[float] = None
 
     def _client(self) -> Optional[MediaServerClient]:
         try:
@@ -333,14 +351,26 @@ class TofaPlayer(xbmc.Player):
             self._regression_held = False
             self._opening_timeout_warned_for = None
             log.debug(f"monitor: adopted session {pending['session_id']}")
+            self._qoe = telemetry.QoE()
+            self._telemetry_ticks = 0
+            self._stalled_since = None
+            stashed = pending.get("stashed_at")
+            if stashed:
+                # Handoff to first frame. The stash is written right before
+                # play() is called, so this is the whole of Kodi opening the
+                # stream -- what the viewer waited through.
+                self._qoe.time_to_first_frame_ms = max(0.0, (time.time() - stashed) * 1000.0)
+            self._telemetry(telemetry.PLAYBACK_STARTED)
 
     def onPlayBackPaused(self) -> None:
         self._is_paused = True
         self._report()
+        self._telemetry(telemetry.STATE_CHANGE)
 
     def onPlayBackResumed(self) -> None:
         self._is_paused = False
         self._report()
+        self._telemetry(telemetry.STATE_CHANGE)
 
     def onPlayBackSeek(self, time: int, seekOffset: int) -> None:
         # A backward seek would otherwise look like zero progress to the
@@ -376,6 +406,7 @@ class TofaPlayer(xbmc.Player):
             # close-out already had the order right (progress, then stopped,
             # then end_session); this is the same sequence.
             self._report()
+            self._telemetry(telemetry.SESSION_END)
             if client:
                 try:
                     client.report_stopped(self._session["session_id"], self._session["session_token"])
@@ -394,10 +425,14 @@ class TofaPlayer(xbmc.Player):
                 except http.ApiError as exc:
                     self._log_api_error("update_watched", exc)
             self._report(ended=True)
+            self._telemetry(telemetry.SESSION_END)
         self._end_session()
 
     def onPlayBackError(self) -> None:
         log.warning("monitor: onPlayBackError -- tearing down session")
+        self._telemetry(telemetry.FATAL_ERROR, error={
+            "code": "playback_error", "fatal": True,
+            "message": "Kodi reported a playback error"})
         self._end_session()
 
     # -- called periodically by service.py's loop ---------------------------
@@ -458,6 +493,9 @@ class TofaPlayer(xbmc.Player):
         if stalled_for >= STALL_TIMEOUT_SECONDS:
             log.warning(f"monitor: playback stalled at {pos}ms for {stalled_for:.0f}s, no recovery -- stopping")
             toast.show(_(31035))
+            self._telemetry(telemetry.FATAL_ERROR, error={
+                "code": "stall_timeout", "fatal": True,
+                "message": f"position did not advance for {stalled_for:.0f}s"})
             self._position_advanced_at = None
             self.stop()  # triggers onPlayBackStopped -> normal teardown/reporting
 
@@ -469,4 +507,77 @@ class TofaPlayer(xbmc.Player):
             # network budget reporting a position that has not moved.
             self._check_stall()
             self._report(timeout=PROGRESS_TIMEOUT_SECONDS)
+            self._tick_telemetry()
         self._check_opening_timeout()  # no-op once self._session is set
+
+    # -- telemetry ----------------------------------------------------------
+
+    def _player_state(self) -> str:
+        if self._is_paused:
+            return telemetry.PAUSED
+        return telemetry.BUFFERING if self._qoe.buffering else telemetry.PLAYING
+
+    def _tick_telemetry(self, now: Optional[float] = None) -> None:
+        """Once per service tick, after the stall check has read the position.
+
+        Two jobs. First the QoE transitions: a position that has not moved
+        for TELEMETRY_STALL_AFTER_S while not paused, or Kodi refilling a
+        buffer, is a rebuffer -- counted on the way in, timed on the way out,
+        each edge sent as one state_change. Then the heartbeat, every
+        TELEMETRY_HEARTBEAT_TICKS ticks.
+
+        `now` is injectable, like _check_stall's, so the transitions can be
+        tested without sleeping."""
+        now = time.time() if now is None else now
+        refilling = False
+        try:
+            refilling = bool(xbmc.getCondVisibility("Player.Caching"))
+        except Exception:                                   # noqa: BLE001
+            pass
+        frozen = (not self._is_paused and self._position_advanced_at is not None
+                  and now - self._position_advanced_at >= TELEMETRY_STALL_AFTER_S)
+        if refilling or frozen:
+            if self._qoe.buffering_began(now):
+                self._telemetry(telemetry.STATE_CHANGE, now=now)
+        elif self._qoe.buffering_ended(now):
+            self._telemetry(telemetry.STATE_CHANGE, now=now)
+        self._telemetry_ticks += 1
+        if self._telemetry_ticks % TELEMETRY_HEARTBEAT_TICKS == 0:
+            self._telemetry(telemetry.HEARTBEAT, now=now)
+
+    def _telemetry(self, kind: str, *, error: Optional[dict] = None,
+                   now: Optional[float] = None) -> None:
+        """Send one report for the current session. Never raises, never
+        blocks the loop for long, and never affects progress reporting: a
+        failed report is a lost decoration on the server's Activity page,
+        nothing more. A 429 mutes the channel for TELEMETRY_BACKOFF_S."""
+        if not self._session:
+            return
+        now = time.time() if now is None else now
+        if now < self._telemetry_muted_until:
+            return
+        client = self._client()
+        if not client:
+            return
+        payload = telemetry.report(
+            kind, position_ms=self._position_ms(), state=self._player_state(),
+            qoe=self._qoe.as_dict(now), base_url=getattr(client, "base_url", ""),
+            error=error, now=now)
+        try:
+            client.report_telemetry(
+                self._session["session_id"], self._session["session_token"],
+                payload, timeout=PROGRESS_TIMEOUT_SECONDS)
+        except http.ApiError as exc:
+            if getattr(exc, "status", None) == 429:
+                self._telemetry_muted_until = now + TELEMETRY_BACKOFF_S
+                log.debug(f"monitor: telemetry rate-limited, quiet for {TELEMETRY_BACKOFF_S:.0f}s")
+            else:
+                self._log_api_error("telemetry", exc)
+        except Exception as exc:                                # noqa: BLE001
+            # Not a narrower catch, on purpose. This runs inside the same
+            # loop as the progress heartbeat and on the stop path ahead of
+            # report_stopped -- the two writes that decide where the viewer
+            # resumes. A bug in telemetry (a label Kodi answers oddly, a
+            # client without the method) must cost the Activity page a
+            # tile, never the resume point.
+            log.warning(f"monitor: telemetry report dropped: {exc!r}")
