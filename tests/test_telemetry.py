@@ -63,6 +63,21 @@ LABELS["VideoPlayer.VideoBitrate"] = "8,000"
 r2 = telemetry.playback_state(0)
 check("a bitrate IS sent once Kodi has one", r2["bitrate_kbps"] == 8000, str(r2["bitrate_kbps"]))
 
+# --- buffer ahead: three measured inputs, or nothing ---------------------
+# 98% of a 20 MB cache is 19.6 MB = 164.4 Mbit; at 7,614,861 bit/s that is
+# 21.59 s of playback -- the figure the Activity page's BUFFER tile shows.
+check("buffer ahead = fill x cache size / bitrate",
+      telemetry.buffer_ahead_ms(98, 20 * 1024 * 1024, 7_614_861) == 21592,
+      str(telemetry.buffer_ahead_ms(98, 20 * 1024 * 1024, 7_614_861)))
+for args in ((0, 20 << 20, 7_614_861), (98, None, 7_614_861), (98, 20 << 20, None), (None, 20 << 20, 7_614_861)):
+    check(f"...and NULL, never 0, when an input is missing {args}",
+          telemetry.buffer_ahead_ms(*args) is None)
+LABELS["Player.CacheLevel"] = "98"
+telemetry._cache_bytes, telemetry._cache_bytes_read = 20 * 1024 * 1024, True
+check("playback_state carries it when the monitor supplies the bitrate",
+      telemetry.playback_state(0, bitrate_bps=7_614_861)["buffer_ahead_ms"] == 21592)
+check("...and null without one", telemetry.playback_state(0)["buffer_ahead_ms"] is None)
+
 # --- QoE counters: counted on the way in, timed on the way out -----------
 q = telemetry.QoE()
 check("a stall is counted once when it begins", q.buffering_began(100.0) and q.rebuffer_count == 1)
@@ -89,6 +104,7 @@ class Player(monitor.TofaPlayer):
         self.pos = 0
     def _client(self): return self.client
     def _position_ms(self): return self.pos
+    def _file_bitrate(self, session): return 7_614_861
 
 
 p = Player()
