@@ -160,13 +160,22 @@ class OrderingClient(RecordingClient):
         self.calls.append("stopped")
     def end_session(self, sid, stok):
         self.calls.append("end_session")
+    def report_telemetry(self, sid, stok, payload, timeout=None):
+        self.calls.append("telemetry:" + payload["type"])
 
 p = FakePlayer()
 p.client = OrderingClient()
 p.position_ms = 123_000
 p.onPlayBackStopped()
 check("the last heartbeat is sent before the session is retired",
-      p.client.calls[:2] == ["progress", "stopped"], str(p.client.calls))
+      p.client.calls[0] == "progress" and "stopped" in p.client.calls
+      and p.client.calls.index("stopped") > 0, str(p.client.calls))
+# Telemetry's session_end is addressed to the session id too, so it has the
+# same constraint as the heartbeat: after report_stopped the server answers
+# `not_in_registry` and drops it.
+check("...and telemetry's session_end goes out before the retirement as well",
+      p.client.calls.index("telemetry:session_end") < p.client.calls.index("stopped"),
+      str(p.client.calls))
 check("...and it still carries the real position",
       p.client.session_writes == [123_000], str(p.client.session_writes))
 

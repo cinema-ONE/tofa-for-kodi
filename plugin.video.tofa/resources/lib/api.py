@@ -1068,6 +1068,21 @@ class MediaServerClient:
     def end_session(self, session_id: str, session_token: str) -> Any:
         return self._delete(f"/api/v1/stream/s/{session_id}", params={"st": session_token})
 
+    def report_telemetry(self, session_id: str, session_token: str,
+                         payload: dict[str, Any], timeout: float | None = None) -> Any:
+        """POST /stream/s/{session_id}/telemetry -- what the server's
+        Activity page draws its live tiles from. See telemetry.py for what
+        this client can honestly put in it. Answers 204; a 429 means we are
+        sending too often and the caller backs off. Secured by the session
+        token alone, like every /stream/s/ route."""
+        return self._post(
+            f"/api/v1/stream/s/{session_id}/telemetry",
+            json_body=payload,
+            params={"st": session_token},
+            timeout=timeout,
+            try_fallback=timeout is None,
+        )
+
 
 def direct_only_addresses(server: str, fallback: str | None) -> tuple[str, str | None]:
     """(base, fallback) with the relay taken out, when the viewer asked for

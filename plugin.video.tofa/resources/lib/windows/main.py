@@ -6598,20 +6598,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- Privacy & About, This Device -----------------------------------
 
     def _settings_fill_privacy(self):
-        # Playback diagnostics is a NOTE, not a switch. It was a toggle on
-        # `telemetry_enabled`, which was misleading twice over: this add-on
-        # sends no quality metrics at all (audited -- every outbound call is
-        # either the user's own media server carrying playback POSITION, or
-        # cloud.py's five pairing/refresh calls), and the data the row was
-        # named after is the SERVER's own diagnostics, which belong to
-        # whoever runs it rather than to this client. Offering a switch for
-        # something we neither send nor control was a promise we could not
-        # keep, so the page explains it instead.
+        # Playback diagnostics is a NOTE, not a switch. It was once a toggle
+        # on `telemetry_enabled`, back when this add-on sent no quality
+        # metrics at all and the row named the SERVER's own diagnostics.
+        # Since 0.9.27 the monitor does report what Kodi can measure to the
+        # session's telemetry route (telemetry.py says exactly what, and
+        # what it cannot see), and every byte of it goes to the same server
+        # the playback position already goes to -- so the note tells the
+        # truth about both halves, and a switch would still be a switch on
+        # the server owner's data rather than on anything of tofa's.
         self.setProperty(
             "settings_diagnostics_body",
             "This server records playback quality data (buffering, bitrate, "
             "and errors) so its owner can troubleshoot streaming issues. "
-            "It stays on this server and is never sent to tofa.")
+            "This add-on reports what Kodi can measure: position, stalls, "
+            "and the stream's codecs and resolution. It stays on this "
+            "server and is never sent to tofa.")
 
         licences = kodigui.ManagedListItem(label="Open Source Notices")
         licences.setProperty("summary", "Licences for the fonts and icons we bundle")
