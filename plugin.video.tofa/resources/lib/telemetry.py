@@ -17,10 +17,17 @@ WHAT KODI CAN AND CANNOT MEASURE, so the report is honest rather than full:
   bitrate                                    VideoPlayer.VideoBitrate is EMPTY
                                              on most files (probed 2026-08-01),
                                              sent only when Kodi has a number
-  buffer ahead                               Player.CacheLevel is a PERCENTAGE
-                                             and the schema wants milliseconds;
-                                             nothing honest to derive without a
-                                             bitrate, so null
+  buffer ahead                               DERIVED, when all three inputs are
+                                             real: Player.CacheLevel (how full
+                                             Kodi's read-ahead cache is, %),
+                                             the cache's configured size
+                                             (filecache.memorysize, MB) and the
+                                             file's bitrate from the server's
+                                             own record. bytes ahead / bytes
+                                             per second. Null when any input
+                                             is missing -- an HLS session, for
+                                             one, buffers inside ffmpeg where
+                                             CacheLevel reads 0
   dropped frames                             no InfoLabel exists (grepped
                                              upstream guiinfo/), null
   bandwidth estimate                         nothing measures it, null
@@ -37,6 +44,7 @@ Privacy & About says so.
 from __future__ import annotations
 
 import ipaddress
+import json
 import time
 from typing import Any, Optional
 from urllib.parse import urlsplit
@@ -95,12 +103,52 @@ def client_info() -> dict[str, Any]:
     }
 
 
-def playback_state(position_ms: int) -> dict[str, Any]:
+_cache_bytes: Optional[int] = None
+_cache_bytes_read = False
+
+
+def cache_memory_bytes() -> Optional[int]:
+    """Kodi's read-ahead cache size, from its own `filecache.memorysize`
+    setting (megabytes). Read once per process over the in-process JSON-RPC
+    bridge; a setting that cannot be read is None, and stays None."""
+    global _cache_bytes, _cache_bytes_read
+    if not _cache_bytes_read:
+        _cache_bytes_read = True
+        try:
+            raw = xbmc.executeJSONRPC(json.dumps({
+                "jsonrpc": "2.0", "id": 1, "method": "Settings.GetSettingValue",
+                "params": {"setting": "filecache.memorysize"}}))
+            value = (json.loads(raw).get("result") or {}).get("value")
+            _cache_bytes = int(value) * 1024 * 1024 if value else None
+        except Exception:                                   # noqa: BLE001
+            _cache_bytes = None
+    return _cache_bytes
+
+
+def buffer_ahead_ms(level_pct: Optional[int], cache_bytes: Optional[int],
+                    bitrate_bps: Optional[int]) -> Optional[int]:
+    """How much playback Kodi holds ahead of the demuxer, in milliseconds.
+
+    Player.CacheLevel is the fill of the read-ahead cache as a percentage.
+    Multiplied by the cache's size that is bytes; divided by the file's
+    bitrate that is time. All three inputs are measurements the box or the
+    server actually made -- none is guessed -- which is what makes this
+    honest where a bandwidth figure would not be. Any input missing or zero
+    is a None, not a 0: a level of 0 means "no cache in use" (HLS buffers
+    inside ffmpeg), and 0 ms would read as an empty buffer."""
+    if not level_pct or not cache_bytes or not bitrate_bps:
+        return None
+    return int(round(level_pct / 100.0 * cache_bytes * 8 / bitrate_bps * 1000))
+
+
+def playback_state(position_ms: int, *, bitrate_bps: Optional[int] = None) -> dict[str, Any]:
     """PlaybackState, from what Kodi reports about the stream it is playing.
 
     `position_ticks` is 100-nanosecond ticks like every other field on the
     /stream/s/ routes -- see playback.TICKS_PER_MS and the months the
-    progress route spent receiving milliseconds."""
+    progress route spent receiving milliseconds. `bitrate_bps` is the
+    FILE's bitrate from the server's record, supplied by the monitor; it is
+    what turns the cache percentage into a buffer-ahead time."""
     width, height = _number("Player.Process(videowidth)"), _number("Player.Process(videoheight)")
     bitrate = _number("VideoPlayer.VideoBitrate")
     return {
@@ -110,7 +158,8 @@ def playback_state(position_ms: int) -> dict[str, Any]:
         "resolution": f"{width}x{height}" if width and height else None,
         "bitrate_kbps": bitrate if bitrate else None,
         "bandwidth_estimate_bps": None,
-        "buffer_ahead_ms": None,
+        "buffer_ahead_ms": buffer_ahead_ms(
+            _number("Player.CacheLevel"), cache_memory_bytes(), bitrate_bps),
         "dropped_frames": None,
     }
 
@@ -137,13 +186,14 @@ def connection_mode(base_url: str) -> Optional[str]:
 def report(kind: str, *, position_ms: int, state: str,
            qoe: dict[str, Any], base_url: str = "",
            error: Optional[dict[str, Any]] = None,
+           bitrate_bps: Optional[int] = None,
            now: Optional[float] = None) -> dict[str, Any]:
     """One TelemetryReport, ready to send."""
     return {
         "type": kind,
         "timestamp_ms": int((now if now is not None else time.time()) * 1000),
         "client": client_info(),
-        "playback": playback_state(position_ms),
+        "playback": playback_state(position_ms, bitrate_bps=bitrate_bps),
         "player_state": state,
         "connection": connection_mode(base_url),
         "qoe": qoe,

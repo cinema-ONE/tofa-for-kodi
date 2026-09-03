@@ -171,6 +171,7 @@ class TofaPlayer(xbmc.Player):
         self._telemetry_ticks = 0
         self._telemetry_muted_until = 0.0
         self._stalled_since: Optional[float] = None
+        self._bitrate_bps: Optional[int] = None
 
     def _client(self) -> Optional[MediaServerClient]:
         try:
@@ -354,6 +355,7 @@ class TofaPlayer(xbmc.Player):
             self._qoe = telemetry.QoE()
             self._telemetry_ticks = 0
             self._stalled_since = None
+            self._bitrate_bps = self._file_bitrate(pending)
             stashed = pending.get("stashed_at")
             if stashed:
                 # Handoff to first frame. The stash is written right before
@@ -512,6 +514,28 @@ class TofaPlayer(xbmc.Player):
 
     # -- telemetry ----------------------------------------------------------
 
+    def _file_bitrate(self, session: dict) -> Optional[int]:
+        """The playing file's bitrate in bits per second, from the server's own
+        record of it (MediaFile.bitrate) -- the one input the box does not
+        have for telemetry.buffer_ahead_ms. One request per session, at
+        adoption; anything short of an answer is None and the buffer tile
+        simply stays empty."""
+        media_id, file_id = session.get("media_id"), session.get("file_id")
+        if not media_id:
+            return None
+        client = self._client()
+        if not client:
+            return None
+        try:
+            record = client.media_detail(media_id) or {}
+            files = record.get("files") or []
+            match = next((f for f in files if f.get("id") == file_id), None) or (files[0] if files else {})
+            bitrate = match.get("bitrate")
+            return int(bitrate) if bitrate else None
+        except Exception as exc:                                # noqa: BLE001
+            log.debug(f"monitor: no bitrate for buffer telemetry: {exc!r}")
+            return None
+
     def _player_state(self) -> str:
         if self._is_paused:
             return telemetry.PAUSED
@@ -562,7 +586,7 @@ class TofaPlayer(xbmc.Player):
         payload = telemetry.report(
             kind, position_ms=self._position_ms(), state=self._player_state(),
             qoe=self._qoe.as_dict(now), base_url=getattr(client, "base_url", ""),
-            error=error, now=now)
+            error=error, bitrate_bps=self._bitrate_bps, now=now)
         try:
             client.report_telemetry(
                 self._session["session_id"], self._session["session_token"],
@@ -571,7 +595,8 @@ class TofaPlayer(xbmc.Player):
             # carries no telemetry, so this line is the only trace that a
             # report went out at all. Debug level: one line per ~30s.
             log.debug(f"monitor: telemetry {kind} sent (state={payload['player_state']}, "
-                      f"rebuffers={payload['qoe']['rebuffer_count']})")
+                      f"rebuffers={payload['qoe']['rebuffer_count']}, "
+                      f"buffer_ahead_ms={payload['playback']['buffer_ahead_ms']})")
         except http.ApiError as exc:
             if getattr(exc, "status", None) == 429:
                 self._telemetry_muted_until = now + TELEMETRY_BACKOFF_S
