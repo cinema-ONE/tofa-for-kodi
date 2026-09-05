@@ -46,7 +46,9 @@ are not refused, but this add-on carries no backward-compatibility paths, so
 some screens will be missing or wrong rather than degrading gracefully. It
 says so once per session when it sees one. `addon.xml` declares
 `xbmc.python` 3.0.0, i.e. Kodi 19 and later; development and testing happen
-on Kodi 21 and 22.
+on Kodi 21 and 22, across CoreELEC and LibreELEC boxes, Android TV, macOS,
+Windows and the Xbox (where everything but Dolby Vision plays, which Kodi
+itself cannot do there).
 
 Everything a user needs to know beyond that -- transcoded audio, where
 artwork is cached, what the add-on changes outside itself and why -- is in
