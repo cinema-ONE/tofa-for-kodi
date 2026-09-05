@@ -77,9 +77,12 @@ The update channel is a repository add-on you install once:
      repository.tofa-1.0.1.zip
   4. Settings -> Add-ons -> Install from repository ->
      tofa Add-on Repository -> Video add-ons -> "tofa for Kodi"
-  5. Start it from Program add-ons -> "tofa for Kodi". That is the
+  5. Start it from Kodi's home menu -> Add-ons -> Program add-ons ->
+     "tofa for Kodi". Not from Settings -> Add-ons -> My add-ons: that
+     page manages add-ons rather than running them. That entry is the
      television interface. The Videos entry is the plain directory
-     listing -- useful under any skin, and not the same thing.
+     listing -- useful under any skin, and not the same thing. Add it
+     to Favourites and it is one press from the home menu.
 
 Kodi then keeps this add-on current on its own. Installing the repository
 over a hand-installed copy is fine and does not lose your pairing or your
