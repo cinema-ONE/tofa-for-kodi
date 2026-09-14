@@ -845,6 +845,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._segment_actions_loaded = False
         self._skip_active: Optional[tuple] = None   # the segment on screen
         self._skip_hide_at = 0.0
+        # The segment whose pill auto-hid: it comes back only with the
+        # chrome, while playback is still inside it. See _tick_skip.
+        self._skip_resting: Optional[tuple] = None
         # Segments the viewer has already dismissed or used, so the pill
         # does not come back for the rest of that same segment.
         self._skip_done: set = set()
@@ -2331,10 +2334,18 @@ class PlayerWindow(kodigui.ControlledDialog):
                           round(REBUFFER_RING_STEPS * level / 100.0)))
         return f"rebuffer-ring/{step}.png"
 
+    def _skip_deadline(self, now: float) -> float:
+        """When the pill auto-hides, or 0.0 for never. The server's 0 turns
+        the auto-hide off, as it does in the web player; taken literally it
+        would hide the pill on the very next tick."""
+        hide_after = self._policy("prompt_auto_hide_secs", SKIP_PROMPT_AUTO_HIDE_S)
+        return now + hide_after if hide_after > 0 else 0.0
+
     def _tick_skip(self, now: float, position_ms: int):
         """Raise the pill exactly at a segment's start, and drop it again at
         the segment's end or after the operator's auto-hide, whichever comes
-        first.
+        first. An auto-hidden pill returns whenever the chrome is raised
+        inside the same segment, and the chrome holds it up while it stays.
 
         THE NEXT UP RAIL OUTRANKS THE PILL. Both surfaces describe the same
         moment near the end of an episode -- 8.3 opens the rail around 30s
@@ -2361,25 +2372,35 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self._hide_skip(used=True)
             return
         if self._skip_active is not None:
-            _kind, start, end = self._skip_active
-            expired = self._skip_hide_at and now >= self._skip_hide_at
-            # ...but not while the viewer is plainly still deciding. Focus on
-            # the pill means they have arrived at it and are about to press
-            # it; the chrome being up means they have the remote in hand and
-            # the pill is sitting right above the controls they raised.
-            # Expiring under either is the "impossible to hit" complaint.
-            #
-            # The segment's own end still takes it down on the line below, so
-            # neither case can leave the pill offering a skip it no longer
-            # has anything to skip.
-            if expired and (self.getFocusId() == self.SKIP_BUTTON_ID
-                            or self.getProperty("player_chrome")):
-                expired = False
-                self._skip_hide_at = now + self._policy(
-                    "prompt_auto_hide_secs", SKIP_PROMPT_AUTO_HIDE_S)
-            if expired or not (start <= position_ms < end):
-                self._hide_skip(used=expired)
+            segment = self._skip_active
+            _kind, start, end = segment
+            if not (start <= position_ms < end):
+                self._hide_skip(used=False)
+                return
+            if self.getProperty("player_chrome"):
+                # The chrome being up holds the pill: the viewer has the
+                # remote in hand and the pill sits right above the controls
+                # they raised. Expiring under it is the "impossible to hit"
+                # complaint. The countdown starts again once the chrome goes.
+                self._skip_hide_at = self._skip_deadline(now)
+            elif self._skip_hide_at and now >= self._skip_hide_at:
+                # Timed out, which is not the same as declined: the pill
+                # RESTS until the chrome is next raised inside this segment,
+                # which is how the web and macOS players bring it back.
+                #
+                # Focus on the pill no longer holds it. It used to, but the
+                # pill takes focus itself when it appears from the bare
+                # surface, so that exemption never ran out -- a long intro
+                # kept "Skip Intro" on screen for the whole of its run.
+                self._hide_skip(used=False)
+                self._skip_resting = segment
             return
+        if self._skip_resting is not None:
+            _kind, start, end = self._skip_resting
+            if not (start <= position_ms < end):
+                # Left the segment, by playing past it or seeking out: a
+                # rewind to before its start offers it afresh.
+                self._skip_resting = None
         if not self._segments:
             return
         # RE-ARM anything now ahead of us again. _skip_done exists so a
@@ -2395,6 +2416,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         for segment in self._segments:
             kind, start, end = segment
             if segment in self._skip_done or not (start <= position_ms < end):
+                continue
+            if segment == self._skip_resting and not self.getProperty("player_chrome"):
                 continue
             action = self._segment_action(kind)
             if action == "none":
@@ -2424,8 +2447,8 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self._auto_skip(segment)
                 return
             self._skip_active = segment
-            self._skip_hide_at = now + self._policy(
-                "prompt_auto_hide_secs", SKIP_PROMPT_AUTO_HIDE_S)
+            self._skip_resting = None
+            self._skip_hide_at = self._skip_deadline(now)
             label = self._SKIP_LABELS.get(kind, "Skip")
             self.setProperty("player_skip_label", label)
             self._size_skip_pill(label)
@@ -2523,10 +2546,14 @@ class PlayerWindow(kodigui.ControlledDialog):
 
     def _hide_skip(self, *, used: bool):
         """Take the pill down. `used` marks the segment so it cannot come
-        back for the rest of its own run -- an auto-hidden or dismissed
-        prompt reappearing two seconds later is worse than no prompt."""
-        if used and self._skip_active is not None:
-            self._skip_done.add(self._skip_active)
+        back for the rest of its own run -- a used or dismissed prompt
+        reappearing two seconds later is worse than no prompt. A pill resting
+        after its auto-hide counts too: declining it declines the segment."""
+        if used:
+            for segment in (self._skip_active, self._skip_resting):
+                if segment is not None:
+                    self._skip_done.add(segment)
+        self._skip_resting = None
         self._skip_active = None
         self._skip_hide_at = 0.0
         self.setProperty("player_skip", "")
