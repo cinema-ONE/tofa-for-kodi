@@ -570,6 +570,23 @@ class MediaServerClient:
         params = {"media_type": media_type, "library_id": library_id}
         return self._get("/api/v1/media/facets", params=params)
 
+    def metadata_options(self) -> Any:
+        """`{regions: ["US", ...], languages: ["en", ...]}` -- the lists the
+        server itself offers for metadata lookups.
+
+        `regions` is the authoritative source for the Availability region
+        picker (ISO 3166-1 alpha-2, 47 of them on 0.9.36), which every client
+        used to hardcode; tofa asked us by name to point at it. It carries
+        CODES only, so names stay ours (settings_options.region_name).
+
+        `languages` here is ISO 639-**1** and describes metadata lookups, NOT
+        the audio a library holds. The audio list is facets()["languages"],
+        three-letter and count-ordered. They are easy to confuse and offering
+        the wrong one would list languages nothing can be played in, in a
+        code system the preference does not store.
+        """
+        return self._get("/api/v1/system/metadata-options")
+
     def system_info(self) -> Any:
         """`{version, api_version, capabilities: [...], library_count,
         user_count, connection_type, ...}` -- server-wide, not per-user or
