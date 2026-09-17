@@ -59,10 +59,17 @@ LANGUAGES: tuple[tuple[str, str], ...] = (
 #
 # The VALUES are `none` / `ask` / `skip` -- NOT `play`. The Apple TV app
 # labels the first one "Play", which is what it does, but the stored value is
-# `none` ("take no action"), and the server-side normaliser accepts only
-# those three: anything else is dropped on the floor, so a `play` would write
-# cleanly, read back as the old value, and look like the setting would not
-# stick.
+# `none` ("take no action").
+#
+# **Server 0.9.36 does not validate this field at all.** Measured
+# 2026-09-17: `play`, `PLAY` and `Skip` each wrote with a 200 and read back
+# VERBATIM, case and all. An earlier note here said a wrong value was
+# "dropped on the floor" and read back as the previous one; that was wrong,
+# and the difference matters -- a bad value is not a local no-op, it lands in
+# a blob every other tofa client reads. tofa has said a `play` write now 400s
+# on their main branch, so the rejection is real but is NOT on any release
+# anyone is running. Send only the three, and treat an unrecognised value
+# READ from the blob as another client's mistake rather than as a default.
 # Order and labels are the web and DESKTOP apps' own -- Ask first, then Skip,
 # then "Do nothing". The Apple TV app words the last one "Play" and puts it
 # first; it is also the client still showing only two of the five segment
