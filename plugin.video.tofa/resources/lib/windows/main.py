@@ -25,6 +25,9 @@ from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http,
                 playbackprefs, prefetch, progress, regional, search_history,
                 serverversion, settings_options, settings_pages, signin)
 from .. import avatar_presets
+# Aliased: `prefs` is the name every settings method already uses for the
+# preferences DICT, and shadowing the module inside them would be a trap.
+from .. import prefs as prefs_util
 from ..api import MediaServerClient
 from ..skin import icon_glyphs
 from ..skin import tokens as T
@@ -500,6 +503,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_APPEARANCE_LIST_ID = 8290   # the scrolling grouplist
     SETTINGS_RATING_ID = 8300
     SETTINGS_EPISODES_ID = 8310
+    SETTINGS_SPOILERS_ID = 8315
     SETTINGS_SPOTLIGHT_ID = 8320
     SETTINGS_HOMEROWS_ID = 8330
     # ONE "Add a row" tile, holding three groups. 8350 was a second tile
@@ -863,6 +867,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_FOX_ID, len(theme.PRESETS))
         self.settings_episodes_list = kodigui.ManagedControlList(
             self, self.SETTINGS_EPISODES_ID, 1)
+        self.settings_spoilers_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_SPOILERS_ID, 1)
         self.settings_spotlight_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SPOTLIGHT_ID, 1)
         # NOTE: no settings_homerows_list any more. The home-row editor is
@@ -1193,6 +1199,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_fox_clicked()
         elif controlID == self.SETTINGS_EPISODES_ID:
             self._settings_episodes_clicked()
+        elif controlID == self.SETTINGS_SPOILERS_ID:
+            self._settings_spoilers_clicked()
         elif controlID == self.SETTINGS_SPOTLIGHT_ID:
             self._settings_spotlight_clicked()
         elif controlID in settings_options.SEGMENTED_BY_ID:
@@ -5887,10 +5895,35 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_episodes_list.reset()
         self.settings_episodes_list.addItems([episodes])
 
+        # The one `layout.*` key tofa has confirmed is cross-client rather
+        # than one app's device tuning: Android TV and the Samsung/LG app
+        # read it too (vault #159). Until Android's own switch ships there
+        # was NO way to change it from anywhere, while our Detail grid has
+        # honoured it since eea7d74 -- so a Kodi-only household was stuck
+        # with whatever an old build last wrote.
+        spoilers = kodigui.ManagedListItem(label="Hide episode spoilers")
+        spoilers.setProperty(
+            "summary", "Episodes past the one you are on hide their picture")
+        spoilers.setProperty(
+            "checked",
+            "1" if prefs_util.as_bool(prefs, "layout.spoilerBlurEpisodes", True) else "")
+        self.settings_spoilers_list.reset()
+        self.settings_spoilers_list.addItems([spoilers])
+
     def _settings_episodes_clicked(self):
         prefs = self._ensure_preferences()
         now = bool(prefs.get("show_unwatched_count", True))
         self._settings_write({"show_unwatched_count": not now})
+
+    def _settings_spoilers_clicked(self):
+        """Written as the STRING "true"/"false", which is what the dotted
+        keys hold -- see prefs.as_bool, and the blob dump in
+        project_preferences_blob_types. Writing a real bool here would leave
+        this profile's value a different type from every other client's."""
+        prefs = self._ensure_preferences()
+        now = prefs_util.as_bool(prefs, "layout.spoilerBlurEpisodes", True)
+        self._settings_write(
+            {"layout.spoilerBlurEpisodes": "false" if now else "true"})
 
     def _settings_write(self, patch: dict):
         """Send a preference patch, then re-read and re-render.
@@ -6004,9 +6037,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # add row <-> rating pills <-> episodes is joined by
             # _settings_wire_segmented, which is the only place that knows
             # which pills a segmented row has.
+            spoilers = self.getControl(self.SETTINGS_SPOILERS_ID)
             region = self.getControl(self.SETTINGS_REGION_ID)
-            episodes.controlDown(region)
-            region.controlUp(episodes)
+            episodes.controlDown(spoilers)
+            spoilers.controlUp(episodes)
+            spoilers.controlDown(region)
+            region.controlUp(spoilers)
         except Exception:
             pass
         # Privacy & About needs no cross-group hop: its PRIVACY group is a

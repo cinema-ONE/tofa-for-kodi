@@ -2051,6 +2051,22 @@
 
 {settings_episodes_focused}
                         </control>
+                        <control type="list" id="8315">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_MEDIACARDS_THIRD_Y}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onup>8310</onup>
+                            <onleft>8000</onleft>
+                            <onright>8315</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_spoilers_item}
+
+{settings_spoilers_focused}
+                        </control>
                     </control>
 
                     <!-- REGION -->

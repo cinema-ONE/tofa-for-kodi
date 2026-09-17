@@ -259,6 +259,7 @@ def render_main() -> str:
 
     settings_fox_item, settings_fox_focused = fragments.settings_fox_tile(8200)
     settings_episodes_item, settings_episodes_focused = fragments.settings_toggle_row(8310)
+    settings_spoilers_item, settings_spoilers_focused = fragments.settings_toggle_row(8315)
     settings_spotlight_item, settings_spotlight_focused = fragments.settings_toggle_row(8320)
     settings_homerow_item, settings_homerow_focused = fragments.settings_home_row(8330)
     # One editor row per slot, each a DIRECT child of the appearance
@@ -460,6 +461,8 @@ def render_main() -> str:
         settings_homerow_focused=settings_homerow_focused,
         settings_episodes_item=settings_episodes_item,
         settings_episodes_focused=settings_episodes_focused,
+        settings_spoilers_item=settings_spoilers_item,
+        settings_spoilers_focused=settings_spoilers_focused,
         settings_page_scaffolds="\n".join(scaffolds),
         settings_qr_rail=fragments.settings_qr_rail(
             eyebrow="MANAGE ACCOUNT",
