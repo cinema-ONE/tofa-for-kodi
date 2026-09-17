@@ -8,11 +8,13 @@ endpoint over: `GET /system/metadata-options` -> `regions`, 47 codes on
 RU UA CN TW HK TH VN ID MY SG IL SA AE.
 
 Two things have to hold for that switch to be an improvement rather than a
-trade. The served ORDER must survive -- it leads with the English-speaking
-markets and then groups by area, which is the server's editorial choice and
-not ours to alphabetise. And a server that cannot answer must leave the
-picker exactly as full as it was before, because a region row with nothing in
-it is worse than a slightly short one.
+trade. The list must be ordered by NAME: the server groups its 47 by market,
+which is meaningful to whoever curated it and invisible to someone holding a
+remote, so the rows are sorted here instead (Adrian's call, 2026-09-18, after
+seeing the served order on a TV). And a server that cannot answer must leave
+the picker exactly as full as it was before -- sorted the same way, because a
+fallback that is also a re-ordering is the kind of difference a viewer
+notices and cannot explain.
 
 The names stay ours either way: the endpoint sends bare codes, so an unnamed
 region would otherwise be drawn at a viewer as "AE".
@@ -47,8 +49,15 @@ def main() -> int:
 
     served = opts(SERVED)
     check("all 47 offered", len(served) == 47, str(len(served)))
-    check("order is the server's",
-          [c for c, _n in served] == SERVED, str([c for c, _n in served][:6]))
+    names = [n for _c, n in served]
+    check("sorted by NAME", names == sorted(names, key=str.lower), str(names[:6]))
+    check("not the served order",
+          [c for c, _n in served] != SERVED)
+    check("first is Argentina, last is Vietnam",
+          (served[0][1], served[-1][1]) == ("Argentina", "Vietnam"),
+          str((served[0], served[-1])))
+    check("same set as served, nothing lost",
+          sorted(c for c, _n in served) == sorted(SERVED))
 
     names = dict(served)
     check("web-app name wins", names.get("US") == "United States", names.get("US"))
@@ -62,8 +71,12 @@ def main() -> int:
     for empty in ([], None, ()):
         fallback = opts(empty)
         check("%r falls back to the static list" % (empty,),
-              [c for c, _n in fallback] == [c for c, _n in settings_options.REGIONS],
+              sorted(c for c, _n in fallback)
+              == sorted(c for c, _n in settings_options.REGIONS),
               str(len(fallback)))
+        fb_names = [n for _c, n in fallback]
+        check("%r fallback is sorted too" % (empty,),
+              fb_names == sorted(fb_names, key=str.lower), str(fb_names[:4]))
 
     # The fallback must remain a strict subset, or switching lists would drop
     # a region a viewer may already have stored.
@@ -74,7 +87,11 @@ def main() -> int:
     # Junk in the response is tolerated rather than rendered.
     messy = opts(["us", " gb ", "US", "", None, "ZZ"])
     check("cased and padded codes normalise",
-          [c for c, _n in messy] == ["US", "GB", "ZZ"], str(messy))
+          sorted(c for c, _n in messy) == ["GB", "US", "ZZ"], str(messy))
+    # An unnamed code is offered in capitals; case-insensitive sorting files
+    # it by its letters instead of ahead of every named region.
+    check("an unnamed code sorts by its letters, not its case",
+          [c for c, _n in messy] == ["GB", "US", "ZZ"], str(messy))
     check("an unknown code is offered as itself",
           dict(messy).get("ZZ") == "ZZ", str(dict(messy).get("ZZ")))
 

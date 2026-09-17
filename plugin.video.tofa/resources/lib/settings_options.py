@@ -209,23 +209,30 @@ def region_name(code: str) -> str:
 def region_options(served) -> list[tuple[str, str]]:
     """The rows the region picker should offer, as [(code, name)].
 
-    `served` is `metadata-options`' `regions` array. Its ORDER is kept: it
-    leads with the English-speaking markets and then groups by area, which is
-    an editorial choice the server is entitled to make and a client has no
-    better version of. Sorting it alphabetically would throw that away.
+    `served` is `metadata-options`' `regions` array.
+
+    **Sorted by NAME, not by the order the server sends.** That order groups
+    by market -- English-speaking first, then Western Europe, the Nordics and
+    so on -- which is meaningful to whoever curated it and invisible to
+    someone holding a remote: 47 rows with no visible rule is a list you scan
+    rather than navigate. Alphabetical gives the viewer the one thing they
+    can act on, which is knowing roughly where their own country will be.
+    Adrian's call, 2026-09-18, after seeing the served order on a TV.
+
+    Sorted case-insensitively so an unnamed code (offered as itself, in
+    capitals) files where its letters say rather than ahead of every name.
 
     A failed or empty call leaves the static list, so the picker is never
-    emptier than it was before the endpoint existed -- and a served code we
-    have no name for is offered under its own code rather than hidden.
+    emptier than it was before the endpoint existed -- sorted the same way,
+    so the fallback is not a differently-ordered list on the one screen where
+    a viewer would notice.
     """
     # isinstance before str(): `str(None)` is "None", which passed a bare
     # truthiness check and offered a region called NONE.
     codes = [c.strip().upper() for c in (served or [])
              if isinstance(c, str) and c.strip()]
-    seen: list[tuple[str, str]] = []
-    for code in dict.fromkeys(codes):          # de-duplicated, order kept
-        seen.append((code, region_name(code)))
-    return seen or list(REGIONS)
+    rows = [(code, region_name(code)) for code in dict.fromkeys(codes)]
+    return sorted(rows or REGIONS, key=lambda row: row[1].lower())
 
 
 def language_name(code: str) -> str:
