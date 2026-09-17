@@ -237,6 +237,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         #: episode title is put in front of it. See _apply_episode_meta_line.
         self._hero_meta_base = ""
         self._next_up_overview = ""
+        #: The next-up EPISODE's own year and runtime, which replace the
+        #: show's in the hero line. See _apply_episode_meta_line.
+        self._next_up_year = ""
+        self._next_up_runtime = 0
         self._prev_focus_id = 0
         self._tab_just_arrived = False
         # The page-2 tabs this media type has, left to right.
@@ -1448,7 +1452,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if chosen is None:
             return None, None
         season_number, episode_number, ep, f = chosen
-        self._remember_next_up(season_number, episode_number, ep)
+        self._remember_next_up(season_number, episode_number, ep, f)
         return ep, f
 
     def _apply_episode_meta_line(self) -> None:
@@ -1465,14 +1469,35 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         invent a layout this composes into the line that already exists and
         already joins its parts this way.
 
-        Composed from `_hero_meta_base`, never prepended to the live
-        property: this runs again each time the next-up episode moves, and
-        prepending would stack a second title on every refresh.
+        The YEAR and RUNTIME are the episode's too, not the show's. The
+        reference app is half-way here and we are following it the rest of
+        the way: captured 2026-09-17, its Home hero reads
+        `2023 • TV-MA • 50 min` over the synopsis of Silo S3 E1, a 2026
+        episode of 46 minutes -- the series' first year and its average
+        runtime, describing something other than what the line below and the
+        Play pill are both about. Adrian's call, the same reasoning as
+        _apply_episode_synopsis: the hero describes what pressing Play would
+        start. Rating and genres stay the SHOW's, because that is what they
+        are -- TMDB carries neither per episode.
+
+        Recomposed from the parts, never prepended to the live property:
+        this runs again each time the next-up episode moves, and prepending
+        would stack a second title on every refresh. `_hero_meta_base` is
+        still what a movie (and a show whose next-up never resolved) shows.
         """
         if not self._hero_meta_base and not self._next_up_title:
             return
-        self.setProperty("hero_meta_line",
-                         _dot_join(self._next_up_title, self._hero_meta_base))
+        if not self._next_up_title and not self._next_up_year:
+            self.setProperty("hero_meta_line", self._hero_meta_base)
+            return
+        media = self.media or {}
+        parts = [self._next_up_title,
+                 self._next_up_year or _year_from(media),
+                 media.get("content_rating") or "",
+                 _runtime_str(self._next_up_runtime)
+                 or _runtime_str(media.get("runtime_minutes"))]
+        parts.extend((media.get("genres") or [])[:2])
+        self.setProperty("hero_meta_line", _dot_join(*parts))
 
     def _apply_episode_synopsis(self) -> None:
         """Describe the EPISODE the Play pill is pointing at, not the series.
@@ -1502,7 +1527,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._next_up_overview or (self.media.get("overview") or ""))
         self._layout_hero_stack()
 
-    def _remember_next_up(self, season_number, episode_number, ep: dict) -> None:
+    def _remember_next_up(self, season_number, episode_number, ep: dict,
+                          file_obj: dict | None = None) -> None:
         """Which episode the primary action is pointing at.
 
         The reference app puts its number ON the button -- "Resume S1 E3" --
@@ -1515,6 +1541,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # same media_detail payload the season list came from, so nothing is
         # fetched for it. See _apply_episode_synopsis.
         self._next_up_overview = (ep.get("overview") or "").strip()
+        # Its year and runtime, from the same payload and equally free: the
+        # episode carries `air_date`, and the FILE carries the duration that
+        # _episode_runtime_minutes already prefers over TMDB's.
+        self._next_up_year = _year_from(ep)
+        self._next_up_runtime = _episode_runtime_minutes(ep, file_obj)
 
     def _render_episodes(self, client: MediaServerClient, media: dict, seasons: list,
                          *, next_ep: dict | None = None,
@@ -3155,7 +3186,14 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     # episode the badges and synopsis stayed on the one just
                     # watched -- reported from the box as the Details synopsis
                     # still describing the previous episode.
+                    #
+                    # The META LINE is the third such block, and was missing
+                    # here. It has carried the episode's TITLE since the line
+                    # was built, so it went stale the same way -- and now that
+                    # its year and runtime are the episode's too, it would
+                    # have gone stale in three places at once.
                     self._render_format_badges(f)
+                    self._apply_episode_meta_line()
                     self._apply_episode_synopsis()
                 self._refresh_episode_progress(client)
                 # The grid's landing rule ("select what the pill offers") was

@@ -8,8 +8,11 @@ leads the meta line, before the year.
 The trap this pins: _apply_episode_meta_line runs AGAIN every time the
 next-up episode moves (that is what makes the hero follow the next episode).
 Prepending to the live property would stack a second title on each refresh,
-so it composes from a stored base instead. A test, because the failure only
+so it composes from the parts instead. A test, because the failure only
 shows up on the second call and looks like a data problem, not a code one.
+
+The year and runtime in that line now follow the EPISODE as well; that is
+pinned separately in test_detail_episode_meta.py.
 
 Run:  python3 test_hero_episode_meta.py
 """
@@ -32,10 +35,20 @@ def check(name, ok, detail=""):
 
 
 class Fake:
-    """Only what _apply_episode_meta_line touches."""
-    def __init__(self, base, title):
+    """Only what _apply_episode_meta_line touches.
+
+    The line is now recomposed from the show's own fields rather than from
+    the stored base string, because the episode's year and runtime replace
+    the show's when it has them (test_detail_episode_meta.py covers that).
+    These cases are about COMPOSITION, so they leave the episode's own
+    values unset and the show's stand in -- which is the same line as
+    before."""
+    def __init__(self, base, title, media=None):
         self._hero_meta_base = base
         self._next_up_title = title
+        self._next_up_year = ""
+        self._next_up_runtime = 0
+        self.media = media or {}
         self.props = {"hero_meta_line": base}
     def setProperty(self, k, v): self.props[k] = v
     def getProperty(self, k): return self.props.get(k, "")
@@ -43,8 +56,10 @@ class Fake:
 
 APPLY = D.DetailWindow._apply_episode_meta_line
 BASE = "2020 • TV-MA • 47 min • Drama"
+SHOW = {"release_date": "2020-11-06", "content_rating": "TV-MA",
+        "runtime_minutes": 47, "genres": ["Drama"]}
 
-w = Fake(BASE, "The Scytale")
+w = Fake(BASE, "The Scytale", SHOW)
 APPLY(w)
 check("episode title leads the line",
       w.props["hero_meta_line"] == "The Scytale • " + BASE,
@@ -55,7 +70,7 @@ APPLY(w); APPLY(w)
 check("composing again is idempotent", w.props["hero_meta_line"] == once,
       "a refresh stacked another copy: " + w.props["hero_meta_line"])
 
-w2 = Fake(BASE, "")
+w2 = Fake(BASE, "", SHOW)
 APPLY(w2)
 check("a film is untouched", w2.props["hero_meta_line"] == BASE)
 
