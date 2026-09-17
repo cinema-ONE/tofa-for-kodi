@@ -50,10 +50,13 @@ from . import log
 #: for us) and every subtitle response now carries an
 #: `X-Tofa-Subtitle-Time-Basis` header whose values the spec does not
 #: describe. That header exists because 0.9.35 put every converted stream
-#: and its subtitles on one content timeline; whether Kodi's own offset
-#: handling still lines up after a mid-title resume on a transcode is the
-#: open question, not settled by this bump. Both of Adrian's servers were on
-#: 0.9.35 when this was raised, so nobody here meets the notice.
+#: and its subtitles on one content timeline. The open question it left --
+#: whether Kodi's own offset handling still lines up after a mid-title resume
+#: on a transcode -- was MEASURED on 2026-09-03 and the answer is yes: the
+#: header reads `session-local`, so the cues are rebased to the session's own
+#: zero, which is the clock Kodi's HLS player already runs on. Nothing to
+#: adopt. Both of Adrian's servers were on 0.9.35 when this was raised, so
+#: nobody here meets the notice.
 
 MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 35)
 
