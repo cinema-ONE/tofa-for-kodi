@@ -491,9 +491,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: in the XML, so the segment row simply stops working. check_xml caught
     #: it; the screen did not.
     #: `playback.default_quality`, in the app's order. Both values verified
-    #: against the live server by writing each and reading it back -- the
-    #: lesson of segment_actions' "play", which wrote cleanly and was
-    #: silently dropped.
+    #: against the live server by writing each and reading it back, which is
+    #: the only check worth anything here: 0.9.36 validates neither this key
+    #: nor segment_actions, and stores whatever string it is sent (measured
+    #: 2026-09-17; see settings_options.SEGMENT_ACTIONS).
     SETTINGS_QUALITY_SEGMENTS = (("Auto", "auto"), ("Original", "original"))
 
     #: The CONNECTION toggle ("Direct connections only"), Settings > Account.
