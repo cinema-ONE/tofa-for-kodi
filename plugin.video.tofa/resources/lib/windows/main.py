@@ -5769,13 +5769,19 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if key == "nextup":
             current = str(playback.get("auto_play_next") or "").lower()
         else:
-            current = (playback.get("segment_actions") or {}).get(key, "ask")
+            # Through the shared normaliser, so the pill agrees with what the
+            # PLAYER will actually do: 0.9.36 stores any string in any casing,
+            # and comparing raw drew "Ask" over a stored `Skip` the player
+            # then skipped on.
+            current = settings_options.segment_action(
+                (playback.get("segment_actions") or {}).get(key))
         try:
             return values.index(current)
         except ValueError:
             # An unset or unknown value reads as the documented default:
             # "auto" for next-up, "ask" for a skip segment.
-            return 0 if key == "nextup" else values.index("ask")
+            return 0 if key == "nextup" else values.index(
+                settings_options.SEGMENT_ACTION_DEFAULT)
 
     def _settings_fill_segmented(self):
         """Window properties for all eight segmented rows.
