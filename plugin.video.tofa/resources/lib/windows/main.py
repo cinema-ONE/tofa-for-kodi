@@ -661,6 +661,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # discovery row on every surface (home_rows.row_title).
         self._shelf_titles: dict[str, str] = {}
         self._settings_languages: list | None = None  # /media/facets languages, see _settings_language_facet()
+        self._settings_regions: list | None = None  # /system/metadata-options regions, see _settings_region_list()
         self._settings_identity: dict | None = None  # cloud GET /v1/me, see _settings_account_identity()
         self._browse_shuffle_seed: int | None = None  # for Sort="random"'s stable pagination, see _browse_sort_clicked()
         # Browse grid paging. The server caps per_page at 200 however much is
@@ -6658,6 +6659,27 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             body = ""
         self.setProperty("settings_connection_body", body)
 
+    def _settings_region_list(self):
+        """The regions the SERVER offers, as `[(code, name)]`.
+
+        `GET /system/metadata-options` -> `regions`, which is authoritative
+        and 47 long where this client's hardcoded copy is 27 (vault #124).
+        Cached the same way as the languages facet -- at most once per window,
+        cached even when it FAILS, so a server that cannot answer costs one
+        request rather than one per opening -- and falling back to the static
+        list, so the picker is never emptier than it was before.
+        """
+        if self._settings_regions is None:
+            self._settings_regions = []
+            client = self._get_client()
+            if client is not None:
+                try:
+                    options = client.metadata_options() or {}
+                    self._settings_regions = list(options.get("regions") or [])
+                except http.ApiError as exc:
+                    log.warning("settings: region list failed: {0}".format(exc))
+        return settings_options.region_options(self._settings_regions)
+
     def _settings_fill_region(self):
         code = self._ensure_preferences().get("region") or ""
         li = kodigui.ManagedListItem(label="Availability region")
@@ -6669,15 +6691,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _settings_region_clicked(self):
         from . import playoptions
         code = self._ensure_preferences().get("region") or ""
-        selected = next((i for i, (c, _n) in enumerate(settings_options.REGIONS)
-                         if c == code), 0)
+        options = self._settings_region_list()
+        selected = next((i for i, (c, _n) in enumerate(options) if c == code), 0)
         index = playoptions.show_choice(
             title="Availability region", subtitle="",
-            rows=[{"label": name, "detail": c} for c, name in settings_options.REGIONS],
+            rows=[{"label": name, "detail": c} for c, name in options],
             selected_idx=selected)
         if index is None:
             return
-        self._settings_write({"region": settings_options.REGIONS[index][0]})
+        self._settings_write({"region": options[index][0]})
         self._settings_fill_region()
 
     # --- Privacy & About, This Device -----------------------------------

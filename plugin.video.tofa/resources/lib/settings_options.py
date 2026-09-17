@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Option lists for Settings that the tofa API does not expose.
 
-REGIONS still cannot be fetched. LANGUAGES now can, and is: 0.9.28 added a
+REGIONS can now be fetched after all -- see below. LANGUAGES too: 0.9.28 added a
 `languages` facet to `/media/facets`, so the audio picker is built from the
 languages this library actually holds (see language_options()) and the list
 below is the fallback for when that call fails. Checked properly before
@@ -27,6 +27,16 @@ from . import langcodes
 
 # `preferences.region`. ISO 3166-1 alpha-2; drives release dates for titles
 # not in the library.
+#
+# **The FALLBACK, not the list.** `GET /system/metadata-options` -> `regions`
+# serves 47 codes and is authoritative (vault #124: tofa asked us by name to
+# point at it, and it had existed for longer than our issue realised -- we
+# were checking /regions, /media/regions and /system/regions, none of which
+# exist). These 27 are what the picker offers when that call fails, and they
+# are also the NAME table: the endpoint sends bare codes.
+#
+# Every one of these 27 is in the served 47. The other 20 are named in
+# REGION_NAMES below.
 REGIONS: tuple[tuple[str, str], ...] = (
     ("US", "United States"), ("GB", "United Kingdom"), ("CA", "Canada"),
     ("AU", "Australia"), ("IE", "Ireland"), ("NZ", "New Zealand"),
@@ -168,11 +178,54 @@ AUTO_PLAY_NEXT_ROW = (
 )
 
 
+#: Names for the served regions the web app's 27 do not cover. Plain English
+#: country names, not lifted from anywhere: the endpoint sends codes only, so
+#: a client that does not name them draws "AE" at a viewer.
+REGION_NAMES: dict[str, str] = {
+    "IS": "Iceland", "CZ": "Czechia", "SK": "Slovakia", "HU": "Hungary",
+    "RO": "Romania", "GR": "Greece", "TR": "Turkey", "RU": "Russia",
+    "UA": "Ukraine", "CN": "China", "TW": "Taiwan", "HK": "Hong Kong",
+    "TH": "Thailand", "VN": "Vietnam", "ID": "Indonesia", "MY": "Malaysia",
+    "SG": "Singapore", "IL": "Israel", "SA": "Saudi Arabia",
+    "AE": "United Arab Emirates",
+}
+
+
 def region_name(code: str) -> str:
+    """A viewer-facing name for one region code.
+
+    The web app's own wording first, so a region set on the TV reads the same
+    on both; then our own table for what the served list adds. An unnamed
+    code is shown as itself rather than dropped -- the same bargain as
+    language_name, and for the same reason: a row a viewer can still pick
+    beats a region missing from the picker.
+    """
     for value, name in REGIONS:
         if value == code:
             return name
-    return code or ""
+    return REGION_NAMES.get(code) or code or ""
+
+
+def region_options(served) -> list[tuple[str, str]]:
+    """The rows the region picker should offer, as [(code, name)].
+
+    `served` is `metadata-options`' `regions` array. Its ORDER is kept: it
+    leads with the English-speaking markets and then groups by area, which is
+    an editorial choice the server is entitled to make and a client has no
+    better version of. Sorting it alphabetically would throw that away.
+
+    A failed or empty call leaves the static list, so the picker is never
+    emptier than it was before the endpoint existed -- and a served code we
+    have no name for is offered under its own code rather than hidden.
+    """
+    # isinstance before str(): `str(None)` is "None", which passed a bare
+    # truthiness check and offered a region called NONE.
+    codes = [c.strip().upper() for c in (served or [])
+             if isinstance(c, str) and c.strip()]
+    seen: list[tuple[str, str]] = []
+    for code in dict.fromkeys(codes):          # de-duplicated, order kept
+        seen.append((code, region_name(code)))
+    return seen or list(REGIONS)
 
 
 def language_name(code: str) -> str:
