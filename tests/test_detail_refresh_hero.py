@@ -20,13 +20,15 @@ def check(name, ok, detail=""):
     print(f"{'PASS' if ok else 'FAIL'}  {name}{('  -- ' + detail) if detail and not ok else ''}")
 
 
-def episode(number, *, overview, completed):
+def episode(number, *, overview, completed, air_date=None, duration_ms=1000):
     fid = f"f{number}"
     return {
         "episode_number": number,
         "title": f"S15 E{number}",
         "overview": overview,
-        "files": [{"id": fid, "available": True, "duration_ms": 1000, "format": {}}],
+        "air_date": air_date,
+        "files": [{"id": fid, "available": True,
+                   "duration_ms": duration_ms, "format": {}}],
     }, (fid, completed)
 
 
@@ -47,6 +49,7 @@ class FakeDetail:
     _next_up_episode = DetailWindow._next_up_episode
     _remember_next_up = DetailWindow._remember_next_up
     _apply_episode_synopsis = DetailWindow._apply_episode_synopsis
+    _apply_episode_meta_line = DetailWindow._apply_episode_meta_line
 
     def __init__(self, media, client):
         self.media = media
@@ -59,6 +62,9 @@ class FakeDetail:
         self._next_up_episode_number = None
         self._next_up_title = ""
         self._next_up_overview = ""
+        self._next_up_year = ""
+        self._next_up_runtime = 0
+        self._hero_meta_base = ""
         self.play_file_id = None
         self.play_duration_ms = 0
         self._props = {}
@@ -93,21 +99,30 @@ class FakeDetail:
 
 def make(*, e7_overview="Bob's past comes back to haunt him.",
          e8_overview="A new episode.", show_overview="The show pitch."):
-    e7, p7 = episode(7, overview=e7_overview, completed=True)
-    e8, p8 = episode(8, overview=e8_overview, completed=False)
+    e7, p7 = episode(7, overview=e7_overview, completed=True,
+                     air_date="2025-03-02", duration_ms=2_640_000)   # 44 min
+    e8, p8 = episode(8, overview=e8_overview, completed=False,
+                     air_date="2026-03-08", duration_ms=3_120_000)   # 52 min
     media = {
         "id": "show-1",
         "media_type": "tv",
         "overview": show_overview,
+        "release_date": "2011-01-09",
+        "content_rating": "TV-14",
+        "runtime_minutes": 22,
+        "genres": ["Animation", "Comedy"],
         "seasons": [{"season_number": 15, "episodes": [e7, e8]}],
     }
     win = FakeDetail(media, FakeClient([p7[0]]))  # E7 completed, E8 not
     # The state _load leaves after the viewer opened on E7 and pressed play:
-    # the pill, badges and synopsis all describe E7.
+    # the pill, badges, synopsis and meta line all describe E7.
     win.is_tv = win.setProperty("is_tv", "1")
     win.play_file_id = "f7"
     win._next_up_overview = e7_overview
     win.setProperty("hero_synopsis", e7_overview)
+    win._hero_meta_base = u"2011 • TV-14 • 22 min • Animation • Comedy"
+    win._remember_next_up(15, 7, e7, e7["files"][0])
+    win._apply_episode_meta_line()
     return win
 
 
@@ -121,6 +136,13 @@ check("the synopsis follows to E8",
 check("the A/V badges are repainted for E8's file",
       win.badges_rendered_for and win.badges_rendered_for[-1] == "f8",
       str(win.badges_rendered_for))
+check("the meta line follows to E8 -- title, year AND runtime",
+      win.getProperty("hero_meta_line")
+      == u"S15 E8 • 2026 • TV-14 • 52 min • Animation • Comedy",
+      repr(win.getProperty("hero_meta_line")))
+check("no trace of the finished episode is left in it",
+      "S15 E7" not in win.getProperty("hero_meta_line")
+      and "44 min" not in win.getProperty("hero_meta_line"))
 
 # -------------------------------------------------- the sparse-episode case
 # The next episode carries no synopsis of its own. The hero must fall back to

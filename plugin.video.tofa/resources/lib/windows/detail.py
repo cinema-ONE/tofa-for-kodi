@@ -3186,7 +3186,14 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     # episode the badges and synopsis stayed on the one just
                     # watched -- reported from the box as the Details synopsis
                     # still describing the previous episode.
+                    #
+                    # The META LINE is the third such block, and was missing
+                    # here. It has carried the episode's TITLE since the line
+                    # was built, so it went stale the same way -- and now that
+                    # its year and runtime are the episode's too, it would
+                    # have gone stale in three places at once.
                     self._render_format_badges(f)
+                    self._apply_episode_meta_line()
                     self._apply_episode_synopsis()
                 self._refresh_episode_progress(client)
                 # The grid's landing rule ("select what the pill offers") was
