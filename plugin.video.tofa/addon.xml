@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.28" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.29" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,21 +45,18 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Updating the add-on no longer shows a brief error message while the new
-        version installs. 0.9.26 closed one cause; this closes the other, in the
-        background service. Because the version being replaced is the one running
-        during an update, this fix takes effect from the update after this one.
-      - The Home screen now shows the same rows as the other tofa apps: the
-        default rows a profile is missing (Recently Released Movies and TV Shows on
-        older profiles) appear at the end, as they do on the web and on macOS.
-      - Discover rows on Home and in Settings &gt; Appearance carry the server's own
-        names -- "Trending Shows", "New Series Worth Starting" -- so a row reads
-        the same in the "Add a row" list, in the editor and on Home.
-      - New "Leaving soon" row (server 0.9.35): titles the server's lifecycle
-        rules have flagged, with the date each one leaves. Add it under Settings &gt;
-        Appearance &gt; Home screen.
-      - Suggested for You reads "Popular on Your Server" while the server has too
-        little watch history to personalise it, as in the other apps.
+      - The Skip Intro and Skip Credits buttons no longer stay on screen for the
+        whole of a long intro or credits. They now hide after a few seconds, as in
+        the other tofa apps, and come back whenever you bring up the player
+        controls while the intro or credits are still playing.
+      - On a series, the line under the title on the Details page now gives the
+        year and length of the episode the Play button is offering, rather than the
+        year the series started and its average episode length. The synopsis there
+        already described that episode.
+      - Settings &gt; Appearance &gt; Media cards gains "Hide episode spoilers". Details
+        already hid the picture of episodes past the one you are on when your
+        account asked for it, but only the other tofa apps could switch it; now
+        this one can too, and the change follows your account to all of them.
     </news>
     <assets>
       <icon>icon.png</icon>
