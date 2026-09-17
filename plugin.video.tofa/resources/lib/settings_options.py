@@ -79,6 +79,35 @@ SEGMENT_ACTIONS: tuple[tuple[str, str], ...] = (
     ("ask", "Ask"), ("skip", "Skip"), ("none", "Do nothing"),
 )
 
+#: The three values above, without their labels.
+SEGMENT_ACTION_VALUES: tuple[str, ...] = tuple(v for v, _l in SEGMENT_ACTIONS)
+
+#: What an absent key means, and what an unusable one falls back to. The
+#: server's own default, and the safer of the three: prompting is undoable,
+#: auto-skipping is not.
+SEGMENT_ACTION_DEFAULT = "ask"
+
+
+def segment_action(value, default: str = SEGMENT_ACTION_DEFAULT) -> str:
+    """One stored segment action, reduced to something we can ACT on.
+
+    Case-folded, because 0.9.36 stores whatever string it is sent -- `Skip`
+    and `PLAY` both round-trip verbatim -- and a value another client wrote in
+    its own casing still describes one of the three behaviours.
+
+    Anything that is not one of the three becomes `default`. That is a
+    deliberate refusal to invent behaviour for a foreign value: the client
+    has to map a value onto something it DOES, and "whatever `ignore` means"
+    is not one of those things. Note this normalises for READING only --
+    writes send the stored map back untouched apart from the key the viewer
+    changed, so another client's value is preserved rather than discarded.
+
+    Both surfaces that read these values go through here, so the pill in
+    Settings and the player's behaviour cannot disagree about the same blob.
+    """
+    action = str(value or "").strip().lower()
+    return action if action in SEGMENT_ACTION_VALUES else default
+
 # All five segment types the server stores, with the web/desktop apps' own
 # labels and hints verbatim. The Apple TV app surfaces only intro and outro;
 # every other tofa client offers the lot, so this does too.

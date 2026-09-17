@@ -85,7 +85,7 @@ import xbmcvfs
 from . import kodigui, playerstats, playoptions, profile_select, theme
 from .. import (api, artcache, auth, episodes, http, langcodes, log, monitor,
                 playback, playbackprefs, playbacksync, prefs, regional,
-                stereoscopic, textmetrics, tracks)
+                settings_options, stereoscopic, textmetrics, tracks)
 from ..api import MediaServerClient
 from ..profile import DEFAULT_AUDIO_CODECS, CapabilityProfile
 
@@ -2217,7 +2217,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         `preferences.playback.segment_actions`, the same object Settings >
         Playback & Video writes. Values are `ask` / `skip` / `none` -- NOT
         `play`; the Apple TV app labels the third one "Play", but the stored
-        value is `none` and the server drops anything else.
+        value is `none`. The server does NOT enforce that set on 0.9.36: it
+        stores whatever string it is sent, in whatever casing (measured
+        2026-09-17), so every read goes through
+        `settings_options.segment_action`.
 
         Absent means `ask`, which is both the server's own default and the
         safer one: prompting is undoable, auto-skipping is not.
@@ -2242,14 +2245,14 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._segment_actions_loaded = True
         actions = (prefs.get("playback") or {}).get("segment_actions") or {}
         self._segment_actions = {
-            str(k).lower(): str(v).lower()
+            str(k).strip().lower(): settings_options.segment_action(v)
             for k, v in actions.items() if isinstance(v, str)
         }
         log.debug(f"player: segment actions {self._segment_actions}")
 
     def _segment_action(self, kind: str) -> str:
-        action = self._segment_actions.get(kind, "ask")
-        return action if action in ("ask", "skip", "none") else "ask"
+        return self._segment_actions.get(
+            kind, settings_options.SEGMENT_ACTION_DEFAULT)
 
     def _tick_rebuffer(self, now: float):
         """8.6's mid-playback chip, held back 300ms.
