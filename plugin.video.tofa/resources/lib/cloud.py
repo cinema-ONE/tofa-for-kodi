@@ -107,9 +107,21 @@ def refresh_cloud(session, connect_url: str, cloud_refresh_token: str) -> dict[s
     the server tells the two families apart is its own business, and not
     something this client should be writing down.
 
-    The refresh token comes back UNCHANGED until it is old enough for the
-    server to replace it, so the caller must persist whatever
-    `refresh_token` this returns rather than assuming a new one."""
+    **Persist whatever `refresh_token` comes back, every time, before doing
+    anything else with the response.** The contract's words for this family
+    are that each rotation returns a new token and retires the old, and that
+    reusing a retired one revokes the whole session family -- i.e. the cost
+    of dropping one is not a failed refresh later, it is the account's
+    device sessions going with it.
+
+    When the cloud chooses to rotate is ITS business and is not stated
+    anywhere we can see; in practice the same string usually comes back. Do
+    not turn that observation into a rule. A caller that persists only "when
+    it changed", or only on the success path of whatever it was really
+    doing, is one unlucky run from holding a retired token -- which is
+    precisely the shape of a live bug the cinemaONE Player session found in
+    its own client on 2026-09-18, where the rotated token was captured into
+    memory and saved only if an unrelated address lookup had succeeded."""
     return http.request_json(
         session,
         "POST",
