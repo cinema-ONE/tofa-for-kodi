@@ -190,6 +190,42 @@ escapes = [avatar_presets.url_for(Session(ids=["../../etc/passwd", ".", "a/b"]),
 check("a ref that names a path is refused", escapes == ["", "", ""],
       str(escapes))
 
+# --- a catalogue OUTAGE must not blank every tile
+#
+# The distinction this locks: "the catalogue says this id is retired" and "I
+# could not read the catalogue" are different answers. Only the first earns
+# the monogram. If a failed catalogue read suppressed the PNG fetch, a server
+# that was briefly unreachable -- or one behind a proxy that 502s that one
+# path -- would draw initials for EVERY profile at once, which looks like the
+# avatars were deleted rather than like a network blip.
+#
+# Raised by the cinemaONE Player session, which had reached the same rule from
+# the other end and assumed this client did the cheaper thing.
+class NoCatalogue(Session):
+    """The catalogue path is down; the images are fine."""
+
+    def get(self, url, headers=None, timeout=None):
+        if url.endswith("/profiles/avatars"):
+            self.calls.append((url, dict(headers or {})))
+            return Response(502)
+        return Session.get(self, url, headers, timeout)
+
+
+avatar_presets.clear()
+s_out = NoCatalogue()
+outage = avatar_presets.url_for(s_out, SERVER, "preset:knight", TOKEN)
+check("a catalogue outage still draws the preset",
+      bool(outage) and os.path.exists(outage), outage)
+check("...by asking for the PNG anyway", bool(s_out.png_calls()),
+      str(s_out.urls()))
+
+# ...and when the image is gone too, THEN it is the monogram: nothing to draw
+# is the one honest reason to fall back.
+avatar_presets.clear()
+both_down = avatar_presets.url_for(NoCatalogue(png_status=404), SERVER,
+                                   "preset:knight", TOKEN)
+check("no catalogue and no image is the monogram", both_down == "", both_down)
+
 # --- a catalogue we cannot use must not wipe a working one
 avatar_presets.clear()
 s6 = Session()

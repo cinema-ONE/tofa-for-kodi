@@ -252,9 +252,15 @@ def url_for(session, server: Optional[str], avatar_ref: Optional[str],
     """`"preset:knight"` -> something Kodi can draw, or `""`.
 
     `""` means "draw the monogram", which is what every caller does, and is
-    the right answer for an unknown id as well as an unreachable server -- a
-    retired preset must fall through exactly the way tofa's own clients show
-    it.
+    the right answer for an id the catalogue does not list -- a retired preset
+    must fall through exactly the way tofa's own clients show it.
+
+    A catalogue we could not READ is a different thing and does NOT suppress
+    the picture: the id is tried anyway, and only a failed image fetch with
+    nothing staged falls back. Otherwise one unreachable path would blank
+    every profile tile at once, which reads as "the avatars are gone" rather
+    than as a network blip. `_catalogue` keeps yesterday's ids for the same
+    reason.
 
     `access_token` is not optional in practice, only in signature: without it
     this works on a direct LAN connection and answers "" on the cloud relay,
