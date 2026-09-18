@@ -9,10 +9,13 @@
 
   Avatar priority: custom photo (masked circular, diffuse="circle.png") >
   its preset avatar, fetched from the server (avatar_texture) >
-  initials. All three use
-  the same fixed translucent circle fill (0x29FFFFFF), matching tofa's web
-  app, which renders every preset/initial avatar on one fixed background
-  rather than per-profile color.
+  initials. A photo and a preset sit on the same fixed translucent fill
+  (0x29FFFFFF); INITIALS sit on a per-profile gradient disc instead
+  (monogram_texture), derived from the profile id exactly as tofa derives it.
+  See resources/lib/monogram.py. This comment used to claim tofa drew every
+  avatar on one fixed background; measured 2026-09-18 against their web,
+  iPhone and Apple TV clients, that is wrong, and the three of them agree on
+  the palette and on which entry each profile lands on.
 
   Profile picker: one pre-sized, pre-centered list per profile count (1-5)
   since Kodi's static XML can't position a control from a runtime property;
@@ -90,6 +93,11 @@
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
@@ -156,6 +164,11 @@
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
@@ -238,6 +251,11 @@
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
@@ -304,6 +322,11 @@
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
@@ -385,6 +408,11 @@
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
@@ -451,6 +479,11 @@
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
@@ -532,6 +565,11 @@
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
@@ -598,6 +636,11 @@
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
@@ -679,6 +722,11 @@
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
@@ -745,6 +793,11 @@
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                </control>
+                <control type="image">
+                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
@@ -868,6 +921,11 @@
                 <colordiffuse>0x29FFFFFF</colordiffuse>
                 <texture>circle.png</texture>
                 <visible>String.IsEqual(Window.Property(state),pin)</visible>
+            </control>
+            <control type="image">
+                <posx>890</posx><posy>80</posy><width>140</width><height>140</height>
+                <texture>$INFO[Window.Property(pin_avatar_monogram)]</texture>
+                <visible>String.IsEqual(Window.Property(state),pin) + String.IsEmpty(Window.Property(pin_avatar_photo_url)) + String.IsEmpty(Window.Property(pin_avatar_texture))</visible>
             </control>
             <control type="image">
                 <posx>890</posx><posy>80</posy><width>140</width><height>140</height>

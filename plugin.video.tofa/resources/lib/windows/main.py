@@ -25,6 +25,7 @@ from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http,
                 playbackprefs, prefetch, progress, regional, search_history,
                 serverversion, settings_options, settings_pages, signin)
 from .. import avatar_presets
+from .. import monogram
 # Aliased: `prefs` is the name every settings method already uses for the
 # preferences DICT, and shadowing the module inside them would be a trap.
 from .. import prefs as prefs_util
@@ -5202,6 +5203,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_avatar", self._settings_avatar_texture(profile))
         self.setProperty("settings_avatar_initial",
                          self._settings_avatar_initials(profile))
+        self.setProperty("settings_avatar_monogram",
+                         self._settings_avatar_monogram(profile))
 
         # LAST, because it is the slow one -- see the ORDER MATTERS note above.
         # The app's row here is "Email", showing the tofa account address. The
@@ -5323,11 +5326,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                              self._settings_avatar_texture(profile))
             self.setProperty("nav_avatar_initial",
                              self._settings_avatar_initials(profile))
+            self.setProperty("nav_avatar_monogram",
+                             self._settings_avatar_monogram(profile))
         except Exception as exc:
             log.warning("main.py: nav avatar unavailable: {0!r}".format(exc))
             self.setProperty("nav_avatar", "")
             self.setProperty("nav_avatar_photo", "")
             self.setProperty("nav_avatar_initial", "")
+            self.setProperty("nav_avatar_monogram", "")
 
     def _settings_active_profile(self):
         """The signed-in profile's record, or None.
@@ -5434,6 +5440,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if profile is None:
             return ""
         return profile_select._initials(getattr(profile, "name", "") or "")
+
+    def _settings_avatar_monogram(self, profile) -> str:
+        """The coloured disc the monogram sits on.
+
+        Derived from the profile id, which is how every tofa client derives
+        it -- so the face in our nav bar is the colour the same viewer sees on
+        their phone. See monogram.py; NOT the profile's `avatar_color` field,
+        which nothing anywhere reads."""
+        if profile is None:
+            return ""
+        return monogram.texture_for(getattr(profile, "id", "") or "")
 
     def _invalidate_profile_cache(self):
         """Drop the cached profile record. Switching profiles changes the
