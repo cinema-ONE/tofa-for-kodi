@@ -1631,6 +1631,14 @@
                 <!-- ...and the monogram when there is none. Same reasoning
                      as the nav marker: the art is server-side now, so "no
                      art" is an ordinary state rather than an error. -->
+                <control type="image">
+                    <visible>String.IsEmpty(Window.Property(settings_avatar)) + String.IsEmpty(Window.Property(settings_avatar_photo)) + !String.IsEmpty(Window.Property(settings_avatar_monogram))</visible>
+                    <posx>20</posx>
+                    <posy>21</posy>
+                    <width>56</width>
+                    <height>56</height>
+                    <texture>$INFO[Window.Property(settings_avatar_monogram)]</texture>
+                </control>
                 <control type="label">
                     <visible>String.IsEmpty(Window.Property(settings_avatar)) + String.IsEmpty(Window.Property(settings_avatar_photo))</visible>
                     <posx>20</posx>
@@ -2453,6 +2461,14 @@
              preset tofa has retired, or a server we cannot reach. It
              replaces a bundled generic fox, which was always SOMEONE
              ELSE'S face. -->
+        <control type="image">
+            <visible>String.IsEmpty(Window.Property(nav_avatar)) + String.IsEmpty(Window.Property(nav_avatar_photo)) + !String.IsEmpty(Window.Property(nav_avatar_monogram))</visible>
+            <posx>{NAV_AVATAR_X}</posx>
+            <posy>{NAV_AVATAR_Y}</posy>
+            <width>{NAV_AVATAR_SIZE}</width>
+            <height>{NAV_AVATAR_SIZE}</height>
+            <texture>$INFO[Window.Property(nav_avatar_monogram)]</texture>
+        </control>
         <control type="label">
             <visible>String.IsEmpty(Window.Property(nav_avatar)) + String.IsEmpty(Window.Property(nav_avatar_photo)) + !String.IsEmpty(Window.Property(nav_avatar_initial))</visible>
             <posx>{NAV_AVATAR_X}</posx>

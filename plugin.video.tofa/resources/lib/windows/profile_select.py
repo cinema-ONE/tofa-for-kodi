@@ -21,7 +21,7 @@ import time
 import xbmc
 import xbmcgui
 
-from .. import addonref, api, auth, avatar_presets, http, log
+from .. import addonref, api, auth, avatar_presets, http, log, monogram
 from .. import profiles as profiles_api
 from ..api import MediaServerClient
 from . import kodigui, theme
@@ -218,6 +218,9 @@ class ProfileDialog(kodigui.BaseDialog):
             mli = kodigui.ManagedListItem(label=p.name)
             mli.setProperty("name", p.name)
             mli.setProperty("initial", _initials(p.name))
+            # The disc behind the initials is the profile's identity, the same
+            # colour every other tofa client derives from the same id.
+            mli.setProperty("monogram_texture", monogram.texture_for(p.id))
             mli.setProperty("avatar_texture", self._preset_urls.get(p.id, ""))
             mli.setProperty("photo_url", self._photo_urls.get(p.id, ""))
             mli.setProperty("locked", "1" if p.is_locked else "")
@@ -231,6 +234,7 @@ class ProfileDialog(kodigui.BaseDialog):
         self._current_profile = profile
         self._entered_pin = ""
         self.setProperty("pin_avatar_initial", _initials(profile.name))
+        self.setProperty("pin_avatar_monogram", monogram.texture_for(profile.id))
         self.setProperty("pin_avatar_texture",
                          self._preset_urls.get(profile.id, ""))
         self.setProperty("pin_avatar_photo_url", self._photo_urls.get(profile.id, ""))
