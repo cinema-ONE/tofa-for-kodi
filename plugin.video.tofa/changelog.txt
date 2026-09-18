@@ -1,3 +1,17 @@
+0.9.30
+- Settings > Appearance > Availability region now offers every region your
+  server knows about, in alphabetical order, rather than the shorter list
+  this add-on used to carry. If the server cannot be reached the picker
+  still opens, with the list it had before.
+- A profile with no picture now wears the same coloured circle behind its
+  initials as it does in the other tofa apps, instead of a plain grey one.
+  The colour belongs to the profile, so the same person is the same colour
+  on the television, on the web and on a phone.
+- Settings > Playback & Video no longer shows "Ask" for an intro or credits
+  setting that is actually set to something else. It could happen when the
+  setting had been written by another tofa app, and the player then skipped
+  while the screen said it would ask.
+
 0.9.29
 - The Skip Intro and Skip Credits buttons no longer stay on screen for the
   whole of a long intro or credits. They now hide after a few seconds, as in
