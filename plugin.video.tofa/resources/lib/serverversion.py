@@ -58,7 +58,21 @@ from . import log
 #: adopt. Both of Adrian's servers were on 0.9.35 when this was raised, so
 #: nobody here meets the notice.
 
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 9, 35)
+#: 0.10.0: the Continue Watching hero's year. `year` on a CW item is the
+#: SERIES' first year, so a hero showing an episode's title and the episode's
+#: synopsis put a year belonging to neither between them. 0.10.0 adds the
+#: episode's own `air_date` (vault #161) and the hero now prefers it. An
+#: older server sends no `air_date`, so the series year comes back -- wrong
+#: in the way it always was rather than blank, which is why this warns and
+#: does not block.
+#:
+#: NOT adopted from 0.10.0, deliberately: the image-subtitle API
+#: (`stream/s/{id}/subtitles/{index}/images/...`) wants a client that
+#: composits bitmaps onto its own plane, which Kodi cannot do; and
+#: `subtitle_contract_version` is left unsent, which keeps the server on the
+#: contract this client already speaks.
+
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 10, 0)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,
