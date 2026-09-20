@@ -3162,7 +3162,7 @@
                                 <width>256</width>
                                 <height>72</height>
                                 <colordiffuse>0x1FFFFFFF</colordiffuse>
-                                <texture border="16">white-square-rounded.png</texture>
+                                <texture>exact-white-square-rounded-256x72.png</texture>
                             </control>
                             <control type="image">
                                 <visible>String.IsEqual(ListItem.Property(active),1)</visible>
@@ -3225,7 +3225,7 @@
                                 <width>256</width>
                                 <height>72</height>
                                 <colordiffuse>0x0FFFFFFF</colordiffuse>
-                                <texture border="16">white-square-rounded.png</texture>
+                                <texture>exact-white-square-rounded-256x72.png</texture>
                             </control>
                             <control type="image">
                                 <visible>String.IsEqual(ListItem.Property(active),1)</visible>
@@ -3234,7 +3234,7 @@
                                 <width>256</width>
                                 <height>72</height>
                                 <colordiffuse>0x1FFFFFFF</colordiffuse>
-                                <texture border="16">white-square-rounded.png</texture>
+                                <texture>exact-white-square-rounded-256x72.png</texture>
                             </control>
                             <control type="image">
                                 <visible>Control.HasFocus(6400)</visible>
@@ -3243,7 +3243,7 @@
                                 <width>256</width>
                                 <height>72</height>
                                 <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                                <texture border="16">white-outline-rounded.png</texture>
+                                <texture>exact-white-outline-rounded-256x72.png</texture>
                             </control>
                             <control type="image">
                                 <visible>String.IsEqual(ListItem.Property(active),1)</visible>
