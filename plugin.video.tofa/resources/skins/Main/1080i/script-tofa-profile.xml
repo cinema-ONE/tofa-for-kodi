@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- COPIED from resources/lib/skin/static/script-tofa-profile.xml and processed.
-     hash=4d7e88a31e2a. DO NOT HAND-EDIT: edit the file under static/,
+     hash=5b6caed65594. DO NOT HAND-EDIT: edit the file under static/,
      which keeps every comment; this copy has them stripped and its
      capsules and rounded rects swapped for resolution-free art. -->
 <window>
@@ -54,36 +54,36 @@
             <ondown>9999</ondown>
             <onleft>9999</onleft>
             <onright>9999</onright>
-            <posx>810</posx>
+            <posx>826</posx>
             <posy>430</posy>
-            <width>300</width>
+            <width>268</width>
             <height>360</height>
             <orientation>horizontal</orientation>
-            <itemlayout width="300" height="360">
+            <itemlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -91,18 +91,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x40FFFFFF</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -110,14 +110,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -133,31 +133,31 @@
                     </control>
                 </control>
             </itemlayout>
-            <focusedlayout width="300" height="360">
+            <focusedlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -165,18 +165,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -184,14 +184,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -214,37 +214,37 @@
             <ondown>9999</ondown>
             <onleft>9999</onleft>
             <onright>9999</onright>
-            <posx>660</posx>
+            <posx>692</posx>
             <posy>430</posy>
-            <width>600</width>
+            <width>536</width>
             <height>360</height>
             <orientation>horizontal</orientation>
-            <itemlayout width="300" height="360">
+            <itemlayout width="268" height="360">
                 <description>see id=800 for the shared item content</description>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -252,18 +252,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x40FFFFFF</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -271,14 +271,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -294,31 +294,31 @@
                     </control>
                 </control>
             </itemlayout>
-            <focusedlayout width="300" height="360">
+            <focusedlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -326,18 +326,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -345,14 +345,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -375,36 +375,36 @@
             <ondown>9999</ondown>
             <onleft>9999</onleft>
             <onright>9999</onright>
-            <posx>510</posx>
+            <posx>558</posx>
             <posy>430</posy>
-            <width>900</width>
+            <width>804</width>
             <height>360</height>
             <orientation>horizontal</orientation>
-            <itemlayout width="300" height="360">
+            <itemlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -412,18 +412,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x40FFFFFF</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -431,14 +431,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -454,31 +454,31 @@
                     </control>
                 </control>
             </itemlayout>
-            <focusedlayout width="300" height="360">
+            <focusedlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -486,18 +486,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -505,14 +505,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -535,36 +535,36 @@
             <ondown>9999</ondown>
             <onleft>9999</onleft>
             <onright>9999</onright>
-            <posx>360</posx>
+            <posx>424</posx>
             <posy>430</posy>
-            <width>1200</width>
+            <width>1072</width>
             <height>360</height>
             <orientation>horizontal</orientation>
-            <itemlayout width="300" height="360">
+            <itemlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -572,18 +572,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x40FFFFFF</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -591,14 +591,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -614,31 +614,31 @@
                     </control>
                 </control>
             </itemlayout>
-            <focusedlayout width="300" height="360">
+            <focusedlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -646,18 +646,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -665,14 +665,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -695,36 +695,36 @@
             <ondown>9999</ondown>
             <onleft>9999</onleft>
             <onright>9999</onright>
-            <posx>210</posx>
+            <posx>290</posx>
             <posy>430</posy>
-            <width>1500</width>
+            <width>1340</width>
             <height>360</height>
             <orientation>horizontal</orientation>
-            <itemlayout width="300" height="360">
+            <itemlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -732,18 +732,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x40FFFFFF</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -751,14 +751,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -774,31 +774,31 @@
                     </control>
                 </control>
             </itemlayout>
-            <focusedlayout width="300" height="360">
+            <focusedlayout width="268" height="360">
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>67</posx><posy>17</posy><width>166</width><height>166</height>
+                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <align>center</align><aligny>center</aligny>
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -806,18 +806,18 @@
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
-                    <posx>60</posx><posy>10</posy><width>180</width><height>180</height>
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                     <texture>circle-outline.png</texture>
                 </control>
                 <control type="image">
-                    <posx>196</posx><posy>146</posy><width>48</width><height>48</height>
+                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
                     <colordiffuse>0xFF16232B</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>196</posx><posy>161</posy><width>48</width><height>24</height>
+                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_icons_19</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -825,14 +825,14 @@
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
                 <control type="label">
-                    <posx>0</posx><posy>204</posy><width>300</width><height>30</height>
+                    <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
-                    <posx>115</posx><posy>250</posy>
+                    <posx>99</posx><posy>290</posy>
                     <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
                     <control type="image">
                         <width>70</width><height>26</height>
@@ -851,7 +851,7 @@
             <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),5)</visible>
         </control>
         <control type="group">
-            <posx>810</posx>
+            <posx>826</posx>
             <posy>880</posy>
             <visible>String.IsEqual(Window.Property(state),picker)</visible>
             <control type="image">
@@ -865,13 +865,13 @@
             <control type="image">
                 <posx>38</posx>
                 <posy>0</posy>
-                <width>224</width>
+                <width>192</width>
                 <height>76</height>
                 <colordiffuse>0x1FFFFFFF</colordiffuse>
                 <texture>pill-mid.png</texture>
             </control>
             <control type="image">
-                <posx>262</posx>
+                <posx>230</posx>
                 <posy>0</posy>
                 <width>38</width>
                 <height>76</height>
@@ -881,21 +881,21 @@
             <control type="image">
                 <posx>0</posx>
                 <posy>0</posy>
-                <width>300</width>
+                <width>268</width>
                 <height>76</height>
                 <colordiffuse>0xFFFFFFFF</colordiffuse>
                 <visible>Control.HasFocus(820)</visible>
-                <texture>pill-outline-300x76.png</texture>
+                <texture>pill-outline-268x76.png</texture>
             </control>
             <control type="label">
-                <posx>0</posx><posy>18</posy><width>300</width><height>40</height>
+                <posx>0</posx><posy>18</posy><width>268</width><height>40</height>
                 <align>center</align><valign>center</valign>
                 <font>tofa_font_button</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>$INFO[Window.Property(cancel_label)]</label>
             </control>
             <control type="button" id="820">
-                <posx>0</posx><posy>0</posy><width>300</width><height>76</height>
+                <posx>0</posx><posy>0</posy><width>268</width><height>76</height>
                 <texturefocus>transparent-6px.png</texturefocus>
                 <texturenofocus>transparent-6px.png</texturenofocus>
                 <label></label>
