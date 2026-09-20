@@ -6,10 +6,25 @@ Two questions, one gate, run over exactly the files that would be copied into
   QUOTES  -- does any comment reproduce a private document's own prose?
   MARKERS -- does any file still name our network, our boxes or us?
 
-The first is asked of two surfaces, because a file is not the only thing
-that gets published. QUOTES reads the working tree; MESSAGES asks the same
-question of the last `--messages` COMMIT MESSAGES, which are equally public
-and rather harder to take back.
+The first is asked of every surface this repository publishes, because a
+file is not the only thing that gets published and the others are the ones
+that bite. QUOTES reads the working tree. MESSAGES asks the same question of
+commit messages and of every annotated tag. `--text` asks it of anything
+else about to be posted -- a pull request title or body, an issue, a
+comment, a release note -- which is what `tools/gh_gate.py` uses to put this
+in front of `gh`.
+
+The rule the three add up to is one sentence: **nothing becomes public
+except through a tool that gated it.** `git push` goes through
+`tools/hooks/pre-push`, the GitHub API goes through `tools/gh_gate.py`, and
+`release.py publish` runs the whole thing again as a backstop.
+
+Why that is worth the trouble rather than a habit of being careful: on
+2026-09-20 a quoted run reached a merged commit message, was force-pushed
+out of `main`, and GitHub carried on serving it -- from the orphaned commit
+by SHA, and from `refs/pull/N/head`, which renders on the pull request's
+Commits tab. **A rewrite pays the full cost and removes nothing.** Before
+the write is not the cheapest moment; it is the only one.
 
 Neither is a judgement call at the point of use, which is the point: both
 were answered once by reading, and reading does not survive the next hundred
@@ -22,6 +37,8 @@ release.
     python3 tools/check_public_set.py --all       include the shared-data runs
     python3 tools/check_public_set.py -n 6        tighter quote window, more noise
     python3 tools/check_public_set.py --messages 50   look further back
+    python3 tools/check_public_set.py --range "A..B"  exactly these commits
+    python3 tools/check_public_set.py --text body.md  text about to be posted
 
 
 QUOTES
@@ -373,32 +390,16 @@ def scan_quotes(n: int) -> tuple[list[tuple], list[str]]:
     return hits, missing
 
 
-# ------------------------------------------------------- commit messages --
+# ------------------------------------------- text that is not in the tree --
 
-def scan_messages(n: int, count: int) -> list[tuple]:
-    """Quotations in the last `count` COMMIT MESSAGES on this branch.
+def load_sources(n: int) -> list[tuple]:
+    """[(relative path, whose, set of n-grams)] for every source PRESENT.
 
-    The scans above read the working TREE. A commit message is not in the
-    tree, and it is public and permanent the moment it is pushed -- see
-    feedback_public_surfaces_are_public, which exists because PR bodies
-    could be scrubbed afterwards and merged commit messages could not.
-
-    That gap has now cost something concrete. On 2026-09-20 the tree scan
-    caught two of tofa's sentences in a comment and a test docstring; they
-    were paraphrased and the commit re-made with `--amend --no-edit`, which
-    keeps the ORIGINAL message -- so both sentences shipped in the message
-    of a commit that passed this gate twice.
-
-    Returns (source label, whose, "commit <sha> <subject>", 0, run, is_prose)
-    so it prints beside the file hits.
+    Shared by every scan that is not `scan_quotes` -- which keeps its own
+    copy because it also has to report what was MISSING, and a caller that
+    only has a string to check has nothing to say about a missing source
+    that `scan_quotes` will not have said already on the same run.
     """
-    try:
-        out = subprocess.run(
-            ["git", "log", "-n", str(count), "--format=%H%x00%s%x00%b%x01"],
-            cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    except (OSError, subprocess.CalledProcessError):
-        return []
-
     loaded = []
     for rel, whose, _why in PRIVATE_SOURCES:
         text = read(os.path.join(VAULT, rel)) if VAULT else None
@@ -406,31 +407,123 @@ def scan_messages(n: int, count: int) -> list[tuple]:
             continue
         tokens, _ = words_with_lines(text)
         loaded.append((rel, whose,
-                       {tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)}))
+                       {tuple(tokens[i:i + n])
+                        for i in range(len(tokens) - n + 1)}))
+    return loaded
+
+
+def runs_in(text: str, n: int, loaded: list[tuple], where: str) -> list[tuple]:
+    """Every maximal verbatim run in one blob of text, in scan_quotes' shape.
+
+    (source label, whose, where, 0, run, is_prose). The line number is 0
+    because a commit message or a PR body has no line worth printing -- the
+    run itself is how you find it.
+    """
+    tokens, _ = words_with_lines(text or "")
+    hits = []
+    for rel, whose, grams in loaded:
+        matched = [tuple(tokens[i:i + n]) in grams
+                   for i in range(len(tokens) - n + 1)]
+        i = 0
+        while i < len(matched):
+            if not matched[i]:
+                i += 1
+                continue
+            j = i
+            while j + 1 < len(matched) and matched[j + 1]:
+                j += 1
+            run = tokens[i:j + n]
+            hits.append((rel, whose, where, 0, run, is_prose(run)))
+            i = j + 1
+    return hits
+
+
+def _git(*args: str) -> str:
+    try:
+        return subprocess.run(("git",) + args, cwd=ROOT, capture_output=True,
+                              text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+def scan_messages(n: int, count: int, rev_range: list[str] | None = None) -> list[tuple]:
+    """Quotations in COMMIT MESSAGES, and in annotated TAG messages.
+
+    The tree scans read the working TREE. A commit message is not in the
+    tree, and it is published the moment it is pushed -- see
+    feedback_public_surfaces_are_public, which exists because PR bodies
+    could be scrubbed afterwards and merged commit messages could not.
+
+    That gap cost something concrete on 2026-09-20. The tree scan caught two
+    of tofa's sentences in a comment and a test docstring; they were
+    paraphrased and the commit re-made with `--amend --no-edit`, which keeps
+    the ORIGINAL message -- so both sentences shipped in the message of a
+    commit that passed this gate twice. The rewrite that followed cleaned
+    `main` and nothing else: GitHub still served the orphan by SHA and
+    `refs/pull/N/head` still rendered it.
+
+    `rev_range` is what the pre-push hook passes -- the exact commits being
+    pushed, as rev-list arguments. It beats a rolling window in both
+    directions: a 40-commit branch is covered whole, and a message already
+    public is not re-reported at every push when nothing can be done about
+    it. Without one, the last `count` commits, which is the right default
+    for a hand-run check.
+
+    Annotated tag messages go out with `push --tags` and are rendered on the
+    releases page, so they are scanned too -- all of them, every run. There
+    are a few dozen and they are the one surface nobody thinks about.
+    """
+    loaded = load_sources(n)
+    if not loaded:
+        return []
+
+    if rev_range:
+        out = _git("log", "--format=%H%x00%s%x00%b%x01", *rev_range)
+    else:
+        out = _git("log", "-n", str(count), "--format=%H%x00%s%x00%b%x01")
 
     hits = []
     for entry in out.split("\x01"):
         if not entry.strip():
             continue
-        parts = (entry.strip().split("\x00") + ["", ""])[:3]
-        sha, subject, body = parts
-        tokens, _ = words_with_lines(subject + "\n" + body)
-        for rel, whose, grams in loaded:
-            matched = [tuple(tokens[i:i + n]) in grams
-                       for i in range(len(tokens) - n + 1)]
-            i = 0
-            while i < len(matched):
-                if not matched[i]:
-                    i += 1
-                    continue
-                j = i
-                while j + 1 < len(matched) and matched[j + 1]:
-                    j += 1
-                run = tokens[i:j + n]
-                hits.append((rel, whose,
-                             "commit %s  %s" % (sha[:9], subject[:56]),
-                             0, run, is_prose(run)))
-                i = j + 1
+        sha, subject, body = (entry.strip().split("\x00") + ["", ""])[:3]
+        hits += runs_in(subject + "\n" + body, n, loaded,
+                        "commit %s  %s" % (sha[:9], subject[:56]))
+
+    for line in _git("for-each-ref", "refs/tags",
+                     "--format=%(refname:short)%(objecttype)").splitlines():
+        if not line.endswith("tag"):          # lightweight: no message of its own
+            continue
+        name = line[:-len("tag")]
+        raw = _git("cat-file", "tag", name)
+        _, _, message = raw.partition("\n\n")  # header block, then the message
+        hits += runs_in(message, n, loaded, "tag %s" % name)
+
+    hits.sort(key=lambda h: (h[1] != "tofa", not h[5], -len(h[4])))
+    return hits
+
+
+def scan_text(paths: list[str], n: int) -> list[tuple]:
+    """Quotations in arbitrary candidate text -- `--text`, and `gh_gate.py`.
+
+    The point of a file-and-message gate is that nothing reaches the public
+    except through it, and GitHub has several surfaces that are neither: a
+    PR title and body, an issue, a comment, a release note. All of them are
+    text somebody is about to publish, and all of them are the same check.
+
+    `-` reads standard input. `tools/gh_gate.py` is the wrapper that puts
+    this in front of `gh` so it is not a step anybody has to remember.
+    """
+    loaded = load_sources(n)
+    if not loaded:
+        return []
+    hits = []
+    for path in paths:
+        if path == "-":
+            text, label = sys.stdin.read(), "<stdin>"
+        else:
+            text, label = read(path) or "", path
+        hits += runs_in(text, n, loaded, "text %s" % label)
     hits.sort(key=lambda h: (h[1] != "tofa", not h[5], -len(h[4])))
     return hits
 
@@ -546,6 +639,15 @@ def main() -> int:
     parser.add_argument("--markers", action="store_true", help="markers only")
     parser.add_argument("--messages", type=int, default=20,
                         help="how many recent commit messages to scan")
+    parser.add_argument("--range", dest="rev_range", metavar="REVS",
+                        help="scan EXACTLY these commits instead of the last "
+                             "--messages. One string of rev-list arguments, "
+                             "as the pre-push hook builds it from the refs "
+                             "git hands it: \"<sha>... --not --remotes=origin\"")
+    parser.add_argument("--text", nargs="+", metavar="FILE", default=[],
+                        help="also gate these files of candidate text -- a PR "
+                             "body, an issue comment, release notes. `-` is "
+                             "stdin. See tools/gh_gate.py.")
     parser.add_argument("--ours", action="store_true",
                         help="also list hits against OUR private documents, "
                              "which never fail the run")
@@ -593,22 +695,44 @@ def main() -> int:
                   % (rel, "  <-- CANNOT VERIFY" if whose == "tofa" else ""))
         problems += len(gating)
 
-        # ...and the same scan over recent COMMIT MESSAGES, which are not in
-        # the tree and are public the moment they are pushed.
-        msg_hits = [h for h in scan_messages(args.n, args.messages)
+        # ...and the same scan over COMMIT and TAG MESSAGES, which are not
+        # in the tree and are public the moment they are pushed.
+        msg_hits = [h for h in scan_messages(args.n, args.messages,
+                                             args.rev_range.split()
+                                             if args.rev_range else None)
                     if h[1] == "tofa" or args.ours]
         msg_prose = [h for h in msg_hits if h[5]]
         for rel, whose, where, _line, run, is_p in msg_hits:
             if is_p or args.all:
                 print("%s\n    quotes %s [%s]\n    %s"
                       % (where, rel, whose, " ".join(run)))
-        print("MESSAGES: %d verbatim prose run(s) in the last %d commit "
-              "message(s)" % (len(msg_prose), args.messages))
+        print("MESSAGES: %d verbatim prose run(s) in %s, and in every "
+              "annotated tag"
+              % (len(msg_prose),
+                 "the commits being pushed" if args.rev_range
+                 else "the last %d commit message(s)" % args.messages))
         if msg_prose:
-            print("    A message cannot be edited once it is pushed. Reword "
-                  "it now, and remember `--amend --no-edit` KEEPS the old "
-                  "one -- which is how this gap was found.")
+            print("    A message cannot be edited once it is pushed, and a "
+                  "rewrite afterwards does NOT remove it from GitHub -- the\n"
+                  "    orphan is still served by SHA and refs/pull/N/head "
+                  "still renders it. Reword it BEFORE the push, and\n"
+                  "    remember `--amend --no-edit` KEEPS the old one, which "
+                  "is how this gap was found.")
         problems += len([h for h in msg_prose if h[1] == "tofa"])
+
+        # ...and any candidate text handed in, which is how the GitHub
+        # surfaces that are neither a file nor a commit get checked at all.
+        txt_hits = [h for h in scan_text(args.text, args.n)
+                    if h[1] == "tofa" or args.ours]
+        txt_prose = [h for h in txt_hits if h[5]]
+        for rel, whose, where, _line, run, is_p in txt_hits:
+            if is_p or args.all:
+                print("%s\n    quotes %s [%s]\n    %s"
+                      % (where, rel, whose, " ".join(run)))
+        if args.text:
+            print("TEXT: %d verbatim prose run(s) in %d candidate file(s)"
+                  % (len(txt_prose), len(args.text)))
+        problems += len([h for h in txt_prose if h[1] == "tofa"])
 
         # A source that is not here was not checked, and a run that checked
         # nothing must not report success. Only tofa's gate, for the same

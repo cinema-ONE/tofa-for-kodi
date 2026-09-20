@@ -10,17 +10,36 @@
 #
 # Push is the moment the prose stops being ours, which makes it the right
 # place: one second and a half, and a quotation caught here never reaches a
-# public history that no later edit can clean.
+# public history.
 #
-# The MESSAGE half was added on 2026-09-20 after the same thing happened one
-# layer up. The tree gate caught two of tofa's sentences and they were
-# paraphrased -- with `--amend --no-edit`, which keeps the ORIGINAL message,
-# so both sentences were still in the commit that then passed the gate twice.
-# The checker now reads recent messages as well as files, and this hook gets
-# it for free because it runs the checker with no flags.
+# "Never reaches" is the whole value, and it is not a figure of speech. On
+# 2026-09-20 one got through, was force-pushed out of `main`, and GitHub went
+# on serving it anyway -- from the orphaned commit by SHA, and from
+# `refs/pull/N/head`, which renders on the pull request's Commits tab. A
+# rewrite pays the full cost and removes nothing. THIS is the last cheap
+# moment.
 #
-# `release.py publish` runs the same gate, as the backstop for a push that got
-# through with --no-verify.
+# THE MESSAGE HALF, added 2026-09-20, after the same thing happened one layer
+# up: the tree gate caught two of tofa's sentences, they were paraphrased, and
+# the commit was re-made with `--amend --no-edit` -- which keeps the ORIGINAL
+# message. Both sentences were still in it, and it passed this hook twice.
+#
+# git hands a pre-push hook the exact refs it is about to send, AND what the
+# remote currently has for each one, so this passes the exact commits rather
+# than a rolling guess: a long branch is covered whole, and a message that is
+# already public is not re-reported at every push when nothing can be done
+# about it. The exclusion uses the remote sha git supplies rather than
+# `--remotes=origin`, because remote-tracking refs go stale -- after a delete
+# or a force-push they can claim the remote still has a commit it does not,
+# and the value on stdin is the one git is about to negotiate with.
+# Annotated tag messages are scanned every run regardless -- they go out with
+# `--tags` and nobody thinks about them.
+#
+# WHAT THIS DOES NOT COVER: anything that reaches GitHub through the API
+# rather than through git -- a pull request title or body, an issue, a
+# comment, a release note. Those go through `tools/gh_gate.py`, which is the
+# same gate in front of `gh`. `release.py publish` runs this checker too, as
+# the backstop for a push that got through with --no-verify.
 #
 # A checkout with NO vault beside it fails here, deliberately. The checker
 # treats "compared against nothing" as a failure, not a pass. Set TOFA_VAULT
@@ -30,15 +49,42 @@
 
 root=$(git rev-parse --show-toplevel) || exit 1
 
-if ! python3 "$root/tools/check_public_set.py"; then
+# stdin is "<local ref> <local sha> <remote ref> <remote sha>", one line per
+# ref. For each: skip a ref being DELETED (all-zero local sha); exclude what
+# the remote already has, using its sha from this very line. An all-zero
+# remote sha means a NEW ref, and there is no better base for one than
+# everything else origin holds. No stdin -- run by hand -- falls back to the
+# rolling window.
+revs=""
+while read -r _lref lsha _rref rsha; do
+    case "$lsha" in
+        "" | *[!0]*) ;;          # a real sha: there is something to scan
+        *) continue ;;           # all zeros: a delete
+    esac
+    case "$rsha" in
+        *[!0]*) revs="$revs $lsha ^$rsha" ;;          # update: the new part
+        *) revs="$revs $lsha --not --remotes=origin" ;;   # brand-new ref
+    esac
+done
+
+if [ -n "$revs" ]; then
+    set -- --range "$revs"
+else
+    set --
+fi
+
+if ! python3 "$root/tools/check_public_set.py" "$@"; then
     echo
     echo "pre-push: NOT pushing -- a file or a commit message quotes tofa's"
     echo "documents, or the gate had nothing to compare it against."
     echo
     echo "Paraphrase the run it names. If the run is in a MESSAGE, reword it"
-    echo "with \`git rebase\` or \`filter-branch --msg-filter\`; \`--amend"
-    echo "--no-edit\` keeps the message you are trying to change. Or set"
-    echo "TOFA_VAULT if the vault is somewhere this could not find it."
+    echo "with \`git rebase\` or \`filter-branch --msg-filter\` -- \`--amend"
+    echo "--no-edit\` keeps the very message you are trying to change. Do it"
+    echo "NOW: once pushed, a rewrite cleans your branch and leaves GitHub"
+    echo "serving the old commit by SHA and on the PR's Commits tab."
+    echo
+    echo "Or set TOFA_VAULT if the vault is somewhere this could not find it."
     echo "\`git push --no-verify\` overrides, and \`release.py publish\` will"
     echo "catch it again if you do."
     exit 1
