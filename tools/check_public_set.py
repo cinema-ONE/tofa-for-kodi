@@ -414,7 +414,8 @@ QUOTED_ON_SCREEN = {
     "3d frame packed", "3d side by side", "a z then",
     "add to library", "director s cut", "dolby truehd dolby atmos",
     "dts hd m", "go to details", "in your library", "mark as watched",
-    "more like this", "not in library", "not in your library",
+    "always show subtitles", "more like this", "more to discover",
+    "not in library", "not in your library",
     "pair this tv", "play if in library", "remove from continue watching",
     "tofa for kodi", "who s watching",
 }
