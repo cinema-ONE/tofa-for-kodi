@@ -1714,14 +1714,14 @@
                         <onright>6410</onright>
                         <orientation>vertical</orientation>
                         <itemwidth>260</itemwidth>
-                        <itemheight>60</itemheight>
+                        <itemheight>78</itemheight>
                         <scrolltime>{SCROLLTIME}</scrolltime>
-                        <itemlayout width="260" height="60">
+                        <itemlayout width="260" height="78">
                             <control type="image">
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>54</height>
+                                <height>72</height>
                                 <colordiffuse>{SURFACE_RAISED}</colordiffuse>
                                 <texture border="16">white-square-rounded.png</texture>
                             </control>
@@ -1730,16 +1730,16 @@
                                 <posx>0</posx>
                                 <posy>8</posy>
                                 <width>3</width>
-                                <height>42</height>
+                                <height>56</height>
                                 <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                                 <texture>white-square.png</texture>
                             </control>
                             <control type="label">
                                 <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>2</posy>
+                                <posy>8</posy>
                                 <width>170</width>
-                                <height>54</height>
+                                <height>34</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -1748,9 +1748,9 @@
                             <control type="label">
                                 <visible>String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>2</posy>
+                                <posy>8</posy>
                                 <width>170</width>
-                                <height>54</height>
+                                <height>34</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
@@ -1760,20 +1760,31 @@
                                 <posx>188</posx>
                                 <posy>2</posy>
                                 <width>60</width>
-                                <height>54</height>
+                                <height>72</height>
                                 <align>right</align>
                                 <aligny>center</aligny>
                                 <font>tofa_font_metadata</font>
                                 <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
                                 <label>$INFO[ListItem.Property(count)]</label>
                             </control>
+                            <control type="label">
+                                <visible>!String.IsEmpty(ListItem.Property(availability))</visible>
+                                <posx>18</posx>
+                                <posy>40</posy>
+                                <width>224</width>
+                                <height>28</height>
+                                <aligny>center</aligny>
+                                <font>tofa_font_caption</font>
+                                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                                <label>$INFO[ListItem.Property(availability)]</label>
+                            </control>
                         </itemlayout>
-                        <focusedlayout width="260" height="60">
+                        <focusedlayout width="260" height="78">
                             <control type="image">
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>54</height>
+                                <height>72</height>
                                 <colordiffuse>{SURFACE_FAINT}</colordiffuse>
                                 <texture border="16">white-square-rounded.png</texture>
                             </control>
@@ -1782,7 +1793,7 @@
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>54</height>
+                                <height>72</height>
                                 <colordiffuse>{SURFACE_RAISED}</colordiffuse>
                                 <texture border="16">white-square-rounded.png</texture>
                             </control>
@@ -1791,7 +1802,7 @@
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>54</height>
+                                <height>72</height>
                                 <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                                 <texture border="16">white-outline-rounded.png</texture>
                             </control>
@@ -1800,16 +1811,16 @@
                                 <posx>0</posx>
                                 <posy>8</posy>
                                 <width>3</width>
-                                <height>42</height>
+                                <height>56</height>
                                 <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                                 <texture>white-square.png</texture>
                             </control>
                             <control type="label">
                                 <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>2</posy>
+                                <posy>8</posy>
                                 <width>170</width>
-                                <height>54</height>
+                                <height>34</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -1818,9 +1829,9 @@
                             <control type="label">
                                 <visible>String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>2</posy>
+                                <posy>8</posy>
                                 <width>170</width>
-                                <height>54</height>
+                                <height>34</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
@@ -1830,12 +1841,23 @@
                                 <posx>188</posx>
                                 <posy>2</posy>
                                 <width>60</width>
-                                <height>54</height>
+                                <height>72</height>
                                 <align>right</align>
                                 <aligny>center</aligny>
                                 <font>tofa_font_metadata</font>
                                 <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                                 <label>$INFO[ListItem.Property(count)]</label>
+                            </control>
+                            <control type="label">
+                                <visible>!String.IsEmpty(ListItem.Property(availability))</visible>
+                                <posx>18</posx>
+                                <posy>40</posy>
+                                <width>224</width>
+                                <height>28</height>
+                                <aligny>center</aligny>
+                                <font>tofa_font_caption</font>
+                                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                                <label>$INFO[ListItem.Property(availability)]</label>
                             </control>
                         </focusedlayout>
                     </control>
