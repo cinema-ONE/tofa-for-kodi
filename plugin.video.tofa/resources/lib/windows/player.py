@@ -271,6 +271,23 @@ _PREVIEW_TIME_Y = 840
 _PREVIEW_SHADOW_PAD = 40
 # Gap between the timecode and the chapter name on the scrub readout.
 _SCRUB_READOUT_GAP = 10
+# A chapter "title" that is not a name at all, and has to be treated exactly
+# like an empty one. Some containers write the chapter's own start time into
+# the title field -- "00:02:42.662" -- and since the 8.2 readout puts the
+# timecode BESIDE the chapter name, passing one through renders
+# "17:43 00:02:42.662": the position twice, in two formats, neither of them a
+# name. A bare one- or two-digit number ("7") is the same thing in different
+# dress, and reads as "17:43 7".
+#
+# Kept deliberately narrow, because every widening risks discarding a real
+# name. HH:MM:SS with an optional fraction is the spelling these files
+# actually carry; MM:SS and SMPTE "HH:MM:SS:FF" are NOT matched, since a
+# title like "9:11" could genuinely be what a chapter is called. The bound
+# on the bare number is the same judgement: "7" is an ordinal, but "1994" is
+# a year and may well be the name.
+#
+# Matched with fullmatch, so "Chapter 3" and "3. The Bridge" keep their names.
+_UNNAMED_CHAPTER_TITLE = re.compile(r"\d{1,2}:\d{2}:\d{2}([.,]\d+)?|\d{1,2}")
 
 # Stats pill geometry. The capsule hugs its text, so Python sizes it: the
 # font is monospace, which turns "how wide is this string" into a
@@ -1951,16 +1968,34 @@ class PlayerWindow(kodigui.ControlledDialog):
 
         Same 100-nanosecond ticks as the segments, NOT the milliseconds the
         progress endpoint uses. A chapter with no title of its own falls
-        back to its number, which is what the reference app shows."""
+        back to its number, which is what the reference app shows.
+
+        "No title of its own" is a question of SHAPE, not just of emptiness:
+        a title the container filled in with the chapter's own start time is
+        as nameless as a blank one, and worse on screen, because the readout
+        then shows the position twice. See _UNNAMED_CHAPTER_TITLE.
+
+        Only the start of each pair is read elsewhere (the scrub ticks in
+        _render_scrub_markers, the jump targets in chapter_seek); the label
+        is consumed by _chapter_at alone, for the readout."""
         chapters = []
         for ch in bundle.get("chapters") or []:
             start = int(ch.get("start_ticks") or 0) // SKIP_TICKS_PER_MS
-            label = (ch.get("title") or "").strip()
-            if not label:
-                label = "Chapter {0:02d}".format((ch.get("chapter_index") or 0) + 1)
-            chapters.append((start, label))
+            chapters.append((start, self._chapter_label(ch)))
         self._chapters = sorted(chapters)
         log.debug(f"player: {len(self._chapters)} chapters")
+
+    @staticmethod
+    def _chapter_label(chapter: dict) -> str:
+        """One chapter's name for the readout, or its number when it has none.
+
+        `chapter_index` is required and non-nullable in QuickViewChapterDto,
+        so numbering the fallback off it stays correct now that more chapters
+        reach it; the `or 0` only guards a malformed payload."""
+        label = (chapter.get("title") or "").strip()
+        if not label or _UNNAMED_CHAPTER_TITLE.fullmatch(label):
+            return "Chapter {0:02d}".format((chapter.get("chapter_index") or 0) + 1)
+        return label
 
     def _chapter_at(self, position_ms: int) -> str:
         """The last chapter that has started by `position_ms`."""
