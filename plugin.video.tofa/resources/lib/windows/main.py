@@ -666,9 +666,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # "#", passed to /api/v1/media?letter= verbatim.
         self._browse_letter = ""
         # {letter: count} for the ACTIVE source, from the same /media/facets
-        # response the genre list is built from. The rail's cells come only
-        # from here, so it can never offer a letter that lands on an empty
-        # grid; empty means no rail at all.
+        # response the genre list is built from. Every cell the rail draws
+        # is a letter this source actually has, because the counts are the
+        # only thing it is built from -- so a cell always has something
+        # behind it. No counts at all means no rail.
         self._browse_letter_counts: dict[str, int] = {}
         self._server_capabilities: set = set()  # from GET /api/v1/system/info, see _ensure_capabilities()
         self._capabilities_loaded = False
