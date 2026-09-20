@@ -1090,8 +1090,17 @@ class PlayerWindow(kodigui.ControlledDialog):
             # row is fine and only the file moved, so a scan really does fix
             # it, and saying so beats another shrug.
             log.warning(f"player: negotiate failed: {exc!r}")
-            self.fail(kodigui.ADDON.getLocalizedString(
-                31119 if exc.status == 404 else 31120))
+            # 8.7: the server's own `message` is the viewer-facing sentence,
+            # and it can be improved server-side without a client release --
+            # so render it, and keep ours only for the envelopes that carry
+            # nothing to render. 404 keeps its own sentence because the
+            # server's says the path is missing where ours says what to DO
+            # about it: a library scan really does fix it.
+            fallback = kodigui.ADDON.getLocalizedString(
+                31119 if exc.status == 404 else 31120)
+            body = (fallback if exc.status == 404
+                    else http.viewer_message(exc, fallback))
+            self.fail(body)
             return
 
         if not playback.is_direct(resp):
