@@ -447,8 +447,32 @@ def _memory() -> str:
     return used if used else ""
 
 
+def _subtitle_pair(track):
+    """(source format, delivered format) for the subtitle that is ON.
+
+    The panel's whole thesis is that the same fact read twice is the
+    diagnostic, and subtitles have exactly that shape: `codec` is what the
+    track is in the file, `representations[].format` is what will reach this
+    box. They usually agree. When they do not, a styled ASS track is being
+    flattened to plain text -- which is the one subtitle question a viewer
+    ever asks the panel, because the captions simply look wrong and nothing
+    else on screen says why.
+
+    ("", "") for no subtitle and for a server older than 0.10.0, which sends
+    no representations; the row prunes itself rather than showing a dash
+    against a question nobody can answer.
+    """
+    if not track:
+        return "", ""
+    delivered = tracks.delivered_format(track)
+    if not delivered:
+        return "", ""
+    codec = str(track.get("codec") or "").strip().lower()
+    return tracks.subtitle_codec_name(codec), delivered
+
+
 def _rows(nego: dict[str, Any], selection, position: str,
-             buffer_pct: Optional[float]):
+             buffer_pct: Optional[float], subtitle=None):
     """The panel's rows: each fact as it ARRIVED and as it came OUT.
 
     That split is not decoration. Nearly every playback question here turns
@@ -466,6 +490,7 @@ def _rows(nego: dict[str, Any], selection, position: str,
     bits = _number("Player.Process(audiobitspersample)")
 
     frame = f"{int(width)}×{_unpad(height)}" if width and height else ""
+    sub_source, sub_delivered = _subtitle_pair(subtitle)
 
     buffer_row = MISSING
     if buffer_pct is not None:
@@ -588,6 +613,15 @@ def _rows(nego: dict[str, Any], selection, position: str,
         # panel gets the slot back for the sections that do.
         _pair("Reason", _reason(nego), "", PLATFORM),
         _pair("Container", nego.get("container") or MISSING, ""),
+        # The subtitle that is ON, as it is in the file and as it arrives.
+        # PLATFORM, so no subtitle and an older server both lose the row
+        # instead of showing an em dash. `warn` is NOT "these differ" --
+        # every SRT arrives as WebVTT and nothing is lost by that. It is
+        # reserved for a real downgrade: a styled source flattened to plain
+        # text, where the captions look wrong and this row is the only thing
+        # that says why.
+        _pair("Subtitles", sub_source or MISSING, sub_delivered or MISSING,
+              PLATFORM, warn=tracks.subtitle_style_lost(subtitle or {})),
         _pair("Quality", _quality(selection),
               f"{vbitrate} kbps" if vbitrate else "", PLATFORM),
         ("SYSTEM", None),
@@ -656,10 +690,11 @@ def build(nego: dict[str, Any], selection, position: str) -> dict[str, str]:
     }
 
 
-def rows(nego: dict[str, Any], selection, position: str):
+def rows(nego: dict[str, Any], selection, position: str, subtitle=None):
     """The panel's row list.
 
     Each entry is either `(HEADING, None)` or
     `(key, source, output, kind, warn)`. The caller turns them into list
     items; nothing here knows about Kodi controls."""
-    return _rows(nego, selection, position, _number("Player.CacheLevel"))
+    return _rows(nego, selection, position, _number("Player.CacheLevel"),
+                 subtitle)

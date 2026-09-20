@@ -3914,6 +3914,19 @@ class PlayerWindow(kodigui.ControlledDialog):
                 len(streams), len(native), self._loaded_subtitle_slots,
                 self._active_subtitle_index))
 
+    def _active_subtitle_track(self):
+        """The server track the viewer currently has ON, or None.
+
+        `_active_subtitle_index` is a SERVER index, which is what the tracks
+        carry; matched on that rather than on a position, because the two
+        lists are not the same length once a sidecar's synthetic index is in
+        play."""
+        index = self._active_subtitle_index
+        if index is None:
+            return None
+        return next((t for t in self._subtitle_tracks
+                     if t.get("index") == index), None)
+
     def _select_subtitle(self, server_index) -> bool:
         """Turn a SERVER subtitle index on, however the track can be reached.
 
@@ -5717,7 +5730,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         cached layout (main.py says the same of the Browse pills). CPU,
         memory, buffer and position all move; nothing else does."""
         rows = self._with_spacers(
-            playerstats.rows(self._nego, self.selection, position))
+            playerstats.rows(self._nego, self.selection, position,
+                             self._active_subtitle_track()))
         mcl = self._stats_list()
         shape = tuple(e[0] for e in rows)
         if shape != self._stats_shape:

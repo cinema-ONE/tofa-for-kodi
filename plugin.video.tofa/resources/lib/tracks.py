@@ -40,6 +40,69 @@ _AUDIO_CODEC = {
     "pcm": "LPCM",
 }
 
+#: What the track will actually ARRIVE as, from `representations[].format`
+#: (server 0.10.0, subtitle contract 2). Deliberately separate from the
+#: source-codec map below: the two answer different questions and only
+#: sometimes agree.
+_SUBTITLE_DELIVERED = {
+    "vtt": "WebVTT",
+    "ass": "ASS",
+    "pgs": "PGS",
+    "vobsub": "VobSub",
+}
+
+
+def delivered_format(track: dict[str, Any]) -> str:
+    """The format this client will actually FETCH the track in, or "".
+
+    `representations` lists what the server can serve the track AS -- it is
+    a menu, not a decision. Measured on 40 files: every `subrip` offers
+    `vtt` alone, PGS offers `pgs`, a VobSub sidecar offers `vobsub`, and an
+    `ass` track offers **both** `ass` and `vtt`. So the choice is ours, and
+    it is made in PlayerWindow._external_subtitle_url: `.vtt` for anything
+    that is not a VobSub sidecar, deliberately, because ASS carries styling
+    the skin has no say over.
+
+    This mirrors that rule rather than reading the list in order, so the two
+    cannot drift into saying different things about the same track. Empty
+    for a server older than 0.10.0, which sends no representations at all.
+    """
+    offered = [str(r.get("format") or "").lower()
+               for r in (track.get("representations") or [])]
+    offered = [f for f in offered if f in _SUBTITLE_DELIVERED]
+    if not offered:
+        return ""
+    # Bitmap formats are fetched as themselves -- there is no text rendition
+    # of a picture, and the server 400s a bitmap track asked for as WebVTT.
+    for fmt in ("vobsub", "pgs"):
+        if fmt in offered:
+            return _SUBTITLE_DELIVERED[fmt]
+    if "vtt" in offered:
+        return _SUBTITLE_DELIVERED["vtt"]
+    return _SUBTITLE_DELIVERED[offered[0]]
+
+
+#: Formats that carry position, colour and font.
+_STYLED_FORMATS = ("ASS", "SSA")
+
+
+def subtitle_style_lost(track: dict[str, Any]) -> bool:
+    """Is a styled track being taken as plain text?
+
+    True when the server OFFERS the styled rendition and this client asks
+    for WebVTT anyway -- which it does on purpose, so that subtitles look
+    like the rest of the app rather than like whatever the author chose.
+
+    That is a defensible decision and not a bug, but it is invisible: the
+    captions simply do not look the way they do elsewhere, and nothing on
+    screen says why. This is what puts it in the stats panel.
+    """
+    offered = {str(r.get("format") or "").lower()
+               for r in (track.get("representations") or [])}
+    return bool(offered & {"ass", "ssa"}
+                and delivered_format(track) not in _STYLED_FORMATS)
+
+
 _SUBTITLE_CODEC = {
     "hdmv_pgs_subtitle": "PGS",
     "dvd_subtitle": "VobSub",
@@ -385,6 +448,15 @@ def audio_track_label(track: dict[str, Any]) -> tuple[str, str]:
     return label, detail
 
 
+def subtitle_codec_name(codec: Optional[str]) -> str:
+    """A wire subtitle codec made readable -- `hdmv_pgs_subtitle` -> `PGS`.
+
+    Split out so the stats panel can name the SOURCE beside the delivered
+    format without rebuilding the picker's whole label."""
+    codec = (codec or "").strip().lower()
+    return _SUBTITLE_CODEC.get(codec, codec.upper())
+
+
 def subtitle_track_label(track: dict[str, Any]) -> tuple[str, str]:
     """(label, detail) for one subtitle track. Forced and SDH are flags a
     viewer picks ON, so they belong in the label, not the codec column."""
@@ -399,6 +471,13 @@ def subtitle_track_label(track: dict[str, Any]) -> tuple[str, str]:
     label = " · ".join(parts) or "Subtitle"
     if flags:
         label = f"{label} ({', '.join(flags)})"
+    # The SOURCE codec, deliberately -- what is in the viewer's file, which
+    # is the name they know it by. Not the format we fetch it in: the server
+    # offers a text track as WebVTT and nothing is lost converting SRT to
+    # it, so putting "WebVTT" on 316 rows out of 320 would trade a familiar
+    # name for a transport detail. Where the two genuinely disagree in a way
+    # that costs something -- a styled ASS track taken as plain text -- the
+    # stats panel says so on its own row. See tracks.delivered_format.
     codec = (track.get("codec") or "").strip().lower()
     detail = _SUBTITLE_CODEC.get(codec, codec.upper())
     if track.get("external"):
