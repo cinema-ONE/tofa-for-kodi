@@ -109,6 +109,13 @@ CHROME_AUTO_HIDE_S = 4.0
 PAUSE_CARD_DELAY_S = 5.0
 PLAY_PAUSE_DEBOUNCE_S = 0.3
 SEEK_TOAST_S = 0.9
+# 10.4: a burst of presses extends ONE pending absolute target, and the seek
+# happens once, this long after the last of them. Before this, every press
+# seeked: five taps were five seeks, and on a transcoded session each one
+# re-cuts the stream server-side. The scrubber has always worked this way
+# (see scrub/commit_scrub); this is the same contract for the chrome-hidden
+# path, which is what 10.4 now asks for.
+QUICK_SEEK_COMMIT_S = 0.4
 
 # 10.4's scrubber step: clamp(duration/60, 10s, 60s).
 SCRUB_STEP_MIN_MS = 10_000
@@ -802,6 +809,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._audio_confirm_at = 0.0    # monotonic; 0 = nothing armed
         self._audio_confirm_slot: Optional[int] = None
         self._toast_deadline = 0.0
+        # 10.4's pending seek: an absolute target in ms, or None when no
+        # burst is in flight, plus the monotonic instant it commits at.
+        self._quick_seek_ms = None
+        self._quick_seek_commit_at = 0.0
         # Seek ladder: which rung, which way, and when the last press was.
         # -1 means "no gesture in progress".
         self._seek_rung = -1
@@ -4359,15 +4370,61 @@ class PlayerWindow(kodigui.ControlledDialog):
         A single press is still 10s, so nothing about the simple case moved.
         """
         step = self._seek_step_ms(forward)
-        self._seek_to(self._position_ms() + (step if forward else -step))
+        # Extend the PENDING target, never the live position: a burst is one
+        # gesture with one destination. Reversing therefore walks back from
+        # where the burst had got to, which is what the viewer is watching
+        # the toast count.
+        base = (self._quick_seek_ms if self._quick_seek_ms is not None
+                else self._position_ms())
+        self._quick_seek_ms = max(
+            0, min(base + (step if forward else -step),
+                   self._duration_ms or base))
+        self._quick_seek_commit_at = time.monotonic() + QUICK_SEEK_COMMIT_S
         self.setProperty("player_seek_toast", "forward" if forward else "back")
-        # The toast DOES announce the amount. It had "10s" hardcoded in the
-        # XML, which stopped being true the moment the step escalated -- a
-        # 10-minute jump captioned "10s". An earlier pass here concluded the
-        # toast had no slot for it and dropped the property; the slot was
-        # there all along, just frozen.
-        self.setProperty("player_seek_amount", _seek_amount_label(step))
+        # The toast announces the ACCUMULATED movement, not the last step:
+        # 8.9 wants the caption to grow with the burst rather than repeat
+        # one rung of it. It had "10s" hardcoded in the XML once, which
+        # stopped being true the moment the step escalated; showing one step
+        # of a burst is the same fault in a smaller way.
+        moved = self._quick_seek_ms - self._position_ms()
+        self.setProperty("player_seek_amount",
+                         _seek_amount_label(abs(moved)) if moved else "")
         self._toast_deadline = time.monotonic() + SEEK_TOAST_S
+
+    def commit_quick_seek(self) -> bool:
+        """Apply a pending chrome-hidden burst. True if there was one."""
+        if self._quick_seek_ms is None:
+            return False
+        target = self._quick_seek_ms
+        self._quick_seek_ms = None
+        self._quick_seek_commit_at = 0.0
+        # A committed seek ends the gesture, exactly as commit_scrub does.
+        self._reset_seek_ladder()
+        self._seek_to(target)
+        return True
+
+    def cancel_quick_seek(self) -> bool:
+        """Drop a pending burst without seeking.
+
+        10.4 lists four things that drop a burst before it commits: the
+        Back press, focus leaving, a surface taking the screen, and the
+        player going away. The toast goes with it -- leaving it up would
+        caption a movement that is not going to happen.
+
+        The first and the last are wired. The middle two are not, and
+        deliberately: the burst commits 400ms after the
+        last press, which is inside the time it takes to open any overlay
+        this window has, and the transport skip button now shares this path
+        WITH the chrome up -- so cancelling on a chrome reveal would drop a
+        burst the viewer started from the chrome itself."""
+        if self._quick_seek_ms is None:
+            return False
+        self._quick_seek_ms = None
+        self._quick_seek_commit_at = 0.0
+        self._reset_seek_ladder()
+        self._toast_deadline = 0.0
+        self.setProperty("player_seek_toast", "")
+        return True
 
     def chapter_seek(self, forward: bool):
         """Kodi's chapter keys, served from QuickView's chapter list.
@@ -4871,6 +4928,11 @@ class PlayerWindow(kodigui.ControlledDialog):
             # age restrictions, not clocks), so the Kodi setting wins because
             # it is the one the viewer can actually change.
             self.setProperty("player_clock", regional.clock())
+        # Before the toast expires: the burst commits 400ms after the last
+        # press, which is well inside the toast's own 0.9s, so the seek has
+        # happened by the time the caption goes.
+        if self._quick_seek_commit_at and now >= self._quick_seek_commit_at:
+            self.commit_quick_seek()
         if self._toast_deadline and now >= self._toast_deadline:
             self._toast_deadline = 0.0
             self.setProperty("player_seek_toast", "")
@@ -5104,7 +5166,9 @@ class PlayerWindow(kodigui.ControlledDialog):
             if self.getProperty("player_is_episode"):
                 self.play_next_up()
             else:
-                self._seek_to(self._position_ms() + SEEK_STEP_MS)
+                # 10.4 applies the accumulation to the transport skip
+                # buttons too, not only to the bare-surface keys.
+                self.quick_seek(True)
         elif controlID == self.SCRUBBER_ID:
             # 10.2: select on a focused scrubber applies a pending scrub;
             # with nothing pending it acts as play/pause instead.
@@ -6024,6 +6088,12 @@ class PlayerWindow(kodigui.ControlledDialog):
             # focus while it is up.
             self.dismiss_next_up()
             return
+        if self.cancel_quick_seek():
+            # 10.4: Back drops an uncommitted burst. Above the scrub rung
+            # because the two cannot both be pending -- one is the bare
+            # surface, the other the raised chrome -- and this one leaves no
+            # chrome to dismiss afterwards.
+            return
         if self.cancel_scrub():
             # A pending scrub is cancelled AND the chrome goes, in one press.
             self.hide_chrome()
@@ -6108,6 +6178,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         return True
 
     def onClosed(self):
+        # 10.4: player teardown cancels an uncommitted burst. Seeking a
+        # stream that is going away is at best wasted and at worst a session
+        # re-cut nobody will watch.
+        self.cancel_quick_seek()
         # Give the viewer their stereoscopic setting back before anything
         # else here can throw.
         stereoscopic.restore()
