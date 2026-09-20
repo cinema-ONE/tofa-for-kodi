@@ -111,6 +111,22 @@ class CapabilityProfile:
     #: False and nothing asks the 400-answering routes for it). Under a
     #: transcode the tracks stay burn-in-only, exactly as before.
     client_render_embedded_vobsub_subtitles: Optional[bool] = True
+    #: Server 0.10.0. Which shape of `subtitle_tracks` to answer with. The
+    #: server accepts 1 or 2 and 400s anything else, and **1 is byte-identical
+    #: to omitting it** -- measured on an 11-track file, so this client was
+    #: already on contract 1 by silence.
+    #:
+    #: 2 is PURELY ADDITIVE, also measured: same tracks, same order, no
+    #: existing field's value changed. It adds `track_id`, `representations`
+    #: (`{format, schema, state}`), `hls_rendition_name`, the two generation
+    #: hashes and `default_disposition`.
+    #:
+    #: What we want from it is `representations[].format` -- the format the
+    #: track will actually ARRIVE in, which is not always its source codec:
+    #: an `ass` track is delivered as `ass` on one file and flattened to
+    #: `vtt` on another. `codec` alone cannot tell those apart, so the picker
+    #: named both "ASS" and only one of them meant it.
+    subtitle_contract_version: Optional[int] = 2
     stereo_only_audio_codecs: Optional[str] = None
     max_bitrate: Optional[int] = None
     include_native_subtitle_rendition: Optional[bool] = None
@@ -166,6 +182,8 @@ class CapabilityProfile:
                 params["audio_sink_channels"] = self.audio_sink_channels
         if self.quality_mode:
             params["quality_mode"] = self.quality_mode
+        if self.subtitle_contract_version:
+            params["subtitle_contract_version"] = self.subtitle_contract_version
         return params
 
     @classmethod
