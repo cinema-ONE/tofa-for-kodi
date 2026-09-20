@@ -18,7 +18,7 @@ window UI (e.g. a Favourite) without going through this script entry.
 """
 from __future__ import annotations
 
-from resources.lib import artcache, http, prefetch, stereoscopic
+from resources.lib import artcache, http, prefetch, stereoscopic, subtitlesize
 from resources.lib.windows import splash
 
 # The splash goes up FIRST, before the heavy imports below. main.py is the
@@ -120,6 +120,9 @@ finally:
     # A playback that never closed cleanly (a crash, a force-quit) can
     # leave Kodi's stereoscopic prompt suppressed for good. Put it back.
     stereoscopic.restore_stale()
+    # ...and the same for the subtitle size, for the same reason: a crash
+    # means restore() never ran and the viewer's own size never came back.
+    subtitlesize.restore_stale()
     # ...and forget any splash this process owned. Kodi destroys the windows
     # an interpreter created when that interpreter is torn down, so once this
     # script ends there is no splash anywhere -- whatever the flag says. Not

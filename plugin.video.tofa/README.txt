@@ -115,6 +115,26 @@ output can actually take it. It reads that from Kodi's own settings
 Nothing here affects Original, which is not transcoded at all.
 
 
+Subtitle size
+---------------
+
+tofa stores a subtitle size with your profile, and it is shared with the
+other tofa apps. This add-on applies it here by setting Kodi's own subtitle
+font size while a title is playing, and putting your value back when the
+player closes. If the add-on or Kodi is closed unexpectedly, the next
+launch puts it back.
+
+That is a Kodi-wide setting, shared with everything else on this device,
+which is why only the size is touched and why nothing at all is written
+while your tofa size is the default 100%.
+
+The other subtitle settings tofa stores -- colours, outline, background,
+vertical position -- are not applied. Kodi has no subtitle colour setting
+of any kind, and its vertical position means something different enough
+that using it would move your subtitles rather than match them. Kodi's own
+Settings -> Player -> Language control those here.
+
+
 Artwork storage
 ----------------
 

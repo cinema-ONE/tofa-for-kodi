@@ -85,7 +85,8 @@ import xbmcvfs
 from . import kodigui, playerstats, playoptions, profile_select, theme
 from .. import (api, artcache, auth, episodes, http, langcodes, log, monitor,
                 playback, playbackprefs, playbacksync, prefs, regional,
-                settings_options, stereoscopic, textmetrics, tracks)
+                settings_options, stereoscopic, subtitlesize, textmetrics,
+                tracks)
 from ..api import MediaServerClient
 from ..profile import DEFAULT_AUDIO_CODECS, CapabilityProfile
 
@@ -2406,6 +2407,10 @@ class PlayerWindow(kodigui.ControlledDialog):
             log.debug(f"player: no segment actions: {exc!r}")
             return
         self._segment_actions_loaded = True
+        # The same blob carries the viewer's subtitle size, so it rides on
+        # this fetch rather than paying for its own. Only the SIZE is taken;
+        # subtitlesize.py says why the other nine preferences are not.
+        subtitlesize.apply(prefs)
         actions = (prefs.get("playback") or {}).get("segment_actions") or {}
         self._segment_actions = {
             str(k).strip().lower(): settings_options.segment_action(v)
@@ -6111,6 +6116,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # Give the viewer their stereoscopic setting back before anything
         # else here can throw.
         stereoscopic.restore()
+        subtitlesize.restore()
         # Dropped explicitly rather than left to the weakref: the tick that
         # would apply a late request is about to stop, so a notification
         # arriving now would park a mode nothing consumes.
