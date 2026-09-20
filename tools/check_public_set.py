@@ -6,6 +6,11 @@ Two questions, one gate, run over exactly the files that would be copied into
   QUOTES  -- does any comment reproduce a private document's own prose?
   MARKERS -- does any file still name our network, our boxes or us?
 
+The first is asked of two surfaces, because a file is not the only thing
+that gets published. QUOTES reads the working tree; MESSAGES asks the same
+question of the last `--messages` COMMIT MESSAGES, which are equally public
+and rather harder to take back.
+
 Neither is a judgement call at the point of use, which is the point: both
 were answered once by reading, and reading does not survive the next hundred
 comments. Exit status is 1 while anything is outstanding, so this can gate a
@@ -16,6 +21,7 @@ release.
     python3 tools/check_public_set.py --markers   identifiers only
     python3 tools/check_public_set.py --all       include the shared-data runs
     python3 tools/check_public_set.py -n 6        tighter quote window, more noise
+    python3 tools/check_public_set.py --messages 50   look further back
 
 
 QUOTES
@@ -77,6 +83,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -366,6 +373,68 @@ def scan_quotes(n: int) -> tuple[list[tuple], list[str]]:
     return hits, missing
 
 
+# ------------------------------------------------------- commit messages --
+
+def scan_messages(n: int, count: int) -> list[tuple]:
+    """Quotations in the last `count` COMMIT MESSAGES on this branch.
+
+    The scans above read the working TREE. A commit message is not in the
+    tree, and it is public and permanent the moment it is pushed -- see
+    feedback_public_surfaces_are_public, which exists because PR bodies
+    could be scrubbed afterwards and merged commit messages could not.
+
+    That gap has now cost something concrete. On 2026-09-20 the tree scan
+    caught two of tofa's sentences in a comment and a test docstring; they
+    were paraphrased and the commit re-made with `--amend --no-edit`, which
+    keeps the ORIGINAL message -- so both sentences shipped in the message
+    of a commit that passed this gate twice.
+
+    Returns (source label, whose, "commit <sha> <subject>", 0, run, is_prose)
+    so it prints beside the file hits.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "log", "-n", str(count), "--format=%H%x00%s%x00%b%x01"],
+            cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return []
+
+    loaded = []
+    for rel, whose, _why in PRIVATE_SOURCES:
+        text = read(os.path.join(VAULT, rel)) if VAULT else None
+        if text is None:
+            continue
+        tokens, _ = words_with_lines(text)
+        loaded.append((rel, whose,
+                       {tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)}))
+
+    hits = []
+    for entry in out.split("\x01"):
+        if not entry.strip():
+            continue
+        parts = (entry.strip().split("\x00") + ["", ""])[:3]
+        sha, subject, body = parts
+        tokens, _ = words_with_lines(subject + "\n" + body)
+        for rel, whose, grams in loaded:
+            matched = [tuple(tokens[i:i + n]) in grams
+                       for i in range(len(tokens) - n + 1)]
+            i = 0
+            while i < len(matched):
+                if not matched[i]:
+                    i += 1
+                    continue
+                j = i
+                while j + 1 < len(matched) and matched[j + 1]:
+                    j += 1
+                run = tokens[i:j + n]
+                hits.append((rel, whose,
+                             "commit %s  %s" % (sha[:9], subject[:56]),
+                             0, run, is_prose(run)))
+                i = j + 1
+    hits.sort(key=lambda h: (h[1] != "tofa", not h[5], -len(h[4])))
+    return hits
+
+
 # --------------------------------------------------------------- markers --
 
 def scan_markers() -> list[tuple[str, int, str, str]]:
@@ -475,6 +544,8 @@ def main() -> int:
                         help="show shared-data runs as well as prose")
     parser.add_argument("--quotes", action="store_true", help="quotes only")
     parser.add_argument("--markers", action="store_true", help="markers only")
+    parser.add_argument("--messages", type=int, default=20,
+                        help="how many recent commit messages to scan")
     parser.add_argument("--ours", action="store_true",
                         help="also list hits against OUR private documents, "
                              "which never fail the run")
@@ -521,6 +592,23 @@ def main() -> int:
             print("    not in the vault, so unchecked: %s%s"
                   % (rel, "  <-- CANNOT VERIFY" if whose == "tofa" else ""))
         problems += len(gating)
+
+        # ...and the same scan over recent COMMIT MESSAGES, which are not in
+        # the tree and are public the moment they are pushed.
+        msg_hits = [h for h in scan_messages(args.n, args.messages)
+                    if h[1] == "tofa" or args.ours]
+        msg_prose = [h for h in msg_hits if h[5]]
+        for rel, whose, where, _line, run, is_p in msg_hits:
+            if is_p or args.all:
+                print("%s\n    quotes %s [%s]\n    %s"
+                      % (where, rel, whose, " ".join(run)))
+        print("MESSAGES: %d verbatim prose run(s) in the last %d commit "
+              "message(s)" % (len(msg_prose), args.messages))
+        if msg_prose:
+            print("    A message cannot be edited once it is pushed. Reword "
+                  "it now, and remember `--amend --no-edit` KEEPS the old "
+                  "one -- which is how this gap was found.")
+        problems += len([h for h in msg_prose if h[1] == "tofa"])
 
         # A source that is not here was not checked, and a run that checked
         # nothing must not report success. Only tofa's gate, for the same

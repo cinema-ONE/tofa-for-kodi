@@ -86,9 +86,11 @@ intended state, not an incomplete clone.
 
 The pointers stay because they are what makes the code navigable. What may
 not travel is a private document's *wording*, and `tools/check_public_set.py`
-gates on it two ways: it indexes every eight-token run of each private source
-and sweeps this file set, and it flags any three-word phrase a comment puts
-in quotation marks that appears verbatim in one of tofa's documents.
+gates on it three ways: it indexes every eight-token run of each private
+source and sweeps this file set, it runs that same sweep over recent commit
+messages -- which are published too, and are the harder half to take back --
+and it flags any three-word phrase a comment puts in quotation marks that
+appears verbatim in one of tofa's documents.
 
 **Nothing is quoted from them at all.** Earlier this arrangement allowed a
 handful of short quoted lines, credited to their section. That was tofa's to
