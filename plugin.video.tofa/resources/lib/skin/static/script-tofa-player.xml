@@ -696,11 +696,20 @@
                          Only one axis ever has margin, so one pair does
                          both jobs; player.py gives them their rectangles
                          per track and hides them on a 320x180 cell, which
-                         has no margin at all. -->
+                         has no margin at all.
+
+                         The 40x180 below is a placeholder, not a value:
+                         player.py sets both rectangles before it shows
+                         them. It is the 4:3 pillar, the commonest of the
+                         shapes that need one, and it is a REAL rectangle
+                         on purpose. A zero width here reads to
+                         tests/test_offscreen_parking.py as a control parked
+                         outside the frame, which is the thing that test
+                         exists to stop. -->
                     <control type="image" id="9123">
                         <posx>0</posx>
                         <posy>0</posy>
-                        <width>0</width>
+                        <width>40</width>
                         <height>180</height>
                         <colordiffuse>0xD9000000</colordiffuse>
                         <texture>white-square.png</texture>
@@ -709,7 +718,7 @@
                     <control type="image" id="9124">
                         <posx>0</posx>
                         <posy>0</posy>
-                        <width>0</width>
+                        <width>40</width>
                         <height>180</height>
                         <colordiffuse>0xD9000000</colordiffuse>
                         <texture>white-square.png</texture>
