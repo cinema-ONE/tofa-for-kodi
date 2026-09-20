@@ -66,10 +66,14 @@ What may not travel is a private document's own prose -- the design document,
 the vendored OpenAPI spec, or the API guide beside it.
 `tools/check_public_set.py` enforces it: it indexes every 8-word run of each
 source and slides the same window over everything in this repository, so a
-comment that reproduces a sentence is caught rather than noticed. It sweeps
-for private identifiers in the same pass -- hostnames, addresses, personal
-details -- with IPv4 literals checked against an allowlist, since the address
-that matters is the one nobody has typed yet.
+comment that reproduces a sentence is caught rather than noticed. Since
+2026-09-20 it slides that window over recent commit messages as well: a
+message is as published as a file and cannot be edited afterwards, and
+`git commit --amend --no-edit` keeps the original one, so paraphrasing a
+comment the gate caught does not touch the message it already went out in.
+It sweeps for private identifiers in the same pass -- hostnames, addresses,
+personal details -- with IPv4 literals checked against an allowlist, since
+the address that matters is the one nobody has typed yet.
 
 Without the private checkout it has nothing to compare quotations against and
 says so; the identifier half still runs, and is the half that matters here.
