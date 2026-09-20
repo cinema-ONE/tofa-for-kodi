@@ -74,3 +74,37 @@ def title_or_number(ep: dict) -> str:
     body = number_text((ep or {}).get("episode_number"),
                        (ep or {}).get("episode_number_end"))
     return "Episode {0}".format(body) if body else ""
+
+#: What a season's own row says about whether you can watch it. 7.1 asks for
+#: WORDS here and rules out the alternatives by name -- not a faded pill, an
+#: icon, or a zero count, because none of those distinguishes "nothing here"
+#: from "a season you have finished".
+SEASON_IN_LIBRARY = ""          #: something is playable; say nothing
+SEASON_NOT_IN_LIBRARY = "none"  #: episodes are known, no files at all
+SEASON_MISSING = "missing"      #: files are recorded, none of them available
+SEASON_UNLOADED = "unloaded"    #: a shell; makes NO claim either way
+
+
+def season_availability(season: dict) -> str:
+    """Which of the four a season is in.
+
+    7.1, and the distinction it draws is the whole point: a season with no
+    files is one you never had, while a season whose files are all
+    unavailable is one the server has lost track of -- a renamed folder, an
+    unmounted disk. The viewer can act on the second and not on the first,
+    so they must not read the same.
+
+    A season whose episodes have not been loaded yet is a SHELL and makes no
+    claim. Saying "not in library" about episodes nobody has fetched would
+    be a guess, and it would flicker to something else when they arrive.
+    """
+    episodes = season.get("episodes")
+    if not episodes:
+        return SEASON_UNLOADED
+    files = [f for ep in episodes for f in (ep.get("files") or [])]
+    if not files:
+        return SEASON_NOT_IN_LIBRARY
+    if any(f.get("available") for f in files):
+        return SEASON_IN_LIBRARY
+    return SEASON_MISSING
+
