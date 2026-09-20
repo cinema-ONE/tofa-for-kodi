@@ -171,6 +171,41 @@ class ApiError(Exception):
         super().__init__(f"HTTP {status} {error}: {message}")
 
 
+#: `error` when the body was not JSON at all. _parse_error_body invents it,
+#: so it is also the signal that there IS no envelope to quote from.
+NO_ENVELOPE = "unknown_error"
+
+
+def viewer_message(exc: "ApiError", fallback: str) -> str:
+    """What to put in front of a viewer for a server refusal.
+
+    8.7 is normative about this and the reasoning is the server's: its
+    `message` is written for viewers and can be improved server-side without
+    a client release, so a client that substitutes its own sentence freezes
+    the wording at whatever it shipped with. So: render `message` whenever
+    the envelope has one.
+
+    `fallback` is used in exactly the cases 8.7 names as having nothing to
+    quote:
+
+    * **no envelope.** A bodyless middleware rejection or an HTML gateway
+      page parses to NO_ENVELOPE, and _parse_error_body puts the raw body in
+      `message` -- useful in a log, never on a television.
+    * **the discriminator echoed as the message.** 8.7 says treat
+      `message == error` as absent, so a server answering
+      `transcode_at_capacity` twice does not put a machine token on screen.
+    * **nothing there at all.**
+
+    Never the status line either way: "Service Unavailable" is not a reason.
+    """
+    if exc.error == NO_ENVELOPE:
+        return fallback
+    message = (exc.message or "").strip()
+    if not message or message == (exc.error or "").strip():
+        return fallback
+    return message
+
+
 def _parse_error_body(resp: requests.Response) -> tuple[str, str]:
     try:
         data = resp.json()
