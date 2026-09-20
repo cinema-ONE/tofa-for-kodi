@@ -3098,14 +3098,27 @@ class PlayerWindow(kodigui.ControlledDialog):
         alpha instead of vanishing, so the focus chain never changes shape
         under the viewer."""
         self.setProperty("player_is_episode", "1" if episode else "")
-        prev_on = (not episode) or self._prev_episode is not None
-        next_on = (not episode) or self._next_up is not None
+        # 8.1: an episode with nowhere to go in either direction takes the
+        # seek pair instead, so neither slot is occupied by something that
+        # does nothing. A lone episode, or one whose every sibling lacks a
+        # playable file, is the case -- and ten seconds is worth more there
+        # than a glyph that cannot do anything.
+        #
+        # Only the TRANSPORT falls back. `player_is_episode` stays true, so
+        # the utility capsule keeps its episodes button: the drawer lists
+        # the whole season including the episodes that have no file, which
+        # is exactly what someone in this position wants to see.
+        transport_episode = episode and (self._prev_episode is not None
+                                         or self._next_up is not None)
+        prev_on = (not transport_episode) or self._prev_episode is not None
+        next_on = (not transport_episode) or self._next_up is not None
+        self.setProperty("transport_is_episode", "1" if transport_episode else "")
         self.setProperty(
             "transport_prev_glyph",
-            _GLYPH_PREV_EPISODE if episode else _GLYPH_SEEK_BACK)
+            _GLYPH_PREV_EPISODE if transport_episode else _GLYPH_SEEK_BACK)
         self.setProperty(
             "transport_next_glyph",
-            _GLYPH_NEXT_EPISODE if episode else _GLYPH_SEEK_FWD)
+            _GLYPH_NEXT_EPISODE if transport_episode else _GLYPH_SEEK_FWD)
         self.setProperty(
             "transport_prev_color",
             self.getProperty("text_primary") if prev_on else _TRANSPORT_DISABLED)
@@ -5096,12 +5109,15 @@ class PlayerWindow(kodigui.ControlledDialog):
         if controlID == self.PLAYPAUSE_ID:
             self.toggle_play_pause()
         elif controlID == self.BACK10_ID:
-            if self.getProperty("player_is_episode"):
+            # transport_is_episode, NOT player_is_episode: on a lone episode
+            # the pair shows seek glyphs, and a button must do what its own
+            # glyph says.
+            if self.getProperty("transport_is_episode"):
                 self.play_prev_episode()
             else:
                 self._seek_to(self._position_ms() - SEEK_STEP_MS)
         elif controlID == self.FWD10_ID:
-            if self.getProperty("player_is_episode"):
+            if self.getProperty("transport_is_episode"):
                 self.play_next_up()
             else:
                 self._seek_to(self._position_ms() + SEEK_STEP_MS)
@@ -5875,7 +5891,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         # episode, and nothing at all on a movie -- rather than silently
         # falling through to something unrelated.
         if aid in self._NEXT_ITEM_ACTIONS or aid in self._PREV_ITEM_ACTIONS:
-            if self.getProperty("player_is_episode"):
+            # Same answer the transport gives: with no neighbour either way
+            # these keys have nothing to move to.
+            if self.getProperty("transport_is_episode"):
                 if aid in self._NEXT_ITEM_ACTIONS:
                     self.play_next_up()
                 else:
