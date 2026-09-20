@@ -78,7 +78,23 @@ def _leaves_label(delete_after) -> str:
     return "Leaves {0} {1}".format(day, months[month - 1])
 
 
-def _item_year(item: dict) -> str:
+def _item_year(item: dict, *, episode: bool = False) -> str:
+    """The year for a caption or the hero's meta line.
+
+    `year` on a Continue Watching EPISODE is the series' first year, not the
+    episode's -- so the Home hero read the series title, the episode title,
+    the episode's synopsis, and between them a year belonging to none of it:
+    a 2025 episode of a show that began in 2023 said 2023.
+
+    `episode=True` prefers the episode's own `air_date`, which the server
+    added for exactly this (vault #161, server 0.10.0). An older server sends
+    no `air_date` and the series year comes back, which is what it did
+    before -- wrong in the same old way rather than blank.
+    """
+    if episode:
+        air_date = item.get("air_date")
+        if air_date and len(air_date) >= 4 and air_date[:4].isdigit():
+            return air_date[:4]
     year = item.get("year")
     if year:
         return str(year)
@@ -2201,7 +2217,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             runtime_minutes = int(item["duration_ms"] // 60000)
         elif item.get("runtime_minutes"):
             runtime_minutes = int(item["runtime_minutes"])
-        meta_parts = [_item_year(item)]
+        # The hero's title and synopsis are already the EPISODE's, so its
+        # year must be too -- see _item_year. Identified the way
+        # _card_meta_left does it, by the episode number being present.
+        meta_parts = [_item_year(item, episode=item.get("episode_number") is not None)]
         if runtime_minutes:
             hours, minutes = divmod(runtime_minutes, 60)
             meta_parts.append("{0} h {1} min".format(hours, minutes) if hours else "{0} min".format(minutes))
