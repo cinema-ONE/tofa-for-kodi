@@ -490,3 +490,11 @@ msgstr ""
 msgctxt "#31124"
 msgid "Popular on Your Server"
 msgstr ""
+
+msgctxt "#31125"
+msgid "Not in library"
+msgstr ""
+
+msgctxt "#31126"
+msgid "Missing from disk"
+msgstr ""

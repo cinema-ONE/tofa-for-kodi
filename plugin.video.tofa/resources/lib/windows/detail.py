@@ -116,6 +116,15 @@ def _initials(name: str) -> str:
     return (parts[0][:1] + parts[-1][:1]).upper()
 
 
+#: 7.1's two availability sentences. A season that HAS something playable
+#: says nothing at all -- the absence is the normal case and does not need
+#: announcing -- and neither does a shell whose episodes have not loaded.
+_SEASON_AVAILABILITY = {
+    episodes_fmt.SEASON_NOT_IN_LIBRARY: 31125,
+    episodes_fmt.SEASON_MISSING: 31126,
+}
+
+
 class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # See home.py's HomeWindow for why this is needed now that screens open
     # each other directly in-process.
@@ -1590,6 +1599,14 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             label = s.get("title") or ("Specials" if n == 0 else "Season {0}".format(n))
             mli = kodigui.ManagedListItem(label=label, data_source=s)
             mli.setProperty("count", str(len(s.get("episodes") or [])))
+            # 7.1 asks for WORDS here and rules out a zero count by name: a
+            # season with nothing in it must not read like one you finished.
+            # An unloaded shell says nothing rather than guessing.
+            state = episodes_fmt.season_availability(s)
+            string_id = _SEASON_AVAILABILITY.get(state)
+            mli.setProperty(
+                "availability",
+                kodigui.ADDON.getLocalizedString(string_id) if string_id else "")
             is_active = n == active_season_number
             mli.setProperty("active", "1" if is_active else "")
             if is_active:
