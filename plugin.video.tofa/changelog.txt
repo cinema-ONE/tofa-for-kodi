@@ -1,3 +1,27 @@
+0.9.31
+- The picture in the scrub preview is no longer squashed or wrong on a
+  programme that is not widescreen. On a 4:3 or a very wide film the preview
+  had been showing the frame at the wrong shape, and drifting further from
+  the right moment the nearer the end you scrubbed. It now shows the correct
+  frame at the programme's own shape, inside the same preview box.
+- The chapter name shown while you scrub is no longer a second copy of the
+  time. Some files name their chapters after the moment they begin, so the
+  readout under the preview read "17:43  00:02:42.662" -- the position, and
+  then the position again in another form. Those chapters now show their
+  number instead, as chapters with no name at all always have, and so do
+  any named with nothing but a digit or two.
+- The year beside a part-watched episode on the home screen is now the
+  episode's own, not the year the series began. A 2025 episode of a show
+  that started in 2023 used to read 2023, next to that episode's title and
+  its synopsis.
+- The playback stats panel now names the subtitle format twice: the one in
+  your file, and the one the add-on actually fetches. Where a styled
+  subtitle is being taken as plain text -- which the add-on does on purpose,
+  so subtitles look like the rest of the app -- the second one is
+  highlighted. Nothing about the subtitles themselves has changed.
+- This release needs tofa server 0.10.0 or newer. On an older server the
+  add-on still runs, and says so once.
+
 0.9.30
 - Settings > Appearance > Availability region now offers every region your
   server knows about, in alphabetical order, rather than the shorter list
