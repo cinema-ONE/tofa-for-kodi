@@ -13,16 +13,50 @@ And once per clone:
 
     git config core.hooksPath tools/hooks
 
-That installs a pre-push hook running `check_public_set.py` in full -- about a
-second and a half, and the only automatic home the QUOTE half has. CI cannot
-run it: it compares this tree against tofa's confidential documents, which
-must never reach a runner, so the workflow runs `--markers` alone. Without the
-hook the quote gate is a manual check, and a manual check is one nobody runs
--- it went red from 2026-08-16 to 2026-08-29 with two comments quoting 13
-tokens of the design document, which shipped in every release from 0.9.3 on.
-Push is the last moment that prose is still ours; a public history is not
-something a later edit can clean. `release.py publish` runs the same gate as
-a backstop.
+## Nothing becomes public except through a tool that gated it
+
+That is the whole rule, and it has two halves because GitHub has two doors.
+
+**Through git** -- the working tree, commit messages, annotated tag messages.
+The `core.hooksPath` line above installs a pre-push hook running
+`check_public_set.py` in full, about a second and a half. git hands the hook
+the exact refs it is about to send and what the remote already has, so it
+checks exactly the commits being pushed.
+
+**Through the GitHub API** -- a pull request title or body, an issue, a
+comment, a release note. None of those pass through git, so the hook never
+sees them. Use `tools/gh_gate.py` in place of `gh`:
+
+    python3 tools/gh_gate.py pr create --title "..." --body-file body.md
+    python3 tools/gh_gate.py pr merge 189 --squash --delete-branch
+    python3 tools/gh_gate.py issue comment 161 --body-file evidence.md
+
+Everything after the script name goes to `gh` unchanged; what happens first
+is that every piece of text in it is gated, and a hit stops the command
+before anything reaches GitHub. A squash merge is the one command with no
+text of its own -- GitHub composes the message on the server -- so the
+wrapper composes it locally, gates it, and passes it back with `--subject`
+and `--body`, which makes the server compose nothing.
+
+CI cannot do any of this: the gate compares against tofa's confidential
+documents, which must never reach a runner, so the workflow runs `--markers`
+alone. `tests/test_publication_gate.py` covers the mechanism with a synthetic
+private source, so the behaviour is tested everywhere even though the real
+check can only run here. `release.py publish` runs the gate again as a
+backstop.
+
+**Why the rule is absolute rather than a habit of being careful.** Twice now
+the careful habit has failed, and the second failure is the one that settled
+it. On 2026-08-16 two comments quoting 13 tokens of the design document
+shipped in every release from 0.9.3 on, unnoticed for a fortnight, because a
+manual check is one nobody runs. On 2026-09-20 the tree gate did catch two
+sentences -- and `git commit --amend --no-edit`, which keeps the original
+message, carried them into a merged commit the gate had no reason to read.
+Rewriting the history afterwards cleaned `main` and nothing else: GitHub went
+on serving the orphaned commit by SHA, and `refs/pull/N/head` went on
+rendering it on the pull request's Commits tab. **A rewrite pays the full
+cost and removes nothing.** Before the write is not the cheapest moment; it
+is the only one.
 
 `check_xml.py` exists because each thing it catches is a SILENT failure: Kodi
 does not reject them, log them, or draw anything that looks like an error --
@@ -332,9 +366,15 @@ outside the project can reach. Create the release with the zip in the same
 command, so it cannot be forgotten:
 
 ```
-gh release create v<version> --verify-tag --title "<version>" \
-    --notes-file <notes> docs/plugin.video.tofa/plugin.video.tofa-<version>.zip
+python3 tools/gh_gate.py release create v<version> --verify-tag \
+    --title "<version>" --notes-file <notes> \
+    docs/plugin.video.tofa/plugin.video.tofa-<version>.zip
 ```
+
+(Through `gh_gate.py`, because release notes are published text like any
+other. They come from `changelog.txt`, which the tree gate has already read,
+so this is belt and braces -- but the day someone writes notes by hand is the
+day it is not.)
 
 This was not done consistently: of the first eight releases only three
 carried the zip, and the five that did not included the two most recent --
