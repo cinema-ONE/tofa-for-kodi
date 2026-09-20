@@ -208,6 +208,13 @@ SKIP_TICKS_PER_MS = 10_000
 # exactly the 320x180 bubble 8.2 asks for, and because the 640 track's
 # sheets are 6400x3600, past what a TV box's GPU will hold as one texture.
 PREVIEW_TILE_WIDTH = 320
+# 8.2's bubble is a fixed 320x180 window, and a tile CELL is not always that
+# shape: the server cuts thumbnails at the file's own stored aspect, so a 4:3
+# episode serves 320x240 cells and a 2:1 one serves 320x160. The sheet is
+# drawn scaled to FIT inside the bubble and centred, which never crops and
+# never distorts; the bubble itself stays put, so nothing below it moves.
+_PREVIEW_BUBBLE_W = 320
+_PREVIEW_BUBBLE_H = 180
 # Kodi fetches <texture> URLs itself and cannot send the X-Profile-Token
 # header the endpoint requires, so sheets are downloaded by us and handed
 # over as file paths.
@@ -659,6 +666,10 @@ class PlayerWindow(kodigui.ControlledDialog):
     PREVIEW_SHADOW_ID = 9118
     PREVIEW_CHAPTER_ID = 9119
     PREVIEW_TILE_IDS = (9114, 9117)
+    # The two curtains that hide the neighbouring cell wherever a fitted
+    # sheet leaves margin inside the fixed clipping window. See
+    # _size_tile_sheet.
+    PREVIEW_CURTAIN_IDS = (9123, 9124)
     SKIP_PILL_ID = 9750
     SKIP_BUTTON_ID = 9751
     # 4 capsule images, 2 glyph labels, 2 text labels -- all sized and
@@ -1937,7 +1948,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         per_sheet = (track.get("tile_width") or 1) * (track.get("tile_height") or 1)
         if not (track.get("interval_ms") and per_sheet):
             return
-        self._tiles = dict(track, per_sheet=per_sheet)
+        geometry = self._tile_geometry(track)
+        if geometry is None:
+            return
+        self._tiles = dict(track, per_sheet=per_sheet, **geometry)
         self._tile_dir = xbmcvfs.translatePath(TILE_CACHE_DIR)
         try:
             os.makedirs(self._tile_dir, exist_ok=True)
@@ -1945,13 +1959,20 @@ class PlayerWindow(kodigui.ControlledDialog):
             log.warning(f"player: no tile cache dir: {exc!r}")
             self._tiles = {}
             return
+        self._size_tile_sheet()
         self.setProperty("player_preview_tiles", "1")
         # tools/gen_nextup_assets.py builds the grid mask for exactly one
         # shape. Anything else keeps square corners, which is honest -- a
         # mismatched mask would round the middle of the picture.
+        # ...and only when the CELL is the shape the mask was cut for. A
+        # 320x240 track is still 320 wide on a 10x10 grid, so the old test
+        # passed it and laid a mask of 180-tall rounded rects over 240-tall
+        # cells -- rounding the middle of the picture, which is exactly what
+        # the fallback to square corners exists to avoid.
         self.setProperty(
             "player_preview_masked",
             "1" if (track.get("width") == PREVIEW_TILE_WIDTH
+                    and track.get("height") == _PREVIEW_BUBBLE_H
                     and track.get("tile_width") == 10
                     and track.get("tile_height") == 10) else "")
         log.debug(f"player: tile track {track.get('width')}x{track.get('height')} "
@@ -2005,6 +2026,108 @@ class PlayerWindow(kodigui.ControlledDialog):
                 break
             label = text
         return label
+
+    def _size_tile_sheet(self):
+        """Draw the sheet at the size this track needs, once per track.
+
+        The XML can only hard-code one shape, and the size changes only when
+        the track does, so it is set here rather than on every tick of a
+        scrub. If the controls are not up yet the sheet keeps the XML's own
+        320x180-cell size, which is right for the common track and no worse
+        than it was before for the others."""
+        tiles = self._tiles
+        for cid in self.PREVIEW_TILE_IDS:
+            try:
+                control = self.getControl(cid)
+                control.setWidth(tiles["sheet_w"])
+                control.setHeight(tiles["sheet_h"])
+            except RuntimeError as exc:
+                log.debug(f"player: tile sheet {cid} not sizeable: {exc!r}")
+        self._place_curtains(tiles["pad_x"], tiles["pad_y"],
+                             tiles["draw_w"], tiles["draw_h"])
+
+    @staticmethod
+    def _curtain_rects(pad_x: int, pad_y: int, draw_w: int, draw_h: int):
+        """The two rectangles to cover, or None when nothing is left over.
+
+        Separated from the placing so the arithmetic can be tested without a
+        window; see tests/test_preview_tile_geometry.py."""
+        if pad_x > 0:
+            return ((0, 0, pad_x, _PREVIEW_BUBBLE_H),
+                    (pad_x + draw_w, 0, _PREVIEW_BUBBLE_W - pad_x - draw_w,
+                     _PREVIEW_BUBBLE_H))
+        if pad_y > 0:
+            return ((0, 0, _PREVIEW_BUBBLE_W, pad_y),
+                    (0, pad_y + draw_h, _PREVIEW_BUBBLE_W,
+                     _PREVIEW_BUBBLE_H - pad_y - draw_h))
+        return None
+
+    def _place_curtains(self, pad_x: int, pad_y: int, draw_w: int, draw_h: int):
+        """Cover whatever the fit left over, so no second frame shows.
+
+        The window that clips is a fixed 320x180 and the sheet is ONE
+        texture, so a cell drawn smaller than the window leaves the cell
+        beside it visible in the margin. Only one axis is ever short --
+        the fit scales by whichever of the two binds -- so a single pair of
+        bars covers either case: left and right when the cell was scaled
+        down to fit the height, top and bottom when it was scaled to fit the
+        width. A 320x180 cell leaves nothing over and the pair is hidden."""
+        rects = self._curtain_rects(pad_x, pad_y, draw_w, draw_h)
+        if rects is None:
+            self.setProperty("player_preview_curtains", "")
+            return
+        for cid, (x, y, w, h) in zip(self.PREVIEW_CURTAIN_IDS, rects):
+            try:
+                control = self.getControl(cid)
+                control.setPosition(x, y)
+                control.setWidth(max(0, w))
+                control.setHeight(max(0, h))
+            except RuntimeError as exc:
+                log.debug(f"player: curtain {cid} not placeable: {exc!r}")
+                self.setProperty("player_preview_curtains", "")
+                return
+        self.setProperty("player_preview_curtains", "1")
+
+    @staticmethod
+    def _tile_geometry(track: dict):
+        """How big to draw the whole sheet, and where to sit it.
+
+        The skin gives the bubble a fixed 320x180 window and Kodi has no
+        source rectangle, so a cell is shown by drawing the ENTIRE sheet
+        oversized inside a container that clips. That only works while the
+        drawn cell and the window agree -- and they do not, because the
+        server cuts thumbnails at the file's own stored aspect. 320x180 is
+        merely the commonest cell, not the only one: 320x240, 320x232,
+        320x174 and 320x160 all occur.
+
+        So the sheet is scaled to FIT: the largest whole-pixel cell that fits
+        in the bubble, the sheet drawn at that cell size times the grid, and
+        the remainder split as a centred margin. A 4:3 cell lands 240x180
+        with pillars, a 2:1 cell 320x160 with bars. Nothing is cropped,
+        nothing is stretched, and the bubble does not change size, so the
+        timecode and chapter name below it stay where they are.
+
+        Returns None for a track whose numbers cannot describe a grid."""
+        cell_w = track.get("width") or 0
+        cell_h = track.get("height") or 0
+        cols = track.get("tile_width") or 0
+        rows = track.get("tile_height") or 0
+        if not (cell_w > 0 and cell_h > 0 and cols > 0 and rows > 0):
+            return None
+        # Rounded, not floored: a half-pixel lost per cell is 5px of drift
+        # by the tenth row, which is visible. The margin then absorbs
+        # whatever rounding did, so the cell stays centred either way.
+        scale = min(_PREVIEW_BUBBLE_W / cell_w, _PREVIEW_BUBBLE_H / cell_h)
+        draw_w = max(1, int(round(cell_w * scale)))
+        draw_h = max(1, int(round(cell_h * scale)))
+        return {
+            "draw_w": draw_w,
+            "draw_h": draw_h,
+            "sheet_w": draw_w * cols,
+            "sheet_h": draw_h * rows,
+            "pad_x": (_PREVIEW_BUBBLE_W - draw_w) // 2,
+            "pad_y": (_PREVIEW_BUBBLE_H - draw_h) // 2,
+        }
 
     def _tile_path(self, index: int) -> str:
         return os.path.join(
@@ -2188,12 +2311,17 @@ class PlayerWindow(kodigui.ControlledDialog):
             # scrub until it is.
             self.setProperty("player_preview_ready", "")
             return
-        cell_w = self._tiles["width"]
-        cell_h = self._tiles["height"]
         row, col = divmod(cell, cols)
+        # Offsets are in DRAWN pixels, not the cell's own: _size_tile_sheet
+        # has already scaled the sheet to fit the bubble, so a row is
+        # draw_h on screen whatever the file was cut at. The pad centres
+        # whatever the fit left over.
+        tiles = self._tiles
         for cid in self.PREVIEW_TILE_IDS:
             try:
-                self.getControl(cid).setPosition(-col * cell_w, -row * cell_h)
+                self.getControl(cid).setPosition(
+                    tiles["pad_x"] - col * tiles["draw_w"],
+                    tiles["pad_y"] - row * tiles["draw_h"])
             except RuntimeError:
                 return
         self.setProperty("player_preview_image", self._tile_path(sheet))

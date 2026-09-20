@@ -655,7 +655,16 @@
                              only lines up when the server's grid really is
                              the 10x10 of 320x180 it was built for. Any other
                              track falls back to square corners rather than
-                             rounding in the wrong places. -->
+                             rounding in the wrong places.
+
+                             The 3200x1800 below is the COMMON case only, a
+                             10x10 grid of 320x180 cells. A cell is cut at
+                             the file's own stored aspect, so 320x240 and
+                             320x160 tracks exist too; player.py sizes and
+                             positions these two controls per track so the
+                             cell is scaled to fit the 320x180 window and
+                             centred in it. Treat the numbers here as the
+                             starting shape, not the truth. -->
                         <control type="image" id="9114">
                             <posx>0</posx>
                             <posy>0</posy>
@@ -676,6 +685,36 @@
                         </control>
                     </control>
                 </control>
+                    <!-- The two curtains. The clipping window is a fixed
+                         320x180 and cannot be resized from Python (a
+                         grouplist is the thing that clips, and getControl()
+                         will not return one), so when a cell is scaled to
+                         FIT that window there is margin left over, and the
+                         sheet is one texture: the NEIGHBOURING cell shows
+                         through the margin. These cover it, in the plate's
+                         own colour, so the bubble reads as one surface.
+                         Only one axis ever has margin, so one pair does
+                         both jobs; player.py gives them their rectangles
+                         per track and hides them on a 320x180 cell, which
+                         has no margin at all. -->
+                    <control type="image" id="9123">
+                        <posx>0</posx>
+                        <posy>0</posy>
+                        <width>0</width>
+                        <height>180</height>
+                        <colordiffuse>0xD9000000</colordiffuse>
+                        <texture>white-square.png</texture>
+                        <visible>!String.IsEmpty(Window.Property(player_preview_curtains))</visible>
+                    </control>
+                    <control type="image" id="9124">
+                        <posx>0</posx>
+                        <posy>0</posy>
+                        <width>0</width>
+                        <height>180</height>
+                        <colordiffuse>0xD9000000</colordiffuse>
+                        <texture>white-square.png</texture>
+                        <visible>!String.IsEmpty(Window.Property(player_preview_curtains))</visible>
+                    </control>
                 </control>
                 <control type="image" id="9115">
                     <posx>0</posx>
