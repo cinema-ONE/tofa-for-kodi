@@ -995,6 +995,12 @@ class MediaServerClient:
             "GET", f"/api/v1/stream/s/{session_id}/subtitles/{index}/{name}",
             params={"st": session_token}, want_response=True)
 
+    def session_font(self, session_id: str, session_token: str, index: int) -> Any:
+        """One of the file's attached fonts, as the raw Response."""
+        return self._request(
+            "GET", f"/api/v1/stream/s/{session_id}/fonts/{index}",
+            params={"st": session_token}, want_response=True)
+
     def seek_stream(self, session_id: str, session_token: str, position_ms: int) -> Any:
         """Re-cut an active HLS session at `position_ms`, returning a fresh
         `stream_url` and the `start_position_ticks` it actually landed on

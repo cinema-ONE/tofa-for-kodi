@@ -54,6 +54,8 @@ class Fake:
     _external_subtitle_url = PlayerWindow._external_subtitle_url
     _session_timed_ass = PlayerWindow._session_timed_ass
     _is_vobsub_sidecar = staticmethod(PlayerWindow._is_vobsub_sidecar)
+    _install_session_fonts = PlayerWindow._install_session_fonts
+    _fonts_session = None
     _seek_via_session = PlayerWindow._seek_via_session
     STATE_OPENING = PlayerWindow.STATE_OPENING
 

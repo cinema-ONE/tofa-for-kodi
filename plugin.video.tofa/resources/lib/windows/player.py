@@ -317,6 +317,11 @@ _STATS_MIN_W = 200
 _STATS_MAX_W = 1500
 _STATS_CENTRE_X = 960
 
+# Attached fonts are fetched whole at subtitle load; a release carrying
+# dozens of them should not stall it.
+FONT_BUDGET_BYTES = 32 * 1024 * 1024
+_FONT_EXTENSIONS = (".ttf", ".ttc", ".otf")
+
 
 def _actions(*names: str) -> frozenset:
     """The xbmcgui.ACTION_* ids that actually exist in this Kodi.
@@ -334,6 +339,14 @@ def _actions(*names: str) -> frozenset:
         else:
             ids.add(value)
     return frozenset(ids)
+
+
+def font_file_name(filename, index) -> str:
+    """A safe name for an attached font, with an extension Kodi will load."""
+    name = os.path.basename(str(filename or "").replace("\\", "/")).strip().lstrip(".")
+    name = re.sub(r'[<>:"|?*\x00-\x1f]', "_", name) or "font-%s" % index
+    root, ext = os.path.splitext(name)
+    return root + ext.lower() if ext.lower() in _FONT_EXTENSIONS else name + ".ttf"
 
 
 def _format_time(total_ms: int) -> str:
@@ -792,6 +805,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # server subtitle index -> the Kodi slot setSubtitles() turned it into,
         # and which server track is on. See _select_subtitle.
         self._loaded_subtitle_slots: dict = {}
+        self._fonts_session = None
         self._active_subtitle_index = None
         # Where to seek once the first frame is up, or None. See
         # _start_playback() for why this can't just be self.resume_ms.
@@ -4026,16 +4040,16 @@ class PlayerWindow(kodigui.ControlledDialog):
         """The server's own delivery of a track, in the format Kodi can read.
 
         `.ass` when the server offers it: the script arrives as authored, so
-        Kodi draws it as it draws an embedded ASS track, minus any fonts
-        attached to the file. On a cut session it goes through
-        _session_timed_ass first. `.vtt` for other text (tracks.delivered_format).
+        Kodi draws it as it draws an embedded ASS track, with the file's
+        attached fonts fetched first. On a cut session it goes through
+        _session_timed_ass. `.vtt` for other text (tracks.delivered_format).
 
-        A VobSub sidecar cannot be a `.vtt` at all -- it is a pair of bitmap files, and the server answers 400 for
-        any bitmap track asked for as WebVTT. Server 0.9.32 serves that pair
-        as `full.idx` plus a companion `full.sub`, and we ask for the `.idx`
-        half only: Kodi DERIVES the `.sub` itself (`CVideoPlayer::
-        AddSubtitleFile` -> `CUtil::GetVobSubSubFromIdx` ->
-        `URIUtils::ReplaceExtension`).
+        A VobSub sidecar cannot be a `.vtt` at all -- it is a pair of bitmap
+        files, and the server answers 400 for any bitmap track asked for as
+        WebVTT. Server 0.9.32 serves that pair as `full.idx` plus a companion
+        `full.sub`, and we ask for the `.idx` half only: Kodi DERIVES the
+        `.sub` itself (`CVideoPlayer::AddSubtitleFile` ->
+        `CUtil::GetVobSubSubFromIdx` -> `URIUtils::ReplaceExtension`).
 
         That derivation is why the extension has to sit where it does. For a
         URL, ReplaceExtension goes through `CURL`, which holds the query
@@ -4063,6 +4077,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         if self._is_vobsub_sidecar(track):
             name = "full.idx"
         elif tracks.delivered_format(track or {}) == "ASS":
+            self._install_session_fonts(session_id, token)
             name = "full.ass"
             if self._time_offset_ms:
                 path = self._session_timed_ass(session_id, token, server_index)
@@ -4074,6 +4089,33 @@ class PlayerWindow(kodigui.ControlledDialog):
         return self.client.resolve_url(
             f"/api/v1/stream/s/{session_id}/subtitles/{server_index}"
             f"/{name}?st={urllib.parse.quote(str(token))}")
+
+    def _install_session_fonts(self, session_id, token) -> None:
+        """The file's attached fonts, into the folder Kodi's libass reads.
+
+        Kodi extracts them itself only from a whole file; a converted stream
+        has none, so an ASS script falls back to Kodi's default font. Kodi
+        empties the folder when a player starts, not when a re-cut reopens."""
+        nego = self._nego or {}
+        fonts = nego.get("font_attachments") or []
+        if not fonts or playback.is_whole_file(nego) or self._fonts_session == session_id:
+            return
+        self._fonts_session = session_id
+        folder = xbmcvfs.translatePath("special://temp/fonts/")
+        written = 0
+        for font in fonts:
+            if written >= FONT_BUDGET_BYTES:
+                log.warning("player: attached fonts over budget; the rest use Kodi's font")
+                break
+            name = font_file_name(font.get("filename"), font.get("index"))
+            try:
+                body = self.client.session_font(session_id, token, font["index"]).content
+                os.makedirs(folder, exist_ok=True)
+                with open(os.path.join(folder, name), "wb") as f:
+                    f.write(body)
+                written += len(body)
+            except Exception as exc:                        # noqa: BLE001
+                log.warning(f"player: attached font {name} not fetched: {exc!r}")
 
     def _session_timed_ass(self, session_id, token, server_index) -> str:
         """`full.ass` moved onto this session's clock as a local file, or "".
@@ -4093,7 +4135,8 @@ class PlayerWindow(kodigui.ControlledDialog):
                     os.remove(os.path.join(folder, old))
                 except OSError:
                     pass
-            path = os.path.join(folder, "%s-%s-%d.ass" % (session_id, server_index, self._time_offset_ms))
+            name = "%s-%s-%d.ass" % (session_id, server_index, self._time_offset_ms)
+            path = os.path.join(folder, name)
             with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as f:
                 f.write(text)
             return path
