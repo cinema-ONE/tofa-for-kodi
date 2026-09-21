@@ -3044,7 +3044,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         needs MORE than one track, subtitles only need one, because
         subtitles always have an implicit "Off" to switch back to."""
         buttons = []
-        if self._subtitle_tracks:
+        if self._offered_subtitle_tracks():
             buttons.append(self.SUBTITLES_ID)
         if len(self._audio_tracks) > 1:
             buttons.append(self.AUDIO_ID)
@@ -3873,6 +3873,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # `ger` preference against a `deu` track is a MATCH, so subtitles
         # must stay off. Comparing spellings would have turned every
         # correctly-matched foreign audio track into an unwanted subtitle.
+        offered = self._offered_subtitle_tracks()
         try:
             if always_subs:
                 # Full subtitles, down the server 0.9.33 chain: a preferred
@@ -3886,13 +3887,13 @@ class PlayerWindow(kodigui.ControlledDialog):
                 # plain track beats an SDH one, and a text track beats a
                 # picture one -- langcodes ranks all three.
                 track = (langcodes.first_subtitle_by_language(
-                    self._subtitle_tracks, sub_langs) if sub_langs else None)
+                    offered, sub_langs) if sub_langs else None)
                 if track is None and playing_lang:
                     track = langcodes.first_subtitle_by_language(
-                        self._subtitle_tracks, [playing_lang])
+                        offered, [playing_lang])
                 if track is None:
                     track = langcodes.first_untagged_subtitle(
-                        self._subtitle_tracks)
+                        offered)
             else:
                 # OFF does not mean silence: the disc's FORCED track for the
                 # language being heard still gets shown, so the lines the
@@ -3901,7 +3902,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                 # hand. Matched to the audio's language rather than to a
                 # subtitle preference, which is the pairing that makes sense.
                 track = langcodes.forced_subtitle_for(
-                    self._subtitle_tracks, playing_lang)
+                    offered, playing_lang)
             if track is None:
                 # Nothing suitable. Turning on an arbitrary track would be
                 # worse than leaving them off.
@@ -3973,6 +3974,11 @@ class PlayerWindow(kodigui.ControlledDialog):
                 len(streams), len(native), self._loaded_subtitle_slots,
                 self._active_subtitle_index))
 
+    def _offered_subtitle_tracks(self) -> list:
+        """The server's subtitle tracks, less pictures it would have to prepare first."""
+        whole = playback.is_whole_file(self._nego or {})
+        return [t for t in self._subtitle_tracks if tracks.subtitle_offered(t, whole)]
+
     def _active_subtitle_track(self):
         """The server track the viewer currently has ON, or None.
 
@@ -4010,8 +4016,8 @@ class PlayerWindow(kodigui.ControlledDialog):
 
         So: use the stream when there IS one, and otherwise hand Kodi the
         server's own delivery (_external_subtitle_url), or, for a picture
-        track, fetch it in the background (_load_picture_subtitle). A 503
-        right after the session opens is extraction still running.
+        track the server reads as `ready`, fetch it in the background
+        (_load_picture_subtitle). An unready one is never asked for.
         """
         self._picture_subtitle_wanted = None
         track = next((t for t in self._subtitle_tracks
@@ -4032,6 +4038,10 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self._active_subtitle_index = server_index
                 return self._switch_subtitle(slot)
         if tracks.delivered_format(track or {}) == "PGS":
+            if tracks.picture_unready(track):
+                log.info(f"player: picture subtitle {server_index} is not ready on the server; "
+                         "not asking for it")
+                return False
             return self._load_picture_subtitle(server_index)
         url = self._external_subtitle_url(server_index)
         if not url:
@@ -5476,9 +5486,9 @@ class PlayerWindow(kodigui.ControlledDialog):
                     picks.append(("slot", i))
                     if on:
                         selected = len(rows) - 1
-                extra = [t for t in self._subtitle_tracks if t.get("external")]
+                extra = [t for t in self._offered_subtitle_tracks() if t.get("external")]
             else:
-                extra = list(self._subtitle_tracks)
+                extra = self._offered_subtitle_tracks()
             if extra:
                 labels = tracks.disambiguate(
                     [tracks.subtitle_track_label(t) for t in extra])

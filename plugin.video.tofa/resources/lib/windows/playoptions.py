@@ -31,7 +31,7 @@ from typing import Any, Optional
 import xbmcgui
 
 from . import kodigui, theme
-from .. import log, tracks
+from .. import log, playback, tracks
 from ..profile import DEFAULT_AUDIO_CODECS
 
 #: Mirrors player.py: the panel must rank tracks the way playback will.
@@ -162,7 +162,9 @@ def build_sections(info: dict[str, Any], selection: Selection,
         sections.append({"key": AUDIO, "title": "Audio",
                          "options": options, "selected": chosen})
 
-    subs = info.get("subtitle_tracks") or []
+    whole = playback.is_whole_file(info)
+    subs = [t for t in info.get("subtitle_tracks") or []
+            if tracks.subtitle_offered(t, whole)]
     if subs:
         rows = tracks.disambiguate([tracks.subtitle_track_label(t) for t in subs])
         options = [

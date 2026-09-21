@@ -73,6 +73,7 @@ class Fake:
 
     apply_track_selection = PlayerWindow.apply_track_selection
     _apply_language_preferences = PlayerWindow._apply_language_preferences
+    _offered_subtitle_tracks = PlayerWindow._offered_subtitle_tracks
     # staticmethod() is load-bearing: bound as a plain function it would take
     # `self` as its first argument, raise TypeError, and be swallowed by the
     # very except-clause under test -- which looks exactly like the bug.
@@ -86,6 +87,7 @@ class Fake:
         self._audio_order = [t["index"] for t in AUDIO]
         self._subtitle_order = [t["index"] for t in SUBS]
         self.client = object()
+        self._nego = {}
 
     # -- stubbed collaborators -----------------------------------------
     def _playback_prefs(self):

@@ -75,6 +75,27 @@ def delivered_format(track: dict[str, Any]) -> str:
     return _SUBTITLE_DELIVERED[offered[0]]
 
 
+def picture_unready(track: dict[str, Any]) -> bool:
+    """A picture track whose server file does not read `ready` yet.
+
+    Asking for one starts a preparation that a stopped session cuts short,
+    and the short file is then served as complete. So it is never asked for."""
+    if delivered_format(track) != "PGS":
+        return False
+    rep = next((r for r in track.get("representations") or []
+                if str(r.get("format") or "").lower() == "pgs"), {})
+    return rep.get("state") != "ready"
+
+
+def subtitle_offered(track: dict[str, Any], whole_file: bool) -> bool:
+    """Whether to offer a track: not an unready picture the server must send.
+
+    On a whole file Kodi reads an embedded track from the container itself."""
+    if not picture_unready(track):
+        return True
+    return whole_file and not track.get("external")
+
+
 #: Formats that carry position, colour and font.
 _STYLED_FORMATS = ("ASS", "SSA")
 

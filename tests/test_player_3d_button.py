@@ -33,8 +33,10 @@ class Capsule:
     SUBTITLES_ID, AUDIO_ID, STEREO_ID = P.SUBTITLES_ID, P.AUDIO_ID, P.STEREO_ID
     EPISODES_ID, QUALITY_ID = P.EPISODES_ID, P.QUALITY_ID
     ADJUST_ID, STATS_ID = P.ADJUST_ID, P.STATS_ID
+    _offered_subtitle_tracks = P._offered_subtitle_tracks
 
     def __init__(self, *, subtitles=1, audio=2, episode=False):
+        self._nego = {}
         self._subtitle_tracks = [{}] * subtitles
         self._audio_tracks = [{}] * audio
         self._episode = episode
