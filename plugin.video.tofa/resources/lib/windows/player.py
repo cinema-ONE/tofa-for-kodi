@@ -4025,12 +4025,11 @@ class PlayerWindow(kodigui.ControlledDialog):
     def _external_subtitle_url(self, server_index) -> str:
         """The server's own delivery of a track, in the format Kodi can read.
 
-        `.ass` for a track the server offers as ASS, so Kodi draws its
-        authored styling under the viewer's own subtitle settings (8.4 now
-        keeps authored ASS styling); `.vtt` for other text (tracks.delivered_format).
+        `.ass` when the server offers it: the script arrives as authored, so
+        Kodi draws it as it draws an embedded ASS track, minus any fonts
+        attached to the file. `.vtt` for other text (tracks.delivered_format).
 
-        A VobSub sidecar is the one exception, and it cannot be a `.vtt` at
-        all -- it is a pair of bitmap files, and the server answers 400 for
+        A VobSub sidecar cannot be a `.vtt` at all -- it is a pair of bitmap files, and the server answers 400 for
         any bitmap track asked for as WebVTT. Server 0.9.32 serves that pair
         as `full.idx` plus a companion `full.sub`, and we ask for the `.idx`
         half only: Kodi DERIVES the `.sub` itself (`CVideoPlayer::

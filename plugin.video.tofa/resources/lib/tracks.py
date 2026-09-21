@@ -56,18 +56,17 @@ def delivered_format(track: dict[str, Any]) -> str:
     """The format this client will actually FETCH the track in, or "".
 
     `representations` is a menu (an `ass` track offers `ass` and `vtt`).
-    Bitmaps come as themselves, a styled track as ASS so Kodi keeps its
-    authored styling under the viewer's own subtitle settings, and other
-    text as WebVTT. PlayerWindow._external_subtitle_url follows this rule.
-    Empty for a server older than 0.10.0, which sends no representations.
+    Bitmaps come as themselves, a styled track as its own ASS script, and
+    other text as WebVTT. PlayerWindow._external_subtitle_url follows this
+    rule. Empty for a server older than 0.10.0, which sends no representations.
     """
     offered = [str(r.get("format") or "").lower()
                for r in (track.get("representations") or [])]
     offered = [f for f in offered if f in _SUBTITLE_DELIVERED]
     if not offered:
         return ""
-    # Bitmap formats are fetched as themselves -- there is no text rendition
-    # of a picture, and the server 400s a bitmap track asked for as WebVTT.
+    # Fetched as themselves: a picture has no text rendition (the server
+    # 400s a bitmap asked for as WebVTT), and ASS keeps its styling.
     for fmt in ("vobsub", "pgs", "ass"):
         if fmt in offered:
             return _SUBTITLE_DELIVERED[fmt]
