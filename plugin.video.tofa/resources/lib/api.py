@@ -989,6 +989,12 @@ class MediaServerClient:
             params["resume_ticks"] = resume_ticks
         return self._get(f"/api/v1/stream/{file_id}/info", params=params)
 
+    def session_subtitle(self, session_id: str, session_token: str, index: int, name: str) -> Any:
+        """A session's subtitle file as the raw Response: its headers carry the time basis."""
+        return self._request(
+            "GET", f"/api/v1/stream/s/{session_id}/subtitles/{index}/{name}",
+            params={"st": session_token}, want_response=True)
+
     def seek_stream(self, session_id: str, session_token: str, position_ms: int) -> Any:
         """Re-cut an active HLS session at `position_ms`, returning a fresh
         `stream_url` and the `start_position_ticks` it actually landed on

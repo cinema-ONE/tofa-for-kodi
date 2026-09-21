@@ -6,11 +6,9 @@ as -- measured across 40 files on a 0.10.0 server: `subrip` offers `vtt`
 alone, PGS offers `pgs`, a VobSub sidecar offers `vobsub`, and an `ass`
 track offers **both** `ass` and `vtt`.
 
-The choice is ours, and PlayerWindow._external_subtitle_url makes it: `.vtt`
-for anything that is not a VobSub sidecar, deliberately, because ASS carries
-styling the skin has no say over. So an ASS track is taken as plain text ON
-PURPOSE -- and that is invisible to a viewer, which is why it belongs in the
-stats panel.
+The choice is ours, made in PlayerWindow._external_subtitle_url: a styled
+track as `.ass`, so Kodi keeps its authored styling, other text as `.vtt`.
+The stats panel warns only when a styled source still arrives as plain text.
 
 Contract 2 (`subtitle_contract_version=2`) adds `representations[]`, whose
 `format` is the delivered one. It is purely additive -- same tracks, same
@@ -66,11 +64,13 @@ for codec, fmts, want in (
         ("subrip",            ["vtt"],        "WebVTT"),
         ("hdmv_pgs_subtitle", ["pgs"],        "PGS"),
         ("dvd_subtitle",      ["vobsub"],     "VobSub"),
-        ("ass",               ["ass", "vtt"], "WebVTT"),
+        # A styled track comes as ASS, so Kodi keeps its styling.
+        ("ass",               ["ass", "vtt"], "ASS"),
         # Order in the menu must not decide it -- the rule is ours.
-        ("ass",               ["vtt", "ass"], "WebVTT"),
-        # Offered ONLY as ass, we would have to take it as ass.
-        ("ass",               ["ass"],        "ASS")):
+        ("ass",               ["vtt", "ass"], "ASS"),
+        ("ass",               ["ass"],        "ASS"),
+        # Offered only as vtt, vtt it is.
+        ("ass",               ["vtt"],        "WebVTT")):
     check(f"{codec} offered {fmts} is fetched as {want}",
           tracks.delivered_format(track(codec, fmts)) == want,
           repr(tracks.delivered_format(track(codec, fmts))))
@@ -98,11 +98,11 @@ check("an external sidecar still says so", detail == "SRT · External", repr(det
 # 7. The stats panel's warning is a real DOWNGRADE, not merely a difference.
 #    Every SRT arrives as WebVTT and loses nothing; a styled track flattened
 #    to plain text loses what the author wrote.
-check("styling offered and we take vtt IS a loss",
-      tracks.subtitle_style_lost(track("ass", ["ass", "vtt"])))
-check("ssa the same", tracks.subtitle_style_lost(track("ssa", ["ssa", "vtt"])))
-check("offered ONLY as ass, nothing is lost",
-      not tracks.subtitle_style_lost(track("ass", ["ass"])))
+check("styling offered: we take ass, nothing is lost",
+      not tracks.subtitle_style_lost(track("ass", ["ass", "vtt"])))
+check("a styled source offered only as vtt IS a loss",
+      tracks.subtitle_style_lost(track("ass", ["vtt"])))
+check("ssa the same", tracks.subtitle_style_lost(track("ssa", ["vtt"])))
 check("srt is not styled to begin with",
       not tracks.subtitle_style_lost(track("subrip", ["vtt"])))
 check("pgs is a picture, nothing to flatten",
@@ -115,8 +115,8 @@ check("an empty track is NOT", not tracks.subtitle_style_lost({}))
 from resources.lib.windows import playerstats
 check("no subtitle gives no pair", playerstats._subtitle_pair(None) == ("", ""))
 check("an old server gives no pair", playerstats._subtitle_pair(track("ass")) == ("", ""))
-check("an ASS track pairs ASS with WebVTT",
-      playerstats._subtitle_pair(track("ass", ["ass", "vtt"])) == ("ASS", "WebVTT"),
+check("an ASS track pairs ASS with ASS",
+      playerstats._subtitle_pair(track("ass", ["ass", "vtt"])) == ("ASS", "ASS"),
       repr(playerstats._subtitle_pair(track("ass", ["ass", "vtt"]))))
 check("a PGS pairs with itself",
       playerstats._subtitle_pair(track("hdmv_pgs_subtitle", ["pgs"])) == ("PGS", "PGS"),

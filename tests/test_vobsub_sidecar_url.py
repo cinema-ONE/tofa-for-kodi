@@ -63,6 +63,7 @@ class Fake:
     """Only what _external_subtitle_url actually reaches."""
     _external_subtitle_url = PlayerWindow._external_subtitle_url
     _is_vobsub_sidecar = staticmethod(PlayerWindow._is_vobsub_sidecar)
+    _time_offset_ms = 0                 # not a cut session
 
     def __init__(self, tracks_):
         self._subtitle_tracks = list(tracks_)
@@ -91,6 +92,18 @@ def run():
     url = win._external_subtitle_url(3)
     check("an embedded dvd_subtitle is left on full.vtt",
           url.partition("?")[0].endswith("/subtitles/3/full.vtt"), url)
+
+    # 4b. A styled track the server offers as ASS is fetched as ASS.
+    win_ass = Fake([{"index": 5, "codec": "ass", "external": False,
+                     "representations": [{"format": "ass"}, {"format": "vtt"}]},
+                    {"index": 6, "codec": "ass", "external": False,
+                     "representations": [{"format": "vtt"}]}])
+    url = win_ass._external_subtitle_url(5)
+    check("an ASS track offered as ASS is fetched as full.ass",
+          url.partition("?")[0].endswith("/subtitles/5/full.ass"), url)
+    url = win_ass._external_subtitle_url(6)
+    check("...but one offered only as vtt stays on full.vtt",
+          url.partition("?")[0].endswith("/subtitles/6/full.vtt"), url)
 
     # 4. Text tracks are untouched by any of this.
     url = win._external_subtitle_url(1001)
