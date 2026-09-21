@@ -1479,7 +1479,9 @@ def episode_card(list_id: int) -> tuple[str, str]:
     landscape 330x186 still instead of a portrait poster.
 
     ListItem properties consumed: Art(thumb), Property(has_thumb),
-    Property(caption), Property(watched), Label (title)."""
+    Property(caption), Property(watched), Property(unaired),
+    Property(nil_badge), Property(nil_glyph), Property(spoiler), Label
+    (title)."""
     zoom_center = "{0},{1}".format(EPISODE_THUMB_W // 2, EPISODE_THUMB_H // 2)
     zoom_anim = (
         '\n                            <animation effect="zoom" start="100" end="104.5" '
@@ -1533,9 +1535,32 @@ def episode_card(list_id: int) -> tuple[str, str]:
     _BADGE_Y = _WATCHED_Y + (_WATCHED_SIZE - _BADGE_H) // 2
     _WATCHED_X = EPISODE_THUMB_W - CHIP_INSET - _WATCHED_SIZE
     _PROG_Y = EPISODE_THUMB_H - _PROG_H
+    # "Not in library": the Apple TV app's pill for an episode you never had,
+    # books glyph then words, top-leading where the unaired badge sits (the
+    # two never show together -- detail.py hands a no-files episode to this
+    # one). Sized off the app, not off our unaired badge: measured ~182x33 on
+    # a card the same width as ours (332 there, 330 here), its words ~116
+    # wide. Ours: the metadata font puts "Not in library" at 124px (Inter
+    # Tight 23, measured), in a 180x34 capsule -- 10 pad, a 26 glyph box at
+    # the 24 icon size, 6, a 126 box for the words, 12 pad.
+    _NIL_W, _NIL_H = 180, 34
+    _NIL_X = _NIL_Y = CHIP_INSET
+    _NIL_GLYPH_X = _NIL_X + 10
+    _NIL_TEXT_X = _NIL_GLYPH_X + 26 + 6
 
     def _overlays(anim: str) -> str:
         return f"""
+                        <!-- An episode not in the library sits on the SERIES
+                             backdrop, dimmed, as the Apple TV app draws it;
+                             dimmed so it reads as unavailable at a glance and
+                             the pill stays legible over bright key art. -->
+                        <control type="image">
+                            <visible>!String.IsEmpty(ListItem.Property(nil_badge))</visible>
+                            <width>{EPISODE_THUMB_W}</width>
+                            <height>{EPISODE_THUMB_H}</height>
+                            <colordiffuse>{T.BADGE_SCRIM_SOFT}</colordiffuse>
+                            <texture diffuse="episode-mask.png">white-square.png</texture>{anim}
+                        </control>
                         <control type="image">
                             <visible>!String.IsEmpty(ListItem.Property(progress_fill))</visible>
                             <posx>0</posx>
@@ -1586,6 +1611,38 @@ def episode_card(list_id: int) -> tuple[str, str]:
                             <font>{T.FONT_MICRO}</font>
                             <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                             <label>$INFO[ListItem.Property(unaired)]</label>{anim}
+                        </control>
+                        <control type="image">
+                            <visible>!String.IsEmpty(ListItem.Property(nil_badge))</visible>
+                            <posx>{_NIL_X}</posx>
+                            <posy>{_NIL_Y}</posy>
+                            <width>{_NIL_W}</width>
+                            <height>{_NIL_H}</height>
+                            <colordiffuse>{T.BADGE_SCRIM_SOFT}</colordiffuse>
+                            <texture border="{_NIL_H // 2}">capsule-h{_NIL_H}.png</texture>{anim}
+                        </control>
+                        <control type="label">
+                            <visible>!String.IsEmpty(ListItem.Property(nil_badge))</visible>
+                            <posx>{_NIL_GLYPH_X}</posx>
+                            <posy>{_NIL_Y}</posy>
+                            <width>26</width>
+                            <height>{_NIL_H}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_icons_24</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[ListItem.Property(nil_glyph)]</label>{anim}
+                        </control>
+                        <control type="label">
+                            <visible>!String.IsEmpty(ListItem.Property(nil_badge))</visible>
+                            <posx>{_NIL_TEXT_X}</posx>
+                            <posy>{_NIL_Y}</posy>
+                            <width>{_NIL_X + _NIL_W - 12 - _NIL_TEXT_X}</width>
+                            <height>{_NIL_H}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[ListItem.Property(nil_badge)]</label>{anim}
                         </control>
                         <control type="label">
                             <visible>!String.IsEmpty(ListItem.Property(spoiler))</visible>

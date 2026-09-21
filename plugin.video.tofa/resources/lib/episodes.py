@@ -75,10 +75,14 @@ def title_or_number(ep: dict) -> str:
                        (ep or {}).get("episode_number_end"))
     return "Episode {0}".format(body) if body else ""
 
-#: What a season's own row says about whether you can watch it. 7.1 asks for
-#: WORDS here and rules out the alternatives by name -- not a faded pill, an
-#: icon, or a zero count, because none of those distinguishes "nothing here"
-#: from "a season you have finished".
+#: Whether a season holds anything you can watch. The one distinction that
+#: must survive every presentation of it is "nothing here" against "a season
+#: you have finished": a bare zero count reads the same for both.
+#:
+#: Where it is SAID moved on 2026-09-21, following the Apple TV app's update
+#: that day. The sidebar row now carries a mark (see season_mark), and the
+#: words themselves live in the season's header. That departs from 7.1, which
+#: wants the words on the row; internal-docs/DIVERGENCES.md has why.
 SEASON_IN_LIBRARY = ""          #: something is playable; say nothing
 SEASON_NOT_IN_LIBRARY = "none"  #: episodes are known, no files at all
 SEASON_MISSING = "missing"      #: files are recorded, none of them available
@@ -107,4 +111,65 @@ def season_availability(season: dict) -> str:
     if any(f.get("available") for f in files):
         return SEASON_IN_LIBRARY
     return SEASON_MISSING
+
+
+#: The season sidebar's trailing mark, which replaced the episode count on
+#: 2026-09-21 to match the Apple TV app. Read off that app, one season in each
+#: state: the row you have SELECTED shows a dot; otherwise a finished season
+#: shows a tick, one in progress says how many are left, and one with nothing
+#: in the library shows a circled plus -- which it keeps even when selected,
+#: since "selected" is not news about a season you cannot play.
+SEASON_MARK_NONE = ""             #: an unloaded shell: no claim, no mark
+SEASON_MARK_SELECTED = "selected"
+SEASON_MARK_ADD = "add"           #: nothing in the library
+SEASON_MARK_MISSING = "missing"   #: recorded files, none available (ours)
+SEASON_MARK_COMPLETE = "complete"
+SEASON_MARK_LEFT = "left"         #: carries a count
+
+
+def season_tally(season: dict, progress_map: dict) -> tuple[int, int]:
+    """(playable, watched) for one season.
+
+    Playable is an episode with an available file, and the file is the FIRST
+    available one -- the same choice the episode grid and next-up make, so all
+    three count the same thing. The server keeps one timeline per title rather
+    than per version, so which version's record is read does not change the
+    answer (measured 2026-09-20, the 7.7 check).
+
+    `progress_map` must COVER every playable file here: a file missing from it
+    counts as unwatched, which is only true if it was actually asked about.
+    See progress.fetch_many on why that matters.
+    """
+    playable = watched = 0
+    for ep in season.get("episodes") or []:
+        avail = [f for f in (ep.get("files") or []) if f.get("available")]
+        if not avail:
+            continue
+        playable += 1
+        record = (progress_map or {}).get(avail[0].get("id"))
+        if record and record.get("completed"):
+            watched += 1
+    return playable, watched
+
+
+def season_mark(season: dict, progress_map: dict, *, selected: bool) -> tuple[str, int]:
+    """(mark, count) for a season's sidebar row; count is only for LEFT.
+
+    Availability outranks selection: a season you cannot play keeps its
+    circled plus (or our missing mark) whether or not it is the one selected,
+    and a shell says nothing at all rather than guessing.
+    """
+    state = season_availability(season)
+    if state == SEASON_UNLOADED:
+        return SEASON_MARK_NONE, 0
+    if state == SEASON_NOT_IN_LIBRARY:
+        return SEASON_MARK_ADD, 0
+    if state == SEASON_MISSING:
+        return SEASON_MARK_MISSING, 0
+    if selected:
+        return SEASON_MARK_SELECTED, 0
+    playable, watched = season_tally(season, progress_map)
+    if playable and watched >= playable:
+        return SEASON_MARK_COMPLETE, 0
+    return SEASON_MARK_LEFT, playable - watched
 

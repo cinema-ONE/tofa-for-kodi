@@ -1,9 +1,11 @@
 """A season with nothing in it says so in words, not as a zero count.
 
-7.1 asks for a status BELOW the season's name and rules out the
-alternatives by name -- not a faded pill, an icon, or a zero count, because
-none of those distinguishes "nothing here" from "a season you have
-finished". We set only an episode count, which is exactly the case it names.
+A bare zero count cannot tell "nothing here" from "a season you have
+finished", and for a while an episode count was all the row said. The words
+first went on the row itself; since 2026-09-21 they lead the selected
+season's HEADER instead, following the Apple TV app's update that day, and
+the row carries a mark (see test_season_marks.py). This file still pins the
+availability states and the sentence table the header reads.
 
 The distinction the two sentences draw is the point: a season with no files
 is one you never had, while a season whose files are all unavailable is one

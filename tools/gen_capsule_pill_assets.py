@@ -171,6 +171,8 @@ _HEIGHTS = (
     24,   # episode card's unaired badge (§7.1's capsule; the real app's
           # measures ~22 tall, 24 is the nearest even height)
     28,   # card corner chips (drawn 28x28 = a true circle)
+    34,   # episode card's "Not in library" pill -- the Apple TV app's,
+          # measured ~182x33 on a card the same width as ours (2026-09-21)
     38,   # player's stats pill (§8.11, measured 38px on the reference)
     43,   # episode drawer's season chips. Was borrowing capsule-h38 at
           # border=21 -- 21px taken from a 19px arc, which is the

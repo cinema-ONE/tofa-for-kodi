@@ -498,3 +498,19 @@ msgstr ""
 msgctxt "#31126"
 msgid "Missing from disk"
 msgstr ""
+
+msgctxt "#31127"
+msgid "Season complete"
+msgstr ""
+
+msgctxt "#31128"
+msgid "No episodes"
+msgstr ""
+
+msgctxt "#31129"
+msgid "{0} left"
+msgstr ""
+
+msgctxt "#31130"
+msgid "Continue {0}"
+msgstr ""

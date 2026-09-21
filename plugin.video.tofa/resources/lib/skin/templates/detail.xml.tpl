@@ -1714,14 +1714,14 @@
                         <onright>6410</onright>
                         <orientation>vertical</orientation>
                         <itemwidth>260</itemwidth>
-                        <itemheight>78</itemheight>
+                        <itemheight>60</itemheight>
                         <scrolltime>{SCROLLTIME}</scrolltime>
-                        <itemlayout width="260" height="78">
+                        <itemlayout width="260" height="60">
                             <control type="image">
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>72</height>
+                                <height>54</height>
                                 <colordiffuse>{SURFACE_RAISED}</colordiffuse>
                                 <texture border="16">white-square-rounded.png</texture>
                             </control>
@@ -1730,16 +1730,16 @@
                                 <posx>0</posx>
                                 <posy>8</posy>
                                 <width>3</width>
-                                <height>56</height>
+                                <height>42</height>
                                 <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                                 <texture>white-square.png</texture>
                             </control>
                             <control type="label">
                                 <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>8</posy>
+                                <posy>2</posy>
                                 <width>170</width>
-                                <height>34</height>
+                                <height>54</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -1748,43 +1748,61 @@
                             <control type="label">
                                 <visible>String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>8</posy>
+                                <posy>2</posy>
                                 <width>170</width>
-                                <height>34</height>
+                                <height>54</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                                 <label>$INFO[ListItem.Label]</label>
                             </control>
+                            <!-- The trailing mark (episodes.season_mark): "N left" in words, or a
+                                 glyph: a tick, a circled plus, the missing alert, or the selected
+                                 row's dot. Both right-align on x 248, where the count used to end.
+                                 The selected row's glyph takes the accent, as its label does. -->
                             <control type="label">
-                                <posx>188</posx>
+                                <visible>!String.IsEmpty(ListItem.Property(mark_text))</visible>
+                                <posx>148</posx>
                                 <posy>2</posy>
-                                <width>60</width>
-                                <height>72</height>
+                                <width>100</width>
+                                <height>54</height>
                                 <align>right</align>
                                 <aligny>center</aligny>
-                                <font>tofa_font_metadata</font>
+                                <font>tofa_font_micro</font>
                                 <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                                <label>$INFO[ListItem.Property(count)]</label>
+                                <label>$INFO[ListItem.Property(mark_text)]</label>
                             </control>
                             <control type="label">
-                                <visible>!String.IsEmpty(ListItem.Property(availability))</visible>
-                                <posx>18</posx>
-                                <posy>40</posy>
-                                <width>224</width>
-                                <height>28</height>
+                                <visible>!String.IsEmpty(ListItem.Property(mark_icon)) + !String.IsEqual(ListItem.Property(active),1)</visible>
+                                <posx>220</posx>
+                                <posy>2</posy>
+                                <width>28</width>
+                                <height>54</height>
+                                <align>right</align>
                                 <aligny>center</aligny>
-                                <font>tofa_font_caption</font>
-                                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                                <label>$INFO[ListItem.Property(availability)]</label>
+                                <font>tofa_font_icons_19</font>
+                                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                                <label>$INFO[ListItem.Property(mark_icon)]</label>
+                            </control>
+                            <control type="label">
+                                <visible>!String.IsEmpty(ListItem.Property(mark_icon)) + String.IsEqual(ListItem.Property(active),1)</visible>
+                                <posx>220</posx>
+                                <posy>2</posy>
+                                <width>28</width>
+                                <height>54</height>
+                                <align>right</align>
+                                <aligny>center</aligny>
+                                <font>tofa_font_icons_19</font>
+                                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                                <label>$INFO[ListItem.Property(mark_icon)]</label>
                             </control>
                         </itemlayout>
-                        <focusedlayout width="260" height="78">
+                        <focusedlayout width="260" height="60">
                             <control type="image">
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>72</height>
+                                <height>54</height>
                                 <colordiffuse>{SURFACE_FAINT}</colordiffuse>
                                 <texture border="16">white-square-rounded.png</texture>
                             </control>
@@ -1793,7 +1811,7 @@
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>72</height>
+                                <height>54</height>
                                 <colordiffuse>{SURFACE_RAISED}</colordiffuse>
                                 <texture border="16">white-square-rounded.png</texture>
                             </control>
@@ -1802,7 +1820,7 @@
                                 <posx>0</posx>
                                 <posy>2</posy>
                                 <width>256</width>
-                                <height>72</height>
+                                <height>54</height>
                                 <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                                 <texture border="16">white-outline-rounded.png</texture>
                             </control>
@@ -1811,16 +1829,16 @@
                                 <posx>0</posx>
                                 <posy>8</posy>
                                 <width>3</width>
-                                <height>56</height>
+                                <height>42</height>
                                 <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                                 <texture>white-square.png</texture>
                             </control>
                             <control type="label">
                                 <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>8</posy>
+                                <posy>2</posy>
                                 <width>170</width>
-                                <height>34</height>
+                                <height>54</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
@@ -1829,35 +1847,53 @@
                             <control type="label">
                                 <visible>String.IsEqual(ListItem.Property(active),1)</visible>
                                 <posx>18</posx>
-                                <posy>8</posy>
+                                <posy>2</posy>
                                 <width>170</width>
-                                <height>34</height>
+                                <height>54</height>
                                 <aligny>center</aligny>
                                 <font>tofa_font_sidebar_label</font>
                                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                                 <label>$INFO[ListItem.Label]</label>
                             </control>
+                            <!-- The trailing mark (episodes.season_mark): "N left" in words, or a
+                                 glyph: a tick, a circled plus, the missing alert, or the selected
+                                 row's dot. Both right-align on x 248, where the count used to end.
+                                 The selected row's glyph takes the accent, as its label does. -->
                             <control type="label">
-                                <posx>188</posx>
+                                <visible>!String.IsEmpty(ListItem.Property(mark_text))</visible>
+                                <posx>148</posx>
                                 <posy>2</posy>
-                                <width>60</width>
-                                <height>72</height>
+                                <width>100</width>
+                                <height>54</height>
                                 <align>right</align>
                                 <aligny>center</aligny>
-                                <font>tofa_font_metadata</font>
+                                <font>tofa_font_micro</font>
                                 <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                                <label>$INFO[ListItem.Property(count)]</label>
+                                <label>$INFO[ListItem.Property(mark_text)]</label>
                             </control>
                             <control type="label">
-                                <visible>!String.IsEmpty(ListItem.Property(availability))</visible>
-                                <posx>18</posx>
-                                <posy>40</posy>
-                                <width>224</width>
-                                <height>28</height>
+                                <visible>!String.IsEmpty(ListItem.Property(mark_icon)) + !String.IsEqual(ListItem.Property(active),1)</visible>
+                                <posx>220</posx>
+                                <posy>2</posy>
+                                <width>28</width>
+                                <height>54</height>
+                                <align>right</align>
                                 <aligny>center</aligny>
-                                <font>tofa_font_caption</font>
+                                <font>tofa_font_icons_19</font>
                                 <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                                <label>$INFO[ListItem.Property(availability)]</label>
+                                <label>$INFO[ListItem.Property(mark_icon)]</label>
+                            </control>
+                            <control type="label">
+                                <visible>!String.IsEmpty(ListItem.Property(mark_icon)) + String.IsEqual(ListItem.Property(active),1)</visible>
+                                <posx>220</posx>
+                                <posy>2</posy>
+                                <width>28</width>
+                                <height>54</height>
+                                <align>right</align>
+                                <aligny>center</aligny>
+                                <font>tofa_font_icons_19</font>
+                                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                                <label>$INFO[ListItem.Property(mark_icon)]</label>
                             </control>
                         </focusedlayout>
                     </control>
