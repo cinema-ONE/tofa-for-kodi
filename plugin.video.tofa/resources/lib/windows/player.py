@@ -3685,10 +3685,10 @@ class PlayerWindow(kodigui.ControlledDialog):
     def apply_track_selection(self):
         """Apply 7.7's Audio/Subtitle picks to the running stream.
 
-        Post-start rather than negotiated: /stream/{id}/info has no
-        audio_stream_index or subtitle_stream_index parameter, because on
-        DirectPlay the whole container arrives and the choice is the
-        player's to make.
+        Post-start rather than negotiated, though /info can take an
+        audio_stream_index: direct play brings the whole container, and a
+        transcode every audio track as its own lane unless it asks for
+        audio_lane_mode=selected, so the choice is the player's.
 
         Failures here are logged and dropped. A stream that ignored the
         preference still plays, and taking the window down over a track
