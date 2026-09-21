@@ -18,11 +18,10 @@ matters more than the shared appearance suggests:
              next /stream/{id}/info, and anything below Original forces a
              transcode -- confirmed against the live server, which answers
              "Transcoding to match selected quality (720p (4 Mbps))".
-  Audio      KODI's decision, applied after playback starts. The info
-             endpoint has no audio_stream_index parameter at all: on
-             DirectPlay the whole container arrives and the player owns the
-             choice. Under a transcode the server has already picked one
-             track and this list will hold only that one.
+  Audio      KODI's decision, applied after playback starts. /info can
+             take an audio_stream_index, but direct play brings every track
+             anyway, and so does a transcode (one lane per track) unless it
+             asks for audio_lane_mode=selected.
   Subtitles  likewise Kodi's, via the same post-start route.
 """
 from __future__ import annotations
