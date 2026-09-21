@@ -199,6 +199,11 @@ def main(argv: list[str]) -> int:
             argv += ["--subject", subject, "--body", body]
             blobs += [("--subject", subject), ("--body", body)]
 
+    # A PR title becomes the squash subject when there are several commits.
+    long = [v for f, v in blobs if f in ("--title", "-t") and len(v) > 65]
+    if long:
+        sys.exit("gh_gate: title is %d chars (max 65, see check_brevity.py)"
+                 % len(long[0]))
     gate(blobs)
     return subprocess.run(["gh"] + argv, cwd=ROOT).returncode
 

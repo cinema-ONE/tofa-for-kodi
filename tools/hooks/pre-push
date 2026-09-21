@@ -89,3 +89,11 @@ if ! python3 "$root/tools/check_public_set.py" "$@"; then
     echo "catch it again if you do."
     exit 1
 fi
+
+# Brevity (tools/check_brevity.py): short subjects, bodies and new comments.
+if ! python3 "$root/tools/check_brevity.py" "$@"; then
+    echo
+    echo "pre-push: NOT pushing -- shorten what it names. Reword the last"
+    echo "commit with \`git commit --amend\` (NOT --no-edit)."
+    exit 1
+fi

@@ -13,6 +13,13 @@ And once per clone:
 
     git config core.hooksPath tools/hooks
 
+## Keep it short
+
+Comments say *why* in 1-2 lines (never more than 4); commit subjects are at
+most 65 characters and bodies at most 8 lines. `tools/check_brevity.py`
+enforces the numbers in the pre-push hook, and `gh_gate.py` holds PR titles
+to 65, since a title becomes the squash subject.
+
 ## Nothing becomes public except through a tool that gated it
 
 That is the whole rule, and it has two halves because GitHub has two doors.
