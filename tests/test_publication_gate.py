@@ -163,6 +163,18 @@ with tempfile.TemporaryDirectory(prefix="gate-") as base:
           harvested(argv) == [],
           "so gh_gate must compose the message rather than let GitHub do it")
 
+# --- 8. the squash message is composed from FULL commit messages ----------
+LONG = ("detail: the season sidebar marks each season, as the Apple TV app "
+        "now does")
+subject, body = gh_gate.compose_squash("191", "ignored", [LONG + "\n\nThe body."])
+check("a long subject survives whole -- GraphQL's messageHeadline truncates it",
+      subject == LONG + " (#191)" and "\u2026" not in subject, subject)
+check("...and the body does not start with the overflow",
+      body == "The body.", repr(body[:40]))
+subject, body = gh_gate.compose_squash("7", "The PR title", ["one\n\nfirst", "two"])
+check("several commits: the PR title, then each message as GitHub lists them",
+      subject == "The PR title (#7)" and body == "* one\n\nfirst\n\n* two", repr(body))
+
 print()
 if FAILED:
     print("FAIL: %d of %d" % (FAILED, CHECKS))
