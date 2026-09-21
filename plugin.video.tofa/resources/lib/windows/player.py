@@ -83,8 +83,8 @@ import xbmcgui
 import xbmcvfs
 
 from . import kodigui, playerstats, playoptions, profile_select, theme
-from .. import (api, artcache, auth, episodes, http, langcodes, log, monitor,
-                playback, playbackprefs, playbacksync, prefs, regional,
+from .. import (api, artcache, asstime, auth, episodes, http, langcodes, log,
+                monitor, playback, playbackprefs, playbacksync, prefs, regional,
                 settings_options, stereoscopic, textmetrics, tracks)
 from ..api import MediaServerClient
 from ..profile import DEFAULT_AUDIO_CODECS, CapabilityProfile
@@ -4027,7 +4027,8 @@ class PlayerWindow(kodigui.ControlledDialog):
 
         `.ass` when the server offers it: the script arrives as authored, so
         Kodi draws it as it draws an embedded ASS track, minus any fonts
-        attached to the file. `.vtt` for other text (tracks.delivered_format).
+        attached to the file. On a cut session it goes through
+        _session_timed_ass first. `.vtt` for other text (tracks.delivered_format).
 
         A VobSub sidecar cannot be a `.vtt` at all -- it is a pair of bitmap files, and the server answers 400 for
         any bitmap track asked for as WebVTT. Server 0.9.32 serves that pair
@@ -4063,11 +4064,42 @@ class PlayerWindow(kodigui.ControlledDialog):
             name = "full.idx"
         elif tracks.delivered_format(track or {}) == "ASS":
             name = "full.ass"
+            if self._time_offset_ms:
+                path = self._session_timed_ass(session_id, token, server_index)
+                if path:
+                    return path
+                name = "full.vtt"
         else:
             name = "full.vtt"
         return self.client.resolve_url(
             f"/api/v1/stream/s/{session_id}/subtitles/{server_index}"
             f"/{name}?st={urllib.parse.quote(str(token))}")
+
+    def _session_timed_ass(self, session_id, token, server_index) -> str:
+        """`full.ass` moved onto this session's clock as a local file, or "".
+
+        The server sends it on the file's clock (time basis `content`), and a
+        cut session starts at the cut. "" falls back to the shifted `.vtt`."""
+        try:
+            resp = self.client.session_subtitle(session_id, token, server_index, "full.ass")
+            text = resp.content.decode("utf-8", "surrogateescape")
+            headers = {k.lower(): v for k, v in resp.headers.items()}
+            if headers.get("x-tofa-subtitle-time-basis", "content").lower() == "content":
+                text = asstime.shift(text, self._time_offset_ms)
+            folder = xbmcvfs.translatePath("special://temp/tofa-subtitles")
+            os.makedirs(folder, exist_ok=True)
+            for old in os.listdir(folder):
+                try:
+                    os.remove(os.path.join(folder, old))
+                except OSError:
+                    pass
+            path = os.path.join(folder, "%s-%s-%d.ass" % (session_id, server_index, self._time_offset_ms))
+            with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as f:
+                f.write(text)
+            return path
+        except Exception as exc:                            # noqa: BLE001
+            log.warning(f"player: ASS for the session clock failed, using WebVTT: {exc!r}")
+            return ""
 
     @staticmethod
     def _is_vobsub_sidecar(track) -> bool:
@@ -4608,6 +4640,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         log.info("player: session re-cut at %dms (asked %dms)" % (landed_ms, target_ms))
         self._time_offset_ms = landed_ms
         self._publish_time_offset()
+        # The reopened stream has none of the subtitles we added, and a new
+        # clock: forget their slots so they are fetched again.
+        self._loaded_subtitle_slots = {}
         # The scrub head should sit where the viewer asked immediately,
         # rather than snapping back to zero while the new stream opens.
         self._duration_ms = self._resolve_duration_ms()
