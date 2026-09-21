@@ -81,7 +81,8 @@ def gate(blobs: list[tuple[str, str]]) -> None:
     if done.returncode:
         sys.stderr.write(
             "\ngh_gate: NOT running `gh` -- the text above quotes a private\n"
-            "document, or the gate had nothing to compare it against.\n\n"
+            "document or names something private, or the gate had nothing\n"
+            "to compare it against.\n\n"
             "Say it in our own words. A section pointer is fine; the\n"
             "document's own wording is not. Once this is posted it is public\n"
             "permanently -- editing it afterwards does not unpublish it.\n")

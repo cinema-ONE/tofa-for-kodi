@@ -163,7 +163,33 @@ with tempfile.TemporaryDirectory(prefix="gate-") as base:
           harvested(argv) == [],
           "so gh_gate must compose the message rather than let GitHub do it")
 
-# --- 8. the squash message is composed from FULL commit messages ----------
+# --- 8. private markers: names too private to list in the public checker
+import json as _json
+with tempfile.TemporaryDirectory(prefix="gate-markers-") as base:
+    vault = os.path.join(base, "vault"); os.makedirs(os.path.join(vault, "internal-docs"))
+    pathlib.Path(vault, "internal-docs", "private-markers.json").write_text(_json.dumps(
+        {"markers": [{"pattern": "project zeta", "why": "a private name"}]}))
+    gate.VAULT = vault
+    check("private markers load from the vault",
+          [w for _p, w in gate.private_markers()] == ["a private name"])
+    check("...and are found in free text",
+          gate.marker_hits("the Project Zeta build") == [("Project Zeta", "a private name")])
+    leak = os.path.join(base, "c.py")
+    pathlib.Path(leak).write_text("# built for project zeta\n")
+    gate.candidates = lambda: [leak]
+    gate.ROOT = base
+    check("...and in a file",
+          any(h[2].lower() == "project zeta" for h in gate.scan_markers()))
+    leaky = os.path.join(base, "leak.md")
+    pathlib.Path(leaky).write_text("PR body naming project zeta\n")
+    sys.argv = ["check_public_set.py", "--quotes", "--text", leaky]
+    check("...and --text refuses them even in --quotes mode, which gh_gate uses",
+          gate.main() == 1)
+    gate.VAULT = None
+    check("without a vault there are no private markers, and nothing breaks",
+          gate.private_markers() == [])
+
+# --- 9. the squash message is composed from FULL commit messages ----------
 LONG = ("detail: the season sidebar marks each season, as the Apple TV app "
         "now does")
 subject, body = gh_gate.compose_squash("191", "ignored", [LONG + "\n\nThe body."])
