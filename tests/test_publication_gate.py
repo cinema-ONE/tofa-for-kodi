@@ -201,6 +201,15 @@ subject, body = gh_gate.compose_squash("7", "The PR title", ["one\n\nfirst", "tw
 check("several commits: the PR title, then each message as GitHub lists them",
       subject == "The PR title (#7)" and body == "* one\n\nfirst\n\n* two", repr(body))
 
+# --- 10. the squash SUBJECT is held to 65, " (#N)" included -------------
+try:
+    gh_gate.main(["pr", "merge", "203", "--squash", "--subject", "x" * 72])
+    refused = ""
+except SystemExit as exc:
+    refused = str(exc)
+check("a squash subject over 65 is refused before anything is sent",
+      "subject is 72 chars" in refused, refused)
+
 print()
 if FAILED:
     print("FAIL: %d of %d" % (FAILED, CHECKS))
