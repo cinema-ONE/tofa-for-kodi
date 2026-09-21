@@ -1,5 +1,80 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.32" provider-name="cinemaONE">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="script.module.requests" version="2.31.0"/>
+    <!-- The .ttf files our screens name. A dependency, not bundled, because
+         Kodi resolves a font FILE against every enabled kodi.resource.font
+         add-on but never against a plugin's own directory. See
+         resources/lib/fontinstall.py.
+
+         BOTH attributes, and minversion is the load-bearing one. Kodi keeps
+         an already-installed dependency unless it fails
+         CAddonInfo::MeetsVersion(versionMin, version), which is
+             !(versionMin > installed.version || version < installed.minversion)
+         so `version` is an ABI statement about the dependency, and
+         `minversion` is the only floor on it. With minversion absent, a user
+         sitting on an older resource.font.tofa is "good enough" forever, and
+         a newly added font file would reach them only whenever the repo's
+         own update timer happened to notice; until then this add-on names a
+         file that is not there, which draws as tofu.
+
+         SO: adding or changing a font means bumping resource.font.tofa's
+         version AND this minversion to match. tests/test_font_resource_addon.py
+         fails if they drift. -->
+    <import addon="resource.font.tofa" minversion="1.0.0" version="1.0.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="addon.py">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.python.script" library="launch_home.py">
+    <provides>executable</provides>
+  </extension>
+  <extension point="xbmc.service" library="service.py" start="startup"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
+    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
+
+Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
+
+Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
+
+Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
+    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
+    <platform>all</platform>
+    <license>GPL-2.0-only</license>
+    <website>https://tofa.tv</website>
+    <news>
+      - Holding or tapping left and right during playback now jumps once, when
+        you stop pressing, instead of jumping on every press. The counter on
+        screen counts the whole movement rather than the last step.
+      - When a server refuses to start something, it now says why in its own
+        words -- that it is busy converting other videos, for instance -- instead
+        of the add-on's single "couldn't start this file".
+      - The list of seasons now shows where you are at a glance: a tick for a
+        season you have finished, how many episodes are left in one you are
+        partway through, and a plus for a season with nothing in your library.
+        Open that season and it says "Not in library", and so does each of its
+        episodes -- instead of hiding them behind "Details hidden".
+      - The pictures on the "Who's watching?" screen are bigger, and sit the way
+        they do in the other tofa apps.
+      - On an episode with nothing before or after it, the two buttons either side
+        of play now skip forward and back ten seconds, instead of being greyed out
+        with nowhere to go.
+    </news>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
+      <screenshot>resources/screenshots/01-home.jpg</screenshot>
+      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
+      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
+      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
+      <screenshot>resources/screenshots/05-player.jpg</screenshot>
+      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
+    </assets>
+  <size>8502229</size><path>plugin.video.tofa/plugin.video.tofa-0.9.32.zip</path></extension>
+</addon>
 <addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.31" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
@@ -151,77 +226,6 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
   <size>8484575</size><path>plugin.video.tofa/plugin.video.tofa-0.9.30.zip</path></extension>
-</addon>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.29" provider-name="cinemaONE">
-  <requires>
-    <import addon="xbmc.python" version="3.0.0"/>
-    <import addon="script.module.requests" version="2.31.0"/>
-    <!-- The .ttf files our screens name. A dependency, not bundled, because
-         Kodi resolves a font FILE against every enabled kodi.resource.font
-         add-on but never against a plugin's own directory. See
-         resources/lib/fontinstall.py.
-
-         BOTH attributes, and minversion is the load-bearing one. Kodi keeps
-         an already-installed dependency unless it fails
-         CAddonInfo::MeetsVersion(versionMin, version), which is
-             !(versionMin > installed.version || version < installed.minversion)
-         so `version` is an ABI statement about the dependency, and
-         `minversion` is the only floor on it. With minversion absent, a user
-         sitting on an older resource.font.tofa is "good enough" forever, and
-         a newly added font file would reach them only whenever the repo's
-         own update timer happened to notice; until then this add-on names a
-         file that is not there, which draws as tofu.
-
-         SO: adding or changing a font means bumping resource.font.tofa's
-         version AND this minversion to match. tests/test_font_resource_addon.py
-         fails if they drift. -->
-    <import addon="resource.font.tofa" minversion="1.0.0" version="1.0.0"/>
-  </requires>
-  <extension point="xbmc.python.pluginsource" library="addon.py">
-    <provides>video</provides>
-  </extension>
-  <extension point="xbmc.python.script" library="launch_home.py">
-    <provides>executable</provides>
-  </extension>
-  <extension point="xbmc.service" library="service.py" start="startup"/>
-  <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
-    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
-
-Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
-
-Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
-
-Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
-    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
-    <platform>all</platform>
-    <license>GPL-2.0-only</license>
-    <website>https://tofa.tv</website>
-    <news>
-      - The Skip Intro and Skip Credits buttons no longer stay on screen for the
-        whole of a long intro or credits. They now hide after a few seconds, as in
-        the other tofa apps, and come back whenever you bring up the player
-        controls while the intro or credits are still playing.
-      - On a series, the line under the title on the Details page now gives the
-        year and length of the episode the Play button is offering, rather than the
-        year the series started and its average episode length. The synopsis there
-        already described that episode.
-      - Settings &gt; Appearance &gt; Media cards gains "Hide episode spoilers". Details
-        already hid the picture of episodes past the one you are on when your
-        account asked for it, but only the other tofa apps could switch it; now
-        this one can too, and the change follows your account to all of them.
-    </news>
-    <assets>
-      <icon>icon.png</icon>
-      <fanart>fanart.jpg</fanart>
-      <screenshot>resources/screenshots/01-home.jpg</screenshot>
-      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
-      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
-      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
-      <screenshot>resources/screenshots/05-player.jpg</screenshot>
-      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
-    </assets>
-  <size>8346182</size><path>plugin.video.tofa/plugin.video.tofa-0.9.29.zip</path></extension>
 </addon>
 <addon id="resource.font.tofa" name="tofa fonts" version="1.0.0" provider-name="cinemaONE">
   <requires>
