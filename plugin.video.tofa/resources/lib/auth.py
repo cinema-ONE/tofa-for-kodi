@@ -30,6 +30,7 @@ import xbmcvfs
 
 from . import atomicwrite
 from . import cloud
+from . import http
 from . import log
 
 
@@ -503,22 +504,84 @@ def save_rotated_profile_token(profile_token: str,
     ))
 
 
+#: Statuses that mean "unreachable or busy", not "this token is dead".
+_TRANSIENT = {0, 429, 500, 502, 503, 504}
+#: After a transient failure, keep the still-valid token this long before
+#: trying again, so an outage doesn't cost every screen a network timeout.
+_RETRY_AFTER_SECONDS = 300
+_retry_after = 0.0
+
+
+def _local_session_refresh(session, tok: Tokens) -> dict[str, Any]:
+    """Refresh through the media server (0.10.0's local session).
+
+    Works when tofa's cloud is unreachable (the server answers offline=true
+    with a short-lived token), and otherwise rotates the cloud's own chain."""
+    bases = [tok.server, tok.server_fallback]
+    if direct_only():
+        bases = [b for b in bases if not is_relay_url(b)]
+    last = None
+    for base in filter(None, bases):
+        try:
+            return http.request_json(
+                session, "POST", base.rstrip("/") + "/api/v1/auth/session/token",
+                json_body={"refresh_token": tok.refresh_token},
+                headers={"X-Tofa-Device-Id": tok.device_id})
+        except http.ApiError as exc:
+            if exc.status != 0:       # the server answered; another address won't differ
+                raise
+            last = exc
+    raise last or http.ApiError(0, "connection_error", "no server address")
+
+
+def _refresh(session, tok: Tokens) -> dict[str, Any]:
+    """The cloud first; the server's local session if the cloud fails.
+
+    If both fail, a refusal (401/403) outranks a transport error: it is the
+    one that says the token is dead."""
+    try:
+        return cloud.refresh(session, tok.connect_url, tok.server_id, tok.refresh_token)
+    except http.ApiError as cloud_exc:
+        log.warning("auth: cloud refresh failed ({0}); trying the server".format(cloud_exc))
+        try:
+            granted = _local_session_refresh(session, tok)
+        except http.ApiError as server_exc:
+            raise server_exc if cloud_exc.status in _TRANSIENT else cloud_exc
+        log.info("auth: refreshed through the server, offline={0} until {1}".format(
+            granted.get("offline"), granted.get("offline_valid_until")))
+        return granted
+
+
 def ensure_fresh(session, margin_seconds: float = 6 * 3600) -> Tokens:
-    """Load tokens, transparently refreshing (and persisting the rotated
-    pair) if the access token is within `margin_seconds` of expiry. The new
-    pair is written to disk before this returns -- the old pair is only
-    overwritten once the new one is confirmed, so a failed refresh never
-    leaves the account signed out."""
+    """Load tokens, refreshing and persisting a rotated pair near expiry.
+
+    The new pair is saved before this returns, so a failed refresh never
+    signs the account out. If the refresh fails for a transient reason and
+    the current token still works, keep using it."""
+    global _retry_after
     with _refresh_lock():
         tok = load()
-        if tok.seconds_until_expiry() > margin_seconds:
+        # Half the lifetime at most: a 1-hour server token would otherwise
+        # always be "due" under the 6-hour margin meant for 30-day ones.
+        margin = min(margin_seconds, tok.expires_in / 2)
+        left = tok.seconds_until_expiry()
+        if left > margin or (left > 60 and time.time() < _retry_after):
             return tok
-        granted = cloud.refresh(session, tok.connect_url, tok.server_id, tok.refresh_token)
+        try:
+            granted = _refresh(session, tok)
+        except http.ApiError as exc:
+            if exc.status in _TRANSIENT and left > 60:
+                _retry_after = time.time() + _RETRY_AFTER_SECONDS
+                log.warning("auth: refresh failed ({0}); keeping the current "
+                            "token, {1:.0f} min left".format(exc, left / 60))
+                return tok
+            raise
+        _retry_after = 0.0
         new_tok = dataclasses.replace(
             tok,
             access_token=granted["access_token"],
             refresh_token=granted["refresh_token"],
-            token_type=granted["token_type"],
+            token_type=granted.get("token_type") or tok.token_type,
             expires_in=granted["expires_in"],
             obtained_at=time.time(),
         )

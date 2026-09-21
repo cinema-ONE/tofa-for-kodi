@@ -119,8 +119,8 @@ def refresh_cloud(session, connect_url: str, cloud_refresh_token: str) -> dict[s
     not turn that observation into a rule. A caller that persists only "when
     it changed", or only on the success path of whatever it was really
     doing, is one unlucky run from holding a retired token -- which is
-    precisely the shape of a live bug the cinemaONE Player session found in
-    its own client on 2026-09-18, where the rotated token was captured into
+    precisely the shape of a live bug found in another client on
+    2026-09-18, where the rotated token was captured into
     memory and saved only if an unrelated address lookup had succeeded."""
     return http.request_json(
         session,
