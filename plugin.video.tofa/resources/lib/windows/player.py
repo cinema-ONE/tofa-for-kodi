@@ -322,10 +322,9 @@ _STATS_CENTRE_X = 960
 FONT_BUDGET_BYTES = 32 * 1024 * 1024
 _FONT_EXTENSIONS = (".ttf", ".ttc", ".otf")
 
-# A picture track can take minutes to extract; the server answers 503 with
-# Retry-After: 30 meanwhile.
+# A picture track takes about half the film to extract; the server answers
+# 503 with Retry-After: 30 meanwhile.
 PICTURE_SUBTITLE_RETRY_S = 30.0
-PICTURE_SUBTITLE_TRIES = 20
 
 
 def _actions(*names: str) -> frozenset:
@@ -4058,9 +4057,9 @@ class PlayerWindow(kodigui.ControlledDialog):
     def _load_picture_subtitle(self, server_index) -> bool:
         """Fetch a picture (PGS) track in the background; load it when it lands.
 
-        Kodi cannot wait out the minutes a film's track takes to extract.
-        This retries on the server's schedule and gives up once the viewer
-        picks something else or the window closes."""
+        Kodi cannot wait out the extraction, which takes about half the film.
+        This retries on the server's schedule for as long as the session
+        lives, and stops once the viewer picks something else or it closes."""
         nego = self._nego or {}
         session_id, token = nego.get("session_id"), nego.get("session_token")
         if not (session_id and token and self.client):
@@ -4069,22 +4068,28 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._picture_subtitle_wanted = ticket
 
         def run():
-            for attempt in range(PICTURE_SUBTITLE_TRIES):
-                if attempt and self._stop_tick.wait(PICTURE_SUBTITLE_RETRY_S):
-                    return
-                if self._picture_subtitle_wanted is not ticket:
-                    return
+            # The same server answers either way, so no relay fallback: it
+            # would only turn "not ready" into a connection error.
+            while self._picture_subtitle_wanted is ticket:
                 try:
                     path = self._session_subtitle_file(
-                        session_id, token, server_index, "full.sup", pgstime.shift, timeout=40)
-                except Exception as exc:                    # noqa: BLE001
+                        session_id, token, server_index, "full.sup", pgstime.shift,
+                        timeout=40, try_fallback=False)
+                except http.ApiError as exc:
+                    if exc.status not in (0, 503):
+                        log.warning(f"player: picture subtitle {server_index} refused: {exc!r}")
+                        return
                     log.debug(f"player: picture subtitle {server_index} not ready: {exc!r}")
+                    if self._stop_tick.wait(PICTURE_SUBTITLE_RETRY_S):
+                        return
                     continue
+                except Exception as exc:                    # noqa: BLE001
+                    log.warning(f"player: picture subtitle {server_index} failed: {exc!r}")
+                    return
                 if self._picture_subtitle_wanted is ticket:
                     self._picture_subtitle_wanted = None
                     self._load_subtitle_file(server_index, path)
                 return
-            log.warning(f"player: picture subtitle {server_index} never arrived")
 
         threading.Thread(target=run, name="tofa-player-pgs", daemon=True).start()
         return True
@@ -4170,7 +4175,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                 log.warning(f"player: attached font {name} not fetched: {exc!r}")
 
     def _session_subtitle_file(self, session_id, token, server_index, name, shift,
-                               timeout=None) -> str:
+                               timeout=None, try_fallback=True) -> str:
         """A session's `name` on this session's clock, written locally; its path.
 
         The server sends ASS and PGS on the file's clock (time basis
@@ -4180,10 +4185,15 @@ class PlayerWindow(kodigui.ControlledDialog):
         raw, basis = self._subtitle_bytes.get(key, (None, None))
         if raw is None:
             resp = self.client.session_subtitle(session_id, token, server_index, name,
-                                                timeout=timeout)
+                                                timeout=timeout, try_fallback=try_fallback)
             headers = {k.lower(): v for k, v in resp.headers.items()}
             raw = resp.content
             basis = headers.get("x-tofa-subtitle-time-basis", "content").lower()
+            if name.endswith(".sup"):
+                # A cut-down track reads "ready" too; this is how a person spots it.
+                sets, last = pgstime.span(raw)
+                log.info(f"player: picture subtitle {server_index} ends at {last:.0f}s of "
+                         f"{(self._duration_ms or 0) / 1000:.0f}s ({sets} display sets)")
             # One at a time: a film's picture track runs to megabytes.
             self._subtitle_bytes = {key: (raw, basis)}
         body = shift(raw, self._time_offset_ms) if basis == "content" else raw

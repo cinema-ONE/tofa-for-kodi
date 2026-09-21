@@ -45,11 +45,14 @@ class Resp:
 
 
 class FakeClient:
-    def __init__(self, not_ready=0):
-        self.not_ready, self.calls = not_ready, 0
+    def __init__(self, not_ready=0, refuse=False):
+        self.not_ready, self.refuse, self.calls, self.fallbacks = not_ready, refuse, 0, set()
 
-    def session_subtitle(self, sid, tok, index, name, timeout=None):
+    def session_subtitle(self, sid, tok, index, name, timeout=None, try_fallback=True):
         self.calls += 1
+        self.fallbacks.add(try_fallback)
+        if self.refuse:
+            raise http.ApiError(404, "not_found", "no such track")
         if self.calls <= self.not_ready:
             raise http.ApiError(503, "subtitle_extraction_pending", "still extracting")
         return Resp(sup(272.856, 621.371))
@@ -78,6 +81,7 @@ class Fake:
         self._subtitle_order = [10]
         self._nego = {"session_id": SESSION, "session_token": TOKEN, "play_method": "Transcode"}
         self._time_offset_ms = offset_ms
+        self._duration_ms = 5536000
         self._loaded_subtitle_slots, self._subtitle_bytes = {}, {}
         self._picture_subtitle_wanted = self._active_subtitle_index = None
         self._stop_tick = threading.Event()
@@ -111,10 +115,25 @@ def run():
           win._loaded_subtitle_slots == {10: 0} and win._active_subtitle_index == 10,
           repr((win._loaded_subtitle_slots, win._active_subtitle_index)))
 
+    check("the picture fetch never falls back to the relay", win.client.fallbacks == {False},
+          repr(win.client.fallbacks))
+
     win._time_offset_ms = 610000
     again = win._session_subtitle_file(SESSION, TOKEN, 10, "full.sup", player.pgstime.shift)
     check("a re-cut re-shifts the download instead of fetching it again",
           win.client.calls == 3 and abs(first_pts(again) - 11.371) < 0.001, repr(win.client.calls))
+
+    patient = Fake(FakeClient(not_ready=40))
+    patient._select_subtitle(10)
+    settle(patient, timeout=5.0)
+    check("it keeps waiting past forty refusals while the session lives",
+          len(patient.ui_player.loaded) == 1 and patient.client.calls == 41, repr(patient.client.calls))
+
+    refused = Fake(FakeClient(refuse=True))
+    refused._select_subtitle(10)
+    settle(refused, timeout=0.3)
+    check("a real refusal (404) ends the wait after one try",
+          refused.ui_player.loaded == [] and refused.client.calls == 1, repr(refused.client.calls))
 
     off = Fake(FakeClient(not_ready=10**6))
     off._select_subtitle(10)

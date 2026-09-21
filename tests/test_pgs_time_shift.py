@@ -51,6 +51,9 @@ def run():
     check("a zero DTS stays zero, a real one moves", out[0][1] == 0 and out[1][1] == 12 * 90000, repr(out))
     check("a cut past everything leaves nothing", pgstime.shift(data, 60000) == b"")
     check("data that is not PGS yields nothing", pgstime.shift(b"WEBVTT\n\n", 1000) == b"")
+    check("span reports the display sets and where the track ends",
+          pgstime.span(data) == (3, 20.25), repr(pgstime.span(data)))
+    check("span of nothing is nothing", pgstime.span(b"") == (0, 0.0))
 
     failed = [n for n, ok in RESULTS if not ok]
     print()

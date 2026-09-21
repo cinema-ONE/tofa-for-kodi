@@ -990,11 +990,12 @@ class MediaServerClient:
         return self._get(f"/api/v1/stream/{file_id}/info", params=params)
 
     def session_subtitle(self, session_id: str, session_token: str, index: int, name: str,
-                         timeout: float | None = None) -> Any:
+                         timeout: float | None = None, try_fallback: bool = True) -> Any:
         """A session's subtitle file as the raw Response: its headers carry the time basis."""
         return self._request(
             "GET", f"/api/v1/stream/s/{session_id}/subtitles/{index}/{name}",
-            params={"st": session_token}, timeout=timeout, want_response=True)
+            params={"st": session_token}, timeout=timeout, try_fallback=try_fallback,
+            want_response=True)
 
     def session_font(self, session_id: str, session_token: str, index: int) -> Any:
         """One of the file's attached fonts, as the raw Response."""

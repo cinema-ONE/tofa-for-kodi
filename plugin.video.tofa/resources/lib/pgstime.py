@@ -11,6 +11,17 @@ import struct
 _PCS = 0x16
 
 
+def span(data: bytes) -> tuple:
+    """(display sets, seconds of the last one) -- where the track really ends."""
+    sets, last, i = 0, 0.0, 0
+    while i + 13 <= len(data) and data[i:i + 2] == b"PG":
+        if data[i + 10] == _PCS:
+            sets += 1
+            last = struct.unpack(">I", data[i + 2:i + 6])[0] / 90000
+        i += 13 + struct.unpack(">H", data[i + 11:i + 13])[0]
+    return sets, last
+
+
 def shift(data: bytes, offset_ms: int) -> bytes:
     """Move every display set `offset_ms` earlier and drop those before it.
 
