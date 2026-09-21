@@ -98,6 +98,7 @@ checked nothing in the other.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -216,6 +217,26 @@ MARKER_PATTERNS = [
 ]
 
 #: Lines where a marker is the subject rather than a leak.
+def private_markers() -> list[tuple]:
+    """Markers too private to list here, from the vault's
+    internal-docs/private-markers.json. Empty without a vault."""
+    path = os.path.join(VAULT, "internal-docs", "private-markers.json") if VAULT else ""
+    try:
+        with open(path) as fh:
+            entries = json.load(fh).get("markers", [])
+    except (OSError, ValueError):
+        return []
+    return [(re.compile(m["pattern"], re.I), m["why"]) for m in entries]
+
+
+def marker_hits(text: str) -> list[tuple[str, str]]:
+    """(match, why) for every marker, public or private, in free text."""
+    hits = []
+    for pattern, why in MARKER_PATTERNS + private_markers():
+        hits += [(m.group(0), why) for m in pattern.finditer(text or "")]
+    return hits
+
+
 MARKER_EXEMPT = re.compile(
     r"MARKER_PATTERNS|ALLOWED_IPS|a box hostname|a server name|a surname"
     r"|a personal email domain|a real server uuid|a MAC address"
@@ -533,6 +554,7 @@ def scan_text(paths: list[str], n: int) -> list[tuple]:
 def scan_markers() -> list[tuple[str, int, str, str]]:
     """(relative path, line, what was found, why it is flagged)."""
     found = []
+    private = private_markers()
     for path in candidates():
         if os.path.abspath(path) == os.path.abspath(__file__):
             continue  # the patterns themselves live here
@@ -552,7 +574,7 @@ def scan_markers() -> list[tuple[str, int, str, str]]:
             # construction. Matched by span rather than by substring so that
             # `adrian.betschart@cinemaone.ch` on the same line still fires.
             allowed = [m.span() for m in ALLOWED_HOST_RE.finditer(line)]
-            for pattern, why in MARKER_PATTERNS:
+            for pattern, why in MARKER_PATTERNS + private:
                 for match in pattern.finditer(line):
                     start, end = match.span()
                     if any(a <= start and end <= b for a, b in allowed):
@@ -763,10 +785,26 @@ def main() -> int:
 
     if do_markers:
         found = scan_markers()
+        # Messages and candidate text too. Messages only UNPUSHED: a pushed
+        # one can't be fixed, and re-reporting it would block every release.
+        revs = args.rev_range.split() if args.rev_range else ["HEAD", "--not", "--remotes=origin"]
+        for entry in _git("log", "--format=%h %s%x00%B%x01", *revs).split("\x01"):
+            head, _, body = entry.strip().partition("\x00")
+            found += [("commit " + head[:60], 0, h, w) for h, w in marker_hits(body)]
         for rel, line, hit, why in found:
             print("%s:%d  %s -- %s" % (rel, line, hit, why))
         print("\nMARKERS: %d private identifier(s)" % len(found))
         problems += len(found)
+
+    # Candidate text (gh_gate's PR bodies, comments) gets markers in any
+    # mode: gh_gate runs --quotes, and a name must not slip past that.
+    text_hits = [(path, h, w) for path in args.text if path != "-"
+                 for h, w in marker_hits(read(path) or "")]
+    for path, hit, why in text_hits:
+        print("text %s  %s -- %s" % (path, hit, why))
+    if args.text:
+        print("TEXT MARKERS: %d private identifier(s)" % len(text_hits))
+    problems += len(text_hits)
 
     return 1 if problems else 0
 
