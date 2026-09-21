@@ -37,6 +37,20 @@ from ..skin import tokens as T
 
 
 
+def _playable_file_ids(seasons: list) -> list:
+    """The first available file of every playable episode, Specials included.
+
+    The same file per episode that the grid, next-up and the season tally all
+    choose, so one progress fetch answers all three."""
+    ids = []
+    for season in seasons or []:
+        for ep in season.get("episodes") or []:
+            avail = [f for f in (ep.get("files") or []) if f.get("available")]
+            if avail and avail[0].get("id"):
+                ids.append(avail[0].get("id"))
+    return ids
+
+
 def _dot_join(*parts) -> str:
     return u" • ".join(p for p in parts if p)
 
@@ -76,15 +90,41 @@ def _episode_runtime_minutes(episode: dict, file_obj) -> int:
     return int(episode.get("runtime_minutes") or 0)
 
 
+def _aired(episode: dict) -> bool:
+    """Whether an episode has aired. No date, or an unreadable one, counts as
+    aired: the badge has always read it that way, and a missing date is far
+    more often an old episode than a future one."""
+    raw = (episode.get("air_date") or "").strip()
+    if not raw:
+        return True
+    try:
+        import datetime
+
+        return datetime.date.fromisoformat(raw[:10]) <= datetime.date.today()
+    except ValueError:
+        return True
+
+
+def _not_in_library(episode: dict, file_obj) -> bool:
+    """An aired episode the server holds NO file for -- one you never had.
+
+    Distinct from "Unavailable", which is files recorded and none reachable,
+    and from an unaired episode, which is expected to have none yet. Since
+    2026-09-21 this one gets the Apple TV app's treatment: the "Not in
+    library" pill, the series backdrop, and no spoiler hiding."""
+    return not file_obj and not (episode.get("files") or []) and _aired(episode)
+
+
 def _unaired_label(episode: dict, file_obj) -> str:
     """7.1's unaired badge text: "Airs <date>" for an episode still to come,
-    "Unavailable" for one that has aired but has no playable file, "" for a
-    normal episode.
+    "Unavailable" for one that has aired and whose recorded files are all
+    unreachable, "" for a normal episode -- and "" for one with no files at
+    all, which carries the "Not in library" pill instead (_not_in_library).
 
     Date formatting is locale-aware per 15, which wants air dates rendered
     through localised 'MMM d' templates, while the WIRE date is parsed as
     pinned ISO -- the same section pins ISO parsing deliberately."""
-    if file_obj:
+    if file_obj or _not_in_library(episode, file_obj):
         return ""
     raw = (episode.get("air_date") or "").strip()
     if not raw:
@@ -116,13 +156,40 @@ def _initials(name: str) -> str:
     return (parts[0][:1] + parts[-1][:1]).upper()
 
 
-#: 7.1's two availability sentences. A season that HAS something playable
-#: says nothing at all -- the absence is the normal case and does not need
-#: announcing -- and neither does a shell whose episodes have not loaded.
+#: The two availability sentences, which lead the selected season's HEADER
+#: ("Not in library - 11 episodes - 2023"). A season that HAS something
+#: playable says nothing at all -- the absence is the normal case -- and
+#: neither does a shell whose episodes have not loaded.
 _SEASON_AVAILABILITY = {
     episodes_fmt.SEASON_NOT_IN_LIBRARY: 31125,
     episodes_fmt.SEASON_MISSING: 31126,
 }
+
+#: The sidebar row's trailing mark, as a glyph. LEFT is the one mark that is
+#: words ("5 left") and so is not in this table.
+_SEASON_MARK_GLYPH = {
+    episodes_fmt.SEASON_MARK_ADD: icon_glyphs.CIRCLE_PLUS,
+    episodes_fmt.SEASON_MARK_MISSING: icon_glyphs.CIRCLE_ALERT,
+    episodes_fmt.SEASON_MARK_COMPLETE: icon_glyphs.CHECK,
+    episodes_fmt.SEASON_MARK_SELECTED: icon_glyphs.DOT,
+}
+
+
+def _season_watched_line(season: dict | None, watched: int, playable: int,
+                         total: int) -> str:
+    """The Episodes tab's top-right line for the selected season.
+
+    Three wordings, read off the Apple TV app on 2026-09-21: nothing to play
+    says so, a finished season says so, and anything else is the running
+    tally. Finished means every PLAYABLE episode is watched -- the same test
+    the sidebar's tick uses, so the two cannot disagree about one season.
+    """
+    state = episodes_fmt.season_availability(season or {})
+    if state in (episodes_fmt.SEASON_NOT_IN_LIBRARY, episodes_fmt.SEASON_MISSING):
+        return kodigui.ADDON.getLocalizedString(31128)
+    if playable and watched >= playable:
+        return kodigui.ADDON.getLocalizedString(31127)
+    return "{0}/{1} watched".format(watched, total)
 
 
 class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
@@ -241,6 +308,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # hero's episode line. None on a movie.
         self._next_up_season = None
         self._next_up_episode_number = None
+        self._next_up_file_id = None
         self._next_up_title = ""
         #: The show's own year/rating/runtime/genres line, before the
         #: episode title is put in front of it. See _apply_episode_meta_line.
@@ -1447,16 +1515,23 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         the answer that failure produces.
         """
         candidates = progress.episode_candidates(seasons)
-        if not candidates:
-            self._nextup_progress = {}
-            return None, None
-        progress_map = progress.fetch_many(
-            client, [c[3].get("id") for c in candidates], required=required)
-        # Published for the load path to reuse -- see _load. Set by the call
-        # that just fetched it, so it cannot go stale: a refresh path calls
-        # this again and overwrites it before anyone reads it. It is NOT a
-        # memo, and nothing may serve it without having called this first.
+        # Every playable file, not just the candidates: the season sidebar
+        # marks each season finished or "N left", and candidates leave out
+        # Specials by design. Asking about a superset costs nothing extra in
+        # the common case (one chunked batch either way), and it is the only
+        # way the sidebar's count for Specials is an answer rather than an
+        # unasked question read as "unwatched".
+        wanted = _playable_file_ids(seasons)
+        progress_map = (progress.fetch_many(client, wanted, required=required)
+                        if wanted else {})
+        # Published for the load path and the season sidebar to reuse -- see
+        # _load. Set by the call that just fetched it, so it cannot go stale:
+        # a refresh path calls this again and overwrites it before anyone
+        # reads it. It is NOT a memo, and nothing may serve it without having
+        # called this first.
         self._nextup_progress = progress_map
+        if not candidates:
+            return None, None
         chosen = progress.next_up(candidates, progress_map, self.prefer_file_id)
         if chosen is None:
             return None, None
@@ -1536,6 +1611,14 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._next_up_overview or (self.media.get("overview") or ""))
         self._layout_hero_stack()
 
+    def _next_up_completed(self) -> bool:
+        """Whether the episode next-up points at is already finished.
+
+        True for a show watched to the end, where next-up offers a rewatch --
+        which is when the season header must not say "Continue"."""
+        record = (self._nextup_progress or {}).get(self._next_up_file_id)
+        return bool(record and record.get("completed"))
+
     def _remember_next_up(self, season_number, episode_number, ep: dict,
                           file_obj: dict | None = None) -> None:
         """Which episode the primary action is pointing at.
@@ -1545,6 +1628,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         Episodes tab, which is where its NAME already lives."""
         self._next_up_season = season_number
         self._next_up_episode_number = episode_number
+        self._next_up_file_id = (file_obj or {}).get("id")
         self._next_up_title = (ep.get("title") or "").strip()
         # The episode's OWN synopsis, for the hero. Free: it rides in on the
         # same media_detail payload the season list came from, so nothing is
@@ -1598,16 +1682,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             n = s.get("season_number") or 0
             label = s.get("title") or ("Specials" if n == 0 else "Season {0}".format(n))
             mli = kodigui.ManagedListItem(label=label, data_source=s)
-            mli.setProperty("count", str(len(s.get("episodes") or [])))
-            # 7.1 asks for WORDS here and rules out a zero count by name: a
-            # season with nothing in it must not read like one you finished.
-            # An unloaded shell says nothing rather than guessing.
-            state = episodes_fmt.season_availability(s)
-            string_id = _SEASON_AVAILABILITY.get(state)
-            mli.setProperty(
-                "availability",
-                kodigui.ADDON.getLocalizedString(string_id) if string_id else "")
             is_active = n == active_season_number
+            self._apply_season_mark(mli, s, selected=is_active)
             mli.setProperty("active", "1" if is_active else "")
             if is_active:
                 active_pos = i
@@ -1622,6 +1698,41 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.season_list.setSelectedItemByPos(active_pos)
         self._render_season_header(active_season)
 
+    def _apply_season_mark(self, mli, season: dict, *, selected: bool) -> None:
+        """The row's trailing mark: a glyph, or "N left" in words.
+
+        Replaced the episode count on 2026-09-21 -- see episodes.season_mark
+        for the rules. Reads the progress next-up already fetched for every
+        playable file, so the marks on seasons nobody has opened cost nothing.
+        """
+        mark, left = episodes_fmt.season_mark(
+            season, self._nextup_progress or {}, selected=selected)
+        glyph = _SEASON_MARK_GLYPH.get(mark)
+        mli.setProperty("mark_icon", chr(glyph) if glyph else "")
+        mli.setProperty(
+            "mark_text",
+            kodigui.ADDON.getLocalizedString(31129).format(left)
+            if mark == episodes_fmt.SEASON_MARK_LEFT else "")
+
+    def _refresh_season_marks(self) -> None:
+        """Re-mark the rows in place after a watch-state change.
+
+        In place rather than through _render_season_sidebar, which resets the
+        list: coming back from an episode is exactly when a reset would race
+        whatever focus the viewer has. The header is re-rendered too, since
+        its "Continue" names the episode next-up has just moved on to.
+        """
+        if self.season_list is None:
+            return
+        active = None
+        for mli in self.season_list:
+            season = mli.dataSource or {}
+            selected = (season.get("season_number") or 0) == self.selected_season_number
+            self._apply_season_mark(mli, season, selected=selected)
+            if selected:
+                active = season
+        self._render_season_header(active)
+
     def _render_season_header(self, season: dict | None):
         if not season:
             self.setProperty("season_title", "")
@@ -1632,10 +1743,24 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("season_title", title)
 
         episodes = season.get("episodes") or []
-        parts = ["{0} episode{1}".format(len(episodes), "" if len(episodes) == 1 else "s")]
+        # Availability leads, in words: this is where the sidebar's circled
+        # plus is explained, now that the row itself carries only the mark.
+        string_id = _SEASON_AVAILABILITY.get(episodes_fmt.season_availability(season))
+        parts = [kodigui.ADDON.getLocalizedString(string_id)] if string_id else []
+        parts.append("{0} episode{1}".format(len(episodes), "" if len(episodes) == 1 else "s"))
         year = _year_from(season)
         if year:
             parts.append(year)
+        # "Continue S3 E3" when this season holds the episode the hero offers
+        # -- and only while that episode is unfinished, so a show watched to
+        # the end, whose next-up wraps round to a rewatch, does not tell the
+        # viewer to continue something they completed.
+        if (not string_id and self._next_up_season == n
+                and self._next_up_episode_number is not None
+                and not self._next_up_completed()):
+            code = episodes_fmt.number_label(n, self._next_up_episode_number)
+            if code:
+                parts.append(kodigui.ADDON.getLocalizedString(31130).format(code))
         self.setProperty("season_subtitle", _dot_join(*parts))
 
     def _render_episode_grid(self, client: MediaServerClient, seasons: list, season_number,
@@ -1714,6 +1839,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         artcache.prefetch(client.stage_pairs(episodes, "still_path")
                           + client.stage_pairs([season or {}], "poster_path"))
         season_art = client.resolve_image_url((season or {}).get("poster_path")) or ""
+        # The Apple TV app shows an episode you never had over the SERIES
+        # backdrop. The same URL the hero already loaded, so the texture
+        # cache has it and nothing new is fetched.
+        series_backdrop = client.resolve_image_url(self.media.get("backdrop_path")) or ""
 
         watched = 0
         managed = []
@@ -1722,9 +1851,16 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             still = client.resolve_image_url(ep.get("still_path")) or season_art
             title = episodes_fmt.title_or_number(ep) or "Episode ?"
             num = ep.get("episode_number")
+            # Not in the library: series backdrop and never a spoiler. There
+            # is no plot to protect on an episode you cannot play, and hiding
+            # it behind "Details hidden" only buried the one thing the card
+            # had to say -- ten of Lioness's eleven Specials read that way.
+            missing = _not_in_library(ep, f)
+            if missing:
+                still = series_backdrop or still
 
             spoiler = (
-                first_unwatched is not None and num is not None
+                not missing and first_unwatched is not None and num is not None
                 and num > first_unwatched
             )
             if spoiler:
@@ -1757,6 +1893,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # says when; one that has aired but has no playable file says so
             # plainly rather than looking like a broken card.
             mli.setProperty("unaired", "" if spoiler else _unaired_label(ep, f))
+            mli.setProperty("nil_badge",
+                            kodigui.ADDON.getLocalizedString(31125) if missing else "")
+            mli.setProperty("nil_glyph", chr(icon_glyphs.LIBRARY) if missing else "")
             managed.append(mli)
 
         self.episode_list.reset()
@@ -1780,7 +1919,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # change that has to actually happen.
             if target is not None:
                 self.episode_list.setSelectedItemByPos(target)
-        self.setProperty("episodes_watched_count", "{0}/{1} watched".format(watched, len(episodes)))
+        self.setProperty("episodes_watched_count",
+                         _season_watched_line(season, watched, len(ep_file_map), len(episodes)))
         done = time.monotonic()
         # info, not debug, and for the reason Home's identical line is:
         # the box runs at the default log level, so a debug line is a
@@ -3213,6 +3353,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     self._apply_episode_meta_line()
                     self._apply_episode_synopsis()
                 self._refresh_episode_progress(client)
+                self._refresh_season_marks()
                 # The grid's landing rule ("select what the pill offers") was
                 # only ever applied on render, so after watching, coming back
                 # and pressing down the viewer arrived on the episode that was
@@ -3288,9 +3429,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "watched": "1" if completed else "",
             "progress_fill": fill,
             # 7.1's meta line: episode, runtime, resolution, time left.
+            # An episode you never had shows its number alone, as the Apple
+            # TV app does: a runtime there is TMDB's, for a file that is not
+            # here, and it made the card look playable.
             "caption": _dot_join(
                 u"E{0}".format(num) if num is not None else "",
-                _runtime_str(runtime_minutes),
+                "" if _not_in_library(ep, f) else _runtime_str(runtime_minutes),
                 *(self._format_badge_labels(f)[:3] if f else []),
                 left_label,
             ),
@@ -3357,8 +3501,14 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # is producing a different value for rows that did not change.
         log.info(f"detail: episode progress repainted {repainted}/"
                   f"{len(self.episode_list)} rows")
-        self.setProperty(
-            "episodes_watched_count", "{0}/{1} watched".format(watched, len(self.episode_list)))
+        playable = sum(1 for mli in self.episode_list
+                       if ((mli.dataSource or {}).get("file") or {}).get("id"))
+        season = next((s for s in (self.media.get("seasons") or [])
+                       if (s.get("season_number") or 0) == self.selected_season_number),
+                      None)
+        self.setProperty("episodes_watched_count",
+                         _season_watched_line(season, watched, playable,
+                                              len(self.episode_list)))
 
     def _select_episode_by_file(self, client: MediaServerClient, seasons: list, file_id) -> None:
         """Move the episode grid's selection onto `file_id`.

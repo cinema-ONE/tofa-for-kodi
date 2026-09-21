@@ -28,6 +28,16 @@ BOOKMARK = 0xE060
 # and for the not-in-library badge, both of which appear on the same poster
 # card as a watchlist affordance. See project_watchlist_glyph.
 BOOKMARK_OFF = 0xE6DF
+# A season whose files the server recorded and can no longer find. Its own
+# mark rather than CIRCLE_PLUS: there is nothing to add, something was lost.
+CIRCLE_ALERT = 0xE077
+# Not in library, in the season sidebar -- the Apple TV app's trailing mark
+# since its 2026-09-21 update. Circled, where Discover's badge is a bare PLUS.
+CIRCLE_PLUS = 0xE081
+# The season sidebar's SELECTED mark, in place of its status.
+DOT = 0xE44F
+# The books glyph leading the "Not in library" pill on an episode card.
+LIBRARY = 0xE100
 ROTATE_CCW_CLOCK = 0xE1F5
 LAYERS = 0xE529
 # The two empty-state marks on Detail page 2, both read off the real Apple TV

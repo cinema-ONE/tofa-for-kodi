@@ -58,6 +58,12 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("SEARCH", "Search tab"),
         ("SETTINGS", "Settings tab"),
     ]),
+    ("Detail season sidebar + episode card", "resources/lib/windows/detail.py – season marks, not-in-library pill", [
+        ("CIRCLE_PLUS", "A season with nothing in the library -- the sidebar's trailing mark"),
+        ("CIRCLE_ALERT", "A season whose recorded files are all missing from disk"),
+        ("DOT", "The SELECTED season, in place of its status"),
+        ("LIBRARY", "Leads the “Not in library” pill on an episode card"),
+    ]),
     ("Card corner chips", "resources/lib/skin/fragments.py – watchlist/cinema chips", [
         ("PLUS", "“Not in library” badge on a Discover card (§11's own pairing —\n"
                  "            NOT a watchlist glyph, which is BOOKMARK)"),

@@ -87,6 +87,8 @@ class FakeDetail:
         pass
     def _refresh_episode_progress(self, client):
         pass
+    def _refresh_season_marks(self):
+        pass
     def _select_episode_by_file(self, client, seasons, file_id):
         pass
     def _is_dismissed(self, client, media_id, position_ms):
