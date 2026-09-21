@@ -43,7 +43,7 @@ class FakeClient:
     def resolve_url(self, path):
         return "http://box.local:33333" + path
 
-    def session_subtitle(self, *args):
+    def session_subtitle(self, *args, **kwargs):
         self.calls.append(args)
         if self.fail:
             raise http.ApiError(503, "not_ready", "still extracting")
@@ -52,7 +52,7 @@ class FakeClient:
 
 class Fake:
     _external_subtitle_url = PlayerWindow._external_subtitle_url
-    _session_timed_ass = PlayerWindow._session_timed_ass
+    _session_subtitle_file = PlayerWindow._session_subtitle_file
     _is_vobsub_sidecar = staticmethod(PlayerWindow._is_vobsub_sidecar)
     _install_session_fonts = PlayerWindow._install_session_fonts
     _fonts_session = None
@@ -65,6 +65,7 @@ class Fake:
         self._nego = {"session_id": SESSION, "session_token": TOKEN, "play_method": "Transcode"}
         self.client = client
         self._loaded_subtitle_slots = {3: 0}
+        self._subtitle_bytes = {}
         self.title, self.played = "", []
         self.ui_player = type("P", (), {"play": lambda _s, url, li: self.played.append(url)})()
 
@@ -94,10 +95,12 @@ def run():
           dialogue(path) == ["Dialogue: 0,0:00:10.86,0:00:14.14,insert,,0,80,350,,{\\an8}UNSER"],
           repr(dialogue(path)))
 
-    path2 = Fake(5000, FakeClient("session-local"))._external_subtitle_url(3)
+    other = Fake(5000, FakeClient("session-local"))
+    other._nego["session_id"] = "99999999-0000-0000-0000-000000000000"
+    path2 = other._external_subtitle_url(3)
     check("an already session-local script is not shifted twice",
           dialogue(path2)[0].startswith("Dialogue: 0,0:00:10.06,"), repr(dialogue(path2)))
-    check("the previous local file is cleaned up", not os.path.exists(path), path)
+    check("another session's local file is cleaned up", not os.path.exists(path), path)
 
     url = Fake(181998, FakeClient(fail=True))._external_subtitle_url(3)
     check("a failed fetch falls back to the shifted full.vtt",

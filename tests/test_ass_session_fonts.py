@@ -53,13 +53,13 @@ class FakeClient:
             raise http.ApiError(404, "not_found", "No such font attachment")
         return Resp(b"FONT%d" % index)
 
-    def session_subtitle(self, *args):
+    def session_subtitle(self, *args, **kwargs):
         return Resp(b"[Events]\n")
 
 
 class Fake:
     _external_subtitle_url = PlayerWindow._external_subtitle_url
-    _session_timed_ass = PlayerWindow._session_timed_ass
+    _session_subtitle_file = PlayerWindow._session_subtitle_file
     _install_session_fonts = PlayerWindow._install_session_fonts
     _is_vobsub_sidecar = staticmethod(PlayerWindow._is_vobsub_sidecar)
 
@@ -69,6 +69,7 @@ class Fake:
                       "play_method": play_method, "font_attachments": fonts}
         self._time_offset_ms = offset_ms
         self._fonts_session = None
+        self._subtitle_bytes = {}
         self.client = FakeClient()
 
 
