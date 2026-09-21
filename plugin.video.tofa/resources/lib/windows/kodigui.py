@@ -560,6 +560,7 @@ class BaseWindow(XMLBase, xbmcgui.WindowXML, BaseFunctions):
         self.close()
 
     def show(self, aggressive=False):
+        """Activate the window; False if Kodi refused to."""
         self._closing = False
         # can we activate?
         ct = 0
@@ -568,6 +569,8 @@ class BaseWindow(XMLBase, xbmcgui.WindowXML, BaseFunctions):
             ct += 1
 
         lastWinID = BaseFunctions.lastWinID
+        # Activation is synchronous, so a refusal leaves the old window current.
+        before = xbmcgui.getCurrentWindowId()
 
         xbmcgui.WindowXML.show(self)
 
@@ -587,7 +590,9 @@ class BaseWindow(XMLBase, xbmcgui.WindowXML, BaseFunctions):
 
                 DEBUG_LOG("{}: activation state (ID: {}, last: {}, current: {})", self, self._winID, lastWinID, xbmcgui.getCurrentWindowId())
 
-        self.isOpen = xbmcgui.getCurrentWindowId() >= 13000
+        current = xbmcgui.getCurrentWindowId()
+        self.isOpen = current >= 13000
+        return current != before
 
     @property
     def is_active(self):
@@ -693,12 +698,53 @@ class ControlledBase:
         self._closing = True
 
 
+#: Evaluates HasModalDialog(true), the very test Kodi refuses activation on.
+_MODAL_UP = "System.HasActiveModalDialog"
+_REFUSED_POLL_S = 0.25
+#: Retries when Kodi refuses with no modal dialog to blame.
+_UNEXPLAINED_RETRIES = 3
+
+
 class ControlledWindow(ControlledBase, BaseWindow):
     # opt-in: actively dismiss the Kodi window on a genuine back-out (see onAction). Off by
     # default; ControlledBase.close() only flips a flag, so non-opted windows keep relying on
     # GC/parent re-activate and windows with their own teardown (video player) stay untouched.
     dismissOnClose = False
     _dismissed = False
+
+    def doModal(self, aggressive=False):
+        # Waiting on a window Kodi refused would wait forever.
+        if self._show_past_modals(aggressive):
+            self.wait()
+
+    def _show_past_modals(self, aggressive=False):
+        """Show; while a modal dialog makes Kodi refuse, wait it out and retry.
+
+        Never answers or closes the dialog. False means give up: Kodi is
+        quitting, the window was closed, or refusals have no dialog to blame.
+        """
+        name, refused_at, unexplained = self.__class__.__name__, None, 0
+        while True:
+            if self.show(aggressive=aggressive):
+                if refused_at is not None:
+                    LOG("{}: shown {:.1f}s after Kodi refused it", name,
+                        time.monotonic() - refused_at)
+                return True
+            if refused_at is None:
+                refused_at = time.monotonic()
+                LOG("{}: Kodi refused to show it; waiting for any modal dialog", name)
+            if xbmc.getCondVisibility(_MODAL_UP):
+                unexplained = 0
+                while xbmc.getCondVisibility(_MODAL_UP):
+                    if MONITOR.waitFor(_REFUSED_POLL_S) or self._closing:
+                        return False
+                continue
+            unexplained += 1
+            if unexplained > _UNEXPLAINED_RETRIES:
+                LOG("{}: still refused with no modal dialog up; giving up", name)
+                return False
+            if MONITOR.waitFor(_REFUSED_POLL_S) or self._closing:
+                return False
 
     def _dismiss(self):
         """Remove the native Kodi window -- at most once, ever.
