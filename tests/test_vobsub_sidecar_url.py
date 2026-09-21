@@ -63,6 +63,8 @@ class Fake:
     """Only what _external_subtitle_url actually reaches."""
     _external_subtitle_url = PlayerWindow._external_subtitle_url
     _is_vobsub_sidecar = staticmethod(PlayerWindow._is_vobsub_sidecar)
+    _install_session_fonts = PlayerWindow._install_session_fonts
+    _fonts_session = None
     _time_offset_ms = 0                 # not a cut session
 
     def __init__(self, tracks_):
