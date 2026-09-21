@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.32" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.33" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,22 +45,12 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Holding or tapping left and right during playback now jumps once, when
-        you stop pressing, instead of jumping on every press. The counter on
-        screen counts the whole movement rather than the last step.
-      - When a server refuses to start something, it now says why in its own
-        words -- that it is busy converting other videos, for instance -- instead
-        of the add-on's single "couldn't start this file".
-      - The list of seasons now shows where you are at a glance: a tick for a
-        season you have finished, how many episodes are left in one you are
-        partway through, and a plus for a season with nothing in your library.
-        Open that season and it says "Not in library", and so does each of its
-        episodes -- instead of hiding them behind "Details hidden".
-      - The pictures on the "Who's watching?" screen are bigger, and sit the way
-        they do in the other tofa apps.
-      - On an episode with nothing before or after it, the two buttons either side
-        of play now skip forward and back ten seconds, instead of being greyed out
-        with nowhere to go.
+      - The add-on keeps working through an internet outage, as long as your
+        server is reachable: renewing your sign-in now goes through the server
+        when tofa's online service is down.
+      - The add-on no longer gets stuck on its opening animation when another
+        dialog is open as it starts -- CoreELEC's offer to reboot for an update,
+        for instance. It now opens as soon as that dialog is answered.
     </news>
     <assets>
       <icon>icon.png</icon>
