@@ -84,7 +84,7 @@ import xbmcvfs
 
 from . import kodigui, playerstats, playoptions, profile_select, theme
 from .. import (api, artcache, asstime, auth, episodes, http, langcodes, log,
-                monitor, playback, playbackprefs, playbacksync, prefs, regional,
+                monitor, pgstime, playback, playbackprefs, playbacksync, prefs, regional,
                 settings_options, stereoscopic, textmetrics, tracks)
 from ..api import MediaServerClient
 from ..profile import DEFAULT_AUDIO_CODECS, CapabilityProfile
@@ -322,6 +322,11 @@ _STATS_CENTRE_X = 960
 FONT_BUDGET_BYTES = 32 * 1024 * 1024
 _FONT_EXTENSIONS = (".ttf", ".ttc", ".otf")
 
+# A picture track can take minutes to extract; the server answers 503 with
+# Retry-After: 30 meanwhile.
+PICTURE_SUBTITLE_RETRY_S = 30.0
+PICTURE_SUBTITLE_TRIES = 20
+
 
 def _actions(*names: str) -> frozenset:
     """The xbmcgui.ACTION_* ids that actually exist in this Kodi.
@@ -339,6 +344,11 @@ def _actions(*names: str) -> frozenset:
         else:
             ids.add(value)
     return frozenset(ids)
+
+
+def _shift_ass_bytes(raw: bytes, offset_ms: int) -> bytes:
+    text = raw.decode("utf-8", "surrogateescape")
+    return asstime.shift(text, offset_ms).encode("utf-8", "surrogateescape")
 
 
 def font_file_name(filename, index) -> str:
@@ -806,6 +816,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         # and which server track is on. See _select_subtitle.
         self._loaded_subtitle_slots: dict = {}
         self._fonts_session = None
+        self._subtitle_bytes: dict = {}
+        self._picture_subtitle_wanted = None
         self._active_subtitle_index = None
         # Where to seek once the first frame is up, or None. See
         # _start_playback() for why this can't just be self.resume_ms.
@@ -3741,6 +3753,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                      if t.get("index") == self.selection.audio_index), None)
             if explicit_subtitle:
                 if self.selection.subtitle_index == playoptions.OFF:
+                    self._picture_subtitle_wanted = None
                     self.ui_player.showSubtitles(False)
                 else:
                     if self._select_subtitle(self.selection.subtitle_index):
@@ -3996,11 +4009,12 @@ class PlayerWindow(kodigui.ControlledDialog):
         had told the layer above that some tracks are never going to have a
         slot. It failed silently in exactly the case a viewer notices.
 
-        So: use the stream when there IS one, and otherwise let Kodi fetch the
-        track from the server as WebVTT. Verified that endpoint serves real
-        content for a live session (HTTP 200, WEBVTT, correct cues); a 503
+        So: use the stream when there IS one, and otherwise hand Kodi the
+        server's own delivery (_external_subtitle_url), or, for a picture
+        track, fetch it in the background (_load_picture_subtitle). A 503
         right after the session opens is extraction still running.
         """
+        self._picture_subtitle_wanted = None
         track = next((t for t in self._subtitle_tracks
                       if t.get("index") == server_index), None)
         # Already fetched once this session: switch to the stream it became.
@@ -4018,10 +4032,16 @@ class PlayerWindow(kodigui.ControlledDialog):
             if slot is not None:
                 self._active_subtitle_index = server_index
                 return self._switch_subtitle(slot)
+        if tracks.delivered_format(track or {}) == "PGS":
+            return self._load_picture_subtitle(server_index)
         url = self._external_subtitle_url(server_index)
         if not url:
             log.debug(f"player: no stream slot and no URL for subtitle {server_index}")
             return False
+        self._load_subtitle_file(server_index, url)
+        return True
+
+    def _load_subtitle_file(self, server_index, url) -> None:
         try:
             before = len(self.ui_player.getAvailableSubtitleStreams())
         except (RuntimeError, AttributeError):
@@ -4034,6 +4054,39 @@ class PlayerWindow(kodigui.ControlledDialog):
             self._loaded_subtitle_slots[server_index] = before
         self._active_subtitle_index = server_index
         log.debug(f"player: loaded subtitle {server_index} by URL as slot {before}")
+
+    def _load_picture_subtitle(self, server_index) -> bool:
+        """Fetch a picture (PGS) track in the background; load it when it lands.
+
+        Kodi cannot wait out the minutes a film's track takes to extract.
+        This retries on the server's schedule and gives up once the viewer
+        picks something else or the window closes."""
+        nego = self._nego or {}
+        session_id, token = nego.get("session_id"), nego.get("session_token")
+        if not (session_id and token and self.client):
+            return False
+        ticket = (server_index, object())
+        self._picture_subtitle_wanted = ticket
+
+        def run():
+            for attempt in range(PICTURE_SUBTITLE_TRIES):
+                if attempt and self._stop_tick.wait(PICTURE_SUBTITLE_RETRY_S):
+                    return
+                if self._picture_subtitle_wanted is not ticket:
+                    return
+                try:
+                    path = self._session_subtitle_file(
+                        session_id, token, server_index, "full.sup", pgstime.shift, timeout=40)
+                except Exception as exc:                    # noqa: BLE001
+                    log.debug(f"player: picture subtitle {server_index} not ready: {exc!r}")
+                    continue
+                if self._picture_subtitle_wanted is ticket:
+                    self._picture_subtitle_wanted = None
+                    self._load_subtitle_file(server_index, path)
+                return
+            log.warning(f"player: picture subtitle {server_index} never arrived")
+
+        threading.Thread(target=run, name="tofa-player-pgs", daemon=True).start()
         return True
 
     def _external_subtitle_url(self, server_index) -> str:
@@ -4042,7 +4095,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         `.ass` when the server offers it: the script arrives as authored, so
         Kodi draws it as it draws an embedded ASS track, with the file's
         attached fonts fetched first. On a cut session it goes through
-        _session_timed_ass. `.vtt` for other text (tracks.delivered_format).
+        _session_subtitle_file. `.vtt` for other text (tracks.delivered_format).
 
         A VobSub sidecar cannot be a `.vtt` at all -- it is a pair of bitmap
         files, and the server answers 400 for any bitmap track asked for as
@@ -4060,11 +4113,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         token: Kodi asked for `full.idx?st=...`, then HEADed
         `full.sub?st=...`, then range-read both, and rendered the cues.
 
-        `.sup` (PGS) is deliberately NOT mapped here even though the server
-        offers that route too: it is a separate delivery path with its own
-        demuxer and nothing has measured it. Bitmap PGS reaches this method
-        only under a transcode, where it is a pre-existing 400 rather than
-        something this change introduces.
+        A picture (PGS) track never comes through here: _select_subtitle
+        hands it to _load_picture_subtitle, which fetches `full.sup` itself.
 
         The endpoint wants the scoped session token as `st`, the same one the
         progress and teardown calls use."""
@@ -4080,9 +4130,11 @@ class PlayerWindow(kodigui.ControlledDialog):
             self._install_session_fonts(session_id, token)
             name = "full.ass"
             if self._time_offset_ms:
-                path = self._session_timed_ass(session_id, token, server_index)
-                if path:
-                    return path
+                try:
+                    return self._session_subtitle_file(
+                        session_id, token, server_index, "full.ass", _shift_ass_bytes)
+                except Exception as exc:                    # noqa: BLE001
+                    log.warning(f"player: ASS for the session clock failed, using WebVTT: {exc!r}")
                 name = "full.vtt"
         else:
             name = "full.vtt"
@@ -4117,32 +4169,39 @@ class PlayerWindow(kodigui.ControlledDialog):
             except Exception as exc:                        # noqa: BLE001
                 log.warning(f"player: attached font {name} not fetched: {exc!r}")
 
-    def _session_timed_ass(self, session_id, token, server_index) -> str:
-        """`full.ass` moved onto this session's clock as a local file, or "".
+    def _session_subtitle_file(self, session_id, token, server_index, name, shift,
+                               timeout=None) -> str:
+        """A session's `name` on this session's clock, written locally; its path.
 
-        The server sends it on the file's clock (time basis `content`), and a
-        cut session starts at the cut. "" falls back to the shifted `.vtt`."""
-        try:
-            resp = self.client.session_subtitle(session_id, token, server_index, "full.ass")
-            text = resp.content.decode("utf-8", "surrogateescape")
+        The server sends ASS and PGS on the file's clock (time basis
+        `content`), and a cut session starts at the cut. The download is kept
+        so a re-cut only re-shifts it. Raises when the fetch fails."""
+        key = (session_id, server_index, name)
+        raw, basis = self._subtitle_bytes.get(key, (None, None))
+        if raw is None:
+            resp = self.client.session_subtitle(session_id, token, server_index, name,
+                                                timeout=timeout)
             headers = {k.lower(): v for k, v in resp.headers.items()}
-            if headers.get("x-tofa-subtitle-time-basis", "content").lower() == "content":
-                text = asstime.shift(text, self._time_offset_ms)
-            folder = xbmcvfs.translatePath("special://temp/tofa-subtitles")
-            os.makedirs(folder, exist_ok=True)
-            for old in os.listdir(folder):
+            raw = resp.content
+            basis = headers.get("x-tofa-subtitle-time-basis", "content").lower()
+            # One at a time: a film's picture track runs to megabytes.
+            self._subtitle_bytes = {key: (raw, basis)}
+        body = shift(raw, self._time_offset_ms) if basis == "content" else raw
+        folder = xbmcvfs.translatePath("special://temp/tofa-subtitles")
+        os.makedirs(folder, exist_ok=True)
+        # Only other sessions' files: Kodi reads a .sup while it plays.
+        for old in os.listdir(folder):
+            if not old.startswith(session_id):
                 try:
                     os.remove(os.path.join(folder, old))
                 except OSError:
                     pass
-            name = "%s-%s-%d.ass" % (session_id, server_index, self._time_offset_ms)
-            path = os.path.join(folder, name)
-            with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as f:
-                f.write(text)
-            return path
-        except Exception as exc:                            # noqa: BLE001
-            log.warning(f"player: ASS for the session clock failed, using WebVTT: {exc!r}")
-            return ""
+        ext = os.path.splitext(name)[1]
+        path = os.path.join(folder, "%s-%s-%d%s" % (session_id, server_index,
+                                                    self._time_offset_ms, ext))
+        with open(path, "wb") as f:
+            f.write(body)
+        return path
 
     @staticmethod
     def _is_vobsub_sidecar(track) -> bool:
@@ -5434,6 +5493,7 @@ class PlayerWindow(kodigui.ControlledDialog):
             try:
                 if subtitles:
                     if idx == 0:
+                        self._picture_subtitle_wanted = None
                         self.ui_player.showSubtitles(False)
                         self._active_subtitle_index = None
                         return
