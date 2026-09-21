@@ -133,30 +133,52 @@ def squash_message(number: str) -> tuple[str, str]:
 
     GitHub would build this on the server from the repository's
     `squash_merge_commit_*` settings, which means a PR title nobody gated can
-    become a permanent public commit subject. Composing it locally costs one
-    API call and makes the published message identical to the checked one.
+    become a permanent public commit subject. Composing it locally costs two
+    API calls and makes the published message identical to the checked one.
 
     One commit: its own subject and body, which is what the author wrote and
     what the pre-push gate already read. More than one: the pull request
     title, and the commit messages under it the way GitHub lists them.
+
+    FULL messages, from the REST endpoint. `gh pr view --json commits` hands
+    back GraphQL's `messageHeadline`, which GitHub TRUNCATES at about seventy
+    characters with an ellipsis and carries on in `messageBody` -- so #191
+    shipped as "...as the Apple TV app now… (#191)" with a body opening
+    "… does". The text was all there and split in the wrong place.
     """
-    raw = subprocess.run(
-        ["gh", "pr", "view", number, "--json", "title,commits"],
+    title = subprocess.run(
+        ["gh", "pr", "view", number, "--json", "title", "--jq", ".title"],
         cwd=ROOT, capture_output=True, text=True)
-    if raw.returncode:
+    raw = subprocess.run(
+        ["gh", "api", "repos/{owner}/{repo}/pulls/%s/commits" % number,
+         "--paginate", "--jq", "[.[].commit.message]"],
+        cwd=ROOT, capture_output=True, text=True)
+    if title.returncode or raw.returncode:
         sys.exit("gh_gate: cannot read pull request %s:\n%s"
-                 % (number, raw.stderr.strip()))
-    data = json.loads(raw.stdout)
-    commits = data.get("commits") or []
-    if len(commits) == 1:
-        head = commits[0].get("messageHeadline", "")
-        body = commits[0].get("messageBody", "")
+                 % (number, (title.stderr or raw.stderr).strip()))
+    messages = []
+    for chunk in raw.stdout.split("\n"):          # --paginate: one array per page
+        chunk = chunk.strip()
+        if chunk:
+            messages += json.loads(chunk)
+    return compose_squash(number, title.stdout.strip(), messages)
+
+
+def compose_squash(number: str, pr_title: str, messages: list) -> tuple[str, str]:
+    """(subject, body) from FULL commit messages -- pure, so it is testable."""
+    def split(message: str) -> tuple[str, str]:
+        head, _, body = (message or "").strip().partition("\n")
+        return head.strip(), body.strip()
+
+    if len(messages) == 1:
+        head, body = split(messages[0])
     else:
-        head = data.get("title", "")
-        body = "\n\n".join(
-            "* " + c.get("messageHeadline", "")
-            + (("\n\n" + c.get("messageBody", "")) if c.get("messageBody") else "")
-            for c in commits)
+        head = pr_title
+        parts = []
+        for message in messages:
+            h, b = split(message)
+            parts.append("* " + h + (("\n\n" + b) if b else ""))
+        body = "\n\n".join(parts)
     return "%s (#%s)" % (head, number), body
 
 
