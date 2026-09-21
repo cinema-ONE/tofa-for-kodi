@@ -184,8 +184,13 @@ ROW_BLEED_RIGHT = SCREEN_W + HPAD
 # last poster reach the edge (see row_bleed_width) -- which is why this is a
 # separate token rather than a smaller ROW_BLEED_RIGHT.
 ROWS_CLIP_RIGHT = SCREEN_W
-HOME_ROWS_W = ROWS_CLIP_RIGHT - HOME_LEFT
-DISCOVER_ROWS_W = ROWS_CLIP_RIGHT - DISCOVER_LEFT
+# The LEFT clip is where a row's lists start, one HPAD before the art. Kodi
+# clips before the focus zoom, so a region starting at the art cut off the
+# first card's glow down its left side; poster_row() insets its contents.
+HOME_ROWS_X = HOME_LEFT - HPAD
+DISCOVER_ROWS_X = DISCOVER_LEFT - HPAD
+HOME_ROWS_W = ROWS_CLIP_RIGHT - HOME_ROWS_X
+DISCOVER_ROWS_W = ROWS_CLIP_RIGHT - DISCOVER_ROWS_X
 
 
 
@@ -586,7 +591,8 @@ BROWSE_CELL_H = CELL_H + GRID_GAP_BROWSE      # 504, app measures 505
 # The shelves' grouplist, so it clips at the screen edge; the lists inside it
 # get row_bleed_width(100) from screens.py and still bleed. See
 # ROWS_CLIP_RIGHT.
-DETAIL_SHELF_W = ROWS_CLIP_RIGHT - 100
+DETAIL_SHELF_X = 100 - HPAD                 # see HOME_ROWS_X
+DETAIL_SHELF_W = ROWS_CLIP_RIGHT - DETAIL_SHELF_X
 DETAIL_SHELF_H = SCREEN_H - 150
 
 # Cast & Crew tiles (Detail page 2). Square cells, not posters: 1740 of panel

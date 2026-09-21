@@ -157,10 +157,10 @@ check("the scan actually walked the rendered windows",
 from resources.lib.skin import tokens as T  # noqa: E402
 
 for name, (left, width) in {
-    "Home rows": (T.HOME_LEFT, T.HOME_ROWS_W),
-    "Discover rows": (T.DISCOVER_LEFT, T.DISCOVER_ROWS_W),
+    "Home rows": (T.HOME_ROWS_X, T.HOME_ROWS_W),
+    "Discover rows": (T.DISCOVER_ROWS_X, T.DISCOVER_ROWS_W),
     "Search shelves": (T.SEARCH_SHELF_X, T.SEARCH_SHELF_CLIP_W),
-    "Detail shelves": (100, T.DETAIL_SHELF_W),
+    "Detail shelves": (T.DETAIL_SHELF_X, T.DETAIL_SHELF_W),
 }.items():
     check("%s clip at the screen edge" % name, left + width == T.SCREEN_W,
           "clips at %d" % (left + width))

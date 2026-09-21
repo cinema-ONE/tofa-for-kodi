@@ -307,7 +307,7 @@
                  hand-typed 535 against a ROW_H of 536, leaving each shelf a
                  pixel taller than the viewport meant to hold it. -->
             <control type="grouplist" id="4090">
-                <posx>{HOME_LEFT}</posx>
+                <posx>{HOME_ROWS_X}</posx>
                 <posy>{HOME_ROWS_Y}</posy>
                 <width>{HOME_ROWS_W}</width>
                 <height>{HOME_ROWS_H}</height>
@@ -326,7 +326,7 @@
             <!-- SPOTLIGHT OFF: the rows take the whole content area, which
                  is where the second shelf comes from. -->
             <control type="grouplist" id="4490">
-                <posx>{HOME_LEFT}</posx>
+                <posx>{HOME_ROWS_X}</posx>
                 <posy>{HOME_ROWS_Y_NOHERO}</posy>
                 <width>{HOME_ROWS_W}</width>
                 <height>{HOME_ROWS_H_NOHERO}</height>
@@ -684,7 +684,7 @@
                  used as the control position, which pushed the whole rows
                  region (and every caption under it) 16px low. -->
             <control type="grouplist" id="6390">
-                <posx>{DISCOVER_LEFT}</posx>
+                <posx>{DISCOVER_ROWS_X}</posx>
                 <posy>252</posy>
                 <width>{DISCOVER_ROWS_W}</width>
                 <height>{DISCOVER_ROWS_H}</height>

@@ -1558,14 +1558,14 @@
                      grouplist and had to have Up/Down re-asserted from
                      Python because of it.
 
-                     posx 100 puts label and art on the same content edge the
-                     rest of the screen uses: poster_row lays its label at 0
-                     and its list at ROW_LIST_X, which is exactly -HPAD, so
-                     the card ART lands back on the grouplist's own x. -->
+                     Label and art sit on the screen's content edge, 100:
+                     the grouplist starts HPAD before it, where the lists do,
+                     so the first card's glow is not clipped, and
+                     poster_row insets each shelf's label and list by HPAD. -->
                 <control type="group">
                     <visible>String.IsEqual(Window.Property(detail_tab),more)</visible>
                     <control type="grouplist" id="6350">
-                        <posx>100</posx>
+                        <posx>{DETAIL_SHELF_X}</posx>
                         <posy>150</posy>
                         <width>{DETAIL_SHELF_W}</width>
                         <height>{DETAIL_SHELF_H}</height>
