@@ -2655,10 +2655,14 @@ def poster_row(
     three different title gaps and row heights. Generating it means a row
     count is now just a number (Discover's largest tab needs ~15), and the
     geometry comes from tokens.py rather than being retyped per block."""
+    # The region starts at the lists' edge (HOME_ROWS_X), and a grouplist
+    # ignores its children's own posx, so the inset goes on what is inside.
+    inset = -T.ROW_LIST_X
     return f"""{indent}<control type="group" id="{group_id}">
 {indent}    <height>{T.ROW_BLOCK_H}</height>
 {indent}    <visible>!String.IsEmpty(Window.Property({title_property}))</visible>
 {indent}    <control type="label">
+{indent}        <posx>{inset}</posx>
 {indent}        <width>{T.CONTENT_WIDTH}</width>
 {indent}        <height>{T.ROW_TITLE_H}</height>
 {indent}        <font>{T.FONT_SECTION_TITLE}</font>
@@ -2666,7 +2670,7 @@ def poster_row(
 {indent}        <label>$INFO[Window.Property({title_property})]</label>
 {indent}    </control>
 {indent}    <control type="list" id="{list_id}">
-{indent}        <posx>{T.ROW_LIST_X}</posx>
+{indent}        <posx>{T.ROW_LIST_X + inset}</posx>
 {indent}        <posy>{T.ROW_TITLE_GAP}</posy>
 {indent}        <width>{list_width}</width>
 {indent}        <height>{T.CELL_H}</height>
