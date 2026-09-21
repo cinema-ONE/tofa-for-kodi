@@ -199,7 +199,7 @@ check("a ref that names a path is refused", escapes == ["", "", ""],
 # path -- would draw initials for EVERY profile at once, which looks like the
 # avatars were deleted rather than like a network blip.
 #
-# Raised by the cinemaONE Player session, which had reached the same rule from
+# Raised by another client's developer, who had reached the same rule from
 # the other end and assumed this client did the cheaper thing.
 class NoCatalogue(Session):
     """The catalogue path is down; the images are fine."""
