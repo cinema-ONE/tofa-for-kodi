@@ -55,17 +55,11 @@ _SUBTITLE_DELIVERED = {
 def delivered_format(track: dict[str, Any]) -> str:
     """The format this client will actually FETCH the track in, or "".
 
-    `representations` lists what the server can serve the track AS -- it is
-    a menu, not a decision. Measured on 40 files: every `subrip` offers
-    `vtt` alone, PGS offers `pgs`, a VobSub sidecar offers `vobsub`, and an
-    `ass` track offers **both** `ass` and `vtt`. So the choice is ours, and
-    it is made in PlayerWindow._external_subtitle_url: `.vtt` for anything
-    that is not a VobSub sidecar, deliberately, because ASS carries styling
-    the skin has no say over.
-
-    This mirrors that rule rather than reading the list in order, so the two
-    cannot drift into saying different things about the same track. Empty
-    for a server older than 0.10.0, which sends no representations at all.
+    `representations` is a menu (an `ass` track offers `ass` and `vtt`).
+    Bitmaps come as themselves, a styled track as ASS so Kodi keeps its
+    authored styling under the viewer's own subtitle settings, and other
+    text as WebVTT. PlayerWindow._external_subtitle_url follows this rule.
+    Empty for a server older than 0.10.0, which sends no representations.
     """
     offered = [str(r.get("format") or "").lower()
                for r in (track.get("representations") or [])]
@@ -74,7 +68,7 @@ def delivered_format(track: dict[str, Any]) -> str:
         return ""
     # Bitmap formats are fetched as themselves -- there is no text rendition
     # of a picture, and the server 400s a bitmap track asked for as WebVTT.
-    for fmt in ("vobsub", "pgs"):
+    for fmt in ("vobsub", "pgs", "ass"):
         if fmt in offered:
             return _SUBTITLE_DELIVERED[fmt]
     if "vtt" in offered:
@@ -87,20 +81,11 @@ _STYLED_FORMATS = ("ASS", "SSA")
 
 
 def subtitle_style_lost(track: dict[str, Any]) -> bool:
-    """Is a styled track being taken as plain text?
-
-    True when the server OFFERS the styled rendition and this client asks
-    for WebVTT anyway -- which it does on purpose, so that subtitles look
-    like the rest of the app rather than like whatever the author chose.
-
-    That is a defensible decision and not a bug, but it is invisible: the
-    captions simply do not look the way they do elsewhere, and nothing on
-    screen says why. This is what puts it in the stats panel.
-    """
-    offered = {str(r.get("format") or "").lower()
-               for r in (track.get("representations") or [])}
-    return bool(offered & {"ass", "ssa"}
-                and delivered_format(track) not in _STYLED_FORMATS)
+    """Is a styled source reaching Kodi as plain text? Only possible when
+    the server offers no ASS rendition for an ASS/SSA track."""
+    codec = str(track.get("codec") or "").strip().lower()
+    delivered = delivered_format(track)
+    return codec in ("ass", "ssa") and bool(delivered) and delivered not in _STYLED_FORMATS
 
 
 _SUBTITLE_CODEC = {

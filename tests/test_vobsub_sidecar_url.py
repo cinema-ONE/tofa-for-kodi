@@ -92,6 +92,18 @@ def run():
     check("an embedded dvd_subtitle is left on full.vtt",
           url.partition("?")[0].endswith("/subtitles/3/full.vtt"), url)
 
+    # 4b. A styled track the server offers as ASS is fetched as ASS.
+    win_ass = Fake([{"index": 5, "codec": "ass", "external": False,
+                     "representations": [{"format": "ass"}, {"format": "vtt"}]},
+                    {"index": 6, "codec": "ass", "external": False,
+                     "representations": [{"format": "vtt"}]}])
+    url = win_ass._external_subtitle_url(5)
+    check("an ASS track offered as ASS is fetched as full.ass",
+          url.partition("?")[0].endswith("/subtitles/5/full.ass"), url)
+    url = win_ass._external_subtitle_url(6)
+    check("...but one offered only as vtt stays on full.vtt",
+          url.partition("?")[0].endswith("/subtitles/6/full.vtt"), url)
+
     # 4. Text tracks are untouched by any of this.
     url = win._external_subtitle_url(1001)
     check("a text sidecar still asks for full.vtt",

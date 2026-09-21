@@ -4025,9 +4025,9 @@ class PlayerWindow(kodigui.ControlledDialog):
     def _external_subtitle_url(self, server_index) -> str:
         """The server's own delivery of a track, in the format Kodi can read.
 
-        `.vtt` rather than `.ass` for a TEXT track: Kodi renders both, but ASS
-        carries styling the skin has no say over, and 8's subtitles are meant
-        to look like the rest of the app.
+        `.ass` for a track the server offers as ASS, so Kodi draws its
+        authored styling under the viewer's own subtitle settings (8.4 now
+        keeps authored ASS styling); `.vtt` for other text (tracks.delivered_format).
 
         A VobSub sidecar is the one exception, and it cannot be a `.vtt` at
         all -- it is a pair of bitmap files, and the server answers 400 for
@@ -4060,7 +4060,12 @@ class PlayerWindow(kodigui.ControlledDialog):
             return ""
         track = next((t for t in self._subtitle_tracks
                       if t.get("index") == server_index), None)
-        name = "full.idx" if self._is_vobsub_sidecar(track) else "full.vtt"
+        if self._is_vobsub_sidecar(track):
+            name = "full.idx"
+        elif tracks.delivered_format(track or {}) == "ASS":
+            name = "full.ass"
+        else:
+            name = "full.vtt"
         return self.client.resolve_url(
             f"/api/v1/stream/s/{session_id}/subtitles/{server_index}"
             f"/{name}?st={urllib.parse.quote(str(token))}")
