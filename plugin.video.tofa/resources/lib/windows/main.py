@@ -680,6 +680,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._shelf_titles: dict[str, str] = {}
         self._settings_languages: list | None = None  # /media/facets languages, see _settings_language_facet()
         self._settings_regions: list | None = None  # /system/metadata-options regions, see _settings_region_list()
+        self._settings_last_control: dict[str, int] = {}  # page key -> control left last
         self._settings_identity: dict | None = None  # cloud GET /v1/me, see _settings_account_identity()
         self._browse_shuffle_seed: int | None = None  # for Sort="random"'s stable pagination, see _browse_sort_clicked()
         # Browse grid paging. The server caps per_page at 200 however much is
@@ -1315,6 +1316,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # See _search_maybe_commit_history()'s own docstring.
             self._search_query_field_focused = False
             self._search_maybe_commit_history()
+
+        # 6: re-entering a Settings page returns to the control left last.
+        if (self.getProperty("active_section") == "settings"
+                and controlID not in (self.NAV_LIST_ID, self.SETTINGS_NAV_ID)):
+            page = self.getProperty("settings_page")
+            if page:
+                self._settings_last_control[page] = controlID
 
         # Browse: coming back UP out of the grid should return to the pill
         # you left FROM, not always to Sort. The template can carry only one
@@ -5122,11 +5130,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_page", page.key)
         self.setProperty("settings_title", page.title)
         self.setProperty("settings_subtitle", page.subtitle)
-        target = settings_pages.RIGHT_TARGETS.get(page.key, self.SETTINGS_NAV_ID)
+        target = self._settings_entry_target(page.key) or self.SETTINGS_NAV_ID
         try:
             self.getControl(self.SETTINGS_NAV_ID).controlRight(self.getControl(target))
         except Exception:
             pass
+
+    def _settings_entry_target(self, key: str):
+        """Where Right or Select enters a page: the control left last, else
+        the page's first control (6). Not checked for visibility: a page shown
+        a moment ago still reads as hidden, and its rows do not come and go."""
+        return (self._settings_last_control.get(key)
+                or settings_pages.RIGHT_TARGETS.get(key))
 
     def _settings_page_clicked(self):
         """Select on a sidebar row moves INTO the page rather than being a
@@ -5149,7 +5164,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # session that looked like a real bug and were not. Idempotent, so
         # making the honest path bulletproof costs nothing.
         self._settings_show_page()
-        target = settings_pages.RIGHT_TARGETS.get(page.key)
+        target = self._settings_entry_target(page.key)
         if target:
             self.setFocusId(target)
 
