@@ -114,15 +114,19 @@ check("not-in-library and missing never share a glyph",
 
 # --------------------------------------------------------- top-right line --
 check("nothing to play reads 'No episodes'",
-      D._season_watched_line(SPECIALS, 0, 0, 11) == "<string 31128>")
+      D._season_watched_line(SPECIALS, 0, 0) == "<string 31128>")
 check("...for a lost season too",
-      D._season_watched_line(LOST, 0, 0, 2) == "<string 31128>")
+      D._season_watched_line(LOST, 0, 0) == "<string 31128>")
 check("a finished season reads 'Season complete'",
-      D._season_watched_line(S1, 4, 4, 4) == "<string 31127>")
-check("anything else is the running tally over ALL its episodes",
-      D._season_watched_line(S1, 2, 4, 4) == "2/4 watched")
+      D._season_watched_line(S1, 4, 4) == "<string 31127>")
+check("anything else is the running tally",
+      D._season_watched_line(S1, 2, 4) == "2/4 watched")
 check("finished means every PLAYABLE one, as the tick does",
-      D._season_watched_line(PARTLY, 1, 1, 2) == "<string 31127>")
+      D._season_watched_line(PARTLY, 1, 1) == "<string 31127>")
+PARTLY_3 = season(1, ep(1, f("a")), ep(2, f("b")), ep(3))   # two owned, one never had
+check("a partial season's tally counts only what it can play (7.1)",
+      D._season_watched_line(PARTLY_3, 1, 2) == "1/2 watched",
+      D._season_watched_line(PARTLY_3, 1, 2))
 
 # ------------------------------------------------------------------ cards --
 future = (datetime.date.today() + datetime.timedelta(days=30)).isoformat()
