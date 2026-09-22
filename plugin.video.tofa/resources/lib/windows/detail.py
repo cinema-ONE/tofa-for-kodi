@@ -175,21 +175,20 @@ _SEASON_MARK_GLYPH = {
 }
 
 
-def _season_watched_line(season: dict | None, watched: int, playable: int,
-                         total: int) -> str:
+def _season_watched_line(season: dict | None, watched: int, playable: int) -> str:
     """The Episodes tab's top-right line for the selected season.
 
     Three wordings, read off the Apple TV app on 2026-09-21: nothing to play
     says so, a finished season says so, and anything else is the running
-    tally. Finished means every PLAYABLE episode is watched -- the same test
-    the sidebar's tick uses, so the two cannot disagree about one season.
+    tally. Both count PLAYABLE episodes only, as 7.1 asks of a partial season,
+    and as the sidebar's tick does, so the two cannot disagree.
     """
     state = episodes_fmt.season_availability(season or {})
     if state in (episodes_fmt.SEASON_NOT_IN_LIBRARY, episodes_fmt.SEASON_MISSING):
         return kodigui.ADDON.getLocalizedString(31128)
     if playable and watched >= playable:
         return kodigui.ADDON.getLocalizedString(31127)
-    return "{0}/{1} watched".format(watched, total)
+    return "{0}/{1} watched".format(watched, playable)
 
 
 class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
@@ -1925,7 +1924,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if target is not None:
                 self.episode_list.setSelectedItemByPos(target)
         self.setProperty("episodes_watched_count",
-                         _season_watched_line(season, watched, len(ep_file_map), len(episodes)))
+                         _season_watched_line(season, watched, len(ep_file_map)))
         done = time.monotonic()
         # info, not debug, and for the reason Home's identical line is:
         # the box runs at the default log level, so a debug line is a
@@ -3581,8 +3580,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                        if (s.get("season_number") or 0) == self.selected_season_number),
                       None)
         self.setProperty("episodes_watched_count",
-                         _season_watched_line(season, watched, playable,
-                                              len(self.episode_list)))
+                         _season_watched_line(season, watched, playable))
 
     def _select_episode_by_file(self, client: MediaServerClient, seasons: list, file_id) -> None:
         """Move the episode grid's selection onto `file_id`.
