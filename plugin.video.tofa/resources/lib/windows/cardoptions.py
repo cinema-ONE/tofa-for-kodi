@@ -165,6 +165,7 @@ class CardOptionsDialog(kodigui.BaseDialog):
         self._subtitle = kwargs.pop("subtitle", "")
         self._eyebrow = kwargs.pop("eyebrow", "")
         self._keys = list(kwargs.pop("keys", []))
+        self._focus_key = kwargs.pop("focus", None)
         kodigui.BaseDialog.__init__(self, *args, **kwargs)
         self.option_list: kodigui.ManagedControlList | None = None
         # Read by the caller after open() returns; None means dismissed.
@@ -207,6 +208,8 @@ class CardOptionsDialog(kodigui.BaseDialog):
         self.option_list.reset()
         if items:
             self.option_list.addItems(items)
+            if self._focus_key in self._keys:
+                self.option_list.selectItem(self._keys.index(self._focus_key))
         self.setFocusId(self.LIST_ID)
 
     def onClick(self, controlID):
@@ -227,14 +230,16 @@ def show(
     subtitle: str = "",
     eyebrow: str = "",
     resume: bool = False,
+    focus: str | None = None,
 ) -> str | None:
     """Open the panel and return the chosen action key, or None if
     dismissed. Returns None immediately for an empty option set rather than
-    flashing an empty panel."""
+    flashing an empty panel. `focus` names the row to start on."""
     if not keys:
         return None
     dialog = CardOptionsDialog.open(
-        title=title, subtitle=subtitle, eyebrow=eyebrow, keys=keys, resume=resume
+        title=title, subtitle=subtitle, eyebrow=eyebrow, keys=keys, resume=resume,
+        focus=focus,
     )
     picked = getattr(dialog, "picked", None)
     del dialog
@@ -348,6 +353,7 @@ def confirm_sign_out() -> bool:
         title="Sign out of tofa?",
         subtitle="You will need to pair this device with your server again.",
         keys=[SIGN_OUT, CANCEL],
+        focus=CANCEL,
     ) == SIGN_OUT
 
 
