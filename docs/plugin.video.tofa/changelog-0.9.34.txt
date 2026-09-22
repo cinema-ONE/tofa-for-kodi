@@ -1,0 +1,9 @@
+- Styled subtitles keep their look when your server converts the video:
+  signs and captions stay where they were placed, in their own fonts, sizes
+  and colours, instead of becoming plain text at the bottom of the screen.
+  Skipping forward or back in a converted video now reloads them, so they
+  stay in step with the picture.
+- Subtitles stored as pictures (PGS) now also show when your server converts
+  the video, for films where your server has already prepared them. Others
+  are left out of the list rather than shown incomplete.
+- The first card in each row now shows its full glow when selected.
