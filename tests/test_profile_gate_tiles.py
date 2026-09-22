@@ -7,10 +7,20 @@ rest), a 2px accent rim hugs it from outside (238px across, as measured), a
 halo stays outside it, and the name stays white. Every one of the five
 pre-centred lists must carry the same tile.
 
+Also from the app, where 9.2 agrees or is silent (2026-09-22): the profile in
+use keeps a 3px white ring while focus is elsewhere; the background carries a
+radial wash of the focused profile's own colour; preset art is 150 of the 220
+portrait; there is no Kids pill; and Cancel is a 66px pill at the foot.
+
 Run:  python3 test_profile_gate_tiles.py
 """
 import os
 import re
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugin.video.tofa"))
+import kodi_stubs  # noqa: F401,E402
+from resources.lib import monogram  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 XML = open(os.path.join(HERE, "..", "plugin.video.tofa", "resources", "skins", "Main",
@@ -41,10 +51,30 @@ for n, body in enumerate(lists, 1):
     check("list %d focused: outside rim at 22,8 size 224, halo outside" % n,
           "<posx>22</posx><posy>8</posy><width>224</width><height>224</height>" in focused
           and "outer-rim-220.png" in focused and "ring-glow-220.png" in focused)
+    check("list %d: preset art at 59,45, 150 across, in both layouts" % n,
+          rest.count("<posx>59</posx><posy>45</posy><width>150</width><height>150</height>") == 1
+          and focused.count("<posx>59</posx><posy>45</posy><width>150</width><height>150</height>") == 1)
+    check("list %d: the signed-in ring shows at rest, not under focus" % n,
+          "active-ring-220.png" in rest and "ListItem.Property(active)" in rest
+          and "active-ring-220.png" not in focused)
+    check("list %d: no Kids pill" % n, "kids" not in body)
     name = re.search(r"<textcolor>([^<]*)</textcolor>\s*<label>\$INFO\[ListItem.Property\(name\)\]", focused)
     check("list %d focused: the name stays white" % n,
           bool(name) and "text_primary" in name.group(1), name and name.group(1))
-for asset in ("hairline-ring-220.png", "hairline-ring-75.png", "outer-rim-220.png", "ring-glow-220.png"):
+posys = re.findall(r'<control type="list" id="80[0-4]">.*?<posy>(\d+)</posy>', XML, re.S)
+check("the portraits sit 35px under the subtitle, at 417", posys == ["417"] * 5, repr(posys))
+washes = re.findall(r"\$INFO\[Container\(80([0-4])\)\.ListItem\.Property\(wash\)\]", XML)
+check("each list tints the wash from its own focused profile", sorted(set(washes)) == list("01234"))
+check("the PIN pane tints it from the profile being unlocked", "$INFO[Window.Property(pin_wash)]" in XML)
+cancel = re.search(r"<posx>885</posx>\s*<posy>990</posy>(.*?)</control>\s*</control>", XML, re.S)
+check("Cancel: a 150x66 pill at the foot", bool(cancel) and "<width>150</width><height>66</height>" in cancel.group(1))
+KID = "c7ea5d7c-0000-0000-0000-000000000000"
+start, end = monogram.PALETTE[monogram.index_for(KID)]
+mid = tuple((int(start[i:i + 2], 16) + int(end[i:i + 2], 16)) // 2 for i in (1, 3, 5))
+check("the wash is the profile's own gradient at its midpoint, opaque",
+      monogram.wash_color(KID) == "FF%02X%02X%02X" % mid, monogram.wash_color(KID))
+for asset in ("hairline-ring-220.png", "hairline-ring-75.png", "outer-rim-220.png", "ring-glow-220.png",
+              "active-ring-220.png", "profile-wash.png"):
     check("asset %s exists" % asset, os.path.exists(os.path.join(MEDIA, asset)))
 
 

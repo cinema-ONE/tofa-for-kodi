@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- COPIED from resources/lib/skin/static/script-tofa-profile.xml and processed.
-     hash=77f7c13df3f6. DO NOT HAND-EDIT: edit the file under static/,
+     hash=fbc36cdee56d. DO NOT HAND-EDIT: edit the file under static/,
      which keeps every comment; this copy has them stripped and its
      capsules and rounded rects swapped for resolution-free art. -->
 <window>
@@ -17,6 +17,42 @@
             <height>1080</height>
             <colordiffuse>0xFF030B10</colordiffuse>
             <texture>white-square.png</texture>
+        </control>
+        <control type="image">
+            <posx>0</posx><posy>0</posy><width>1920</width><height>1080</height>
+            <colordiffuse>$INFO[Container(800).ListItem.Property(wash)]</colordiffuse>
+            <texture>profile-wash.png</texture>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),1) + !String.IsEmpty(Container(800).ListItem.Property(wash))</visible>
+        </control>
+        <control type="image">
+            <posx>0</posx><posy>0</posy><width>1920</width><height>1080</height>
+            <colordiffuse>$INFO[Container(801).ListItem.Property(wash)]</colordiffuse>
+            <texture>profile-wash.png</texture>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),2) + !String.IsEmpty(Container(801).ListItem.Property(wash))</visible>
+        </control>
+        <control type="image">
+            <posx>0</posx><posy>0</posy><width>1920</width><height>1080</height>
+            <colordiffuse>$INFO[Container(802).ListItem.Property(wash)]</colordiffuse>
+            <texture>profile-wash.png</texture>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),3) + !String.IsEmpty(Container(802).ListItem.Property(wash))</visible>
+        </control>
+        <control type="image">
+            <posx>0</posx><posy>0</posy><width>1920</width><height>1080</height>
+            <colordiffuse>$INFO[Container(803).ListItem.Property(wash)]</colordiffuse>
+            <texture>profile-wash.png</texture>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),4) + !String.IsEmpty(Container(803).ListItem.Property(wash))</visible>
+        </control>
+        <control type="image">
+            <posx>0</posx><posy>0</posy><width>1920</width><height>1080</height>
+            <colordiffuse>$INFO[Container(804).ListItem.Property(wash)]</colordiffuse>
+            <texture>profile-wash.png</texture>
+            <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),5) + !String.IsEmpty(Container(804).ListItem.Property(wash))</visible>
+        </control>
+        <control type="image">
+            <posx>0</posx><posy>0</posy><width>1920</width><height>1080</height>
+            <colordiffuse>$INFO[Window.Property(pin_wash)]</colordiffuse>
+            <texture>profile-wash.png</texture>
+            <visible>String.IsEqual(Window.Property(state),pin) + !String.IsEmpty(Window.Property(pin_wash))</visible>
         </control>
         <control type="image">
             <posx>0</posx>
@@ -55,7 +91,7 @@
             <onleft>9999</onleft>
             <onright>9999</onright>
             <posx>826</posx>
-            <posy>430</posy>
+            <posy>417</posy>
             <width>268</width>
             <height>360</height>
             <orientation>horizontal</orientation>
@@ -77,7 +113,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
@@ -94,6 +130,12 @@
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x3BFFFFFF</colordiffuse>
                     <texture>hairline-ring-220.png</texture>
+                </control>
+                <control type="image">
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <colordiffuse>0xE6FFFFFF</colordiffuse>
+                    <texture>active-ring-220.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(active))</visible>
                 </control>
                 <control type="image">
                     <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
@@ -121,22 +163,6 @@
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
-                </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
@@ -166,7 +192,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
@@ -217,22 +243,6 @@
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
-                </control>
             </focusedlayout>
             <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),1)</visible>
         </control>
@@ -242,7 +252,7 @@
             <onleft>9999</onleft>
             <onright>9999</onright>
             <posx>692</posx>
-            <posy>430</posy>
+            <posy>417</posy>
             <width>536</width>
             <height>360</height>
             <orientation>horizontal</orientation>
@@ -265,7 +275,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
@@ -282,6 +292,12 @@
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x3BFFFFFF</colordiffuse>
                     <texture>hairline-ring-220.png</texture>
+                </control>
+                <control type="image">
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <colordiffuse>0xE6FFFFFF</colordiffuse>
+                    <texture>active-ring-220.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(active))</visible>
                 </control>
                 <control type="image">
                     <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
@@ -309,22 +325,6 @@
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
-                </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
@@ -354,7 +354,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
@@ -405,22 +405,6 @@
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
-                </control>
             </focusedlayout>
             <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),2)</visible>
         </control>
@@ -430,7 +414,7 @@
             <onleft>9999</onleft>
             <onright>9999</onright>
             <posx>558</posx>
-            <posy>430</posy>
+            <posy>417</posy>
             <width>804</width>
             <height>360</height>
             <orientation>horizontal</orientation>
@@ -452,7 +436,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
@@ -469,6 +453,12 @@
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x3BFFFFFF</colordiffuse>
                     <texture>hairline-ring-220.png</texture>
+                </control>
+                <control type="image">
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <colordiffuse>0xE6FFFFFF</colordiffuse>
+                    <texture>active-ring-220.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(active))</visible>
                 </control>
                 <control type="image">
                     <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
@@ -496,22 +486,6 @@
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
-                </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
@@ -541,7 +515,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
@@ -592,22 +566,6 @@
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
-                </control>
             </focusedlayout>
             <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),3)</visible>
         </control>
@@ -617,7 +575,7 @@
             <onleft>9999</onleft>
             <onright>9999</onright>
             <posx>424</posx>
-            <posy>430</posy>
+            <posy>417</posy>
             <width>1072</width>
             <height>360</height>
             <orientation>horizontal</orientation>
@@ -639,7 +597,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
@@ -656,6 +614,12 @@
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x3BFFFFFF</colordiffuse>
                     <texture>hairline-ring-220.png</texture>
+                </control>
+                <control type="image">
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <colordiffuse>0xE6FFFFFF</colordiffuse>
+                    <texture>active-ring-220.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(active))</visible>
                 </control>
                 <control type="image">
                     <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
@@ -683,22 +647,6 @@
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
-                </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
@@ -728,7 +676,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
@@ -779,22 +727,6 @@
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
-                </control>
             </focusedlayout>
             <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),4)</visible>
         </control>
@@ -804,7 +736,7 @@
             <onleft>9999</onleft>
             <onright>9999</onright>
             <posx>290</posx>
-            <posy>430</posy>
+            <posy>417</posy>
             <width>1340</width>
             <height>360</height>
             <orientation>horizontal</orientation>
@@ -826,7 +758,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
@@ -843,6 +775,12 @@
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x3BFFFFFF</colordiffuse>
                     <texture>hairline-ring-220.png</texture>
+                </control>
+                <control type="image">
+                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <colordiffuse>0xE6FFFFFF</colordiffuse>
+                    <texture>active-ring-220.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(active))</visible>
                 </control>
                 <control type="image">
                     <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
@@ -870,22 +808,6 @@
                     <font>tofa_font_button</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
-                </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
@@ -915,7 +837,7 @@
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
-                    <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
+                    <posx>59</posx><posy>45</posy><width>150</width><height>150</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
                     <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
@@ -966,71 +888,55 @@
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
-                <control type="group">
-                    <posx>99</posx><posy>290</posy>
-                    <visible>!String.IsEmpty(ListItem.Property(kids))</visible>
-                    <control type="image">
-                        <width>70</width><height>26</height>
-                        <colordiffuse>0x1FFFFFFF</colordiffuse>
-                        <texture border="13">tag-pill.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx><posy>1</posy><width>70</width><height>18</height>
-                        <align>center</align><valign>center</valign>
-                        <font>tofa_font_micro</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[Window.Property(kids_label)]</label>
-                    </control>
-                </control>
             </focusedlayout>
             <visible>String.IsEqual(Window.Property(state),picker) + String.IsEqual(Window.Property(profile_count),5)</visible>
         </control>
         <control type="group">
-            <posx>826</posx>
-            <posy>880</posy>
+            <posx>885</posx>
+            <posy>990</posy>
             <visible>String.IsEqual(Window.Property(state),picker)</visible>
             <control type="image">
                 <posx>0</posx>
                 <posy>0</posy>
-                <width>38</width>
-                <height>76</height>
+                <width>33</width>
+                <height>66</height>
                 <colordiffuse>0x1FFFFFFF</colordiffuse>
                 <texture>pill-cap-left.png</texture>
             </control>
             <control type="image">
-                <posx>38</posx>
+                <posx>33</posx>
                 <posy>0</posy>
-                <width>192</width>
-                <height>76</height>
+                <width>84</width>
+                <height>66</height>
                 <colordiffuse>0x1FFFFFFF</colordiffuse>
                 <texture>pill-mid.png</texture>
             </control>
             <control type="image">
-                <posx>230</posx>
+                <posx>117</posx>
                 <posy>0</posy>
-                <width>38</width>
-                <height>76</height>
+                <width>33</width>
+                <height>66</height>
                 <colordiffuse>0x1FFFFFFF</colordiffuse>
                 <texture>pill-cap-right.png</texture>
             </control>
             <control type="image">
                 <posx>0</posx>
                 <posy>0</posy>
-                <width>268</width>
-                <height>76</height>
+                <width>150</width>
+                <height>66</height>
                 <colordiffuse>0xFFFFFFFF</colordiffuse>
                 <visible>Control.HasFocus(820)</visible>
-                <texture>pill-outline-268x76.png</texture>
+                <texture>pill-outline-150x66.png</texture>
             </control>
             <control type="label">
-                <posx>0</posx><posy>18</posy><width>268</width><height>40</height>
+                <posx>0</posx><posy>13</posy><width>150</width><height>40</height>
                 <align>center</align><valign>center</valign>
                 <font>tofa_font_button</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>$INFO[Window.Property(cancel_label)]</label>
             </control>
             <control type="button" id="820">
-                <posx>0</posx><posy>0</posy><width>268</width><height>76</height>
+                <posx>0</posx><posy>0</posy><width>150</width><height>66</height>
                 <texturefocus>transparent-6px.png</texturefocus>
                 <texturenofocus>transparent-6px.png</texturenofocus>
                 <label></label>
