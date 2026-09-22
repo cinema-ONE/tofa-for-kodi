@@ -805,6 +805,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         #: The file record's own subtitle tracks, when the caller has them:
         #: they decide which subtitle contract to negotiate (None = unknown).
         self._file_subtitle_tracks = kwargs.pop("subtitle_tracks", None)
+        #: The tier 8.7's Lower quality steps to, while its card is up.
+        self._error_lower: Optional[dict] = None
         #: Set when THIS window deliberately stops playback (Back), as
         #: opposed to being backgrounded by Kodi's Home button with the film
         #: still running.
@@ -1135,8 +1137,11 @@ class PlayerWindow(kodigui.ControlledDialog):
             body = (fallback if exc.status == 404
                     else http.viewer_message(exc, fallback))
             # 8.7 retries only what can clear on its own: a busy converter
-            # or a network that did not answer.
-            self.fail(body, retry=exc.error in ("transcode_at_capacity", "connection_error"))
+            # or a network that did not answer. Too slow means a lower tier.
+            lower = (self._lower_quality(client, file_id)
+                     if exc.error == "transcode_realtime_unsupported" else None)
+            self.fail(body, lower=lower,
+                      retry=exc.error in ("transcode_at_capacity", "connection_error"))
             return
 
         # A converted stream serves embedded styled and picture tracks too,
@@ -1517,7 +1522,8 @@ class PlayerWindow(kodigui.ControlledDialog):
             return False
         return self._position_ms() <= duration_ms - self.PREMATURE_END_MS
 
-    def fail(self, body: str, *, title: str = "", retry: bool = False):
+    def fail(self, body: str, *, title: str = "", retry: bool = False,
+             lower: Optional[dict] = None):
         """Show 8.7's card and STAY, instead of closing the window.
 
         Every one of these paths used to end in closeNow(): the window
@@ -1552,8 +1558,13 @@ class PlayerWindow(kodigui.ControlledDialog):
             "player_error_title",
             title or kodigui.ADDON.getLocalizedString(31131))
         self.setProperty("player_error_body", body)
-        self.setProperty("player_error_retry", "1" if retry else "")
-        self.setProperty("player_error_retry_label", kodigui.ADDON.getLocalizedString(31132))
+        # One primary action at most: Lower quality (a tier to step to), or
+        # Try again. The button is the same; _retry_playback reads which.
+        self._error_lower = lower
+        primary = 31133 if lower else 31132 if retry else 0
+        self.setProperty("player_error_retry", "1" if primary else "")
+        if primary:
+            self.setProperty("player_error_retry_label", kodigui.ADDON.getLocalizedString(primary))
         # Set here, NOT as $LOCALIZE in the XML: in a script WindowXML that
         # resolves against Kodi's own and the ACTIVE SKIN's string tables,
         # never the add-on's, so 31099 came out as the host skin's "IconWall".
@@ -1561,12 +1572,18 @@ class PlayerWindow(kodigui.ControlledDialog):
         self.setProperty("player_error", "1")
         self._modal = True
         try:
-            self.setFocusId(self.ERROR_RETRY_ID if retry else self.ERROR_CLOSE_ID)
+            self.setFocusId(self.ERROR_RETRY_ID if primary else self.ERROR_CLOSE_ID)
         except RuntimeError:
             pass
 
     def _retry_playback(self):
-        """8.7's Try again: the same request, from the opening card."""
+        """8.7's primary action: the same request again, or one tier lower."""
+        lower, self._error_lower = self._error_lower, None
+        if lower:
+            # The quality picker's own mapping, for a tier below Original.
+            self.selection.quality_tag = lower["tag"]
+            self.selection.max_bitrate = lower["bitrate_kbps"]
+            self.selection.quality_mode = None
         for key in ("player_error", "player_error_title", "player_error_body",
                     "player_error_retry"):
             self.setProperty(key, "")
@@ -3605,6 +3622,29 @@ class PlayerWindow(kodigui.ControlledDialog):
         # once.
         self._defer_focus_restore(self.getFocusId())
         self._start_playback()
+
+    def _lower_quality(self, client, file_id) -> Optional[dict]:
+        """The tier below the one refused as too slow to convert, or None.
+
+        Measured: a dry run of a heavy conversion is not refused, so it still
+        lists the tiers. If it is refused too, the card offers only Close."""
+        try:
+            info = client.stream_info(
+                file_id,
+                CapabilityProfile.for_device(
+                    max_bitrate=self.selection.max_bitrate,
+                    quality_mode=self.selection.quality_mode,
+                    subtitle_contract_version=None),
+                dry_run=True)
+        except http.ApiError as exc:
+            log.warning(f"player: no tier list to step down to: {exc!r}")
+            return None
+        section = next((s for s in playoptions.build_sections(info, self.selection)
+                        if s["key"] == playoptions.QUALITY), None)
+        if not section:
+            return None
+        below = section["selected"] + 1
+        return section["options"][below] if below < len(section["options"]) else None
 
     def _add_contract_fields(self, client, file_id, resp) -> None:
         """Complete the session's tracks from a contract-2 dry run.

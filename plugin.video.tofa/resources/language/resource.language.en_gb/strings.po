@@ -524,3 +524,8 @@ msgstr ""
 msgctxt "#31132"
 msgid "Try again"
 msgstr ""
+
+# 8.7's answer to a server that cannot convert in real time: one tier down.
+msgctxt "#31133"
+msgid "Lower quality"
+msgstr ""

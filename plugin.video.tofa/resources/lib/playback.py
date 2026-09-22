@@ -57,6 +57,8 @@ TICKS_PER_MS = 10_000
 #: hammering it helps nobody -- while a 404 or 403 would answer the same
 #: way forever.
 _RETRY_503_AFTER_SECONDS = 2.0
+#: A 503 that asking again cannot clear: 8.7 offers a lower tier instead.
+_NOT_RETRIED = ("transcode_realtime_unsupported",)
 
 
 def negotiate(
@@ -80,7 +82,7 @@ def negotiate(
         except http.ApiError as exc:
             if exc.error == "timeout":
                 raise NegotiateTimeout(str(exc)) from None
-            if exc.status == 503 and attempt == 1:
+            if exc.status == 503 and attempt == 1 and exc.error not in _NOT_RETRIED:
                 log.warning(f"playback: converter not ready (503), retrying once: {exc!r}")
                 xbmc.sleep(int(_RETRY_503_AFTER_SECONDS * 1000))
                 continue
