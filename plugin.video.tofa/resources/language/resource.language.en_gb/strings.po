@@ -379,10 +379,6 @@ msgctxt "#31095"
 msgid "Incorrect PIN."
 msgstr ""
 
-msgctxt "#31096"
-msgid "Kids"
-msgstr ""
-
 msgctxt "#31097"
 msgid "YOU'RE WATCHING"
 msgstr ""

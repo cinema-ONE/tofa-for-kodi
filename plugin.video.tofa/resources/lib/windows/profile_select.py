@@ -150,7 +150,6 @@ class ProfileDialog(kodigui.BaseDialog):
         self.setProperty("heading", _(31090))
         self.setProperty("subheading", _(31091))
         self.setProperty("cancel_label", _(31092))
-        self.setProperty("kids_label", _(31096))
         self.setProperty("profile_count", str(min(max(len(self._profiles), 1), 5)))
         # The PIN pane's exit pill says "Back to profiles" whenever there is a
         # picker worth returning to, and "Cancel" only when there genuinely
@@ -224,7 +223,10 @@ class ProfileDialog(kodigui.BaseDialog):
             mli.setProperty("avatar_texture", self._preset_urls.get(p.id, ""))
             mli.setProperty("photo_url", self._photo_urls.get(p.id, ""))
             mli.setProperty("locked", "1" if p.is_locked else "")
-            mli.setProperty("kids", "1" if p.is_kids else "")
+            # 9.2: the profile in use keeps a white ring while focus is
+            # elsewhere, and the focused one tints the background.
+            mli.setProperty("active", "1" if p.id == self._current_id else "")
+            mli.setProperty("wash", monogram.wash_color(p.id))
             items.append(mli)
         lst.reset()
         lst.addItems(items)
@@ -235,6 +237,7 @@ class ProfileDialog(kodigui.BaseDialog):
         self._entered_pin = ""
         self.setProperty("pin_avatar_initial", _initials(profile.name))
         self.setProperty("pin_avatar_monogram", monogram.texture_for(profile.id))
+        self.setProperty("pin_wash", monogram.wash_color(profile.id))
         self.setProperty("pin_avatar_texture",
                          self._preset_urls.get(profile.id, ""))
         self.setProperty("pin_avatar_photo_url", self._photo_urls.get(profile.id, ""))

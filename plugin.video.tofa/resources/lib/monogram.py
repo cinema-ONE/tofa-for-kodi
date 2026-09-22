@@ -64,6 +64,14 @@ def index_for(seed: str) -> int:
     return _hash(seed or FALLBACK_SEED) % len(PALETTE)
 
 
+def wash_color(seed: str) -> str:
+    """9.2's background wash for this profile: its gradient's midpoint, as
+    an opaque colordiffuse. The skin's texture carries the falloff."""
+    start, end = PALETTE[index_for(seed)]
+    mid = [(int(start[i:i + 2], 16) + int(end[i:i + 2], 16)) // 2 for i in (1, 3, 5)]
+    return "FF%02X%02X%02X" % tuple(mid)
+
+
 def texture_for(seed: str) -> str:
     """The skin texture drawing that entry's gradient, masked to a disc.
 
