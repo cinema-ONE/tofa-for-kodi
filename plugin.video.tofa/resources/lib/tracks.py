@@ -96,6 +96,26 @@ def subtitle_offered(track: dict[str, Any], whole_file: bool) -> bool:
     return whole_file and not track.get("external")
 
 
+#: Source codecs whose delivery reads `representations`: styled text is
+#: fetched as ASS, and a picture as its own format once the server has it.
+_CONTRACT_CODECS = frozenset((
+    "ass", "ssa", "hdmv_pgs_subtitle", "pgs", "dvd_subtitle", "dvb_subtitle", "vobsub"))
+
+
+def subtitle_contract_for(subtitle_tracks):
+    """The subtitle contract to ask for, given a file's own tracks: 2 or None.
+
+    On server 0.10.0 a contract-2 answer takes over a second longer, and only
+    styled and picture tracks need what it adds. Unknown tracks (None) still
+    ask for 2, so nothing a file needs is withheld."""
+    if subtitle_tracks is None:
+        return 2
+    for track in subtitle_tracks:
+        if str((track or {}).get("codec") or "").strip().lower() in _CONTRACT_CODECS:
+            return 2
+    return None
+
+
 #: Formats that carry position, colour and font.
 _STYLED_FORMATS = ("ASS", "SSA")
 

@@ -1963,6 +1963,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             media_id=self.media_id,
             resume_ms=(position_ms if position_ms and not completed else None),
             title=ep.get("title") or self.media.get("title"),
+            subtitle_tracks=f.get("subtitle_tracks"),
             # Hand over the art we already resolved, so 8.6's opening
             # card can show the backdrop from its FIRST frame. The player
             # resolves its own copy once metadata lands, but that is a round
@@ -2762,12 +2763,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         client = self._get_client()
         if not client:
             return False
+        current = self._play_file()
         try:
             info = client.stream_info(
                 self.play_file_id,
                 CapabilityProfile.for_device(
                     max_bitrate=self.play_selection.max_bitrate,
-                    quality_mode=self.play_selection.quality_mode),
+                    quality_mode=self.play_selection.quality_mode,
+                    subtitle_contract_version=tracks.subtitle_contract_for(
+                        (current or {}).get("subtitle_tracks"))),
                 dry_run=True,
             )
         except http.ApiError as exc:
@@ -2779,8 +2783,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # panel's contents change completely with the version pill, and two
         # identical-looking dialogs that mean different things is the exact
         # confusion the version pill was split out to end.
-        current = next((f for f in self._available_files()
-                        if f.get("id") == self.play_file_id), None)
         subtitle = self._version_row_label(current) if current else ""
 
         self.play_selection = playoptions.show(
@@ -3009,6 +3011,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             media_id=self.media_id,
             resume_ms=(position_ms if position_ms and not completed else None),
             title=episode.get("title") or self.media.get("title"),
+            subtitle_tracks=f.get("subtitle_tracks"),
             # Hand over the art we already resolved, so 8.6's opening
             # card can show the backdrop from its FIRST frame. The player
             # resolves its own copy once metadata lands, but that is a round
@@ -3161,6 +3164,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not episode_id:
             return []
         return [f for f in files if f.get("episode_id") == episode_id]
+
+    def _play_file(self) -> dict | None:
+        """The file record Play would start, or None."""
+        return next((f for f in self._available_files()
+                     if f.get("id") == self.play_file_id), None)
 
     def _version_row_parts(self, f: dict, *, full: bool = False) -> tuple[str, str]:
         """(label, detail) for one edition, split across the two columns the
@@ -3636,6 +3644,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             resume_ms=resume_ms or None,
             title=self.media.get("title"),
             selection=self.play_selection,
+            subtitle_tracks=(self._play_file() or {}).get("subtitle_tracks"),
             # 8.6's opening card wants backdrop art and the title LOGO from
             # its first frame. The player resolves both itself, but only
             # after /media/{id} comes back -- measured at ~3.5s on a

@@ -126,6 +126,9 @@ class CapabilityProfile:
     #: an `ass` track is delivered as `ass` on one file and flattened to
     #: `vtt` on another. `codec` alone cannot tell those apart, so the picker
     #: named both "ASS" and only one of them meant it.
+    #:
+    #: Callers holding the file record pass tracks.subtitle_contract_for(),
+    #: which asks for 2 only where a file has styled or picture tracks.
     subtitle_contract_version: Optional[int] = 2
     stereo_only_audio_codecs: Optional[str] = None
     max_bitrate: Optional[int] = None

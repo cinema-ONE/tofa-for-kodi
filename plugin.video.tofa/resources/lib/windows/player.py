@@ -801,6 +801,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         # the plugin listing). Both halves of it are optional, so the default
         # is genuinely "whatever the server and Kodi would have chosen".
         self.selection = kwargs.pop("selection", None) or playoptions.Selection()
+        #: The file record's own subtitle tracks, when the caller has them:
+        #: they decide which subtitle contract to negotiate (None = unknown).
+        self._file_subtitle_tracks = kwargs.pop("subtitle_tracks", None)
         #: Set when THIS window deliberately stops playback (Back), as
         #: opposed to being backgrounded by Kodi's Home button with the film
         #: still running.
@@ -1104,7 +1107,9 @@ class PlayerWindow(kodigui.ControlledDialog):
                 client, file_id,
                 CapabilityProfile.for_device(
                     max_bitrate=self.selection.max_bitrate,
-                    quality_mode=self.selection.quality_mode),
+                    quality_mode=self.selection.quality_mode,
+                    subtitle_contract_version=tracks.subtitle_contract_for(
+                        self._file_subtitle_tracks)),
                 resume_ms=self.resume_ms)
         except playback.NegotiateTimeout:
             self.fail(kodigui.ADDON.getLocalizedString(31033))
@@ -3519,6 +3524,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._next_up_dismissed = False
         self.setProperty("player_next_up", "")
         self.file_id = f.get("id")
+        self._file_subtitle_tracks = f.get("subtitle_tracks")
         self._segments = []
         self._chapters = []
         self._tiles = {}
@@ -5809,7 +5815,9 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self.file_id,
                 CapabilityProfile.for_device(
                     max_bitrate=self.selection.max_bitrate,
-                    quality_mode=self.selection.quality_mode),
+                    quality_mode=self.selection.quality_mode,
+                    subtitle_contract_version=tracks.subtitle_contract_for(
+                        self._file_subtitle_tracks)),
                 dry_run=True,
             )
         except http.ApiError as exc:

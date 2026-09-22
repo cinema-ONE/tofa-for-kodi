@@ -38,8 +38,8 @@ def track(codec, fmts=None, **kw):
     return t
 
 
-# 1. The parameter is sent, and it is 2. Contract 1 is identical to sending
-#    nothing, so 2 is the only value worth asking for.
+# 1. By default the parameter is sent, and it is 2. Callers that hold the
+#    file record send it only where it is needed (test_subtitle_contract_per_file.py).
 params = CapabilityProfile.for_device().to_query_params()
 check("the profile asks for subtitle contract 2",
       params.get("subtitle_contract_version") == 2,
