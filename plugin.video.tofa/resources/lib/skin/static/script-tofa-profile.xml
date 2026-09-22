@@ -116,21 +116,31 @@
                     <label>$INFO[ListItem.Property(initial)]</label>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 at rest: a 1px hairline on the tile's edge, as measured. -->
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
-                    <colordiffuse>0x40FFFFFF</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <colordiffuse>0x3BFFFFFF</colordiffuse>
+                    <texture>hairline-ring-220.png</texture>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
@@ -160,26 +170,38 @@
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
+                <!-- 9.2 focused: lifted 1.06, as measured, with the cast tile's halo
+                     kept outside the portrait. -->
+                <control type="image">
+                    <posx>14</posx><posy>0</posy><width>240</width><height>240</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>ring-glow-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
                     <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
@@ -188,32 +210,47 @@
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(initial)]</label>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 focused: a 2px accent rim just outside the portrait. -->
                 <control type="image">
-                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <posx>22</posx><posy>8</posy><width>224</width><height>224</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <texture>outer-rim-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
                     <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
-                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
@@ -274,21 +311,31 @@
                     <label>$INFO[ListItem.Property(initial)]</label>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 at rest: a 1px hairline on the tile's edge, as measured. -->
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
-                    <colordiffuse>0x40FFFFFF</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <colordiffuse>0x3BFFFFFF</colordiffuse>
+                    <texture>hairline-ring-220.png</texture>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
@@ -318,26 +365,38 @@
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
+                <!-- 9.2 focused: lifted 1.06, as measured, with the cast tile's halo
+                     kept outside the portrait. -->
+                <control type="image">
+                    <posx>14</posx><posy>0</posy><width>240</width><height>240</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>ring-glow-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
                     <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
@@ -346,32 +405,47 @@
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(initial)]</label>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 focused: a 2px accent rim just outside the portrait. -->
                 <control type="image">
-                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <posx>22</posx><posy>8</posy><width>224</width><height>224</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <texture>outer-rim-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
                     <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
-                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
@@ -431,21 +505,31 @@
                     <label>$INFO[ListItem.Property(initial)]</label>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 at rest: a 1px hairline on the tile's edge, as measured. -->
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
-                    <colordiffuse>0x40FFFFFF</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <colordiffuse>0x3BFFFFFF</colordiffuse>
+                    <texture>hairline-ring-220.png</texture>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
@@ -475,26 +559,38 @@
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
+                <!-- 9.2 focused: lifted 1.06, as measured, with the cast tile's halo
+                     kept outside the portrait. -->
+                <control type="image">
+                    <posx>14</posx><posy>0</posy><width>240</width><height>240</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>ring-glow-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
                     <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
@@ -503,32 +599,47 @@
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(initial)]</label>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 focused: a 2px accent rim just outside the portrait. -->
                 <control type="image">
-                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <posx>22</posx><posy>8</posy><width>224</width><height>224</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <texture>outer-rim-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
                     <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
-                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
@@ -588,21 +699,31 @@
                     <label>$INFO[ListItem.Property(initial)]</label>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 at rest: a 1px hairline on the tile's edge, as measured. -->
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
-                    <colordiffuse>0x40FFFFFF</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <colordiffuse>0x3BFFFFFF</colordiffuse>
+                    <texture>hairline-ring-220.png</texture>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
@@ -632,26 +753,38 @@
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
+                <!-- 9.2 focused: lifted 1.06, as measured, with the cast tile's halo
+                     kept outside the portrait. -->
+                <control type="image">
+                    <posx>14</posx><posy>0</posy><width>240</width><height>240</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>ring-glow-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
                     <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
@@ -660,32 +793,47 @@
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(initial)]</label>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 focused: a 2px accent rim just outside the portrait. -->
                 <control type="image">
-                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <posx>22</posx><posy>8</posy><width>224</width><height>224</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <texture>outer-rim-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
                     <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
-                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
@@ -745,21 +893,31 @@
                     <label>$INFO[ListItem.Property(initial)]</label>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 at rest: a 1px hairline on the tile's edge, as measured. -->
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
-                    <colordiffuse>0x40FFFFFF</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <colordiffuse>0x3BFFFFFF</colordiffuse>
+                    <texture>hairline-ring-220.png</texture>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
                 </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
@@ -789,26 +947,38 @@
                 </control>
             </itemlayout>
             <focusedlayout width="268" height="360">
+                <!-- 9.2 focused: lifted 1.06, as measured, with the cast tile's halo
+                     kept outside the portrait. -->
+                <control type="image">
+                    <posx>14</posx><posy>0</posy><width>240</width><height>240</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture>ring-glow-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <colordiffuse>0x29FFFFFF</colordiffuse>
                     <texture>circle.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <texture>$INFO[ListItem.Property(monogram_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="image">
                     <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(photo_url)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>!String.IsEmpty(ListItem.Property(photo_url))</visible>
                 </control>
                 <control type="image">
                     <posx>33</posx><posy>19</posy><width>202</width><height>202</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="circle.png">$INFO[ListItem.Property(avatar_texture)]</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + !String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
                 <control type="label">
@@ -817,32 +987,47 @@
                     <font>tofa_font_heading</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(initial)]</label>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                     <visible>String.IsEmpty(ListItem.Property(photo_url)) + String.IsEmpty(ListItem.Property(avatar_texture))</visible>
                 </control>
+                <!-- 9.2 focused: a 2px accent rim just outside the portrait. -->
                 <control type="image">
-                    <posx>24</posx><posy>10</posy><width>220</width><height>220</height>
+                    <posx>22</posx><posy>8</posy><width>224</width><height>224</height>
                     <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                    <texture>circle-outline.png</texture>
+                    <texture>outer-rim-220.png</texture>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
+                <!-- 9.2's lock chip, measured on the Apple TV app: a 75px glass
+                     disc with a hairline rim, its centre 71 right and 69 down
+                     from the portrait's, and a lock about 35px tall. -->
                 <control type="image">
-                    <posx>200</posx><posy>186</posy><width>48</width><height>48</height>
-                    <colordiffuse>0xFF16232B</colordiffuse>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x0FFFFFFF</colordiffuse>
                     <texture>circle.png</texture>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
+                </control>
+                <control type="image">
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <colordiffuse>0x24FFFFFF</colordiffuse>
+                    <texture>hairline-ring-75.png</texture>
+                    <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
-                    <posx>200</posx><posy>201</posy><width>48</width><height>24</height>
-                    <align>center</align><valign>center</valign>
-                    <font>tofa_font_icons_19</font>
+                    <posx>167</posx><posy>152</posy><width>75</width><height>75</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_icons_36</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>&#xE10B;</label>
                     <visible>!String.IsEmpty(ListItem.Property(locked))</visible>
+                    <animation effect="zoom" start="100" end="106" center="134,120" time="140" tween="cubic" easing="out">Focus</animation>
                 </control>
                 <control type="label">
                     <posx>0</posx><posy>244</posy><width>268</width><height>30</height>
                     <align>center</align><valign>center</valign>
                     <font>tofa_font_button</font>
-                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[ListItem.Property(name)]</label>
                 </control>
                 <control type="group">
