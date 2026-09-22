@@ -3,9 +3,10 @@
 The body carries the reason; the title stays the same for every failure. A
 retry is offered only for a refusal that can clear on its own -- a busy
 converter (`transcode_at_capacity`) or a network that did not answer. A
-realtime refusal, a gone session or a missing file never offer one. While
-the card is up it owns every key: arrows move between its buttons and must
-not seek behind it.
+server too slow to convert (`transcode_realtime_unsupported`) gets Lower
+quality instead: one tier down, never a blind retry. A gone session or a
+missing file offer neither. While the card is up it owns every key: arrows
+move between its buttons and must not seek behind it.
 
 Run:  python3 test_playback_stopped_card.py
 """
@@ -37,6 +38,8 @@ class Card:
 
     def __init__(self):
         self.props, self.focus, self.ui_player, self.started = {}, None, None, 0
+        self._error_lower = None
+        self.selection = playoptions.Selection()
 
     def getProperty(self, k): return self.props.get(k, "")
     def setProperty(self, k, v): self.props[k] = v
@@ -63,6 +66,7 @@ check("...labelled from #31132", c.props.get("player_error_retry_label") == "<st
 check("...and takes focus first", c.focus == PlayerWindow.ERROR_RETRY_ID, repr(c.focus))
 
 c._retry_playback()
+check("Try again keeps the quality it had", c.selection.max_bitrate is None)
 check("Try again takes the card down",
       all(c.props.get(k) == "" for k in ("player_error", "player_error_retry",
                                           "player_error_title", "player_error_body")))
@@ -70,6 +74,20 @@ check("...shows the opening card", c.props.get("player_state") == PlayerWindow.S
 check("...and asks again", c.started == 1)
 c.fail("again", retry=True)
 check("a second failure raises the card again", c.props.get("player_error") == "1")
+
+TIER_720 = {"label": "720p", "tag": "720p", "bitrate_kbps": 4000, "is_original": False}
+c = Card()
+c.fail("too slow", lower=TIER_720)
+check("a tier to step to shows Lower quality (#31133)",
+      c.props.get("player_error_retry") == "1"
+      and c.props.get("player_error_retry_label") == "<string 31133>",
+      repr(c.props.get("player_error_retry_label")))
+check("...and it takes focus first", c.focus == PlayerWindow.ERROR_RETRY_ID)
+c._retry_playback()
+check("Lower quality asks again one tier down",
+      (c.selection.quality_tag, c.selection.max_bitrate, c.selection.quality_mode)
+      == ("720p", 4000, None) and c.started == 1,
+      repr((c.selection.quality_tag, c.selection.max_bitrate, c.selection.quality_mode)))
 
 # --- which failures retry ---------------------------------------------------
 player_mod.stereoscopic.suppress_ask = lambda: None
@@ -81,6 +99,7 @@ def negotiate(client, file_id, profile, **kw):
     raise raised["exc"]
 
 
+real_negotiate = playback.negotiate
 player_mod.playback.negotiate = negotiate
 
 
@@ -89,10 +108,30 @@ class Offset:
         pass
 
 
+TIERS = [{"tag": "original", "is_original": True, "height": 2160, "bitrate_kbps": 32000},
+         {"tag": "1080p", "height": 1080, "bitrate_kbps": 8000},
+         {"tag": "720p", "height": 720, "bitrate_kbps": 4000}]
+
+
+class TierClient:
+    """A dry run that lists the file's tiers, or is refused too."""
+
+    def __init__(self, refuse=False):
+        self.refuse, self.dry_runs = refuse, 0
+
+    def stream_info(self, file_id, profile, **kw):
+        self.dry_runs += 1
+        if self.refuse:
+            raise http.ApiError(503, "transcode_realtime_unsupported", "Too slow.")
+        return {"play_method": "Transcode", "quality_tiers": TIERS}
+
+
 class Starter:
     _start_playback = PlayerWindow._start_playback
+    _lower_quality = PlayerWindow._lower_quality
 
-    def __init__(self):
+    def __init__(self, client=None):
+        self.client = client or TierClient()
         self.file_id, self.media_id = "f1", "m1"
         self._file_subtitle_tracks = []
         self.selection = playoptions.Selection()
@@ -101,10 +140,11 @@ class Starter:
         self.failed = None
 
     def _get_client(self):
-        return object()
+        return self.client
 
-    def fail(self, body, *, title="", retry=False):
+    def fail(self, body, *, title="", retry=False, lower=None):
         self.failed = (body, retry)
+        self.lower = lower
 
 
 for exc, want, what in (
@@ -123,6 +163,43 @@ for exc, want, what in (
     got = s.failed and s.failed[1]
     check("%s %s Try again" % (what, "offers" if want else "does not offer"),
           got is want, repr(s.failed))
+    if getattr(exc, "error", "") != "transcode_realtime_unsupported":
+        check("...nor Lower quality" if not want else "...and not Lower quality",
+              s.lower is None and s.client.dry_runs == 0, repr(s.lower))
+
+raised["exc"] = http.ApiError(503, "transcode_realtime_unsupported", "Too slow.")
+s = Starter()
+s._start_playback()
+check("too slow at Original offers the next tier down, 1080p",
+      (s.lower or {}).get("tag") == "1080p" and s.lower.get("bitrate_kbps") == 8000, repr(s.lower))
+s = Starter()
+s.selection.quality_tag, s.selection.max_bitrate = "720p", 4000
+s._start_playback()
+check("too slow at the lowest tier offers nothing lower", s.lower is None, repr(s.lower))
+s = Starter(TierClient(refuse=True))
+s._start_playback()
+check("a refused dry run means Close only", s.lower is None and s.client.dry_runs == 1)
+
+# --- the automatic retry skips a refusal it cannot clear ------------------
+class Busy:
+    def __init__(self, error):
+        self.error, self.calls = error, 0
+
+    def stream_info(self, *a, **k):
+        self.calls += 1
+        raise http.ApiError(503, self.error, "no")
+
+    def resolve_url(self, url):
+        return url
+
+
+for error, calls in (("transcode_at_capacity", 2), ("transcode_realtime_unsupported", 1)):
+    b = Busy(error)
+    try:
+        real_negotiate(b, "f1", player_mod.CapabilityProfile())
+    except http.ApiError:
+        pass
+    check("%s is asked %d time(s)" % (error, calls), b.calls == calls, str(b.calls))
 
 # --- the card owns the keys ------------------------------------------------
 class Action:
@@ -184,7 +261,7 @@ def run() -> int:
     if failed:
         print("FAIL: %d of %d" % (len(failed), len(RESULTS)))
         return 1
-    print("8.7's card: one title, Try again only where it helps (%d checks)" % len(RESULTS))
+    print("8.7's card: one title, and Try again or Lower quality only where they help (%d checks)" % len(RESULTS))
     return 0
 
 
