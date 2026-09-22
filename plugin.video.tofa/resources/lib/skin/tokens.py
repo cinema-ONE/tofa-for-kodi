@@ -689,6 +689,9 @@ SETTINGS_NAV_PITCH = 108                # 8px between rows
 # (skin fonts, local accent fallback, device id) it has no equivalent of.
 SETTINGS_NAV_PAGES = 6
 SETTINGS_NAV_LIST_H = SETTINGS_NAV_PAGES * SETTINGS_NAV_PITCH
+# The rail's footer line (6: app version under the sections), 16 below the last row.
+SETTINGS_RAIL_FOOTER_Y = (SETTINGS_NAV_Y + (SETTINGS_NAV_PAGES - 1) * SETTINGS_NAV_PITCH
+                          + SETTINGS_NAV_ROW_H + 16)
 
 # Detail column. posy values are the CONTROL's top; the comment gives where
 # the measured ink lands, same convention as the person tokens above -- a
@@ -863,12 +866,9 @@ SETTINGS_ACCOUNT_SESSION_GROUP_H = (
     SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL)
 SETTINGS_ACCOUNT_EMAIL_GROUP_H = (
     SETTINGS_SECTION_BAND + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_TRAIL)
-# SERVER is the app's two-row value card again (Server over Libraries), one
-# 152-tall fill with no divider -- see the ORIGINAL note on
-# SETTINGS_VALUE_ROW_STACKED_H. It came back when the pane learned to scroll.
+# SERVER is one value row, the server's name, as the app shows it now.
 SETTINGS_ACCOUNT_SERVER_GROUP_H = (
-    SETTINGS_SECTION_BAND + 2 * SETTINGS_VALUE_ROW_STACKED_H
-    + SETTINGS_GROUP_TRAIL)
+    SETTINGS_SECTION_BAND + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_TRAIL)
 # ACCOUNT, SERVER and CONNECTION share ONE grouplist child. Neither of the
 # first two can take focus, and a focusless child joins the chain and eats a
 # keypress -- so they ride with the toggle, which can. They keep their own
@@ -877,8 +877,7 @@ SETTINGS_ACCOUNT_TAIL_EMAIL_Y = SETTINGS_SECTION_BAND
 SETTINGS_ACCOUNT_TAIL_SERVER_Y = (
     SETTINGS_ACCOUNT_TAIL_EMAIL_Y + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_GAP)
 SETTINGS_ACCOUNT_CONNECTION_ROW_Y = (
-    SETTINGS_ACCOUNT_TAIL_SERVER_Y + 2 * SETTINGS_VALUE_ROW_STACKED_H
-    + SETTINGS_GROUP_GAP)
+    SETTINGS_ACCOUNT_TAIL_SERVER_Y + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_GAP)
 # A read-only note under the CONNECTION toggle, reporting how THIS box is
 # actually reaching the server (direct or through tofa's relay). It rides
 # inside the tail child rather than in a child of its own, for the same

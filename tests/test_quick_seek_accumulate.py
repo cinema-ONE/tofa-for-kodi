@@ -108,6 +108,19 @@ f.quick_seek(True)
 gap = f._quick_seek_commit_at - before
 check("the deadline is ~400ms out", 0.35 <= gap <= 0.45, repr(gap))
 
+# 8. 8.9: the toast stays up through the burst and leaves within 300ms of
+#    the commit. The commit runs on a 5Hz tick, so a deadline inside one tick
+#    is met by the very next one, 200ms later.
+f = Fake()
+f.quick_seek(True); f.quick_seek(True)
+check("no toast deadline while the burst is pending", f._toast_deadline == 0.0,
+      repr(f._toast_deadline))
+before = _t.monotonic()
+f.commit_quick_seek()
+left = f._toast_deadline - before
+check("the toast is due before the next tick after the commit", 0 < left <= 0.2,
+      repr(left))
+
 print()
 failed = [n for n, ok in RESULTS if not ok]
 print(f"{len(RESULTS) - len(failed)}/{len(RESULTS)} passed")

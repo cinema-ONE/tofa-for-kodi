@@ -1702,6 +1702,17 @@
 {settings_nav_focused}
             </control>
 
+            <control type="label">
+                <posx>{SETTINGS_LEFT}</posx>
+                <posy>{SETTINGS_RAIL_FOOTER_Y}</posy>
+                <width>{SETTINGS_SIDEBAR_W}</width>
+                <height>24</height>
+                <aligny>center</aligny>
+                <font>{FONT_MICRO}</font>
+                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <label>$INFO[Window.Property(settings_rail_footer)]</label>
+            </control>
+
             <!-- ============= DETAIL: shared heading ============= -->
             <control type="label">
                 <posx>{SETTINGS_DETAIL_X}</posx>

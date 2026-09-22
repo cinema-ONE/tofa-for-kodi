@@ -229,20 +229,10 @@ def render_main() -> str:
         fragments.settings_group_eyebrow(
             posy=T.SETTINGS_ACCOUNT_TAIL_SERVER_Y, label="SERVER",
             indent="                        "),
-        # One card, two rows: the app draws a single 153-tall fill behind
-        # Server and Libraries with no divider between them, so the first row
-        # paints the whole card and the second paints none.
+        # The server's name only: 6 shows no user or library counts here.
         fragments.settings_value_row(
             posy=T.SETTINGS_ACCOUNT_TAIL_SERVER_Y, label="Server",
-            value_property="settings_server",
-            height=T.SETTINGS_VALUE_ROW_STACKED_H,
-            card_height=T.SETTINGS_VALUE_ROW_STACKED_H * 2,
-            indent="                        "),
-        fragments.settings_value_row(
-            posy=T.SETTINGS_ACCOUNT_TAIL_SERVER_Y + T.SETTINGS_VALUE_ROW_STACKED_H,
-            label="Libraries", value_property="settings_libraries",
-            height=T.SETTINGS_VALUE_ROW_STACKED_H, card_height=0,
-            indent="                        "),
+            value_property="settings_server", indent="                        "),
         fragments.settings_group_eyebrow(
             posy=T.SETTINGS_ACCOUNT_CONNECTION_ROW_Y, label="CONNECTION",
             indent="                        "),

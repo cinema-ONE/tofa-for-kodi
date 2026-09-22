@@ -116,6 +116,9 @@ SEEK_TOAST_S = 0.9
 # (see scrub/commit_scrub); this is the same contract for the chrome-hidden
 # path, which is what 10.4 now asks for.
 QUICK_SEEK_COMMIT_S = 0.4
+# 8.9: the quick-seek toast stays up through the burst and leaves within
+# 300ms of the commit. The ticker runs at 5Hz, so this lands on the next tick.
+QUICK_SEEK_TOAST_AFTER_S = 0.15
 
 # 10.4's scrubber step: clamp(duration/60, 10s, 60s).
 SCRUB_STEP_MIN_MS = 10_000
@@ -4569,7 +4572,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         moved = self._quick_seek_ms - self._position_ms()
         self.setProperty("player_seek_amount",
                          _seek_amount_label(abs(moved)) if moved else "")
-        self._toast_deadline = time.monotonic() + SEEK_TOAST_S
+        self._toast_deadline = 0.0
 
     def commit_quick_seek(self) -> bool:
         """Apply a pending chrome-hidden burst. True if there was one."""
@@ -4581,6 +4584,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # A committed seek ends the gesture, exactly as commit_scrub does.
         self._reset_seek_ladder()
         self._seek_to(target)
+        self._toast_deadline = time.monotonic() + QUICK_SEEK_TOAST_AFTER_S
         return True
 
     def cancel_quick_seek(self) -> bool:
@@ -5111,9 +5115,7 @@ class PlayerWindow(kodigui.ControlledDialog):
             # age restrictions, not clocks), so the Kodi setting wins because
             # it is the one the viewer can actually change.
             self.setProperty("player_clock", regional.clock())
-        # Before the toast expires: the burst commits 400ms after the last
-        # press, which is well inside the toast's own 0.9s, so the seek has
-        # happened by the time the caption goes.
+        # The commit first: it is what starts the toast's short way out.
         if self._quick_seek_commit_at and now >= self._quick_seek_commit_at:
             self.commit_quick_seek()
         if self._toast_deadline and now >= self._toast_deadline:

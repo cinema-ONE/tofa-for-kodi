@@ -1437,6 +1437,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_close_collection()
             return
 
+        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self.getProperty("active_section") == "settings"
+                and self.getFocusId() not in (self.NAV_LIST_ID, self.SETTINGS_NAV_ID)):
+            # 6: Back leaves a Settings pane for its section in the rail
+            # first; the next Back reaches the nav bar.
+            self.setFocusId(self.SETTINGS_NAV_ID)
+            return
+
         if action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK) and self.getFocusId() != self.NAV_LIST_ID:
             # Back returns to the nav bar first (tvOS/Android TV's "Back
             # goes to the top level before it exits"), instead of
@@ -5193,26 +5201,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # "it takes a while for the values to appear" was. So the LAN data is
         # painted first and the email is fetched LAST; the page fills at once
         # and the address drops in a beat later.
-        server_name, library_count = self._settings_server_summary(client)
-        # The sidebar card's second line, e.g. "MEDIA-NAS - 4 libraries" -- or
-        # "1 library", singular, on a server with one. A fresh server has
-        # exactly one library for as long as it takes to add the second, so
-        # "1 libraries" is what a new viewer sees first.
-        libraries = ("" if library_count is None else
-                     "{0} {1}".format(library_count,
-                                      "library" if library_count == 1 else "libraries"))
-        summary = " · ".join(part for part in (server_name, libraries) if part)
-        self.setProperty("settings_server_line", summary)
-        # The ROW says only the server's NAME, as the app's does. The library
-        # count is not dropped -- the sidebar card above already carries it,
-        # on both clients -- and a row that answers "which server am I on"
-        # should answer exactly that.
+        # The server's name alone, on the card, the row and the SERVER value:
+        # 6 shows no user or library counts in Account, and neither does the app.
+        server_name = self._settings_server_name()
+        self.setProperty("settings_server_line", server_name)
+        self.setProperty("settings_rail_footer",
+                         "tofa for Kodi · v{0} · Library managed on the web".format(
+                             kodigui.ADDON.getAddonInfo("version")))
         self.settings_switch_server_list.getListItem(0).setProperty(
             "summary", server_name or "—")
-        # The SERVER card's two value rows, back now that the pane scrolls.
         self.setProperty("settings_server", server_name or "—")
-        self.setProperty("settings_libraries",
-                         "" if library_count is None else str(library_count))
 
         profile = self._settings_active_profile()
         self.settings_switch_profile_list.getListItem(0).setProperty(
@@ -5291,38 +5289,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.settings_nav_list.getListItem(idx).setProperty(
                 "summary", subtitles.get(page.key, ""))
 
-    def _settings_server_summary(self, client) -> tuple[str, int | None]:
-        """(server name, library count), either of which may be unavailable.
+    def _settings_server_name(self) -> str:
+        """The connected server's name, or its host when none was stored.
 
-        The NAME does not come from the media server at all: /system/info
-        carries a version, capabilities and a `library_count`, but no
-        human-readable name for itself. The only source is the tofa cloud's
-        GET /servers, which needs the cloud token that exists solely during
-        pairing -- so signin.py captures it into the token store and this
-        reads it back. An install paired before that landed has no name
-        stored, and falls back to the host, which is at least the thing the
-        user typed."""
-        name, count = "", None
+        The media server has no human-readable name for itself; the name comes
+        from the cloud's GET /servers, captured into the token store at
+        pairing. An older pairing has none and falls back to the host."""
         try:
             tok = auth.load()
-            name = tok.server_name or urllib.parse.urlparse(tok.server).hostname or ""
         except auth.NotSignedIn:
-            pass
-        if client is None:
-            return name, count
-        try:
-            info = client.system_info() or {}
-            if isinstance(info.get("library_count"), int):
-                count = info["library_count"]
-        except http.ApiError as exc:
-            log.warning("settings: system_info failed: {0}".format(exc))
-        if count is None:
-            try:
-                libraries = client.libraries() or []
-                count = len(libraries)
-            except http.ApiError as exc:
-                log.warning("settings: libraries failed: {0}".format(exc))
-        return name, count
+            return ""
+        return tok.server_name or urllib.parse.urlparse(tok.server).hostname or ""
 
     def _render_nav_avatar(self):
         """The top-right profile marker. Visual only -- there is no control
@@ -6599,10 +6576,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _settings_language_clicked(self, pref_key: str, slot: int = 0):
         """Edit one slot, then rebuild the list from both.
 
-        Empties are dropped rather than stored, so clearing the primary
-        promotes the secondary instead of leaving a hole the matcher would
-        have to skip -- the list is consumed strictly in order (see
-        langcodes.first_by_language).
+        6: clearing the primary clears the secondary behind it, and clearing
+        the secondary promotes nothing. The list is consumed strictly in
+        order (langcodes.first_by_language), so it never holds a hole.
 
         The AUDIO primary offers no None, matching the other clients: there
         is always a first audio preference, and an empty list would mean the
@@ -6638,6 +6614,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         chosen = None if index < offset else options[index - offset][0]
         slots = [current[i] if len(current) > i else None for i in range(2)]
         slots[slot] = chosen
+        if slot == 0 and chosen is None:
+            slots = [None, None]
         # A language cannot usefully appear twice; picking the primary again
         # for the secondary would make the fallback a no-op.
         value = []
