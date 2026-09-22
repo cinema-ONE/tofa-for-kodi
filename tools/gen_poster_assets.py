@@ -271,6 +271,10 @@ def gen_badge_outline() -> None:
 #        app measures 181 on a 256 pitch). It was 130 -- nobody's number,
 #        ~28% under both the spec and the app.
 PERSON_PHOTOS = (190, 180)
+#: 9.2's profile portrait.
+PROFILE_PHOTO = 220
+#: 9.2's lock chip, measured at 75 on the Apple TV app.
+LOCK_CHIP = 75
 
 
 def gen_person_border(photo: int) -> None:
@@ -298,6 +302,46 @@ def gen_person_border(photo: int) -> None:
     d = ImageDraw.Draw(im)
     d.ellipse([0, 0, size - 1, size - 1], outline="white", width=BORDER_STROKE * S)
     _save(im, "person-border-{0}.png".format(photo), (photo, photo))
+
+
+def gen_hairline_ring(size: int) -> None:
+    """A 1px ring on the edge of a `size` disc: 9.2's resting profile tile
+    and its lock chip, each measured on the Apple TV app at one pixel."""
+    px = size * S
+    im = Image.new("RGBA", (px, px), (255, 255, 255, 0))
+    ImageDraw.Draw(im).ellipse([0, 0, px - 1, px - 1], outline="white", width=S)
+    _save(im, "hairline-ring-{0}.png".format(size), (size, size))
+
+
+def gen_outer_rim(photo: int) -> None:
+    """9.2's focus rim: BORDER_STROKE wide, hugging a `photo` disc from
+    OUTSIDE, as the Apple TV app draws it on a lifted profile tile. Drawn
+    in a box BORDER_STROKE larger on every side, so no gap opens."""
+    box = photo + BORDER_STROKE * 2
+    im = Image.new("RGBA", (box * S, box * S), (255, 255, 255, 0))
+    ImageDraw.Draw(im).ellipse([0, 0, box * S - 1, box * S - 1], outline="white",
+                               width=BORDER_STROKE * S)
+    _save(im, "outer-rim-{0}.png".format(photo), (box, box))
+
+
+def gen_ring_glow(photo: int) -> None:
+    """gen_person_glow() with the portrait cut out, for 9.2's profile tile.
+
+    A preset avatar is drawn on a translucent disc, so a filled halo under
+    it tinted the whole portrait accent; this one lives outside the edge."""
+    size = (photo + GLOW_PAD * 2) * S
+    mask = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(mask)
+    inset = (GLOW_PAD * S) // 2
+    d.ellipse([inset, inset, size - 1 - inset, size - 1 - inset], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(GLOW_PAD * S // 2))
+    mask = mask.point(lambda v: v * GLOW_ALPHA // 255)
+    hole = GLOW_PAD * S
+    ImageDraw.Draw(mask).ellipse([hole, hole, size - 1 - hole, size - 1 - hole], fill=0)
+    im = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+    im.putalpha(mask)
+    _save(im, "ring-glow-{0}.png".format(photo),
+          (photo + GLOW_PAD * 2, photo + GLOW_PAD * 2))
 
 
 def gen_person_glow(photo: int) -> None:
@@ -569,6 +613,10 @@ def main() -> None:
     for photo in PERSON_PHOTOS:
         gen_person_glow(photo)
         gen_person_border(photo)
+    gen_outer_rim(PROFILE_PHOTO)
+    gen_ring_glow(PROFILE_PHOTO)
+    gen_hairline_ring(PROFILE_PHOTO)
+    gen_hairline_ring(LOCK_CHIP)
     gen_top_result_assets()
     gen_avatar_shadow()
     gen_collection_mask()
