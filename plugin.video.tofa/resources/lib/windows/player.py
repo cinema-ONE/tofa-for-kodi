@@ -711,6 +711,7 @@ class PlayerWindow(kodigui.ControlledDialog):
     SKIP_TEXT_IDS = (9758, 9759)
     ERROR_GROUP_ID = 9950
     ERROR_CLOSE_ID = 9951
+    ERROR_RETRY_ID = 9952
     PANEL_GROUP_ID = 9900
     PANEL_SHADOW_ID = 9901
     # 8.4's panel is sliced horizontally; PANEL_BG_IDS is kept as the set of
@@ -1112,7 +1113,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                     subtitle_contract_version=contract),
                 resume_ms=self.resume_ms)
         except playback.NegotiateTimeout:
-            self.fail(kodigui.ADDON.getLocalizedString(31033))
+            self.fail(kodigui.ADDON.getLocalizedString(31033), retry=True)
             return
         except http.ApiError as exc:
             # Anything the server says here used to escape onFirstInit
@@ -1133,7 +1134,9 @@ class PlayerWindow(kodigui.ControlledDialog):
                 31119 if exc.status == 404 else 31120)
             body = (fallback if exc.status == 404
                     else http.viewer_message(exc, fallback))
-            self.fail(body)
+            # 8.7 retries only what can clear on its own: a busy converter
+            # or a network that did not answer.
+            self.fail(body, retry=exc.error in ("transcode_at_capacity", "connection_error"))
             return
 
         # A converted stream serves embedded styled and picture tracks too,
@@ -1514,7 +1517,7 @@ class PlayerWindow(kodigui.ControlledDialog):
             return False
         return self._position_ms() <= duration_ms - self.PREMATURE_END_MS
 
-    def fail(self, body: str, *, title: str = ""):
+    def fail(self, body: str, *, title: str = "", retry: bool = False):
         """Show 8.7's card and STAY, instead of closing the window.
 
         Every one of these paths used to end in closeNow(): the window
@@ -1547,8 +1550,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         self.hide_chrome()
         self.setProperty(
             "player_error_title",
-            title or kodigui.ADDON.getLocalizedString(31098))
+            title or kodigui.ADDON.getLocalizedString(31131))
         self.setProperty("player_error_body", body)
+        self.setProperty("player_error_retry", "1" if retry else "")
+        self.setProperty("player_error_retry_label", kodigui.ADDON.getLocalizedString(31132))
         # Set here, NOT as $LOCALIZE in the XML: in a script WindowXML that
         # resolves against Kodi's own and the ACTIVE SKIN's string tables,
         # never the add-on's, so 31099 came out as the host skin's "IconWall".
@@ -1556,9 +1561,19 @@ class PlayerWindow(kodigui.ControlledDialog):
         self.setProperty("player_error", "1")
         self._modal = True
         try:
-            self.setFocusId(self.ERROR_CLOSE_ID)
+            self.setFocusId(self.ERROR_RETRY_ID if retry else self.ERROR_CLOSE_ID)
         except RuntimeError:
             pass
+
+    def _retry_playback(self):
+        """8.7's Try again: the same request, from the opening card."""
+        for key in ("player_error", "player_error_title", "player_error_body",
+                    "player_error_retry"):
+            self.setProperty(key, "")
+        self._modal = False
+        self.setProperty("player_state", self.STATE_OPENING)
+        self.setFocusId(self.SURFACE_ID)
+        self._start_playback()
 
     # ------------------------------------------------------------------
     # 8.4 -- trailing selection panel
@@ -5408,6 +5423,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         elif controlID == self.ERROR_CLOSE_ID:
             self._exit()
             return
+        elif controlID == self.ERROR_RETRY_ID:
+            self._retry_playback()
+            return
         elif controlID == self.PANEL_LIST_ID:
             self._panel_clicked()
             return
@@ -6124,6 +6142,15 @@ class PlayerWindow(kodigui.ControlledDialog):
     def onAction(self, action):
         aid = action.getId()
         chrome_up = bool(self._chrome_deadline)
+
+        # 8.7's card owns every key: its buttons move and click, Back and
+        # Stop leave. Nothing may seek or raise the chrome behind it.
+        if self.getProperty("player_error"):
+            if aid in self._BACK_ACTIONS or aid in self._STOP_ACTIONS:
+                self._exit()
+                return
+            kodigui.ControlledDialog.onAction(self, action)
+            return
 
         # Media keys are handled the same either way and always re-anchor.
         if aid in self._PLAY_PAUSE_ACTIONS:

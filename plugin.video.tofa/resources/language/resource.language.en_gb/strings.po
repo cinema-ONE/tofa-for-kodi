@@ -402,7 +402,7 @@ msgid "Something went wrong starting this title. It may help to try again."
 msgstr ""
 
 msgctxt "#31101"
-msgid "Playback stopped unexpectedly."
+msgid "The video stopped arriving from the server."
 msgstr ""
 
 msgctxt "#31102"
@@ -513,4 +513,14 @@ msgstr ""
 
 msgctxt "#31130"
 msgid "Continue {0}"
+msgstr ""
+
+# 8.7's card title, whatever the reason in its body line.
+msgctxt "#31131"
+msgid "Playback stopped"
+msgstr ""
+
+# 8.7's retry, offered only where the refusal can clear on its own.
+msgctxt "#31132"
+msgid "Try again"
 msgstr ""
