@@ -1661,6 +1661,29 @@
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[Window.Property(player_seek_amount)]</label>
                 </control>
+                <!-- 8.9's destination timecode, on its own plate under the
+                     circle: a third line inside it does not fit at 140, and
+                     bare text would vanish over a bright frame. Monospaced so
+                     it holds still while the burst counts. -->
+                <control type="image">
+                    <posx>875</posx>
+                    <posy>622</posy>
+                    <width>170</width>
+                    <height>42</height>
+                    <colordiffuse>0x9E000000</colordiffuse>
+                    <texture border="21">capsule-h42.png</texture>
+                </control>
+                <control type="label">
+                    <posx>875</posx>
+                    <posy>622</posy>
+                    <width>170</width>
+                    <height>42</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_link</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(player_seek_target)]</label>
+                </control>
             </control>
             <control type="group">
                 <posx>-180</posx>
@@ -1693,6 +1716,29 @@
                     <font>tofa_font_caption</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <label>$INFO[Window.Property(player_seek_amount)]</label>
+                </control>
+                <!-- 8.9's destination timecode, on its own plate under the
+                     circle: a third line inside it does not fit at 140, and
+                     bare text would vanish over a bright frame. Monospaced so
+                     it holds still while the burst counts. -->
+                <control type="image">
+                    <posx>875</posx>
+                    <posy>622</posy>
+                    <width>170</width>
+                    <height>42</height>
+                    <colordiffuse>0x9E000000</colordiffuse>
+                    <texture border="21">capsule-h42.png</texture>
+                </control>
+                <control type="label">
+                    <posx>875</posx>
+                    <posy>622</posy>
+                    <width>170</width>
+                    <height>42</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_link</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(player_seek_target)]</label>
                 </control>
             </control>
         </control>

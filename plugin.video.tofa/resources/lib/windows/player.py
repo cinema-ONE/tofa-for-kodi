@@ -4572,6 +4572,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         moved = self._quick_seek_ms - self._position_ms()
         self.setProperty("player_seek_amount",
                          _seek_amount_label(abs(moved)) if moved else "")
+        # 8.9: and where the burst lands, as a monospaced timecode.
+        self.setProperty("player_seek_target", _format_time(self._quick_seek_ms))
         self._toast_deadline = 0.0
 
     def commit_quick_seek(self) -> bool:
