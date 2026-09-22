@@ -16,6 +16,7 @@ short fade/slide-in.
 from __future__ import annotations
 
 import math
+import threading
 import time
 
 import xbmc
@@ -239,6 +240,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                       COLLECTION_LIST, SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL)
     #: The More pane's shelves, top to bottom (7.5.2 puts "Part of" first).
     MORE_SHELF_IDS = (COLLECTION_LIST, SIMILAR_LIST, DISCOVER_LIST)
+    #: Pauses before asking again after an empty related list: the server
+    #: answers empty while it is still working the list out (vault #222).
+    #: Remove with _similar_retry once it waits or says so.
+    SIMILAR_RETRY_S = (0.5, 1, 2, 4)
 
     def __init__(self, *args, **kwargs):
         # Popped before super() so they don't reach xbmcgui.WindowXML.
@@ -1987,6 +1992,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # states: "" (results, show the grid), "empty", "error". They used to
         # share one flag and one sentence.
         self.setProperty("similar_state", "empty")
+        self._similar_generation = getattr(self, "_similar_generation", 0) + 1
         if not client or not media_id:
             return
         part_of = self._render_collection_strip(client, media_id)
@@ -1997,6 +2003,43 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("similar_state", "" if part_of else "error")
             self._wire_more_shelves((part_of, False, False))
             return
+        if not (resp.get("owned") or resp.get("requestable")):
+            # Blank, not "Nothing similar", until the last ask is in.
+            self.setProperty("similar_state", "")
+            self._wire_more_shelves((part_of, False, False))
+            self._similar_retry(client, media_id, part_of)
+            return
+        self._fill_similar(client, resp, part_of)
+
+    def _similar_retry(self, client: MediaServerClient, media_id: str, part_of: bool):
+        """Ask again off the UI thread, so the waits never hold a key press."""
+        generation = self._similar_generation
+
+        def stale():
+            return generation != self._similar_generation or not self.isOpen
+
+        def run():
+            resp, asks, t0 = {}, 1, time.monotonic()
+            for pause in self.SIMILAR_RETRY_S:
+                if xbmc.Monitor().waitForAbort(pause) or stale():
+                    return
+                asks += 1
+                try:
+                    resp = client.media_similar(media_id) or {}
+                except http.ApiError as exc:
+                    log.debug("detail: media_similar retry failed: {0}".format(exc))
+                    resp = {}
+                if resp.get("owned") or resp.get("requestable"):
+                    break
+            log.info("detail: related titles empty at first, {0} on ask {1} ({2:.1f}s)".format(
+                len(resp.get("owned") or []) + len(resp.get("requestable") or []),
+                asks, time.monotonic() - t0))
+            if not stale():
+                self._fill_similar(client, resp, part_of)
+
+        threading.Thread(target=run, name="tofa-detail-similar", daemon=True).start()
+
+    def _fill_similar(self, client: MediaServerClient, resp: dict, part_of: bool):
         # The owned/requestable split the API returns IS the app's own
         # category axis: it shows "More Like This" for what the library holds
         # and "More to Discover" for the rest (captured 2026-08-01). These
