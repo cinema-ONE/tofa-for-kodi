@@ -68,9 +68,7 @@ from . import log
 #:
 #: NOT adopted from 0.10.0, deliberately: the image-subtitle API
 #: (`stream/s/{id}/subtitles/{index}/images/...`) wants a client that
-#: composits bitmaps onto its own plane, which Kodi cannot do; and
-#: `subtitle_contract_version` is left unsent, which keeps the server on the
-#: contract this client already speaks.
+#: composits bitmaps onto its own plane, which Kodi cannot do.
 
 MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 10, 0)
 
