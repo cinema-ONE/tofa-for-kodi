@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.34" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.35" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,15 +45,29 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Styled subtitles keep their look when your server converts the video:
-        signs and captions stay where they were placed, in their own fonts, sizes
-        and colours, instead of becoming plain text at the bottom of the screen.
-        Skipping forward or back in a converted video now reloads them, so they
-        stay in step with the picture.
-      - Subtitles stored as pictures (PGS) now also show when your server converts
-        the video, for films where your server has already prepared them. Others
-        are left out of the list rather than shown incomplete.
-      - The first card in each row now shows its full glow when selected.
+      - Opening Options on a title's page, and starting playback, is quick again
+        whenever the file plays directly.
+      - When a title cannot start because the server is busy or cannot be reached,
+        the message now offers Try again, and when the server cannot convert it
+        fast enough, Lower quality.
+      - Choosing a different subtitle while your server converts a video now shows
+        the one you picked, instead of switching back to one chosen earlier.
+      - A film that belongs to a series, the James Bond films for instance, now
+        lists the rest of that series first under More Like This, including the
+        ones not in your library yet.
+      - The Who's watching? screen is closer to the other tofa apps: a larger lock
+        on protected profiles, a gentle lift and glow on the one you are about to
+        choose, a ring on the profile you are using, and a background tinted in
+        the chosen profile's colour.
+      - A season with only some of its episodes in your library now counts what
+        you have watched against the episodes you can play.
+      - The language lists in Settings now offer the same 42 languages as the
+        other tofa apps, and each Settings page remembers where you were on it.
+      - Skipping forward or back shows the time you will land on, and the bubble
+        leaves as soon as the jump is made.
+      - Smaller touches to match the other tofa apps: quieter format labels on a
+        title's page, the version at the foot of Settings, your server's name
+        without a library count, and Sign Out's confirmation starting on Cancel.
     </news>
     <assets>
       <icon>icon.png</icon>
