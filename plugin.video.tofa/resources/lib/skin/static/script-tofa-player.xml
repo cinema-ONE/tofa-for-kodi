@@ -3614,42 +3614,92 @@
 
             <!-- 8.7's accent-outline CTA: an outline, not a fill. The one
                  sanctioned solid accent fill is 8.3's Play Next. -->
-            <control type="image">
-                <posx>860</posx>
-                <posy>614</posy>
-                <width>200</width>
-                <height>60</height>
-                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                <texture border="30">capsule-h60.png</texture>
-                <visible>Control.HasFocus(9951)</visible>
+            <control type="group">
+                <!-- Centred alone; beside Try again it takes the right-hand
+                     slot of the pair (200 + 24 + 200, centred on the card). -->
+                <animation effect="slide" start="0,0" end="112,0" time="0" condition="!String.IsEmpty(Window.Property(player_error_retry))">Conditional</animation>
+                <control type="image">
+                    <posx>860</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture border="30">capsule-h60.png</texture>
+                    <visible>Control.HasFocus(9951)</visible>
+                </control>
+                <control type="image">
+                    <posx>860</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="30">capsule-h60-outline.png</texture>
+                </control>
+                <control type="label">
+                    <posx>860</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(player_error_cta)]</label>
+                </control>
+                <control type="button" id="9951">
+                    <posx>860</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <onleft>9952</onleft>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
             </control>
-            <control type="image">
-                <posx>860</posx>
-                <posy>614</posy>
-                <width>200</width>
-                <height>60</height>
-                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                <texture border="30">capsule-h60-outline.png</texture>
-            </control>
-            <control type="label">
-                <posx>860</posx>
-                <posy>614</posy>
-                <width>200</width>
-                <height>60</height>
-                <align>center</align>
-                <aligny>center</aligny>
-                <font>tofa_font_button</font>
-                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                <label>$INFO[Window.Property(player_error_cta)]</label>
-            </control>
-            <control type="button" id="9951">
-                <posx>860</posx>
-                <posy>614</posy>
-                <width>200</width>
-                <height>60</height>
-                <texturefocus>transparent-6px.png</texturefocus>
-                <texturenofocus>transparent-6px.png</texturenofocus>
-                <label></label>
+
+            <!-- 8.7's Try again, only for a refusal that can clear on its
+                 own. The primary action, so it comes first and takes focus. -->
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(player_error_retry))</visible>
+                <control type="image">
+                    <posx>748</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                    <texture border="30">capsule-h60.png</texture>
+                    <visible>Control.HasFocus(9952)</visible>
+                </control>
+                <control type="image">
+                    <posx>748</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                    <texture border="30">capsule-h60-outline.png</texture>
+                </control>
+                <control type="label">
+                    <posx>748</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_button</font>
+                    <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                    <label>$INFO[Window.Property(player_error_retry_label)]</label>
+                </control>
+                <control type="button" id="9952">
+                    <posx>748</posx>
+                    <posy>614</posy>
+                    <width>200</width>
+                    <height>60</height>
+                    <onright>9951</onright>
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
             </control>
         </control>
 
