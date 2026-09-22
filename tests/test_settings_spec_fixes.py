@@ -30,6 +30,9 @@ class Fake:
     def _settings_language_facet(self):
         return []
 
+    def _settings_metadata(self):
+        return {}
+
     def _settings_write(self, patch):
         self.writes.append(patch)
 

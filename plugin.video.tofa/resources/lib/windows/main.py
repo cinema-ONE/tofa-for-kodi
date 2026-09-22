@@ -679,7 +679,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # discovery row on every surface (home_rows.row_title).
         self._shelf_titles: dict[str, str] = {}
         self._settings_languages: list | None = None  # /media/facets languages, see _settings_language_facet()
-        self._settings_regions: list | None = None  # /system/metadata-options regions, see _settings_region_list()
+        self._settings_metadata_options: dict | None = None  # see _settings_metadata()
+        self._settings_last_control: dict[str, int] = {}  # page key -> control left last
         self._settings_identity: dict | None = None  # cloud GET /v1/me, see _settings_account_identity()
         self._browse_shuffle_seed: int | None = None  # for Sort="random"'s stable pagination, see _browse_sort_clicked()
         # Browse grid paging. The server caps per_page at 200 however much is
@@ -1315,6 +1316,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # See _search_maybe_commit_history()'s own docstring.
             self._search_query_field_focused = False
             self._search_maybe_commit_history()
+
+        # 6: re-entering a Settings page returns to the control left last.
+        if (self.getProperty("active_section") == "settings"
+                and controlID not in (self.NAV_LIST_ID, self.SETTINGS_NAV_ID)):
+            page = self.getProperty("settings_page")
+            if page:
+                self._settings_last_control[page] = controlID
 
         # Browse: coming back UP out of the grid should return to the pill
         # you left FROM, not always to Sort. The template can carry only one
@@ -5122,11 +5130,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_page", page.key)
         self.setProperty("settings_title", page.title)
         self.setProperty("settings_subtitle", page.subtitle)
-        target = settings_pages.RIGHT_TARGETS.get(page.key, self.SETTINGS_NAV_ID)
+        target = self._settings_entry_target(page.key) or self.SETTINGS_NAV_ID
         try:
             self.getControl(self.SETTINGS_NAV_ID).controlRight(self.getControl(target))
         except Exception:
             pass
+
+    def _settings_entry_target(self, key: str):
+        """Where Right or Select enters a page: the control left last, else
+        the page's first control (6). Not checked for visibility: a page shown
+        a moment ago still reads as hidden, and its rows do not come and go."""
+        return (self._settings_last_control.get(key)
+                or settings_pages.RIGHT_TARGETS.get(key))
 
     def _settings_page_clicked(self):
         """Select on a sidebar row moves INTO the page rather than being a
@@ -5149,7 +5164,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # session that looked like a real bug and were not. Idempotent, so
         # making the honest path bulletproof costs nothing.
         self._settings_show_page()
-        target = settings_pages.RIGHT_TARGETS.get(page.key)
+        target = self._settings_entry_target(page.key)
         if target:
             self.setFocusId(target)
 
@@ -5543,6 +5558,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # is a different answer -- the account email had stayed at the
         # username fallback cached before the pairing.
         self._settings_languages = None
+        self._settings_metadata_options = None
         self._settings_identity = None
         self._invalidate_profile_cache()
         # ORDER MATTERS, and the old order was wrong. _render_nav_avatar
@@ -5591,6 +5607,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # dropped by hand -- as they do on the switch-server path above,
         # which reaches the very same pairing when there is no cloud token.
         self._settings_languages = None
+        self._settings_metadata_options = None
         self._settings_identity = None
         self._invalidate_profile_cache()
         # Same reason as the profile switch above: the warmed client belongs
@@ -6589,7 +6606,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         audio = pref_key.startswith("preferred_audio")
         audio_primary = audio and slot == 0
         options = settings_options.language_options(
-            self._settings_language_facet(), subtitles=not audio)
+            self._settings_language_facet(), subtitles=not audio,
+            served=self._settings_metadata().get("languages"), current=current)
 
         rows = [] if audio_primary else [{"label": "None", "detail": ""}]
         offset = len(rows)
@@ -6674,26 +6692,25 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             body = ""
         self.setProperty("settings_connection_body", body)
 
-    def _settings_region_list(self):
-        """The regions the SERVER offers, as `[(code, name)]`.
-
-        `GET /system/metadata-options` -> `regions`, which is authoritative
-        and 47 long where this client's hardcoded copy is 27 (vault #124).
-        Cached the same way as the languages facet -- at most once per window,
-        cached even when it FAILS, so a server that cannot answer costs one
-        request rather than one per opening -- and falling back to the static
-        list, so the picker is never emptier than it was before.
-        """
-        if self._settings_regions is None:
-            self._settings_regions = []
+    def _settings_metadata(self) -> dict:
+        """`GET /system/metadata-options`: the server's curated `regions` and
+        `languages`. Fetched at most once per window and cached even when it
+        fails, so a server that cannot answer costs one request, not one per
+        picker; callers fall back to their static lists."""
+        if self._settings_metadata_options is None:
+            self._settings_metadata_options = {}
             client = self._get_client()
             if client is not None:
                 try:
-                    options = client.metadata_options() or {}
-                    self._settings_regions = list(options.get("regions") or [])
+                    self._settings_metadata_options = client.metadata_options() or {}
                 except http.ApiError as exc:
-                    log.warning("settings: region list failed: {0}".format(exc))
-        return settings_options.region_options(self._settings_regions)
+                    log.warning("settings: metadata options failed: {0}".format(exc))
+        return self._settings_metadata_options
+
+    def _settings_region_list(self):
+        """The regions the SERVER offers, as `[(code, name)]` (47 where our
+        static copy has 27)."""
+        return settings_options.region_options(self._settings_metadata().get("regions"))
 
     def _settings_fill_region(self):
         code = self._ensure_preferences().get("region") or ""

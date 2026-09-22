@@ -235,6 +235,11 @@ def region_options(served) -> list[tuple[str, str]]:
     return sorted(rows or REGIONS, key=lambda row: row[1].lower())
 
 
+#: Where Kodi's own name reads oddly for one of the curated 42 ("Latvian,
+#: Lettish"), the plain name the other clients show.
+_PLAIN_NAMES = {"lav": "Latvian"}
+
+
 def language_name(code: str) -> str:
     """A viewer-facing name for one language code, in three tries.
 
@@ -250,6 +255,8 @@ def language_name(code: str) -> str:
     for value, name in LANGUAGES:
         if langcodes.canonical(value) == canon:
             return name
+    if canon in _PLAIN_NAMES:
+        return _PLAIN_NAMES[canon]
     try:
         import xbmc
         name = xbmc.convertLanguage(str(code), xbmc.ENGLISH_NAME)
@@ -313,8 +320,14 @@ def fold_language_facet(rows) -> list[tuple[str, str, int]]:
     return out
 
 
-def language_options(facet_rows, *, subtitles: bool) -> list[tuple[str, str]]:
+def language_options(facet_rows, *, subtitles: bool, served=None,
+                     current=()) -> list[tuple[str, str]]:
     """The rows a language picker should offer, as [(code, name)].
+
+    6: exactly the shared list the server serves (metadata-options
+    `languages`, 42 long), by name, as every other client offers it. A saved
+    code outside it is kept as a row, so a preference set elsewhere still
+    shows. Without the served list, the older rules below apply.
 
     **Audio takes the facet alone.** It lists the languages the library has
     audio in, so offering anything else would be offering a preference that
@@ -331,12 +344,23 @@ def language_options(facet_rows, *, subtitles: bool) -> list[tuple[str, str]]:
     is never emptier than it was before the facet existed.
     """
     seen: dict[str, tuple[str, str]] = {}
-    for code, name, _count in fold_language_facet(facet_rows):
+    curated = [c for c in (served or []) if isinstance(c, str) and c.strip()]
+    for code in curated:
+        seen.setdefault(langcodes.canonical(code),
+                        (langcodes.terminological(code), language_name(code)))
+    for code, name, _count in ([] if curated else fold_language_facet(facet_rows)):
         seen.setdefault(langcodes.canonical(code), (code, name))
-    if subtitles or not seen:
+    if not curated and (subtitles or not seen):
         for code, name in LANGUAGES:
             seen.setdefault(langcodes.canonical(code), (code, name))
-    return list(seen.values())
+    rows = list(seen.values())
+    if curated:
+        rows.sort(key=lambda row: row[1].lower())
+    for code in current or ():
+        if code and langcodes.canonical(code) not in seen:
+            seen[langcodes.canonical(code)] = (code, language_name(code))
+            rows.append(seen[langcodes.canonical(code)])
+    return rows
 
 # `artcache_budget_mb`. NOT from the app -- Apple TV has no equivalent,
 # because it is not a Kodi add-on writing artwork into a shared profile

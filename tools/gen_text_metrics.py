@@ -46,6 +46,7 @@ _CHARS = [chr(c) for c in range(32, 127)] + [
 _TABLES = [
     ("_ADVANCE", "tofa_font_metadata", "tofa_inter_tight_regular.ttf", 23),
     ("_ADVANCE_HERO_TITLE", "tofa_font_hero_title", "tofa_inter_tight_bold.ttf", 61),
+    ("_ADVANCE_PLATE", "tofa_font_account", "tofa_inter_tight_semibold.ttf", 20),
 ]
 
 
@@ -114,6 +115,12 @@ def _render() -> str:
         'def text_width(text: str) -> int:',
         '    """Rendered width of `text` in FONT, rounded up to whole pixels."""',
         '    return int(round(sum(_ADVANCE.get(ch, _FALLBACK) for ch in text)))',
+        '',
+        '',
+        'def plate_text_width(text: str) -> int:',
+        '    """Width of `text` in the format plates\' font (tofa_font_account)."""',
+        '    return int(round(sum(_ADVANCE_PLATE.get(ch, _ADVANCE_PLATE_FALLBACK)',
+        '                         for ch in text)))',
         '',
         '',
         'def middle_ellipsis(text: str, max_px: int, font_size: int = SIZE) -> str:',

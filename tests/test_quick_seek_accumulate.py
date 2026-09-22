@@ -81,6 +81,8 @@ third = f.getProperty("player_seek_amount")
 check("the caption grows with the burst", first != third, f"{first!r} then {third!r}")
 check("...and names the whole movement", third == P._seek_amount_label(30_000),
       repr(third))
+check("...and where it lands, as a timecode", f.getProperty("player_seek_target") == "1:30",
+      repr(f.getProperty("player_seek_target")))
 check("direction is captioned", f.getProperty("player_seek_toast") == "forward")
 f.quick_seek(False); f.quick_seek(False); f.quick_seek(False)
 check("...and flips on reversal", f.getProperty("player_seek_toast") == "back")

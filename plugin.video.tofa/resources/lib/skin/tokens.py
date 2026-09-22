@@ -1098,6 +1098,9 @@ SURFACE_TRACK = "0x29FFFFFF"
 CARD_PROGRESS_TRACK = "0x1AFFFFFF"
 BORDER_SOFT = "0x33FFFFFF"      # badge outlines on art
 BORDER = "0x40FFFFFF"           # rating badge outline, dividers on art
+# 6's format plates: a recessed white 9% wash, no border, ink at 86%.
+FORMAT_PLATE_FILL = "0x17FFFFFF"
+FORMAT_PLATE_INK = "0xDBFFFFFF"
 DIVIDER = "0x66FFFFFF"          # hairlines on flat ground
 
 CANVAS = "0xFF030B10"           # page background
