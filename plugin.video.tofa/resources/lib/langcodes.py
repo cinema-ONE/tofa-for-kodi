@@ -75,6 +75,8 @@ _GROUPS: tuple[tuple[str, ...], ...] = (
     ("bul", "bg"), ("hrv", "hr"), ("srp", "sr"), ("slv", "sl"),
     ("est", "et"), ("lav", "lv"), ("lit", "lt"), ("cat", "ca"),
     ("ind", "id"), ("lat", "la"),
+    # The rest of the server's curated 42 (metadata-options `languages`).
+    ("tam", "ta"), ("tel", "te"), ("mal", "ml"),
 )
 
 _CANON: dict[str, str] = {
