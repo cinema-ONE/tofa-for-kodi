@@ -4118,7 +4118,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         if slot is not None:
             self._active_subtitle_index = server_index
             return self._switch_subtitle(slot)
-        if not (track is not None and track.get("external")):
+        # A converted stream carries no subtitles of its own, so Kodi's
+        # streams there are only the ones loaded here: never map onto them.
+        if playback.is_whole_file(self._nego or {}) and not (
+                track is not None and track.get("external")):
             slot = self._stream_slot(self._subtitle_order, server_index,
                                      self.ui_player.getAvailableSubtitleStreams())
             if slot is not None:
