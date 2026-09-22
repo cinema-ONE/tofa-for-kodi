@@ -532,7 +532,21 @@ def render_detail() -> str:
     )
     # Standard shelf metrics, unchanged: they already reproduce the app's row
     # pitch here (ours 560, measured 556 art-top to art-top).
+    # 7.5.2's collection shelf, the pane's FIRST: the same 2:3 poster and
+    # not-in-library badge as More to Discover.
+    collection_item, collection_focused = fragments.poster_card(
+        6320, has_progress=False, caption_field="caption_meta",
+        extra_item_xml=fragments.watchlist_badge_item(),
+        extra_focused_xml=fragments.watchlist_badge_focused(),
+    )
     similar_rows = "\n\n".join((
+        fragments.poster_row(
+            group_id=6321, list_id=6320, title_property="collection_row_title",
+            onup=6130, ondown=6300,
+            item_xml=collection_item, focused_xml=collection_focused,
+            list_width=T.row_bleed_width(100),
+            indent="                        ",
+        ),
         fragments.poster_row(
             group_id=6301, list_id=6300, title_property="similar_row_title",
             onup=6130, ondown=6310,

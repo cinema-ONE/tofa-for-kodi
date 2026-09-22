@@ -228,6 +228,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     CREW_LIST = 6210
     SIMILAR_LIST = 6300
     DISCOVER_LIST = 6310
+    COLLECTION_LIST = 6320
     SEASON_SIDEBAR_LIST = 6400
     EPISODE_GRID_PANEL = 6410
     TAB_IDS = (TAB_EPISODES, TAB_CAST, TAB_ABOUT, TAB_MORE)
@@ -236,7 +237,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: Kodi's own nav already served; arriving from a page-1 pill is a
     #: Down press. onFocus has to tell those apart -- see _tab_just_arrived.
     PAGE2_BODY_IDS = (CAST_LIST, CREW_LIST, SIMILAR_LIST, DISCOVER_LIST,
-                      SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL)
+                      COLLECTION_LIST, SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL)
+    #: The More pane's shelves, top to bottom (7.5.2 puts "Part of" first).
+    MORE_SHELF_IDS = (COLLECTION_LIST, SIMILAR_LIST, DISCOVER_LIST)
 
     def __init__(self, *args, **kwargs):
         # Popped before super() so they don't reach xbmcgui.WindowXML.
@@ -270,6 +273,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.crew_list: kodigui.ManagedControlList | None = None
         self.similar_list: kodigui.ManagedControlList | None = None
         self.discover_list: kodigui.ManagedControlList | None = None
+        self.collection_list: kodigui.ManagedControlList | None = None
         self.season_list: kodigui.ManagedControlList | None = None
         self.episode_list: kodigui.ManagedControlList | None = None
         self.media: dict = {}
@@ -357,6 +361,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # single row's 6 did.
         self.similar_list = kodigui.ManagedControlList(self, self.SIMILAR_LIST, 40)
         self.discover_list = kodigui.ManagedControlList(self, self.DISCOVER_LIST, 40)
+        self.collection_list = kodigui.ManagedControlList(self, self.COLLECTION_LIST, 40)
         self.season_list = kodigui.ManagedControlList(self, self.SEASON_SIDEBAR_LIST, 6)
         self.episode_list = kodigui.ManagedControlList(self, self.EPISODE_GRID_PANEL, 6)
         self._load()
@@ -1984,11 +1989,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("similar_state", "empty")
         if not client or not media_id:
             return
+        part_of = self._render_collection_strip(client, media_id)
         try:
             resp = client.media_similar(media_id) or {}
         except http.ApiError as exc:
             kodigui.ERROR("detail.py: media_similar failed: {0}".format(exc))
-            self.setProperty("similar_state", "error")
+            self.setProperty("similar_state", "" if part_of else "error")
+            self._wire_more_shelves((part_of, False, False))
             return
         # The owned/requestable split the API returns IS the app's own
         # category axis: it shows "More Like This" for what the library holds
@@ -2010,16 +2017,57 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # only that shelf, flush to the top.
         self.setProperty("similar_row_title", "More Like This" if owned else "")
         self.setProperty("discover_row_title", "More to Discover" if requestable else "")
-        self.setProperty("similar_state", "" if (owned or requestable) else "empty")
-        # Down from the tab bar is statically wired to the owned shelf; aim it
-        # at whichever shelf actually exists.
+        self.setProperty("similar_state",
+                         "" if (part_of or owned or requestable) else "empty")
+        self._wire_more_shelves((part_of, bool(owned), bool(requestable)))
+
+    def _wire_more_shelves(self, present):
+        """Chain the tab and the shelves that exist, top to bottom. The XML can
+        only name fixed neighbours, and any of the three may be hidden."""
+        shown = [cid for cid, on in zip(self.MORE_SHELF_IDS, present) if on]
+        if not shown:
+            return
         try:
-            self.getControl(self.TAB_MORE).controlDown(
-                self.getControl(self.SIMILAR_LIST if owned else self.DISCOVER_LIST))
+            self.getControl(self.TAB_MORE).controlDown(self.getControl(shown[0]))
+            for i, cid in enumerate(shown):
+                control = self.getControl(cid)
+                control.controlUp(self.getControl(shown[i - 1] if i else self.TAB_MORE))
+                control.controlDown(self.getControl(shown[i + 1] if i + 1 < len(shown) else cid))
         except Exception:
             pass
 
-    def _similar_card(self, client: MediaServerClient, item: dict) -> "kodigui.ManagedListItem":
+    def _render_collection_strip(self, client: MediaServerClient, media_id: str) -> bool:
+        """7.5.2's collection shelf, when the title belongs to a collection.
+
+        Members come in the server's order, never sorted or capped, less the
+        title on screen; ones the library lacks keep their not-in-library
+        badge. No format badges: they belong to library grids, not here."""
+        self.setProperty("collection_row_title", "")
+        if self.collection_list is None:
+            return False
+        self.collection_list.reset()
+        collection_id = (self.media or {}).get("tmdb_collection_id")
+        if not collection_id:
+            return False
+        try:
+            collection = client.collection(str(collection_id)) or {}
+        except http.ApiError as exc:
+            log.warning("detail: collection {0} failed: {1}".format(collection_id, exc))
+            return False
+        members = [it for it in (collection.get("items") or [])
+                   if not (it.get("in_library") and it.get("local_media_id") == media_id)]
+        if not members:
+            return False
+        self.collection_list.addItems(
+            [self._similar_card(client, it, in_library=bool(it.get("in_library")),
+                                format_badges=False) for it in members])
+        self.setProperty("collection_row_title",
+                         "Part of {0}".format(collection.get("name") or "a collection"))
+        return True
+
+    def _similar_card(self, client: MediaServerClient, item: dict, *,
+                      in_library: bool | None = None,
+                      format_badges: bool = True) -> "kodigui.ManagedListItem":
         title = item.get("title") or ""
         poster_path = item.get("poster_path") or item.get("poster_url")
         poster = client.resolve_image_url(poster_path) or "" if poster_path else ""
@@ -2029,29 +2077,35 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # offscreen: built detached, handed to addItems. The one later write is
         # _card_options_picked's watched/watchlisted, the same accepted
         # residual Home carries -- see main.py's note and issue #11.
-        mli = cards.poster_item(item, poster, label=title,
-                                prefs=self._ensure_preferences(),
-                                offscreen=True)
+        prefs = self._ensure_preferences()
+        if not format_badges:
+            prefs = dict(prefs or {}, show_format_badges=False)
+        mli = cards.poster_item(item, poster, label=title, prefs=prefs, offscreen=True)
         mli.setProperty("caption_meta", _year_from(item))
         # "+" means NOT IN YOUR LIBRARY, which is exactly what puts a title on
         # the More to Discover shelf -- so it rides on the same test the shelf
         # itself does rather than on a separate field. A requested title wears
         # the clock instead; cards.apply_library_badge decides.
-        cards.apply_library_badge(mli, item, in_library=bool(item.get("id")))
+        cards.apply_library_badge(
+            mli, item, in_library=bool(item.get("id")) if in_library is None else in_library)
         return mli
 
     def _similar_clicked(self, control_id: int = 0):
-        lst = (self.discover_list if control_id == self.DISCOVER_LIST
-               else self.similar_list)
+        lst = {self.DISCOVER_LIST: self.discover_list,
+               self.COLLECTION_LIST: self.collection_list}.get(control_id, self.similar_list)
         item = lst.getSelectedItem() if lst is not None else None
         if not item or not item.dataSource:
             return
         data = item.dataSource
-        media_id = data.get("id")
+        media_id = data.get("id") or (data.get("in_library") and data.get("local_media_id"))
+        media_type = data.get("media_type") or data.get("type")
         if media_id:
             DetailWindow.open(media_id=media_id)
-        elif data.get("tmdb_id") and data.get("media_type"):
-            DetailWindow.open(discovery_id=data.get("tmdb_id"), media_type=data.get("media_type"))
+        elif data.get("tmdb_id") and media_type:
+            # A collection member carries its own card payload, which the
+            # out-of-library hero is built from.
+            DetailWindow.open(discovery_id=data.get("tmdb_id"), media_type=media_type,
+                              discovery_item=data)
 
     # ------------------------------------------------------------------
     # out-of-library (discovery, not owned)
@@ -2663,7 +2717,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("detail_tab", "more")
         elif controlID == self.TAB_EPISODES:
             self.setProperty("detail_tab", "episodes")
-        elif controlID in (self.SIMILAR_LIST, self.DISCOVER_LIST):
+        elif controlID in self.MORE_SHELF_IDS:
             self._similar_clicked(controlID)
         elif controlID == self.SEASON_SIDEBAR_LIST:
             self._season_clicked()
@@ -3050,16 +3104,17 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                         item.setProperty("progress_fill", "")
             return True
 
-        if focus_id in (self.SIMILAR_LIST, self.DISCOVER_LIST):
-            lst = (self.discover_list if focus_id == self.DISCOVER_LIST
-                   else self.similar_list)
+        if focus_id in self.MORE_SHELF_IDS:
+            lst = {self.DISCOVER_LIST: self.discover_list,
+                   self.COLLECTION_LIST: self.collection_list}.get(focus_id, self.similar_list)
             if lst is None:
                 return False
             item = lst.getSelectedItem()
             if item is None or not item.dataSource:
                 return False
             data = item.dataSource
-            media_id = data.get("id") or data.get("media_id")
+            media_id = (data.get("id") or data.get("media_id")
+                        or (data.get("in_library") and data.get("local_media_id")))
             keys = cardoptions.option_keys(
                 in_library=bool(media_id),
                 fully_watched=bool(item.getProperty("watched")),
@@ -3276,6 +3331,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.CREW_LIST: self.crew_list,
             self.SIMILAR_LIST: self.similar_list,
             self.DISCOVER_LIST: self.discover_list,
+            self.COLLECTION_LIST: self.collection_list,
             self.SEASON_SIDEBAR_LIST: self.season_list,
             self.EPISODE_GRID_PANEL: self.episode_list,
         }.get(control_id)
