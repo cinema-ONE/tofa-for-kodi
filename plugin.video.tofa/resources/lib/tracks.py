@@ -102,18 +102,29 @@ _CONTRACT_CODECS = frozenset((
     "ass", "ssa", "hdmv_pgs_subtitle", "pgs", "dvd_subtitle", "dvb_subtitle", "vobsub"))
 
 
-def subtitle_contract_for(subtitle_tracks):
+def subtitle_contract_for(subtitle_tracks, whole_file=True):
     """The subtitle contract to ask for, given a file's own tracks: 2 or None.
 
-    On server 0.10.0 a contract-2 answer takes over a second longer, and only
-    styled and picture tracks need what it adds. Unknown tracks (None) still
-    ask for 2, so nothing a file needs is withheld."""
+    On server 0.10.0 a contract-2 answer takes over a second longer. Only a
+    styled or picture track the server delivers needs what it adds: a sidecar
+    always, an embedded one on a converted stream (Kodi reads a whole file's
+    own). Unknown tracks (None) still ask for 2."""
     if subtitle_tracks is None:
         return 2
     for track in subtitle_tracks:
-        if str((track or {}).get("codec") or "").strip().lower() in _CONTRACT_CODECS:
+        track = track or {}
+        if (str(track.get("codec") or "").strip().lower() in _CONTRACT_CODECS
+                and (track.get("external") or not whole_file)):
             return 2
     return None
+
+
+def add_contract_fields(session_tracks, contract2_tracks) -> None:
+    """Give contract-1 tracks what contract 2 adds, matched by server index."""
+    extra = {t.get("index"): t for t in contract2_tracks or [] if t}
+    for track in session_tracks or []:
+        for key, value in (extra.get(track.get("index")) or {}).items():
+            track.setdefault(key, value)
 
 
 #: Formats that carry position, colour and font.
