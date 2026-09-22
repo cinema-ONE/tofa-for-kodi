@@ -263,7 +263,7 @@
                             <posy>0</posy>
                             <width>150</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_1_label))</visible>
                         </control>
@@ -274,8 +274,8 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>tofa_font_metadata</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_1_label)]</label>
                         </control>
                         <control type="image" id="5114">
@@ -283,7 +283,7 @@
                             <posy>0</posy>
                             <width>150</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_2_label))</visible>
                         </control>
@@ -294,8 +294,8 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>tofa_font_metadata</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_2_label)]</label>
                         </control>
                         <control type="image" id="5116">
@@ -303,7 +303,7 @@
                             <posy>0</posy>
                             <width>150</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_3_label))</visible>
                         </control>
@@ -314,8 +314,8 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>tofa_font_metadata</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_3_label)]</label>
                         </control>
                         <control type="image" id="5118">
@@ -323,7 +323,7 @@
                             <posy>0</posy>
                             <width>150</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_4_label))</visible>
                         </control>
@@ -334,8 +334,8 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>tofa_font_metadata</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_4_label)]</label>
                         </control>
                         <control type="image" id="5120">
@@ -343,7 +343,7 @@
                             <posy>0</posy>
                             <width>150</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_5_label))</visible>
                         </control>
@@ -354,8 +354,8 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>tofa_font_metadata</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_5_label)]</label>
                         </control>
                     </control>
@@ -1326,7 +1326,7 @@
                             <posx>0</posx>
                             <width>150</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_1_label))</visible>
                         </control>
@@ -1336,15 +1336,15 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>{FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_1_label)]</label>
                         </control>
                         <control type="image" id="6612">
                             <posx>158</posx>
                             <width>150</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_2_label))</visible>
                         </control>
@@ -1354,15 +1354,15 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>{FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_2_label)]</label>
                         </control>
                         <control type="image" id="6614">
                             <posx>316</posx>
                             <width>200</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_3_label))</visible>
                         </control>
@@ -1372,15 +1372,15 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>{FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_3_label)]</label>
                         </control>
                         <control type="image" id="6616">
                             <posx>316</posx>
                             <width>200</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_4_label))</visible>
                         </control>
@@ -1390,15 +1390,15 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>{FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_4_label)]</label>
                         </control>
                         <control type="image" id="6618">
                             <posx>316</posx>
                             <width>200</width>
                             <height>34</height>
-                            <colordiffuse>{BORDER}</colordiffuse>
+                            <colordiffuse>{FORMAT_PLATE_FILL}</colordiffuse>
                             <texture border="4">white-square-rounded.png</texture>
                             <visible>!String.IsEmpty(Window.Property(badge_5_label))</visible>
                         </control>
@@ -1408,8 +1408,8 @@
                             <height>34</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>{FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <font>{FONT_ACCOUNT}</font>
+                            <textcolor>{FORMAT_PLATE_INK}</textcolor>
                             <label>$INFO[Window.Property(badge_5_label)]</label>
                         </control>
                     </control>

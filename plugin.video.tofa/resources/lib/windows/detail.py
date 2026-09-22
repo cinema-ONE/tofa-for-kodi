@@ -851,7 +851,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 return
             if i >= len(badges):
                 continue
-            width = textmetrics.text_width(badges[i]) + 2 * self.BADGE_PAD
+            width = textmetrics.plate_text_width(badges[i]) + 2 * self.BADGE_PAD
             for control in (image, label):
                 control.setPosition(x, 0)
                 control.setWidth(width)
