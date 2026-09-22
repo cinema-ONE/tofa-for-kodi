@@ -1102,14 +1102,14 @@ class PlayerWindow(kodigui.ControlledDialog):
         # that were visibly shifted. See playbacksync.SubtitleOffset.
         self._subtitle_offset.load(file_id)
 
+        contract = tracks.subtitle_contract_for(self._file_subtitle_tracks)
         try:
             resp = playback.negotiate(
                 client, file_id,
                 CapabilityProfile.for_device(
                     max_bitrate=self.selection.max_bitrate,
                     quality_mode=self.selection.quality_mode,
-                    subtitle_contract_version=tracks.subtitle_contract_for(
-                        self._file_subtitle_tracks)),
+                    subtitle_contract_version=contract),
                 resume_ms=self.resume_ms)
         except playback.NegotiateTimeout:
             self.fail(kodigui.ADDON.getLocalizedString(31033))
@@ -1135,6 +1135,12 @@ class PlayerWindow(kodigui.ControlledDialog):
                     else http.viewer_message(exc, fallback))
             self.fail(body)
             return
+
+        # A converted stream serves embedded styled and picture tracks too,
+        # so they need contract 2's fields after all.
+        if not contract and not playback.is_whole_file(resp) and \
+                tracks.subtitle_contract_for(self._file_subtitle_tracks, whole_file=False):
+            self._add_contract_fields(client, file_id, resp)
 
         if not playback.is_direct(resp):
             # Deliberately NOT a prompt any more. It used to ask before
@@ -3585,6 +3591,23 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._defer_focus_restore(self.getFocusId())
         self._start_playback()
 
+    def _add_contract_fields(self, client, file_id, resp) -> None:
+        """Complete the session's tracks from a contract-2 dry run.
+
+        A dry run opens no session and lists the same tracks by index."""
+        try:
+            info = client.stream_info(
+                file_id,
+                CapabilityProfile.for_device(
+                    max_bitrate=self.selection.max_bitrate,
+                    quality_mode=self.selection.quality_mode,
+                    subtitle_contract_version=2),
+                dry_run=True)
+        except http.ApiError as exc:
+            log.warning(f"player: subtitle details for a converted stream failed: {exc!r}")
+            return
+        tracks.add_contract_fields(resp.get("subtitle_tracks"), info.get("subtitle_tracks"))
+
     def _defer_focus_restore(self, control_id):
         """Park focus on `control_id` a little longer, then send it to the
         bare surface.
@@ -5811,13 +5834,13 @@ class PlayerWindow(kodigui.ControlledDialog):
         if not (self.client and self.file_id):
             return
         try:
+            # Only the quality tiers are read here, so no subtitle contract.
             info = self.client.stream_info(
                 self.file_id,
                 CapabilityProfile.for_device(
                     max_bitrate=self.selection.max_bitrate,
                     quality_mode=self.selection.quality_mode,
-                    subtitle_contract_version=tracks.subtitle_contract_for(
-                        self._file_subtitle_tracks)),
+                    subtitle_contract_version=None),
                 dry_run=True,
             )
         except http.ApiError as exc:

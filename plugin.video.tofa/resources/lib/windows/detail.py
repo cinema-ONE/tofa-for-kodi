@@ -25,7 +25,7 @@ from . import cardoptions, cards, focusmemory, kodigui, person, playoptions, pro
 from .. import api, artcache, auth, badges as fmt_badges, capabilities, http, log
 from .. import playbackprefs
 from .. import episodes as episodes_fmt
-from .. import prefs, progress, regional, textmetrics, toast, tracks
+from .. import playback, prefs, progress, regional, textmetrics, toast, tracks
 from ..api import MediaServerClient
 # Module level, not the local import a few methods use: PILL_LAYOUT below is
 # evaluated when the class is defined. skin.fragments pulls in only
@@ -2764,16 +2764,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not client:
             return False
         current = self._play_file()
+        file_tracks = (current or {}).get("subtitle_tracks")
+        contract = tracks.subtitle_contract_for(file_tracks)
         try:
-            info = client.stream_info(
-                self.play_file_id,
-                CapabilityProfile.for_device(
-                    max_bitrate=self.play_selection.max_bitrate,
-                    quality_mode=self.play_selection.quality_mode,
-                    subtitle_contract_version=tracks.subtitle_contract_for(
-                        (current or {}).get("subtitle_tracks"))),
-                dry_run=True,
-            )
+            info = self._options_info(client, contract)
+            # A converted stream serves embedded styled and picture tracks
+            # too, and the panel reads their state: ask again with contract 2.
+            if not contract and tracks.subtitle_contract_for(
+                    file_tracks, whole_file=playback.is_whole_file(info)):
+                info = self._options_info(client, 2)
         except http.ApiError as exc:
             kodigui.ERROR("detail.py: stream info for options failed: {0}".format(exc))
             toast.show("Playback options are unavailable right now")
@@ -2796,6 +2795,17 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                              .get("preferred_audio_languages") or []),
         )
         return True
+
+    def _options_info(self, client: MediaServerClient, contract):
+        """Options' dry run, asked with subtitle contract `contract`."""
+        return client.stream_info(
+            self.play_file_id,
+            CapabilityProfile.for_device(
+                max_bitrate=self.play_selection.max_bitrate,
+                quality_mode=self.play_selection.quality_mode,
+                subtitle_contract_version=contract),
+            dry_run=True,
+        )
 
     def _open_hero_options(self) -> bool:
         """7.2's detail variant: the same panel, but carrying "Options" as
