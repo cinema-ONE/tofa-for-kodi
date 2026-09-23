@@ -8,8 +8,9 @@ _MWBackground/MultiWindow, SafeControlEdit, PropertyTimer, WindowProperty,
 GlobalProperty, waitForVisibility.
 
 Stripped of everything Plex-specific so this imports cleanly on xbmc/xbmcgui/
-xbmcaddon/xbmcvfs/os/sys alone -- no plexnet, no plexapp, no Jinja templating
-(tofa-for-kodi uses static XML, not plex-for-kodi's templated skins).
+xbmcaddon/xbmcvfs/os/sys alone -- no plexnet, no plexapp, and no template
+engine: tofa-for-kodi's skin XML is generated ahead of time by skin/build.py
+and ships pre-rendered, rather than compiled on the box.
 
 Two small Plex-specific pieces were load-bearing for the framework but not
 deep coupling, so they're replaced below with minimal local stand-ins
