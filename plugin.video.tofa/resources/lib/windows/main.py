@@ -673,6 +673,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_letter_counts: dict[str, int] = {}
         self._server_capabilities: set = set()  # from GET /api/v1/system/info, see _ensure_capabilities()
         self._capabilities_loaded = False
+        self._capabilities_fetch: threading.Thread | None = None  # see _start_capabilities()
+        self._capabilities_lock = threading.Lock()
         self._preferences: dict | None = None  # whoami's preferences, see _ensure_preferences()
         # /discovery/page shelf key -> title, filled by whichever of Home or
         # the Settings editor fetched the page first. The server names a
@@ -1773,13 +1775,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         total_s = time.monotonic() - started
         log.info("home: %d row(s) in %.2fs (%.2fs building cards, %.2fs fetching)"
                  % (len(active_list_ids), total_s, build_s, total_s - build_s))
-        # AFTER the rows are on screen, deliberately. This is one small
-        # request, but Home's load is the number we watch
-        # (project_home_load_performance), and a version warning is worth
-        # nothing to someone still looking at an empty screen. Browse and
-        # Discover call the same thing lazily; whichever gets there first
-        # pays for it once.
-        self._ensure_capabilities()
+        # After the rows and never waited on: the request can take ~2s, and
+        # every key onAction handles would wait behind it.
+        self._start_capabilities(client)
 
     #: The ONE art field a Home card draws -- see
     #: _home_build_row_managed_item, which resolves `poster_path` and nothing
@@ -1886,7 +1884,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         endpoint only knows 7, so a row added from the 0.9.25 Settings
         editor would otherwise resolve to nothing and be dropped."""
         shelves: dict[str, dict] = {}
-        if self._has_capability("discovery.page"):
+        # Home never waits for the flags: until they arrive, ask for the page
+        # and let the fallback below cover a server without it.
+        if (not self._capabilities_loaded
+                or "discovery.page" in self._server_capabilities):
             try:
                 page = client.discovery_page() or {}
             except http.ApiError as exc:
@@ -2364,12 +2365,38 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         32-shelf Discover surface on `discovery.page`.
 
         Shared by Browse and Discover, either of which may be the first
-        section the user opens, so it can't live in one section's load."""
+        section the user opens, so it can't live in one section's load.
+        Waits for a fetch Home already started rather than asking twice."""
         if self._capabilities_loaded:
             return
         client = self._get_client()
         if not client:
             return
+        fetch = self._start_capabilities(client)
+        if fetch is not None:
+            fetch.join(20)  # http.py's own timeout is the real bound
+
+    def _start_capabilities(self, client) -> threading.Thread | None:
+        """Start the flags fetch on its own thread, unless one is running.
+
+        The client comes from the caller's thread: _get_client() can raise
+        a PIN pad, which must not appear from a background thread."""
+        with self._capabilities_lock:
+            fetch = self._capabilities_fetch
+            if fetch is not None and fetch.is_alive():
+                return fetch
+            # Read after is_alive(): a finished fetch has already set it.
+            if self._capabilities_loaded:
+                return None
+            fetch = threading.Thread(
+                target=self._fetch_capabilities, args=(client,),
+                name="tofa-capabilities", daemon=True)
+            self._capabilities_fetch = fetch
+            fetch.start()
+            return fetch
+
+    def _fetch_capabilities(self, client):
+        started = time.monotonic()
         try:
             info = client.system_info() or {}
         except http.ApiError as exc:
@@ -2377,10 +2404,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
         self._server_capabilities = set(info.get("capabilities") or [])
         self._capabilities_loaded = True
+        log.info("capabilities: %d in %.2fs"
+                 % (len(self._server_capabilities), time.monotonic() - started))
         # Same response, so the version check is free here. It warns at most
-        # once per Kodi session and only when the server is genuinely older
-        # -- see serverversion, which treats an unreadable version as fine
-        # rather than guessing.
+        # once per Kodi session, and not at all once the window has closed.
+        if not self.isOpen:
+            return
         try:
             serverversion.warn_if_old(
                 info.get("version"), alert=cardoptions.alert,
