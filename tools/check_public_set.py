@@ -202,6 +202,7 @@ ALLOWED_HOST_RE = re.compile(
 #: is what makes the measurement worth anything.
 MARKER_PATTERNS = [
     (re.compile(r"\bCINEMAONE-BOX\b", re.I), "a box hostname"),
+    (re.compile(r"\bHOMATICS-BOX\b", re.I), "a box hostname"),
     (re.compile(r"\bMACBOT\b", re.I), "a box hostname"),
     (re.compile(r"\bKODIBOT\b", re.I), "a box hostname"),
     (re.compile(r"\bPETABOT\b", re.I), "a server name"),
