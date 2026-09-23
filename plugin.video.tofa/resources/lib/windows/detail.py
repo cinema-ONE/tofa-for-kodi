@@ -240,9 +240,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                       COLLECTION_LIST, SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL)
     #: The More pane's shelves, top to bottom (7.5.2 puts "Part of" first).
     MORE_SHELF_IDS = (COLLECTION_LIST, SIMILAR_LIST, DISCOVER_LIST)
-    #: Pauses before asking again after an empty related list: the server
-    #: answers empty while it is still working the list out (vault #222).
-    #: Remove with _similar_retry once it waits or says so.
+    #: Pauses before asking again while the related list is not ready: the
+    #: server answers 503 until it is, and older ones answer it empty (vault
+    #: #222). Drop the empty case once the server floor passes that fix.
     SIMILAR_RETRY_S = (0.5, 1, 2, 4)
 
     def __init__(self, *args, **kwargs):
@@ -1999,19 +1999,22 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         try:
             resp = client.media_similar(media_id) or {}
         except http.ApiError as exc:
-            kodigui.ERROR("detail.py: media_similar failed: {0}".format(exc))
-            self.setProperty("similar_state", "" if part_of else "error")
-            self._wire_more_shelves((part_of, False, False))
-            return
-        if not (resp.get("owned") or resp.get("requestable")):
+            if not api.server_busy(exc):
+                kodigui.ERROR("detail.py: media_similar failed: {0}".format(exc))
+                self.setProperty("similar_state", "" if part_of else "error")
+                self._wire_more_shelves((part_of, False, False))
+                return
+            resp = None
+        if not resp or not (resp.get("owned") or resp.get("requestable")):
             # Blank, not "Nothing similar", until the last ask is in.
             self.setProperty("similar_state", "")
             self._wire_more_shelves((part_of, False, False))
-            self._similar_retry(client, media_id, part_of)
+            self._similar_retry(client, media_id, part_of, busy=resp is None)
             return
         self._fill_similar(client, resp, part_of)
 
-    def _similar_retry(self, client: MediaServerClient, media_id: str, part_of: bool):
+    def _similar_retry(self, client: MediaServerClient, media_id: str, part_of: bool,
+                       busy: bool = False):
         """Ask again off the UI thread, so the waits never hold a key press."""
         generation = self._similar_generation
 
@@ -2019,22 +2022,28 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return generation != self._similar_generation or not self.isOpen
 
         def run():
-            resp, asks, t0 = {}, 1, time.monotonic()
+            resp, failed, asks, t0 = {}, busy, 1, time.monotonic()
             for pause in self.SIMILAR_RETRY_S:
                 if xbmc.Monitor().waitForAbort(pause) or stale():
                     return
                 asks += 1
                 try:
-                    resp = client.media_similar(media_id) or {}
+                    resp, failed = client.media_similar(media_id) or {}, False
                 except http.ApiError as exc:
                     log.debug("detail: media_similar retry failed: {0}".format(exc))
-                    resp = {}
+                    resp, failed = {}, True
                 if resp.get("owned") or resp.get("requestable"):
                     break
-            log.info("detail: related titles empty at first, {0} on ask {1} ({2:.1f}s)".format(
+            log.info("detail: related titles {0} at first, {1} on ask {2} ({3:.1f}s){4}".format(
+                "busy" if busy else "empty",
                 len(resp.get("owned") or []) + len(resp.get("requestable") or []),
-                asks, time.monotonic() - t0))
-            if not stale():
+                asks, time.monotonic() - t0, ", never answered" if failed else ""))
+            if stale():
+                return
+            if failed:
+                # Could not ask, which is a different answer from "nothing similar".
+                self.setProperty("similar_state", "" if part_of else "error")
+            else:
                 self._fill_similar(client, resp, part_of)
 
         threading.Thread(target=run, name="tofa-detail-similar", daemon=True).start()
