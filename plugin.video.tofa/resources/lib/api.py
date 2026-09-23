@@ -56,6 +56,12 @@ def _worth_retrying(exc: http.ApiError) -> bool:
     return exc.status in (502, 503, 504) or exc.error in _RELAY_DOWN
 
 
+def server_busy(exc: http.ApiError) -> bool:
+    """A 503 from the server itself ("not ready yet"), not the relay saying
+    the server is gone: another address would get the same answer."""
+    return exc.status == 503 and exc.error not in _RELAY_DOWN
+
+
 def _is_profile_token_401(exc: http.ApiError) -> bool:
     """Is this the server refusing our PROFILE token specifically?
 
@@ -169,6 +175,7 @@ class MediaServerClient:
         timeout: float | None = None,
         try_fallback: bool = True,
         want_response: bool = False,
+        busy_is_final: bool = False,
     ) -> Any:
         """`timeout` overrides http.py's default for callers that cannot
         afford to wait for it -- see monitor.PROGRESS_TIMEOUT_SECONDS.
@@ -182,6 +189,9 @@ class MediaServerClient:
         for the one caller that needs a RESPONSE HEADER (the heartbeat's
         rotated profile token). It goes through the same fallback and the
         same error handling; only the last line differs.
+
+        `busy_is_final=True` keeps the server's own 503 off the other
+        address, for a caller that asks again itself (see server_busy).
         """
         if auth.direct_only() and auth.is_relay_url(self.base_url):
             # Nothing direct to fall back TO -- see direct_only_addresses.
@@ -196,7 +206,8 @@ class MediaServerClient:
         if timeout is not None:
             kwargs["timeout"] = timeout
         try:
-            return self._attempt(method, path, kwargs, want_response, try_fallback)
+            return self._attempt(method, path, kwargs, want_response, try_fallback,
+                                 busy_is_final)
         except http.ApiError as exc:
             # A profile token that ROTATED under us, not one that expired.
             # See _adopt_rotated_token: exactly one retry, and only when
@@ -204,7 +215,8 @@ class MediaServerClient:
             if not _is_profile_token_401(exc) or not self._adopt_rotated_token():
                 raise
             kwargs["headers"] = self._headers()
-            return self._attempt(method, path, kwargs, want_response, try_fallback)
+            return self._attempt(method, path, kwargs, want_response, try_fallback,
+                                 busy_is_final)
 
     def _adopt_rotated_token(self) -> bool:
         """Take on a profile token another component banked, after the server
@@ -246,6 +258,7 @@ class MediaServerClient:
         kwargs: dict[str, Any],
         want_response: bool,
         try_fallback: bool,
+        busy_is_final: bool = False,
     ) -> Any:
         """One request, with the server fallback that has always been here.
 
@@ -261,7 +274,8 @@ class MediaServerClient:
             # cached at construction, since each plugin action is a fresh
             # process anyway and a viewer who just flipped it means now.
             if not _worth_retrying(exc) or not self.fallback_base_url \
-                    or not try_fallback or auth.direct_only():
+                    or not try_fallback or auth.direct_only() \
+                    or (busy_is_final and server_busy(exc)):
                 raise
             # SAY WHICH ADDRESS FAILED, before the second attempt can bury it.
             #
@@ -923,7 +937,8 @@ class MediaServerClient:
         """Returns `{owned: MediaSummary[], requestable: RequestableRelated[]}`
         -- titles you own (playable now, keyed by `id`) and un-owned related
         candidates (keyed only by `tmdb_id`+`media_type`, no local `id`)."""
-        return self._get(f"/api/v1/media/{media_id}/similar")
+        return self._request("GET", f"/api/v1/media/{media_id}/similar",
+                             busy_is_final=True)
 
     def media_progress_batch(self, file_ids: list[str]) -> Any:
         """Returns `{items: WatchProgressResponse[]}` -- missing ids simply
