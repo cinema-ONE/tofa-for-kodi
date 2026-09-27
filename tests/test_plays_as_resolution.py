@@ -90,6 +90,11 @@ def main():
     ce21 = box(ids("1920x1080@23.97602+3d"), kodi=21, screen=(3840, 2160, 60.0))
     check("...CoreELEC 21 does, and that is a real 1080p",
           plays_as(ce21, "3840x2160", 23.976), ["1080p"])
+    ce21_empty = box([], kodi=21, pulldown=False, screen=(3840, 2160, 60.0))
+    check("CoreELEC 21, empty whitelist: 25 fps keeps 25 Hz with double rates off",
+          caps._output_mode(3840, 2160, 25.0, ce21_empty)[2], 25.0)
+    ce21_empty["whitelist_double"] = True
+    check("...and takes 50 Hz with them on", caps._output_mode(3840, 2160, 25.0, ce21_empty)[2], 50.0)
     small = box(ids("1920x1080@23.97602"), screen=(3840, 2160, 60.0))
     check("a 1080p-only whitelist downgrades 4K", plays_as(small, "3840x2160", 23.976), ["1080p"])
 
@@ -123,6 +128,13 @@ def main():
                                    "definition": {"options": [{"value": AM9_DISPLAY[0]}]}}]
     check("Kodi 22 nests the display's modes under the definition",
           caps._display_modes(), [(3840, 2160, 60.0, False)])
+    for name, settings, want in (("CoreELEC 21", ["coreelec.amlogic.limitcd"], True),
+                                 ("LibreELEC", ["videoscreen.whitelist"], False)):
+        caps._all_settings = lambda: [{"id": i} for i in settings]
+        caps._setting = lambda sid: None
+        caps._cached = lambda key, build: build()
+        check("CoreELEC is told by its own settings: " + name,
+              caps._build_video()["coreelec"], want)
     check("the screen's rate comes off its label",
           caps._parse_hz("3840x2160 @ 23.98 Hz - Full screen"), 23.98)
     check("the width comes from the file's resolution",
