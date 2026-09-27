@@ -741,6 +741,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             (chosen_file or {}).get("format") or {},
             file_height=(chosen_file or {}).get("height") or 0,
             fps=(chosen_file or {}).get("display_frame_rate"),
+            file_width=capabilities.file_width(chosen_file),
         )
         self.setProperty(
             "plays_as_line",
