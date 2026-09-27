@@ -401,6 +401,7 @@ def _build_video() -> dict:
     modes = _display_modes()
     screen = xbmc.getInfoLabel("System.ScreenResolution") or ""   # "1920x1080 - Windowed"
     screen_w, screen_h = _parse_mode(screen)
+    build = xbmc.getInfoLabel("System.BuildVersion") or ""       # "22.0-BETA2 (21.90.802) ..."
     hdr_capable = hdr_switching is not None or bool(hdr_types)
     dolby_vision = (("dolby vision" in hdr_types.lower())
                     and bool(hdr_switching) and dv_allowed and not dv_disabled)
@@ -429,45 +430,53 @@ def _build_video() -> dict:
         "hdr_enabled": bool(hdr_switching),
         "dolby_vision": _BEST["dolby_vision"] or dolby_vision,
         "hdr10_plus": _BEST["hdr10_plus"] or hdr10_plus,
+        # (w, h, hz, is_3d): what the display offers, and what the user
+        # whitelisted. Empty whitelist = Kodi builds its own from `modes`.
         "modes": modes,
         "max_height": max((m[1] for m in modes), default=0),
+        "whitelist_modes": _modes_from_ids(_setting("videoscreen.whitelist") or []),
         # What the screen is showing RIGHT NOW. With mode switching off this
         # is also what a video gets scaled to, whatever its own resolution.
         "screen_width": screen_w,
         "screen_height": screen_h,
-        "refresh_rates": sorted({m[2] for m in modes}),
-        "whitelist_modes": _whitelist_modes(),
-        # Empty whitelist + switching enabled = free choice of any mode the
-        # display reports. A populated whitelist restricts it to the closest
-        # entry, so the reachable set is the whitelist itself.
+        "screen_hz": _parse_hz(screen),
         "switches_modes": (_setting("videoplayer.adjustrefreshrate") or 0) != 0,
+        "whitelist_double": bool(_setting("videoscreen.whitelistdoublerefreshrate")),
+        "whitelist_pulldown": bool(_setting("videoscreen.whitelistpulldown")),
+        "whitelist_wholenumber": bool(_setting("videoscreen.whitelistwholenumber")),
+        # Kodi's mode search differs by build: see _kodi_mode().
+        "coreelec": _setting("coreelec.amlogic.disabledolbyvision") is not None,
+        "kodi_major": _major(build),
     }
 
 
 def _display_modes() -> list:
-    """Every (width, height, hz) the DISPLAY reports, read off the option
-    list Kodi builds for videoscreen.whitelist. That option list is the
-    EDID mode list, whatever the whitelist itself is set to."""
+    """Every mode the DISPLAY offers, off the option list Kodi builds for
+    videoscreen.whitelist, whatever the whitelist holds. Kodi 22 nests it
+    under `definition`; reading only the top level found nothing there."""
     for entry in _all_settings():
         if entry.get("id") != "videoscreen.whitelist":
             continue
-        out = []
-        for option in entry.get("options") or []:
-            mode = _parse_mode_option((option or {}).get("label") or "")
-            if mode:
-                out.append(mode)
-        return out
+        options = (entry.get("options")
+                   or (entry.get("definition") or {}).get("options") or [])
+        return _modes_from_ids((o or {}).get("value") for o in options)
     return []
 
 
-def _parse_mode_option(label: str):
-    """"3840x2160p  23.98Hz" -> (3840, 2160, 23.98), or None."""
+def _parse_hz(text: str) -> float:
+    """The rate out of "3840x2160 @ 23.98 Hz - Full screen"; 0.0 if none."""
     try:
-        size, _, rest = label.partition("p")
-        width, _, height = size.partition("x")
-        return (int(width), int(height), float(rest.replace("Hz", "").strip()))
-    except (TypeError, ValueError):
-        return None
+        return float((text or "").split("@", 1)[1].split("Hz")[0])
+    except (IndexError, ValueError):
+        return 0.0
+
+
+def _major(build: str) -> int:
+    """22 out of "22.0-BETA2 (21.90.802) Git:..."; 0 if unreadable."""
+    try:
+        return int(build.split(".", 1)[0])
+    except ValueError:
+        return 0
 
 
 def _decode_mode_id(value: str):
@@ -478,32 +487,25 @@ def _decode_mode_id(value: str):
         0384002160060.00000pstd  ->  3840 x 2160 @ 60.00
         0192001080023.97602pstd  ->  1920 x 1080 @ 23.97602
 
-    Six digits of width times ten, four of height, then the refresh rate.
-
-    Decoded rather than looked up in the setting's option labels, because
-    those come and go: Settings.GetSettings had 35 option rows for the cinema
-    box earlier today and none an hour later, with the display still awake
-    and the stored value unchanged. The VALUE is a stored preference and
-    always readable, so parsing it is the dependable path.
+    Five digits of width, five of height, the refresh rate, then the scan
+    and 3D flags ("pstd", "ptab", "ptabfrp", ...). Decoded from the id, not
+    the option label, whose spelling varies ("1920x1080p tab frp 24.00Hz").
     """
     try:
-        return (int(value[0:6]) // 10, int(value[6:10]), float(value[10:19]))
+        return (int(value[0:5]), int(value[5:10]), float(value[10:19]))
     except (TypeError, ValueError, IndexError):
         return None
 
 
-def _whitelist_modes() -> list:
-    """The 2D modes the user has actually whitelisted, as (w, h, hz)."""
-    value = _setting("videoscreen.whitelist") or []
+def _modes_from_ids(values) -> list:
+    """(w, h, hz, is_3d) for each progressive mode id; interlaced ids ("i")
+    are never a match for a progressive picture, so they are dropped."""
     out = []
-    for entry in value:
-        entry = entry if isinstance(entry, str) else ""
-        # Kodi never picks a 3D entry ("ptab", "psbs", "ptabfrp") for 2D video.
-        if entry[19:] not in ("", "pstd"):
-            continue
-        mode = _decode_mode_id(entry)
-        if mode:
-            out.append(mode)
+    for value in values:
+        value = value if isinstance(value, str) else ""
+        mode = _decode_mode_id(value)
+        if mode and value[19:20] in ("", "p"):
+            out.append(mode + (value[19:] not in ("", "pstd"),))
     return out
 
 
@@ -596,82 +598,106 @@ def _mode_label(width: int, height: int) -> str:
     return "{0}x{1}".format(width, height) if width else "{0}p".format(height)
 
 
-def _reachable_modes(caps: dict) -> list:
-    """The modes Kodi may actually switch INTO.
-
-    An empty whitelist does NOT mean "any mode the display supports", which
-    is the natural reading and the wrong one. Kodi builds itself a default
-    whitelist of the modes matching the CURRENT resolution -- i.e. its
-    refresh-rate variants -- so with an empty whitelist the RESOLUTION never
-    changes and only the refresh rate does. That is why the wiki tells people
-    to populate the whitelist to get resolution switching at all.
-    """
-    cur = (caps.get("screen_width") or 0, caps.get("screen_height") or 0)
-    if not caps.get("switches_modes"):
-        return [(cur[0], cur[1], 0.0)]
-    whitelisted = caps.get("whitelist_modes") or []
-    if whitelisted:
-        return whitelisted
-    same = [m for m in (caps.get("modes") or []) if (m[0], m[1]) == cur]
-    return same or [(cur[0], cur[1], 0.0)]
-
-
-def _fits(file_width: int, file_height: int, width: int, height: int) -> bool:
-    """Kodi's own size match: one axis exact, the other within decoder
-    padding. So a cropped 3840x2076 encode matches 3840x2160."""
+def _fits(file_width: int, file_height: int, width: int, height: int,
+          pad: int = 32) -> bool:
+    """Kodi's size match: one axis exact, the other within decoder padding
+    (height +8 before Kodi 22). So 3840x2076 fits 3840x2160."""
     if not file_width:
         return file_height == height
     return ((file_height == height and file_width <= width + 8)
-            or (file_width == width and file_height <= height + 32))
+            or (file_width == width and file_height <= height + pad))
 
 
-def _output_mode(file_height: int, caps: dict, file_width: int = 0,
-                 fps=None) -> tuple:
-    """The (width, height) this file will actually be shown at.
+def _kodi_mode(file_width: int, file_height: int, fps: float, caps: dict):
+    """The (w, h, hz) Kodi switches to for a 2D video, or None to stay put.
 
-    Kodi switches to a mode of the video's size when one is reachable, else
-    to the closest reachable size at the video's refresh rate, else stays
-    where it is. Without a rate we can't prove the second, so we skip it.
+    A port of CResolutionUtils::FindResolutionFromWhitelist, which comes in
+    three variants: upstream Kodi, CoreELEC 21 and CoreELEC 22.
     """
-    if not file_height:
-        return (0, 0)
-    cur = (caps.get("screen_width") or 0, caps.get("screen_height") or file_height)
-    modes = _reachable_modes(caps)
-    for width, height, _hz in modes:
-        if _fits(file_width, file_height, width, height):
-            return (width, height)
+    cur = (caps.get("screen_width") or 0, caps.get("screen_height") or 0)
+    coreelec, kodi = caps.get("coreelec"), caps.get("kodi_major") or 22
+    # Only CoreELEC 21 still lets a 2D video take a 3D mode.
+    allow_3d = coreelec and kodi < 22
+    listed = [m for m in caps.get("whitelist_modes") or [] if allow_3d or not m[3]]
+    empty = not caps.get("whitelist_modes")
+    if empty:
+        # Kodi's default list: modes at least the current size (CoreELEC: at
+        # least as wide), and since Kodi 22 only above 30 Hz or about 24.
+        listed = [m for m in caps.get("modes") or [] if (allow_3d or not m[3])
+                  and (m[0] >= cur[0] if coreelec else m[0] >= cur[0] and m[1] >= cur[1])
+                  and (coreelec and kodi < 22 or m[2] > 30 or abs(m[2] - 24) <= 0.1)]
+    ce22 = coreelec and kodi >= 22
+    double = caps.get("whitelist_double") or (empty and not ce22)
+    pulldown = caps.get("whitelist_pulldown") or (empty and not ce22)
+    whole = ce22 and caps.get("whitelist_wholenumber")
+    pad = 32 if kodi >= 22 else 8
+
+    def pick(kind, mults, best=None, ties=False):
+        for m in listed:
+            if not any(abs(m[2] - fps * k) <= 0.01 for k in mults):
+                continue
+            if kind == "desktop":
+                if m[0] == cur[0]:
+                    return m[:3]
+                continue
+            if kind == "exact" and not _fits(file_width, file_height, m[0], m[1], pad):
+                continue
+            pen = abs(m[1] - file_height) + abs(m[0] - file_width)
+            if best is None or pen < best[0] or (ties and pen == best[0]):
+                best = (pen, m)
+        return best if kind != "desktop" else None
+
+    def pair(kind):
+        # Rate x1 then, if allowed, x2 on the same penalty: CoreELEC 21 lets
+        # an equal x2 win, upstream only a closer one.
+        best = pick(kind, (1,))
+        if double:
+            best = pick(kind, (2,), best, ties=coreelec)
+        return best
+
+    if ce22:
+        steps = [("exact", (2,), double), ("exact", (4, 5), whole),
+                 ("exact", (1,), True), ("exact", (2.5,), pulldown),
+                 ("closest", (1,), True), ("closest", (2,), double)]
+        for kind, mults, on in steps:
+            best = pick(kind, mults, ties=mults == (2,)) if on else None
+            if best:
+                return best[1][:3]
+    else:
+        best = pair("exact") or (pulldown and pick("exact", (2.5,)))
+        if not best and coreelec:
+            best = pair("closest")
+        if best:
+            return best[1][:3]
+    for mults, on in (((1,), True), ((2,), double), ((2.5,), pulldown),
+                      ((4, 5), whole)):
+        found = on and pick("desktop", mults)
+        if found:
+            return found
+    return None
+
+
+def _output_mode(file_width: int, file_height: int, fps, caps: dict):
+    """The (w, h, hz) this file will be shown at, or zeros when we can't
+    tell -- and then nothing is claimed.
+
+    Kodi's choice needs the video's rate and a mode list to search. Without
+    the rate, only a whitelisted mode of the file's own size is certain.
+    """
+    cur = (caps.get("screen_width") or 0, caps.get("screen_height") or 0,
+           caps.get("screen_hz") or 0.0)
+    if not file_height or not caps.get("switches_modes"):
+        return cur
     try:
         fps = float(fps or 0)
     except (TypeError, ValueError):
         fps = 0.0
-    at_rate = [m for m in modes if fps and file_width and abs(m[2] - fps) <= 0.01]
-    if at_rate:
-        best = min(at_rate, key=lambda m: abs(m[1] - file_height) + abs(m[0] - file_width))
-        return (best[0], best[1])
-    return cur
-
-
-def _output_refresh(fps, caps: dict) -> float:
-    """The refresh rate the file will be shown at, or 0.0 when unknown.
-
-    `fps` is the server's `display_frame_rate`, the rate a display ought to
-    switch to; every caller drops the axis on 0.0.
-    """
-    try:
-        fps = float(fps or 0)
-    except (TypeError, ValueError):
-        return 0.0
-    if fps <= 0:
-        return 0.0
-    rates = caps.get("refresh_rates") or []
-    if not caps.get("switches_modes") or not rates:
-        # No switching: whatever the screen already runs at. We know the mode
-        # list but not which one is current, so only report a mismatch we can
-        # actually prove -- see delivery().
-        return 0.0
-    # Kodi prefers an exact multiple (24 -> 24/48/72), else the closest.
-    best = min(rates, key=lambda r: min(abs(r - fps * n) for n in (1, 2, 3)))
-    return best
+    if fps > 0 and file_width and (caps.get("whitelist_modes") or caps.get("modes")):
+        return _kodi_mode(file_width, file_height, fps, caps) or cur
+    for mode in caps.get("whitelist_modes") or []:
+        if not mode[3] and _fits(file_width, file_height, mode[0], mode[1]):
+            return (mode[0], mode[1], 0.0)
+    return (0, 0, 0.0)
 
 
 def delivery(file_format: dict, video_caps: dict | None = None,
@@ -694,13 +720,14 @@ def delivery(file_format: dict, video_caps: dict | None = None,
     acaps = audio_caps if audio_caps is not None else audio()
     parts = []
 
-    out_w, out_h = _output_mode(file_height, vcaps, file_width, fps)
+    out_w, out_h, out_hz = _output_mode(file_width, file_height, fps, vcaps)
     if file_height and out_h and out_h < file_height:
         parts.append(_mode_label(out_w, out_h))
-
-    out_hz = _output_refresh(fps, vcaps)
-    if out_hz and fps and abs(out_hz - float(fps)) > 0.05:
-        parts.append("{0:g}Hz".format(out_hz))
+    # A whole multiple of the frame rate shows every frame evenly; anything
+    # else judders, which is worth saying. Only once Kodi has switched.
+    if (out_hz and fps and vcaps.get("switches_modes")
+            and all(abs(out_hz - float(fps) * k) > 0.05 for k in (1, 2, 4, 5))):
+        parts.append("{0:g}Hz".format(round(out_hz, 2)))
 
     video_fmt = file_format.get("video") or {}
     shown = dynamic_range_label(video_fmt, vcaps)
