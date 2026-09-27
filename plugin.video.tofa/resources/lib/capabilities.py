@@ -493,11 +493,15 @@ def _decode_mode_id(value: str):
 
 
 def _whitelist_modes() -> list:
-    """The modes the user has actually whitelisted, as (w, h, hz)."""
+    """The 2D modes the user has actually whitelisted, as (w, h, hz)."""
     value = _setting("videoscreen.whitelist") or []
     out = []
     for entry in value:
-        mode = _decode_mode_id(entry if isinstance(entry, str) else "")
+        entry = entry if isinstance(entry, str) else ""
+        # Kodi never picks a 3D entry ("ptab", "psbs", "ptabfrp") for 2D video.
+        if entry[19:] not in ("", "pstd"):
+            continue
+        mode = _decode_mode_id(entry)
         if mode:
             out.append(mode)
     return out
@@ -578,6 +582,11 @@ def _parse_mode(text: str) -> tuple:
         return (0, 0)
 
 
+def file_width(media_file) -> int:
+    """A file's width from its "3840x2076" `resolution`; 0 when absent."""
+    return _parse_mode(str((media_file or {}).get("resolution") or ""))[0]
+
+
 def _mode_label(width: int, height: int) -> str:
     if not height:
         return ""
@@ -607,31 +616,46 @@ def _reachable_modes(caps: dict) -> list:
     return same or [(cur[0], cur[1], 0.0)]
 
 
-def _output_mode(file_height: int, caps: dict) -> tuple:
+def _fits(file_width: int, file_height: int, width: int, height: int) -> bool:
+    """Kodi's own size match: one axis exact, the other within decoder
+    padding. So a cropped 3840x2076 encode matches 3840x2160."""
+    if not file_width:
+        return file_height == height
+    return ((file_height == height and file_width <= width + 8)
+            or (file_width == width and file_height <= height + 32))
+
+
+def _output_mode(file_height: int, caps: dict, file_width: int = 0,
+                 fps=None) -> tuple:
     """The (width, height) this file will actually be shown at.
 
-    Kodi switches to a mode matching the VIDEO when one is reachable, and
-    otherwise stays where it is -- it does not hunt for the nearest size. So
-    a 4K file with only 1080p whitelisted plays at whatever the screen is
-    already showing, which is the honest thing to report.
+    Kodi switches to a mode of the video's size when one is reachable, else
+    to the closest reachable size at the video's refresh rate, else stays
+    where it is. Without a rate we can't prove the second, so we skip it.
     """
     if not file_height:
         return (0, 0)
     cur = (caps.get("screen_width") or 0, caps.get("screen_height") or file_height)
-    for width, height, _hz in _reachable_modes(caps):
-        if height == file_height:
+    modes = _reachable_modes(caps)
+    for width, height, _hz in modes:
+        if _fits(file_width, file_height, width, height):
             return (width, height)
+    try:
+        fps = float(fps or 0)
+    except (TypeError, ValueError):
+        fps = 0.0
+    at_rate = [m for m in modes if fps and file_width and abs(m[2] - fps) <= 0.01]
+    if at_rate:
+        best = min(at_rate, key=lambda m: abs(m[1] - file_height) + abs(m[0] - file_width))
+        return (best[0], best[1])
     return cur
 
 
 def _output_refresh(fps, caps: dict) -> float:
     """The refresh rate the file will be shown at, or 0.0 when unknown.
 
-    Returns 0.0 whenever `fps` is missing, which today is ALWAYS: the server
-    carries `display_frame_rate` (the rate a display ought to switch to)
-    but leaves it null on every file measured (144/144, 2026-08-01). The
-    logic is here and inert so it lights up the day the field is populated,
-    and every caller drops the axis on 0.0.
+    `fps` is the server's `display_frame_rate`, the rate a display ought to
+    switch to; every caller drops the axis on 0.0.
     """
     try:
         fps = float(fps or 0)
@@ -652,7 +676,7 @@ def _output_refresh(fps, caps: dict) -> float:
 
 def delivery(file_format: dict, video_caps: dict | None = None,
              audio_caps: dict | None = None, file_height: int = 0,
-             fps=None) -> list:
+             fps=None, file_width: int = 0) -> list:
     """The axes on which playback here will DIFFER from what the file
     carries, as short phrases: `["1080p", "SDR", "2.0"]`.
 
@@ -670,7 +694,7 @@ def delivery(file_format: dict, video_caps: dict | None = None,
     acaps = audio_caps if audio_caps is not None else audio()
     parts = []
 
-    out_w, out_h = _output_mode(file_height, vcaps)
+    out_w, out_h = _output_mode(file_height, vcaps, file_width, fps)
     if file_height and out_h and out_h < file_height:
         parts.append(_mode_label(out_w, out_h))
 
