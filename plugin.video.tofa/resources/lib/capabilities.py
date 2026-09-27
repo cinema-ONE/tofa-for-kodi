@@ -444,8 +444,10 @@ def _build_video() -> dict:
         "whitelist_double": bool(_setting("videoscreen.whitelistdoublerefreshrate")),
         "whitelist_pulldown": bool(_setting("videoscreen.whitelistpulldown")),
         "whitelist_wholenumber": bool(_setting("videoscreen.whitelistwholenumber")),
-        # Kodi's mode search differs by build: see _kodi_mode().
-        "coreelec": _setting("coreelec.amlogic.disabledolbyvision") is not None,
+        # Kodi's mode search differs by build: see _kodi_mode(). CoreELEC 21
+        # lacks disabledolbyvision, so look for any of its own settings.
+        "coreelec": any(str(e.get("id", "")).startswith("coreelec.")
+                        for e in _all_settings()),
         "kodi_major": _major(build),
     }
 
@@ -667,8 +669,11 @@ def _kodi_mode(file_width: int, file_height: int, fps: float, caps: dict):
 
     def pair(kind):
         # Rate x1 then, if allowed, x2 on the same penalty: CoreELEC 21 lets
-        # an equal x2 win, upstream only a closer one.
+        # an equal x2 win, upstream only a closer one. CoreELEC 21 keeps an
+        # exact match unless the double-rate SETTING is on, whitelist or not.
         best = pick(kind, (1,))
+        if best and kind == "exact" and coreelec and not caps.get("whitelist_double"):
+            return best
         if double:
             best = pick(kind, (2,), best, ties=coreelec)
         return best
