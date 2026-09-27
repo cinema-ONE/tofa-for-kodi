@@ -608,6 +608,24 @@ def _fits(file_width: int, file_height: int, width: int, height: int,
             or (file_width == width and file_height <= height + pad))
 
 
+def _whitelisted(caps: dict) -> list:
+    """The whitelist as Kodi reads it: each entry becomes the display's
+    nearest mode of the same kind (squared error on w, h and rate), so an
+    8K entry on a display now offering 4K acts as 4K. No kind: the desktop."""
+    modes = caps.get("modes") or []
+    desktop = (caps.get("screen_width") or 0, caps.get("screen_height") or 0,
+               caps.get("screen_hz") or 0.0, False)
+    out = []
+    for entry in caps.get("whitelist_modes") or []:
+        same = [m for m in modes if m[3] == entry[3]]
+        if same:
+            entry = min(same, key=lambda m: sum((a - b) ** 2 for a, b in zip(m[:3], entry[:3])))
+        elif modes:
+            entry = desktop
+        out.append(entry)
+    return out
+
+
 def _kodi_mode(file_width: int, file_height: int, fps: float, caps: dict):
     """The (w, h, hz) Kodi switches to for a 2D video, or None to stay put.
 
@@ -618,7 +636,7 @@ def _kodi_mode(file_width: int, file_height: int, fps: float, caps: dict):
     coreelec, kodi = caps.get("coreelec"), caps.get("kodi_major") or 22
     # Only CoreELEC 21 still lets a 2D video take a 3D mode.
     allow_3d = coreelec and kodi < 22
-    listed = [m for m in caps.get("whitelist_modes") or [] if allow_3d or not m[3]]
+    listed = [m for m in _whitelisted(caps) if allow_3d or not m[3]]
     empty = not caps.get("whitelist_modes")
     if empty:
         # Kodi's default list: modes at least the current size (CoreELEC: at
@@ -694,7 +712,7 @@ def _output_mode(file_width: int, file_height: int, fps, caps: dict):
         fps = 0.0
     if fps > 0 and file_width and (caps.get("whitelist_modes") or caps.get("modes")):
         return _kodi_mode(file_width, file_height, fps, caps) or cur
-    for mode in caps.get("whitelist_modes") or []:
+    for mode in _whitelisted(caps):
         if not mode[3] and _fits(file_width, file_height, mode[0], mode[1]):
             return (mode[0], mode[1], 0.0)
     return (0, 0, 0.0)

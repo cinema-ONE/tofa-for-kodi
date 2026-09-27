@@ -95,7 +95,8 @@ def main():
 
     judder = box(ids("3840x2160@60"))
     check("24 fps on 60 Hz (3:2 pulldown) is named", plays_as(judder, "3840x2160", 24.0), ["60Hz"])
-    doubled = box(ids("3840x2160@47.95204"), double=True)
+    doubled = box(ids("3840x2160@47.95204"), double=True,
+                  display=AM9_DISPLAY + ids("3840x2160@47.95204"))
     check("...a whole multiple is not", plays_as(doubled, "3840x2160", 23.976), [])
 
     fixed = box(AM9_WHITELIST, switches=False)
@@ -106,6 +107,14 @@ def main():
     check("...anything else claims nothing", plays_as(am9, "3836x2072", None), [])
     check("...and nor does an empty whitelist", plays_as(empty, "3840x2160", None), [])
 
+    nuc = box(ids(*["7680x4320@" + r for r in ("60", "50", "25", "24", "23.97602")]),
+              coreelec=False, pulldown=False, screen=(4096, 2160, 60.0),
+              display=ids(*["4096x2160@" + r for r in ("60", "50", "25", "24", "23.976")],
+                          *["3840x2160@" + r for r in ("60", "50", "25", "24", "23.976")]))
+    check("an 8K entry the display no longer offers acts as its nearest mode, 4096x2160",
+          [m[:2] for m in caps._whitelisted(nuc)], [(4096, 2160)] * 5)
+    check("...so an odd width reaches 4096x2160 at its rate by the desktop step",
+          plays_as(nuc, "3836x2072", 23.976), [])
     check("interlaced ids are dropped, 3D ids flagged",
           caps._modes_from_ids(["0192001080050.00000istd", "0192001080024.00000ptabfrp",
                                 "0384002160060.00000pstd"]),
