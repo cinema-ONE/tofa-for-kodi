@@ -17,7 +17,7 @@ three faults on the CoreELEC box, all measured:
     videowindow control INSIDE the window, so the same code looked correct
     there and the bug was invisible to local testing.
   - THE DISPLAY MODE HAD TO BE COAXED. Kodi does not refresh-rate switch for
-    windowed playback, so refreshrate.py grew a "bounce" that activated
+    windowed playback, so we grew a "bounce" that activated
     FullScreenVideo for a moment to make Kodi re-evaluate. That bounce
     re-negotiated HDMI, which panicked the AMLogic Dolby Vision driver hard
     enough to reboot the box.
@@ -1330,7 +1330,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         """Nothing to do any more: KODI matches the refresh rate itself.
 
         This method, _bounce_through_fullscreen(), the _bouncing guard, the
-        once-per-item latch and most of refreshrate.py all existed for one
+        once-per-item latch and our own mode-switching code all existed for one
         reason -- we played with windowed=True, and Kodi does not switch for
         windowed playback. So the display had to be coaxed by activating
         Kodi's FullScreenVideo for a moment and taking the window straight
