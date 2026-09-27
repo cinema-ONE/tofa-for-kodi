@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.35" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.36" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,29 +45,16 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Opening Options on a title's page, and starting playback, is quick again
-        whenever the file plays directly.
-      - When a title cannot start because the server is busy or cannot be reached,
-        the message now offers Try again, and when the server cannot convert it
-        fast enough, Lower quality.
-      - Choosing a different subtitle while your server converts a video now shows
-        the one you picked, instead of switching back to one chosen earlier.
-      - A film that belongs to a series, the James Bond films for instance, now
-        lists the rest of that series first under More Like This, including the
-        ones not in your library yet.
-      - The Who's watching? screen is closer to the other tofa apps: a larger lock
-        on protected profiles, a gentle lift and glow on the one you are about to
-        choose, a ring on the profile you are using, and a background tinted in
-        the chosen profile's colour.
-      - A season with only some of its episodes in your library now counts what
-        you have watched against the episodes you can play.
-      - The language lists in Settings now offer the same 42 languages as the
-        other tofa apps, and each Settings page remembers where you were on it.
-      - Skipping forward or back shows the time you will land on, and the bubble
-        leaves as soon as the jump is made.
-      - Smaller touches to match the other tofa apps: quieter format labels on a
-        title's page, the version at the foot of Settings, your server's name
-        without a library count, and Sign Out's confirmation starting on Cancel.
+      - More Like This no longer says "Nothing similar yet" the first time you
+        open a title: it now waits a moment for your server to find related
+        titles.
+      - Home responds to your remote sooner after it opens: a slow check of what
+        your server supports no longer holds up Back, Select or switching
+        sections.
+      - "Plays as" on a title's page now follows how Kodi really picks the screen
+        mode, so it no longer says 1080p for a 4K film that Kodi shows in 4K, such
+        as one whose picture is a little smaller than full 4K. It also names the
+        refresh rate when Kodi has no mode at the film's own rate.
     </news>
     <assets>
       <icon>icon.png</icon>
