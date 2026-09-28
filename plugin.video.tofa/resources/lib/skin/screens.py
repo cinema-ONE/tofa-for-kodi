@@ -160,6 +160,11 @@ def render_main() -> str:
     shows_item, shows_focused = fragments.poster_card(
         6830, has_progress=False, caption_field="caption_meta"
     )
+    # A custom collection whose name matches the query, as a row of its
+    # members: the server's search returns no collections (vault #242).
+    search_collection_item, search_collection_focused = fragments.poster_card(
+        6870, has_progress=False, caption_field="caption_meta"
+    )
     # Search's Discover shelf: same card as every other watchlist-badged
     # shelf; see MainWindow for why this list id is also registered into
     # self.discover_rows.
@@ -489,6 +494,8 @@ def render_main() -> str:
         top_result_text=top_result_text,
         movies_item=movies_item,
         movies_focused=movies_focused,
+        search_collection_item=search_collection_item,
+        search_collection_focused=search_collection_focused,
         shows_item=shows_item,
         shows_focused=shows_focused,
         search_discover_item=search_discover_item,

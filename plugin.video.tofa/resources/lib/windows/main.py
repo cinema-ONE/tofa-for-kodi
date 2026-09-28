@@ -305,6 +305,24 @@ def _search_meta_line(item: dict) -> str:
     return _dot_join(*parts)
 
 
+def match_custom_collection(collections: list, query: str) -> dict | None:
+    """The custom collection whose name holds every word of `query`, or None.
+
+    Case-insensitive; a name that starts with the query wins, then the
+    shorter name. Needs two characters, like a useful search does."""
+    q = " ".join((query or "").casefold().split())
+    if len(q.replace(" ", "")) < 2:
+        return None
+    words = q.split()
+    hits = [c for c in collections or []
+            if isinstance(c, dict)
+            and all(w in (c.get("name") or "").casefold() for w in words)]
+    if not hits:
+        return None
+    return min(hits, key=lambda c: (not (c.get("name") or "").casefold().startswith(q),
+                                    len(c.get("name") or "")))
+
+
 def _search_ratings_line(item: dict) -> str:
     """"Critics 82 • Audience 77", numerals on the quality ramp.
 
@@ -485,12 +503,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SHOWS_LIST_ID = 6830
     ACTORS_LIST_ID = 6840
     SEARCH_DISCOVER_LIST_ID = 6850
+    SEARCH_COLLECTION_LIST_ID = 6870   # a matching custom collection's members
     HISTORY_LIST_ID = 6860      # idle-state "Recent Searches" list -- local-only, no server endpoint exists (see search_history.py)
     #: Search's result rows, top to bottom as the page stacks them. A query
     #: routinely fills some and not others, so this is also the order
     #: focusmemory walks when the row a result was opened from is no longer
     #: on the page (see focus_memory_neighbours).
-    SEARCH_RESULT_LIST_IDS = (TOP_RESULT_LIST_ID, MOVIES_LIST_ID, SHOWS_LIST_ID,
+    SEARCH_RESULT_LIST_IDS = (TOP_RESULT_LIST_ID, SEARCH_COLLECTION_LIST_ID,
+                              MOVIES_LIST_ID, SHOWS_LIST_ID,
                               ACTORS_LIST_ID, SEARCH_DISCOVER_LIST_ID)
 
     # Settings section control ids -- 8000-8299, clear of Discover's 7000-7310
@@ -801,6 +821,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.TOP_RESULT_LIST_ID: self.top_result_list,
             self.MOVIES_LIST_ID: self.movies_list,
             self.SHOWS_LIST_ID: self.shows_list,
+            self.SEARCH_COLLECTION_LIST_ID: self.search_collection_list,
             self.ACTORS_LIST_ID: self.actors_list,
             self.HISTORY_LIST_ID: self.history_list,
         }.get(control_id)
@@ -1024,6 +1045,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.top_result_list = kodigui.ManagedControlList(self, self.TOP_RESULT_LIST_ID, 1)
         self.movies_list = kodigui.ManagedControlList(self, self.MOVIES_LIST_ID, 6)
         self.shows_list = kodigui.ManagedControlList(self, self.SHOWS_LIST_ID, 6)
+        self.search_collection_list = kodigui.ManagedControlList(
+            self, self.SEARCH_COLLECTION_LIST_ID, 6)
         self.actors_list = kodigui.ManagedControlList(self, self.ACTORS_LIST_ID, 6)
         # Search's Discover shelf reuses the SAME watchlist +/check toggle
         # as the Discover section's own rows -- registering it into
@@ -1278,7 +1301,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._search_spacerow_clicked()
         elif controlID == self.TOP_RESULT_LIST_ID:
             self._search_top_result_clicked()
-        elif controlID in (self.MOVIES_LIST_ID, self.SHOWS_LIST_ID):
+        elif controlID in (self.MOVIES_LIST_ID, self.SHOWS_LIST_ID,
+                           self.SEARCH_COLLECTION_LIST_ID):
             self._search_result_clicked(controlID)
         elif controlID == self.ACTORS_LIST_ID:
             self._search_actor_clicked()
@@ -4801,6 +4825,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 discover = resp.get("discover") or []
             except http.ApiError as exc:
                 kodigui.ERROR("main.py: search failed: {0}".format(exc))
+        collection, members = self._search_custom_collection(client, q)
 
         # The #1 match becomes Top Result, so it is held OUT of the shelves
         # rather than listed a second time a few hundred pixels below itself.
@@ -4827,6 +4852,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # raw_movies[0] BEFORE the movies/shows split above -- not
         # necessarily the first item of either resulting bucket.
         self._search_fill_top_result(top_item)
+        self._search_fill_shelf(self.search_collection_list, members)
+        self.setProperty("search_collection_title",
+                         u"Collection: {0}".format(collection.get("name") or "")
+                         if members else "")
+        self.setProperty("search_collection_count", str(len(members)))
         self._search_fill_shelf(self.movies_list, movies)
         self._search_fill_shelf(self.shows_list, shows)
         self._search_fill_actors(actors)
@@ -4851,8 +4881,43 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # has_top_result flag; this line was the other half of it.
         self.setProperty(
             "has_results",
-            "1" if (top_item or movies or shows or actors or discover) else "0")
+            "1" if (top_item or members or movies or shows or actors or discover) else "0")
         self._search_wire_right_target()
+
+    #: How long the list of custom collections is trusted while typing.
+    CUSTOM_COLLECTIONS_TTL_S = 60.0
+
+    def _search_custom_collection(self, client, q: str) -> tuple[dict, list]:
+        """The best custom collection for `q`, and the members this viewer
+        may see, in the collection's own order. ({}, []) when none matches.
+
+        The server's search returns no collections (vault #242), so a set
+        someone made on purpose could only be found by scrolling Browse."""
+        if not client:
+            return {}, []
+        cached = getattr(self, "_custom_collections_cache", None)
+        now = time.monotonic()
+        if cached is None or now - cached[0] > self.CUSTOM_COLLECTIONS_TTL_S:
+            try:
+                found = (client.custom_collections() or {}).get("collections") or []
+            except http.ApiError as exc:
+                kodigui.ERROR("main.py: custom collections failed: {0}".format(exc))
+                found = []
+            cached = self._custom_collections_cache = (now, found)
+        best = match_custom_collection(cached[1], q)
+        if not best or not best.get("id"):
+            return {}, []
+        try:
+            resp = client.custom_collection(str(best["id"])) or {}
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: collection {0} failed: {1}".format(best["id"], exc))
+            return {}, []
+        members = resp.get("items") or []
+        # MediaSummary carries release_date, not the year the card caption reads.
+        for m in members:
+            if m.get("year") is None and str(m.get("release_date") or "")[:4].isdigit():
+                m["year"] = int(str(m["release_date"])[:4])
+        return best, members
 
     def _search_fill_top_result(self, item: dict | None):
         if self.top_result_list is None:
@@ -4946,7 +5011,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.actors_list.addItems(managed)
 
     def _search_result_clicked(self, controlID):
-        shelf = self.movies_list if controlID == self.MOVIES_LIST_ID else self.shows_list
+        shelf = {self.MOVIES_LIST_ID: self.movies_list,
+                 self.SEARCH_COLLECTION_LIST_ID: self.search_collection_list,
+                 }.get(controlID, self.shows_list)
         item = shelf.getSelectedItem()
         if not item or not item.dataSource:
             return
@@ -5035,6 +5102,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if not self.search_query.strip() and self.getProperty("has_history") == "1"
             else self.TOP_RESULT_LIST_ID
         )
+        # A collection can match with no title matching at all, and Kodi
+        # cannot focus the hidden Top Result.
+        if (target_id == self.TOP_RESULT_LIST_ID and not self.getProperty("has_top_result")
+                and self.getProperty("search_collection_count") not in ("", "0")):
+            target_id = self.SEARCH_COLLECTION_LIST_ID
         try:
             target = self.getControl(target_id)
             for source_id in (self.QUERY_EDIT_ID, self.TAB_LIST_ID, self.KEYBOARD_ID,
