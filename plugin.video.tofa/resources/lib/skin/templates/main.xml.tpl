@@ -1397,7 +1397,7 @@
                              cannot act on: Up from the Top Result did
                              nothing at all. -->
                         <onup>3000</onup>
-                        <ondown>6820</ondown>
+                        <ondown>6870</ondown>
                         <onleft>6701</onleft>
                         <onright>6805</onright>
                         <orientation>vertical</orientation>
@@ -1418,6 +1418,42 @@
                          origin. Driven by Window.Property(top_result_*), set
                          in windows/main.py:_search_fill_top_result(). -->
 {top_result_text}
+                </control>
+
+                <!-- A custom collection whose name matches the query, as a
+                     row of its members in the collection's own order. The
+                     server's search returns no collections (vault #242), so
+                     windows/main.py matches the names itself. -->
+                <control type="group" id="6871">
+                    <height>{SEARCH_SHELF_BLOCK_H}</height>
+                    <visible>!String.IsEmpty(Window.Property(query)) + !String.IsEqual(Window.Property(search_collection_count),0) + !String.IsEmpty(Window.Property(search_collection_count))</visible>
+                    <control type="label">
+                        <posx>22</posx>
+                        <posy>0</posy>
+                        <width>1060</width>
+                        <height>34</height>
+                        <font>tofa_font_section_title</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[Window.Property(search_collection_title)]</label>
+                    </control>
+                    <control type="list" id="6870">
+                        <posx>0</posx>
+                        <posy>{SEARCH_SECTION_BAND}</posy>
+                        <width>{SEARCH_SHELF_W}</width>
+                        <height>{CELL_H}</height>
+                        <onup>6805</onup>
+                        <ondown>6820</ondown>
+                        <onleft>6701</onleft>
+                        <onright>6870</onright>
+                        <orientation>horizontal</orientation>
+                        <itemwidth>{CELL_W}</itemwidth>
+                        <itemheight>{CELL_H}</itemheight>
+                        <scrolltime>{SCROLLTIME}</scrolltime>
+
+{search_collection_item}
+
+{search_collection_focused}
+                    </control>
                 </control>
 
                 <control type="group" id="6821">
@@ -1444,7 +1480,7 @@
                         <posy>{SEARCH_SECTION_BAND}</posy>
                         <width>{SEARCH_SHELF_W}</width>
                         <height>{CELL_H}</height>
-                        <onup>6805</onup>
+                        <onup>6870</onup>
                         <ondown>6830</ondown>
                         <onleft>6701</onleft>
                         <onright>6820</onright>
