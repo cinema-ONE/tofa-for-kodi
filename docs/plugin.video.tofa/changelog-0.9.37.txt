@@ -1,0 +1,3 @@
+- Search now finds your own collections by name: a matching collection
+  appears as a row of its titles, in the collection's own order, just
+  below the top result.
