@@ -89,8 +89,10 @@ def resume_point(group: list, progress: dict) -> tuple:
     progress record by file id ({position_ms, completed, updated_at}). The
     part written last decides, as Continue Watching does; after a finished
     part, the next one from its start."""
-    recorded = [(str((progress.get(f.get("id")) or {}).get("updated_at") or ""), i)
-                for i, f in enumerate(group) if progress.get(f.get("id"))]
+    # A record at 0 that is not finished says nothing (a reset leaves one).
+    recorded = [(str(rec.get("updated_at") or ""), i)
+                for i, rec in enumerate(progress.get(f.get("id")) or {} for f in group)
+                if rec.get("completed") or int(rec.get("position_ms") or 0) > 0]
     if not recorded:
         return 0, 0
     _when, i = max(recorded)

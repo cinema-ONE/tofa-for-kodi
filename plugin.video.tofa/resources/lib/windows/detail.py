@@ -1985,7 +1985,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         PlayerWindow.open(
             file_id=file_id,
             media_id=self.media_id,
-            resume_ms=resume_ms or None,
+            resume_ms=resume_ms or 0,
             title=ep.get("title") or self.media.get("title"),
             subtitle_tracks=f.get("subtitle_tracks"),
             # Hand over the art we already resolved, so 8.6's opening
@@ -3095,7 +3095,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         PlayerWindow.open(
             file_id=file_id,
             media_id=self.media_id,
-            resume_ms=resume_ms or None,
+            resume_ms=resume_ms or 0,
             title=episode.get("title") or self.media.get("title"),
             subtitle_tracks=f.get("subtitle_tracks"),
             # Hand over the art we already resolved, so 8.6's opening
@@ -3765,7 +3765,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         PlayerWindow.open(
             file_id=file_id,
             media_id=self.media_id,
-            resume_ms=resume_ms or None,
+            resume_ms=resume_ms or 0,
             title=self.media.get("title"),
             selection=self.play_selection,
             subtitle_tracks=(self._play_file() or {}).get("subtitle_tracks"),
