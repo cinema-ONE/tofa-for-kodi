@@ -50,6 +50,10 @@ def main():
           parts.resume_point(group, {"p1": {"position_ms": 2800000, "updated_at": "2026-10-01T08:46"},
                                      "p2": {"position_ms": 2, "updated_at": "2026-10-01T08:12"}}),
           (0, 2800000))
+    check("...an empty record written in the same second does not win",
+          parts.resume_point(group, {"p1": {"position_ms": 2700000, "updated_at": "11:16:31"},
+                                     "p2": {"position_ms": 0, "completed": False,
+                                            "updated_at": "11:16:31"}}), (0, 2700000))
     check("...at part 2's start after a finished part 1",
           parts.resume_point(group, {"p1": {"position_ms": 0, "completed": True}}), (1, 0))
     check("...and from the top with nothing recorded", parts.resume_point(group, {}), (0, 0))

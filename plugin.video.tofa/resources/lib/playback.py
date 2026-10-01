@@ -74,7 +74,10 @@ def negotiate(
     Both play paths call this under their own spinner, so the one 503
     retry's two-second wait is spent looking like the load it is, not like
     a hang."""
-    resume_ticks = (resume_ms * TICKS_PER_MS) if resume_ms else None
+    # 0 is sent, not dropped: with no resume_ticks at all the server starts
+    # a real session at the TITLE's saved position, whichever file holds it
+    # (measured 2026-10-01), and cuts a converted stream there.
+    resume_ticks = (resume_ms * TICKS_PER_MS) if resume_ms is not None else None
     for attempt in (1, 2):
         try:
             resp = client.stream_info(file_id, profile, dry_run=False, resume_ticks=resume_ticks)

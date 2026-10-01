@@ -93,8 +93,8 @@ def main():
 
     w = Fake("p1")
     w._set_parts([P1, P2])
-    check("the end of part 1 plays part 2 from its start",
-          (w.advance_part(), w.starts[-1]), (True, ("p2", None)))
+    check("the end of part 1 plays part 2 from 0, said explicitly",
+          (w.advance_part(), w.starts[-1]), (True, ("p2", 0)))
 
     calls = []
 
@@ -116,6 +116,7 @@ def main():
           (single._title_duration_ms(), single.advance_part(), cap()), (3_185_184, False, (None, None)))
 
     monitor_checks()
+    negotiate_checks()
     failed = [n for n, ok in RESULTS if not ok]
     print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))
     raise SystemExit(1 if failed else 0)
@@ -177,6 +178,21 @@ def monitor_checks():
     m.onPlayBackEnded()
     check("the last part ends the title as any file does",
           (m.client.watched, m.client.progress[-1][1]), (["p2"], True))
+
+
+def negotiate_checks():
+    from resources.lib import playback
+    sent = []
+
+    class Client:
+        def stream_info(self, file_id, profile, dry_run=False, resume_ticks=None):
+            sent.append(resume_ticks)
+            return {}
+
+    playback.negotiate(Client(), "p2", None, resume_ms=0)
+    playback.negotiate(Client(), "p2", None, resume_ms=None)
+    check("a start at 0 is sent as 0, so the server does not resume the title",
+          sent, [0, None])
 
 
 if __name__ == "__main__":

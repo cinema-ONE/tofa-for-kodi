@@ -3601,7 +3601,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # A fresh episode starts at the beginning, and its duration is not
         # this one's -- leaving either behind would resume the new episode
         # at the old one's position and mis-scale the scrubber.
-        self.resume_ms = None
+        self.resume_ms = 0
         self._duration_ms = 0
         self._time_offset_ms = 0
         self._nextup_still_path = ""
@@ -4541,7 +4541,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._part_idx = index
         self.file_id = self._parts[index].get("id")
         self._file_subtitle_tracks = self._parts[index].get("subtitle_tracks")
-        self.resume_ms = local_ms or None
+        self.resume_ms = local_ms
         self._restarting = True
         try:
             self.ui_player.stop()
