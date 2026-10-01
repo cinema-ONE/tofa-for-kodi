@@ -32,19 +32,26 @@ class FakeGrid:
     def setSelectedItemByPos(self, pos):
         self.pos = pos
 
+    def reset(self):
+        pass
+
 
 class FakeWindow:
     _browse_folders_offered = MainWindow._browse_folders_offered
     _browse_in_folders = MainWindow._browse_in_folders
     _browse_folder_entries = MainWindow._browse_folder_entries
+    _browse_folder_trail = MainWindow._browse_folder_trail
     _browse_open_folder = MainWindow._browse_open_folder
     _browse_folder_up = MainWindow._browse_folder_up
+    _browse_folder_root = MainWindow._browse_folder_root
+    _FOLDER_TRAIL_CHARS = MainWindow._FOLDER_TRAIL_CHARS
     NAV_LIST_ID, SIDEBAR_ID, SIDEBAR_LIBRARY_ID, GRID_ID = 3000, 6000, 6010, 6200
 
     def __init__(self, src, caps=("library.folders",)):
         self.src, self._server_capabilities = src, set(caps)
-        self._browse_folders_on, self._browse_folder_path, self._browse_folder_return = {}, {}, {}
-        self.grid_list, self.loads, self.focus = FakeGrid(8), [], self.GRID_ID
+        self._browse_folders_on, self._browse_folder_path, self._browse_folder_levels = {}, {}, {}
+        self._browse_page_data, self._browse_pages_loaded, self._browse_total = {}, set(), 8
+        self.grid_list, self.loads, self.restored, self.focus = FakeGrid(8), [], [], self.GRID_ID
 
     def _browse_active_source(self):
         return self.src
@@ -58,8 +65,20 @@ class FakeWindow:
     def setFocusId(self, cid):
         self.focus = cid
 
+    def _get_client(self):
+        return object()
+
     def _browse_load_grid(self):
         self.loads.append(self._browse_folder_path.get(self.src["id"], ""))
+
+    def _browse_show_folder_level(self, client, path, level):
+        self.restored.append((path, level["pos"]))
+
+    def _browse_reset_paging(self):
+        pass
+
+    def _browse_wire_nav_down(self):
+        pass
 
     def _browse_maybe_load_more(self):
         pass
@@ -91,13 +110,27 @@ def main():
     w._browse_open_folder({"path": "Samples/8K Association"})
     check("opening folders goes down a level each time",
           w.loads, ["Samples", "Samples/8K Association"])
-    check("Back goes up one level", (w._browse_folder_up(), w.loads[-1]), (True, "Samples"))
+    check("Back goes up one level, from memory: no fetch",
+          (w._browse_folder_up(), w.restored[-1], len(w.loads)), (True, ("Samples", 0), 2))
     w._browse_folder_up()
-    check("...and lands on the folder we came out of", (w.loads[-1], w.grid_list.pos), ("", 5))
+    check("...and lands on the folder we came out of", w.restored[-1], ("", 5))
     check("at the top, Back is Browse's own again", w._browse_folder_up(), False)
     w._browse_folder_path["v"] = "Samples"
     w.focus = w.SIDEBAR_ID
     check("Back from the sidebar leaves the folder alone", w._browse_folder_up(), False)
+    w._browse_folder_path["v"] = "Samples/8K Association"
+    check("Select on the library row goes to its folder root",
+          (w._browse_folder_root(), w.loads[-1]), (True, ""))
+    check("...and does nothing more once there", w._browse_folder_root(), False)
+
+    trail = FakeWindow(videos)._browse_folder_trail
+    check("the trail names the folders, not the library",
+          trail(["Samples", "8K Association"]), "Samples / 8K Association")
+    long = ["A very long folder name number one", "Another long folder name",
+            "The folder on screen"]
+    check("a long trail drops whole crumbs from the start, never the last",
+          trail(long), "\u2026 / Another long folder name / The folder on screen")
+    check("...even when the last alone is too long", trail(["x" * 80]), "x" * 80)
 
     failed = [n for n, ok in RESULTS if not ok]
     print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))

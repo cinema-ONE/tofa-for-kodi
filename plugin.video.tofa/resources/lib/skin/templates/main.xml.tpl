@@ -472,6 +472,8 @@
 {collection_back}
             </control>
 
+{folder_state}
+
             <!-- Sort/Filter/Quality/Genre: 4 evenly-spaced wide buttons
                  spanning the full row width, each showing its current
                  value via a *_label ListItem property kept in sync by
@@ -537,11 +539,11 @@
 {genre_focused}
             </control>
 
-            <!-- Folders: on library sources only. main.py moves it to x=440
-                 in the folder view and rewires its left there. -->
+            <!-- View: on library sources only, always the first slot. main.py
+                 sets every toolbar pill's x and left/right at runtime. -->
             <control type="list" id="6130">
                 <visible>!String.IsEmpty(Window.Property(browse_folders_offered))</visible>
-                <posx>1526</posx>
+                <posx>440</posx>
                 <posy>190</posy>
                 <width>346</width>
                 <height>62</height>

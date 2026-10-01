@@ -392,14 +392,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     ALPHA_RAIL_ID = 6220
     SORT_ID = 6110
     FILTER_ID = 6120
-    # 6130 was Quality, now an axis of the Filter dialog. Its slot holds the
-    # collections back pill inside a collection, and Folders on a library.
+    # 6130 was Quality, now an axis of the Filter dialog. The id is reused
+    # for View, which leads the row on a library.
     FOLDERS_ID = 6130
     TOOLBAR_IDS = (6110, 6120, 6100, 6130)
-    #: The toolbar's first and fourth slots: Folders moves to the first in
-    #: the folder view, where it is the only pill left.
-    _TOOLBAR_X_FIRST = 440
-    _TOOLBAR_X_FOURTH = 1526
+    #: The toolbar's four slots, left to right.
+    _TOOLBAR_SLOTS_X = (440, 802, 1164, 1526)
     #: Folder listings cost ~30 ms per entry on the server (a 200-entry page
     #: of TV Shows' root took 6 s), so they are asked for in small pages.
     BROWSE_FOLDER_PAGE_SIZE = 40
@@ -666,11 +664,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # itself is showing.
         self._browse_collection: dict | None = None
         # Folder view, per library id, for this session: whether it is on
-        # (None = the library's default), the path shown, and the grid
-        # positions to return to on the way back up.
+        # (None = the library's default), the path shown, and every level
+        # above it as it was left, so Back restores it without a fetch.
         self._browse_folders_on: dict = {}
         self._browse_folder_path: dict = {}
-        self._browse_folder_return: dict = {}
+        self._browse_folder_levels: dict = {}
         self._browse_page_size = self.BROWSE_PAGE_SIZE
         # Index position to restore when Back leaves a collection.
         self._collection_return_pos = 0
@@ -980,9 +978,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         genre_item = kodigui.ManagedListItem(label="Genre")
         genre_item.setProperty("genre_label", self._browse_genre_label())
         self.genre_list.addItems([genre_item])
-        folders_item = kodigui.ManagedListItem(label="Folders")
-        folders_item.setProperty("folders_label", "Folders")
-        self.folders_list.addItems([folders_item])
+        self.folders_list.addItems([kodigui.ManagedListItem(label="View")])
         self._section_down_targets["browse"] = self.SIDEBAR_ID
 
         # Down target is fixed at row-0's list regardless of how many rows
@@ -2999,6 +2995,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
         self.setProperty("browse_heading", "")
         self.setProperty("browse_collections", "")
+        self._browse_folder_state("")
         self._browse_point_sidebar_at(self.GRID_ID)
         self._browse_grid_geometry(in_collection=False)
         # Undo the drill-down's own wiring: with the pill gone, Genre is
@@ -3023,7 +3020,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
 
         if self._browse_in_folders(src):
-            self._browse_load_folder_grid(client, src)
+            self._browse_load_folder_grid(
+                client, src, opened=getattr(self, "_browse_opening_folder", False))
             return
         if src["kind"] == "history":
             self._browse_load_history_grid(client)
@@ -3362,6 +3360,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     # ----------------------------------------------------------- folders --
 
+    #: The View chooser's rows: the library's own view, then Folders.
+    _VIEW_KIND = {"movie": "Movies", "tv": "Shows"}
+    _VIEW_OTHER = "Videos"
+    #: Roughly what the heading holds before it would truncate.
+    _FOLDER_TRAIL_CHARS = 52
+
     def _browse_folders_offered(self, src: dict) -> bool:
         return (src.get("kind") == "library"
                 and "library.folders" in self._server_capabilities)
@@ -3376,17 +3380,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return src.get("media_type") not in ("movie", "tv") if on is None else on
 
     def _browse_sync_folders_pill(self, src: dict):
+        """View leads the row on a library, so it never moves when the view
+        does; Sort/Filter/Genre step one slot right to make room."""
         offered = self._browse_folders_offered(src)
         on = offered and self._browse_in_folders(src)
         self.setProperty("browse_folders_offered", "1" if offered else "")
         self.setProperty("browse_folders", "1" if on else "")
-        self.folders_list[0].setProperty("active", "1" if on else "")
+        own = self._VIEW_KIND.get(src.get("media_type"), self._VIEW_OTHER)
+        view = self.folders_list[0]
+        view.setProperty("view_label", "Folders" if on else own)
+        view.setProperty("view_glyph", chr(
+            icon_glyphs.FOLDER if on else src.get("glyph") or icon_glyphs.VIDEO))
+        row = ([self.FOLDERS_ID] if on else
+               [self.FOLDERS_ID, self.SORT_ID, self.FILTER_ID, self.GENRE_ID] if offered else
+               [self.SORT_ID, self.FILTER_ID, self.GENRE_ID])
         try:
-            pill = self.getControl(self.FOLDERS_ID)
-            genre = self.getControl(self.GENRE_ID)
-            pill.setPosition(self._TOOLBAR_X_FIRST if on else self._TOOLBAR_X_FOURTH, pill.getY())
-            pill.controlLeft(self.getControl(self.SIDEBAR_ID) if on else genre)
-            genre.controlRight(pill if offered and not on else genre)
+            controls = [self.getControl(cid) for cid in row]
+            for slot, control in enumerate(controls):
+                control.setPosition(self._TOOLBAR_SLOTS_X[slot], control.getY())
+                control.controlLeft(controls[slot - 1] if slot else self.getControl(self.SIDEBAR_ID))
+                control.controlRight(controls[slot + 1] if slot + 1 < len(controls) else control)
         except RuntimeError:
             pass
 
@@ -3394,7 +3407,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         src = self._browse_active_source()
         if not self._browse_folders_offered(src):
             return
-        self._browse_folders_on[src.get("id")] = not self._browse_in_folders(src)
+        from .picker import PickerDialog
+        own = self._VIEW_KIND.get(src.get("media_type"), self._VIEW_OTHER)
+        on = self._browse_in_folders(src)
+        dialog = PickerDialog.open(
+            heading="View",
+            hint="{0}: every title, to sort and filter. Folders: as stored on "
+                 "the server.".format(own),
+            rows=[(own, not on, None), ("Folders", on, None)],
+            selected_idx=1 if on else 0,
+        )
+        if not dialog or dialog.canceled or dialog.picked_idx is None:
+            return
+        if (dialog.picked_idx == 1) == on:
+            return
+        self._browse_folders_on[src.get("id")] = dialog.picked_idx == 1
         self._browse_load_source_content()
 
     @staticmethod
@@ -3403,50 +3430,98 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         folders = [dict(f, _folder=True) for f in resp.get("folders") or []]
         return folders + list(resp.get("items") or [])
 
-    def _browse_load_folder_grid(self, client: MediaServerClient, src: dict):
+    def _browse_folder_trail(self, crumbs: list) -> str:
+        """Where we are, without the library (the sidebar names it); whole
+        crumbs drop from the start when it is too long, never the last."""
+        crumbs = list(crumbs)
+        dropped = False
+        while len(crumbs) > 1 and len(" / ".join(crumbs)) > self._FOLDER_TRAIL_CHARS:
+            crumbs.pop(0)
+            dropped = True
+        return ("\u2026 / " if dropped else "") + " / ".join(crumbs)
+
+    def _browse_folder_state(self, state: str):
+        words = {"empty": ("This folder is empty",
+                           "Videos added to it on the server appear here."),
+                 "gone": ("This folder is no longer there",
+                          "It was moved or removed on the server.")}.get(state, ("", ""))
+        self.setProperty("browse_folder_title", words[0])
+        self.setProperty("browse_folder_message", words[1])
+        self.setProperty("browse_folder_state", state)
+
+    def _browse_load_folder_grid(self, client: MediaServerClient, src: dict,
+                                 opened: bool = False):
         lib_id = src.get("id")
         path = self._browse_folder_path.get(lib_id, "")
         try:
             resp = client.library_folders(lib_id, path,
                                           per_page=self.BROWSE_FOLDER_PAGE_SIZE) or {}
         except http.ApiError as exc:
-            if exc.status == 404 and path:
-                # The folder went away since it was last shown: start at the top.
-                self._browse_folder_path[lib_id] = ""
-                self._browse_folder_return[lib_id] = []
+            if exc.status == 404 and path and not opened:
+                # A remembered folder that has gone: the nearest level that
+                # still exists, without a word.
+                self._browse_folder_path[lib_id] = path.rpartition("/")[0]
+                self._browse_folder_levels[lib_id] = []
                 self._browse_load_folder_grid(client, src)
+                return
+            if exc.status == 404:
+                self._browse_folder_state("gone")
                 return
             kodigui.ERROR("main.py: browse folders failed: {0}".format(exc))
             return
-        crumbs = [c.get("name") or "" for c in resp.get("breadcrumbs") or []]
-        heading = " / ".join([src.get("name") or ""] + crumbs) if crumbs else ""
+        self._browse_show_folder_level(client, path, {
+            "crumbs": [c.get("name") or "" for c in resp.get("breadcrumbs") or []],
+            "data": {1: self._browse_folder_entries(resp)},
+            "loaded": {1},
+            "total": (resp.get("total_folders") or 0) + (resp.get("total_items") or 0),
+            "pos": 0,
+        })
+
+    def _browse_show_folder_level(self, client: MediaServerClient, path: str, level: dict):
+        """Put one folder level on screen, fetched or restored from memory."""
+        heading = self._browse_folder_trail(level["crumbs"]) if path else ""
         self.setProperty("browse_heading", heading)
         self._browse_grid_geometry(in_collection=bool(heading))
-        entries = self._browse_folder_entries(resp)
         self._browse_page_size = self.BROWSE_FOLDER_PAGE_SIZE
-        self._browse_page_data[1] = entries
-        self._browse_total = (resp.get("total_folders") or 0) + (resp.get("total_items") or 0)
-        self._browse_page_params = {"_folders": lib_id, "path": path}
-        self._browse_pages_loaded = {1}
-        if not entries:
+        self._browse_page_data = dict(level["data"])
+        self._browse_pages_loaded = set(level["loaded"])
+        self._browse_filled = set()
+        self._browse_total = level["total"]
+        self._browse_page_params = {"_folders": self._browse_active_source().get("id"),
+                                    "path": path}
+        self._browse_folder_state("" if level["total"] else "empty")
+        self._browse_level_crumbs = level["crumbs"]
+        if not level["total"]:
             return
-        self.grid_list.addItems(self._browse_blanks(max(self._browse_total, len(entries))))
+        self.grid_list.addItems(self._browse_blanks(level["total"]))
         self.grid_list.selectItem(0)
+        if level["pos"]:
+            self.grid_list.setSelectedItemByPos(min(level["pos"], level["total"] - 1))
         self._browse_fill_window(client)
 
     def _browse_open_folder(self, folder: dict):
         src = self._browse_active_source()
         lib_id = src.get("id")
-        self._browse_folder_return.setdefault(lib_id, []).append(
-            self.grid_list.getSelectedPosition())
+        self._browse_folder_levels.setdefault(lib_id, []).append({
+            "path": self._browse_folder_path.get(lib_id, ""),
+            "crumbs": list(getattr(self, "_browse_level_crumbs", [])),
+            "data": dict(self._browse_page_data),
+            "loaded": set(self._browse_pages_loaded),
+            "total": self._browse_total or 0,
+            "pos": self.grid_list.getSelectedPosition(),
+        })
         self._browse_folder_path[lib_id] = folder.get("path") or ""
-        self._browse_load_grid()
+        self._browse_opening_folder = True
+        try:
+            self._browse_load_grid()
+        finally:
+            self._browse_opening_folder = False
         if len(self.grid_list):
             self.setFocusId(self.GRID_ID)
 
     def _browse_folder_up(self) -> bool:
-        """Back inside a sub-folder: up one level, onto the folder we left.
-        False when there is nothing to go up from."""
+        """Back inside a sub-folder: up one level, as it was left and onto
+        the folder we came out of. False when there is nothing to go up from."""
         if (self.getProperty("active_section") != "browse"
                 or self.getFocusId() in (self.NAV_LIST_ID, self.SIDEBAR_ID,
                                          self.SIDEBAR_LIBRARY_ID)):
@@ -3456,14 +3531,33 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         path = self._browse_folder_path.get(lib_id, "")
         if not path or not self._browse_in_folders(src):
             return False
-        self._browse_folder_path[lib_id] = path.rpartition("/")[0]
-        returns = self._browse_folder_return.get(lib_id) or []
-        pos = returns.pop() if returns else 0
-        self._browse_load_grid()
+        parent = path.rpartition("/")[0]
+        levels = self._browse_folder_levels.get(lib_id) or []
+        self._browse_folder_path[lib_id] = parent
+        if levels and levels[-1]["path"] == parent:
+            level = levels.pop()
+            client = self._get_client()
+            self.grid_list.reset()
+            self._browse_reset_paging()
+            if client:
+                self._browse_show_folder_level(client, parent, level)
+            self._browse_wire_nav_down()
+        else:
+            self._browse_load_grid()
         if len(self.grid_list):
             self.setFocusId(self.GRID_ID)
-            self.grid_list.setSelectedItemByPos(min(pos, len(self.grid_list) - 1))
             self._browse_maybe_load_more()
+        return True
+
+    def _browse_folder_root(self) -> bool:
+        """Select on the library already showing: back to its folder root."""
+        src = self._browse_active_source()
+        lib_id = src.get("id")
+        if not self._browse_in_folders(src) or not self._browse_folder_path.get(lib_id):
+            return False
+        self._browse_folder_path[lib_id] = ""
+        self._browse_folder_levels[lib_id] = []
+        self._browse_load_grid()
         return True
 
     def _browse_load_history_grid(self, client: MediaServerClient):
@@ -3895,6 +3989,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         have to run on -- do not "restore" it as a regression."""
         # A drill-down belongs to the source it was opened from.
         self._browse_collection = None
+        if idx == self._active_source_idx and self._browse_folder_root():
+            return
         if idx < 0 or idx >= len(self._sources) or idx == self._active_source_idx:
             return
         # Touch only the (at most) two rows that actually change state --
