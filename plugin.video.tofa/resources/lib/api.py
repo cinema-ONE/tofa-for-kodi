@@ -552,7 +552,7 @@ class MediaServerClient:
         return False
 
     def search(self, q: str, **kwargs: Any) -> Any:
-        return self._get("/api/v1/search", params={"q": q, **kwargs})
+        return self._get("/api/v1/search", params={"q": q, "local_images": "true", **kwargs})
 
     def continue_watching(self) -> Any:
         return self._get("/api/v1/users/me/continue")
@@ -894,7 +894,9 @@ class MediaServerClient:
         return self._get("/api/v1/media", params={"media_type": media_type, **kwargs})
 
     def media_detail(self, media_id: str) -> Any:
-        return self._get(f"/api/v1/media/{media_id}")
+        # local_images: cast and crew photos come from this server's own cache
+        # rather than tofa's cloud, so they load without it (server 0.11.0).
+        return self._get(f"/api/v1/media/{media_id}", params={"local_images": "true"})
 
     def quickview(self, file_id: str) -> Any:
         """The whole QuickView bundle: chapters, thumbnail tile tracks,
