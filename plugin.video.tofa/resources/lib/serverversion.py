@@ -70,7 +70,9 @@ from . import log
 #: (`stream/s/{id}/subtitles/{index}/images/...`) wants a client that
 #: composits bitmaps onto its own plane, which Kodi cannot do.
 
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 10, 0)
+#: 0.11.0: search returns collections and a first More Like This answer is
+#: final (vault #242, #222), so our own stand-ins for both are gone.
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 11, 0)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,

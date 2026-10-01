@@ -240,9 +240,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                       COLLECTION_LIST, SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL)
     #: The More pane's shelves, top to bottom (7.5.2 puts "Part of" first).
     MORE_SHELF_IDS = (COLLECTION_LIST, SIMILAR_LIST, DISCOVER_LIST)
-    #: Pauses before asking again while the related list is not ready: the
-    #: server answers 503 until it is, and older ones answer it empty (vault
-    #: #222). Drop the empty case once the server floor passes that fix.
+    #: Pauses before asking again while the server answers 503: the related
+    #: list is not ready yet. An empty answer is final (vault #222).
     SIMILAR_RETRY_S = (0.5, 1, 2, 4)
 
     def __init__(self, *args, **kwargs):
@@ -2006,16 +2005,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self._wire_more_shelves((part_of, False, False))
                 return
             resp = None
-        if not resp or not (resp.get("owned") or resp.get("requestable")):
+        if resp is None:
             # Blank, not "Nothing similar", until the last ask is in.
             self.setProperty("similar_state", "")
             self._wire_more_shelves((part_of, False, False))
-            self._similar_retry(client, media_id, part_of, busy=resp is None)
+            self._similar_retry(client, media_id, part_of)
             return
         self._fill_similar(client, resp, part_of)
 
-    def _similar_retry(self, client: MediaServerClient, media_id: str, part_of: bool,
-                       busy: bool = False):
+    def _similar_retry(self, client: MediaServerClient, media_id: str, part_of: bool):
         """Ask again off the UI thread, so the waits never hold a key press."""
         generation = self._similar_generation
 
@@ -2023,7 +2021,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return generation != self._similar_generation or not self.isOpen
 
         def run():
-            resp, failed, asks, t0 = {}, busy, 1, time.monotonic()
+            resp, failed, asks, t0 = {}, True, 1, time.monotonic()
             for pause in self.SIMILAR_RETRY_S:
                 if xbmc.Monitor().waitForAbort(pause) or stale():
                     return
@@ -2033,10 +2031,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 except http.ApiError as exc:
                     log.debug("detail: media_similar retry failed: {0}".format(exc))
                     resp, failed = {}, True
-                if resp.get("owned") or resp.get("requestable"):
+                if not failed:
                     break
-            log.info("detail: related titles {0} at first, {1} on ask {2} ({3:.1f}s){4}".format(
-                "busy" if busy else "empty",
+            log.info("detail: related titles busy at first, {0} on ask {1} ({2:.1f}s){3}".format(
                 len(resp.get("owned") or []) + len(resp.get("requestable") or []),
                 asks, time.monotonic() - t0, ", never answered" if failed else ""))
             if stale():

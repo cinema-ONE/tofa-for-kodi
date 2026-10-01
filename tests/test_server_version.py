@@ -46,9 +46,9 @@ check("newer is supported", sv.is_supported(ONE_NEWER))
 check("older is NOT supported", not sv.is_supported(ONE_OLDER))
 check("much older is NOT supported", not sv.is_supported("0.9.21"))
 
-# Tuple comparison, not string. "0.10.0" > "0.9.29" numerically but sorts
+# Tuple comparison, not string. "0.100.0" is newer than the floor but sorts
 # BEFORE it as text, which is the classic way this check gets written wrong.
-check("0.10.0 is newer than 0.9.29", sv.is_supported("0.10.0"))
+check("0.100.0 is newer than the floor", sv.is_supported("0.100.0"))
 check("1.0.0 is newer", sv.is_supported("1.0.0"))
 check("...and a string compare would have got that wrong",
       "0.10.0" < "0.9.29")
