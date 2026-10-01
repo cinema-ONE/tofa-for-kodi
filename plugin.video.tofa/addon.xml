@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.37" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.38" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,9 +45,25 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Search now finds your own collections by name: a matching collection
-        appears as a row of its titles, in the collection's own order, just
-        below the top result.
+      - Needs tofa media server 0.11.0 or newer. An older server still works,
+        but you are told once per session that some screens may be incomplete.
+      - Search now finds collections of every kind: your own, film series like
+        James Bond, and tofa's curated sets. The best match appears as a row of
+        the titles you have, just below the top result.
+      - More Like This no longer waits and asks again when a title has nothing
+        similar; the server now says so straight away.
+      - Browse a library by its folders: a View button at the start of the row
+        switches between the library's own view and Folders. Libraries of home
+        videos open in Folders. Back goes up a level, and selecting the library
+        again returns to its top.
+      - A film or episode split across several files now plays as one: one
+        timeline over all its parts, and no picking between "versions" that are
+        really part 1 and part 2.
+      - Cast and crew photos now load from your own server.
+      - Dolby Vision Profile 5 videos are converted on devices without Dolby
+        Vision, instead of playing in the wrong colours.
+      - Picture subtitles on a converted stream can be chosen again before the
+        server has prepared them; they appear once it has the whole track.
     </news>
     <assets>
       <icon>icon.png</icon>
