@@ -84,6 +84,9 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
     ("Empty / error scaffold", "resources/lib/skin/fragments.py – empty_state()", [
         ("TRIANGLE_ALERT", "9.7's error flavour, tinted status-red"),
     ]),
+    ("Browse folders", "resources/lib/skin/screens.py – Folders pill; fragments.py – folder card", [
+        ("FOLDER", "Folders pill, and the face of a folder card in the folder view"),
+    ]),
     ("Browse sidebar", "resources/lib/windows/main.py – _browse_build_sidebar()", [
         ("BOOKMARK", "Watchlist row"),
         ("ROTATE_CCW_CLOCK", "History row"),

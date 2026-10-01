@@ -150,6 +150,14 @@ def render_main() -> str:
         label_prefix="", label_property="genre_label",
     )
 
+    # Folders: shown on a library source; accent-filled while the folder
+    # view is on. MainWindow moves it to the first slot in that view, where
+    # Sort/Filter/Genre have nothing to act on and are hidden.
+    folders_item, folders_focused = fragments.browse_pill(
+        6130, icon=f"&#x{icon_glyphs.FOLDER:04X};",
+        label_prefix="", label_property="folders_label",
+    )
+
     alpha_item, alpha_focused = fragments.alpha_rail_pill(6220)
 
     (top_result_item, top_result_focused,
@@ -198,7 +206,8 @@ def render_main() -> str:
         # name from the height, and capsule-h56.png does not exist, so the
         # pill rendered as bare text with no glass behind it.
         6260, group_id=6261, x=1526, width=346, height=64, ondown=6200, onleft=6100,
-        visible="!String.IsEmpty(Window.Property(browse_heading))",
+        visible=("!String.IsEmpty(Window.Property(browse_heading))"
+                 " + String.IsEmpty(Window.Property(browse_folders))"),
         label_xml=fragments.action_pill_content(
             346, "All Collections", "&#xE06E;", height=64),
     )
@@ -486,6 +495,8 @@ def render_main() -> str:
         # the Filter dialog, and the template stopped naming it then. The
         # fragment was still being built and passed for nothing.
         genre_item=genre_item,
+        folders_item=folders_item,
+        folders_focused=folders_focused,
         genre_focused=genre_focused,
         alpha_item=alpha_item,
         alpha_focused=alpha_focused,

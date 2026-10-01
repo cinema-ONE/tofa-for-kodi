@@ -537,6 +537,26 @@
 {genre_focused}
             </control>
 
+            <!-- Folders: on library sources only. main.py moves it to x=440
+                 in the folder view and rewires its left there. -->
+            <control type="list" id="6130">
+                <visible>!String.IsEmpty(Window.Property(browse_folders_offered))</visible>
+                <posx>1526</posx>
+                <posy>190</posy>
+                <width>346</width>
+                <height>62</height>
+                <onup>3000</onup>
+                <onleft>6100</onleft>
+                <onright>6130</onright>
+                <ondown>6200</ondown>
+                <orientation>horizontal</orientation>
+                <itemwidth>346</itemwidth>
+                <itemheight>62</itemheight>
+{folders_item}
+
+{folders_focused}
+            </control>
+
             <!-- Main 5-column poster grid. -->
             <!-- 7.5's collections index is a LANDSCAPE grid, so it cannot
                  share the poster panel: a Kodi panel has one itemwidth and

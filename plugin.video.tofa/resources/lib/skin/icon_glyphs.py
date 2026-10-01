@@ -38,6 +38,7 @@ CIRCLE_PLUS = 0xE081
 DOT = 0xE44F
 # The books glyph leading the "Not in library" pill on an episode card.
 LIBRARY = 0xE100
+FOLDER = 0xE0D7
 ROTATE_CCW_CLOCK = 0xE1F5
 LAYERS = 0xE529
 # The two empty-state marks on Detail page 2, both read off the real Apple TV
