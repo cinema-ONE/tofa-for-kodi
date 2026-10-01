@@ -1,17 +1,16 @@
-"""A 503 from the server on a related list means "not ready yet", not "failed".
+"""A related list the server is still working out is asked for again.
 
-The server can answer /similar with 503 and Retry-After while it is still
-working a list out. Detail asks again rather than showing its error card, and
-the client does not re-send that 503 through the relay, which would only
-double the wait for the same answer.
+The server answers /similar with 503 and Retry-After while a list is not ready,
+and an empty 200 is final (vault #222). Detail asks again rather than showing
+its error card, off the UI thread, and the client does not re-send that 503
+through the relay, which would only double the wait for the same answer.
 
 Run:  python3 test_similar_busy.py
 """
 import kodi_stubs  # noqa: F401  -- installs the Kodi stubs
 from resources.lib import api, auth, http  # noqa: E402
 from resources.lib.windows import detail  # noqa: E402
-
-import test_similar_empty_retry as base  # noqa: E402
+from resources.lib.windows.detail import DetailWindow  # noqa: E402
 
 RESULTS = []
 
@@ -22,52 +21,180 @@ def check(name, ok, detail_=""):
                         ("  -- " + detail_) if detail_ and not ok else ""))
 
 
+FULL = {"owned": [{"id": "a"}, {"id": "b"}], "requestable": [{"tmdb_id": 1}]}
+EMPTY = {"owned": [], "requestable": []}
+
+
+class FakeList:
+    def __init__(self):
+        self.items = []
+
+    def reset(self):
+        self.items = []
+
+    def addItems(self, items):
+        self.items += items
+
+
+class FakeClient:
+    def __init__(self, answers):
+        self.answers = list(answers)
+        self.asks = 0
+
+    def media_similar(self, media_id):
+        self.asks += 1
+        answer = self.answers.pop(0) if self.answers else EMPTY
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+
+class FakeThread:
+    """Holds the worker so a test can look at the page before it runs."""
+    started = []
+
+    def __init__(self, target, name=None, daemon=None):
+        self.target = target
+
+    def start(self):
+        FakeThread.started.append(self)
+
+
+class FakeMonitor:
+    pauses = []
+    on_wait = None
+
+    def waitForAbort(self, t=0):
+        FakeMonitor.pauses.append(t)
+        if FakeMonitor.on_wait:
+            FakeMonitor.on_wait()
+        return False
+
+
+class FakeDetail:
+    _render_more_like_this = DetailWindow._render_more_like_this
+    _similar_retry = DetailWindow._similar_retry
+    _fill_similar = DetailWindow._fill_similar
+    SIMILAR_RETRY_S = DetailWindow.SIMILAR_RETRY_S
+    MORE_SHELF_IDS = DetailWindow.MORE_SHELF_IDS
+
+    def __init__(self, part_of=False):
+        self.props = {}
+        self.isOpen = True
+        self.similar_list = FakeList()
+        self.discover_list = FakeList()
+        self.part_of = part_of
+        self.wired = []
+
+    def setProperty(self, key, value):
+        self.props[key] = value
+
+    def getProperty(self, key):
+        return self.props.get(key, "")
+
+    def _render_collection_strip(self, client, media_id):
+        return self.part_of
+
+    def _similar_card(self, client, item):
+        return item
+
+    def _wire_more_shelves(self, present):
+        self.wired.append(present)
+
+
+def run(answers, part_of=False):
+    FakeThread.started = []
+    FakeMonitor.pauses = []
+    FakeMonitor.on_wait = None
+    w = FakeDetail(part_of)
+    client = FakeClient(answers)
+    w._render_more_like_this(client, "m1")
+    return w, client
+
+
 BUSY = http.ApiError(503, "service_unavailable", "related titles not ready")
 RELAY_DOWN = http.ApiError(503, "server_relay_not_connected", "")
 GONE = http.ApiError(0, "connection_error", "down")
-FULL, EMPTY = base.FULL, base.EMPTY
 
 
 def worker():
-    base.FakeThread.started[0].target()
+    FakeThread.started[0].target()
 
 
 def detail_checks():
-    detail.threading.Thread = base.FakeThread
-    detail.xbmc.Monitor = base.FakeMonitor
+    detail.threading.Thread = FakeThread
+    detail.xbmc.Monitor = FakeMonitor
 
-    w, client = base.run([BUSY, FULL])
+    w, client = run([FULL])
+    check("a full first answer fills the shelves without a worker",
+          len(w.similar_list.items) == 2 and not FakeThread.started)
+    check("...and the grid is shown", w.getProperty("similar_state") == "")
+
+    w, client = run([EMPTY])
+    check("an empty first answer is final: 'Nothing similar' at once, no worker",
+          w.getProperty("similar_state") == "empty" and not FakeThread.started)
+
+    w, client = run([BUSY, FULL])
     check("a busy first answer does not show the error card",
           w.getProperty("similar_state") == "", w.getProperty("similar_state"))
-    check("...and hands the waiting to a worker", len(base.FakeThread.started) == 1)
+    check("...and hands the waiting to a worker", len(FakeThread.started) == 1)
     worker()
-    check("the next ask fills the shelves", len(w.similar_list.items) == 2)
+    check("the next ask fills the shelves",
+          len(w.similar_list.items) == 2 and len(w.discover_list.items) == 1)
+    check("...after one short pause", FakeMonitor.pauses == [0.5], str(FakeMonitor.pauses))
+    check("...with the shelf titles on and the shelves wired",
+          w.getProperty("similar_row_title") == "More Like This"
+          and w.wired[-1] == (False, True, True))
 
-    w, client = base.run([BUSY] * 9)
+    w, client = run([BUSY] * 9)
     worker()
     check("busy on every ask is asked five times in all", client.asks == 5, str(client.asks))
+    check("...over the planned pauses", FakeMonitor.pauses == [0.5, 1, 2, 4],
+          str(FakeMonitor.pauses))
     check("...and then shows the error card, not 'Nothing similar'",
           w.getProperty("similar_state") == "error", w.getProperty("similar_state"))
 
-    w, client = base.run([BUSY] * 9, part_of=True)
+    w, client = run([BUSY] * 9, part_of=True)
     worker()
     check("...unless a 'Part of' strip is on the page", w.getProperty("similar_state") == "")
 
-    # Still asked again: until the server floor passes the fix, an empty
-    # answer cannot be told from a list the server is still working out.
-    w, client = base.run([BUSY, EMPTY])
+    w, client = run([BUSY, EMPTY])
     worker()
     check("an empty answer after a busy one ends on 'Nothing similar'",
-          w.getProperty("similar_state") == "empty", w.getProperty("similar_state"))
+          w.getProperty("similar_state") == "empty" and client.asks == 2,
+          w.getProperty("similar_state"))
 
-    w, client = base.run([EMPTY] + [GONE] * 4)
+    w, client = run([BUSY, GONE, FULL])
+    worker()
+    check("a failed retry keeps asking", client.asks == 3 and len(w.similar_list.items) == 2,
+          str(client.asks))
+
+    w, client = run([BUSY] + [GONE] * 4)
     worker()
     check("a list that could not be asked for at the end shows the error card",
           w.getProperty("similar_state") == "error", w.getProperty("similar_state"))
 
-    w, client = base.run([RELAY_DOWN])
+    w, client = run([BUSY, FULL])
+    FakeMonitor.on_wait = lambda: setattr(w, "isOpen", False)
+    worker()
+    check("a closed page stops asking and is not filled",
+          client.asks == 1 and not w.similar_list.items)
+
+    w, client = run([BUSY, BUSY, FULL])
+    stale = FakeThread.started[0]
+    w._render_more_like_this(FakeClient([FULL]), "m1")
+    before = list(w.similar_list.items)
+    stale.target()
+    check("a reload supersedes the older worker",
+          client.asks == 1 and w.similar_list.items == before)
+
+    w, client = run([GONE])
+    check("a failed first ask shows the error, and does not retry",
+          w.getProperty("similar_state") == "error" and not FakeThread.started)
+
+    w, client = run([RELAY_DOWN])
     check("the relay saying the server is gone is a failure at once",
-          w.getProperty("similar_state") == "error" and not base.FakeThread.started)
+          w.getProperty("similar_state") == "error" and not FakeThread.started)
 
 
 class Recorder:
