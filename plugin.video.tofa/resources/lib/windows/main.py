@@ -3403,6 +3403,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 control.setPosition(self._TOOLBAR_SLOTS_X[slot], control.getY())
                 control.controlLeft(controls[slot - 1] if slot else self.getControl(self.SIDEBAR_ID))
                 control.controlRight(controls[slot + 1] if slot + 1 < len(controls) else control)
+            # Up from the grid must land on a pill that is on screen: in the
+            # folder view Sort is hidden, and Kodi will not focus it.
+            self.getControl(self.GRID_ID).controlUp(controls[0])
         except RuntimeError:
             pass
 
