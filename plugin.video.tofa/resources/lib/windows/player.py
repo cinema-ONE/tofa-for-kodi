@@ -84,7 +84,7 @@ import xbmcvfs
 
 from . import kodigui, playerstats, playoptions, profile_select, theme
 from .. import (api, artcache, asstime, auth, episodes, http, langcodes, log,
-                monitor, pgstime, playback, playbackprefs, playbacksync, prefs, regional,
+                monitor, parts, pgstime, playback, playbackprefs, playbacksync, prefs, regional,
                 settings_options, stereoscopic, textmetrics, tracks)
 from ..api import MediaServerClient
 from ..profile import DEFAULT_AUDIO_CODECS, CapabilityProfile
@@ -473,6 +473,7 @@ class _PlayerUIPlayer(xbmc.Player):
         # whatever screen was underneath.
         if self.window.is_restarting():
             return
+        self.window.finish_parts(self.window._position_ms())
         self.window.closeNow()
 
     def onPlayBackEnded(self) -> None:
@@ -491,6 +492,9 @@ class _PlayerUIPlayer(xbmc.Player):
         if not self.window.is_restarting() and self.window.ended_prematurely():
             self.window.fail(kodigui.ADDON.getLocalizedString(31101))
             return
+        if not self.window.is_restarting() and self.window.advance_part():
+            return
+        self.window.finish_parts()
         self.window.closeNow()
 
     def onPlayBackError(self) -> None:
@@ -861,6 +865,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._frozen_since = 0.0
         self._last_toggle = 0.0
         self._scrub_ms: Optional[int] = None   # pending scrub target
+        # A split title's files in order, and the one playing (parts.py);
+        # empty for a title in one file.
+        self._parts: list = []
+        self._part_idx = 0
         self._duration_ms = 0
         #: Last position read while the player was still alive -- see
         #: _position_ms. Survives Kodi's teardown so the callbacks that run
@@ -1099,6 +1107,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self.fail(kodigui.ADDON.getLocalizedString(31102))
                 return
         self.file_id = file_id
+        self._publish_part_cap()
         # Seed the subtitle shadow from what we stored for THIS file. Not a
         # reset: Kodi remembers the offset per file and re-applies it, so
         # zeroing here is what made the panel claim "0.00 s" over subtitles
@@ -1276,6 +1285,12 @@ class PlayerWindow(kodigui.ControlledDialog):
             date = media.get("release_date") or media.get("air_date") or ""
             if len(date) >= 4 and date[:4].isdigit():
                 year = date[:4]
+
+        files = [f for f in media.get("files") or [] if f.get("available")]
+        mine = next((f for f in files if f.get("id") == self.file_id), None)
+        if mine:
+            self._set_parts(parts.set_of(
+                [f for f in files if f.get("episode_id") == mine.get("episode_id")], self.file_id))
 
         order, here = self._index_episodes(media)
         if here is not None:
@@ -2282,7 +2297,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         pool shows the first N of them rather than none."""
         if not self._duration_ms:
             return
-        scale = float(_TRACK_W) / self._duration_ms
+        scale = float(_TRACK_W) / self._title_duration_ms()
+        shift = self._part_start_ms()
 
         def place(control_id, x, width):
             try:
@@ -2298,7 +2314,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self._hide_marker(cid)
                 continue
             _kind, start, _end = self._segments[i]
-            place(cid, int(start * scale), _SEGMENT_TICK_W)
+            place(cid, int((shift + start) * scale), _SEGMENT_TICK_W)
         chapters = self._chapters[:len(self.CHAPTER_TICK_IDS)]
         if len(self._chapters) > len(chapters):
             log.debug(f"player: {len(self._chapters)} chapters, showing "
@@ -2313,7 +2329,7 @@ class PlayerWindow(kodigui.ControlledDialog):
             if start <= 0:
                 self._hide_marker(cid)
                 continue
-            place(cid, int(start * scale), 2)
+            place(cid, int((shift + start) * scale), 2)
 
     def _hide_marker(self, control_id: int):
         """Hide one marker -- and HIDE it, do not park it off-screen.
@@ -3449,6 +3465,12 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self.client.update_watched(file_id, True)
             except Exception as exc:                        # noqa: BLE001
                 log.warning(f"player: could not finish outgoing episode: {exc!r}")
+            self.finish_parts()
+        elif self._parts and self._on_last_part():
+            self.finish_parts(position_ms)
+        elif self._parts:
+            part = self._parts[self._part_idx]
+            position_ms = min(position_ms, parts.progress_cap_ms(int(part.get("duration_ms") or 0)))
         try:
             self.client.update_progress(file_id, position_ms, finished)
         except Exception as exc:                            # noqa: BLE001
@@ -3551,6 +3573,9 @@ class PlayerWindow(kodigui.ControlledDialog):
             outgoing_duration
             and outgoing_duration - outgoing_position <= NEXT_UP_LEAD_S * 1000)
         season, ep, f = queued
+        # A split episode starts at its first part, whichever file came first.
+        f = (parts.set_of([x for x in ep.get("files") or [] if x.get("available")],
+                          f.get("id")) or [f])[0]
         self._next_up = None
         self._prev_episode = None
         self._next_up_open = False
@@ -3591,6 +3616,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # that on the server.
         self._close_out_session(outgoing_file_id, outgoing_position,
                                 finished=outgoing_finished)
+        self._parts, self._part_idx = [], 0
         # Kodi is stopped before it is handed the next URL. This is the
         # pre-2026-08-05 behaviour, restored: the no-stop advance was an
         # experiment and it is the only thing the misplaced-start report of
@@ -4463,6 +4489,88 @@ class PlayerWindow(kodigui.ControlledDialog):
     # seeking
     # ------------------------------------------------------------------
 
+    # -- a title split across files: its own clock over the parts' --------
+
+    def _set_parts(self, group: list):
+        self._parts = group
+        ids = [f.get("id") for f in group]
+        self._part_idx = ids.index(self.file_id) if self.file_id in ids else 0
+        self._publish_part_cap()
+        if group:
+            self._render_scrub_markers()
+
+    def _publish_part_cap(self):
+        """Keep a part that is not the last short of the server's finish
+        point: finishing it would finish the whole title (parts.py)."""
+        if self._parts and not self._on_last_part():
+            part = self._parts[self._part_idx]
+            monitor.publish_progress_cap(
+                part.get("id"), parts.progress_cap_ms(int(part.get("duration_ms") or 0)))
+        else:
+            monitor.publish_progress_cap(None, None)
+
+    def _on_last_part(self) -> bool:
+        return not self._parts or self._part_idx == len(self._parts) - 1
+
+    def _part_start_ms(self) -> int:
+        """Where the playing part begins on the title's clock; 0 for one file."""
+        return parts.start_ms(self._parts, self._part_idx) if self._parts else 0
+
+    def _title_position_ms(self) -> int:
+        return self._part_start_ms() + self._position_ms()
+
+    def _title_duration_ms(self) -> int:
+        if self._parts:
+            return parts.duration_ms(self._parts)
+        return self._duration_ms or self._resolve_duration_ms()
+
+    def _seek_to_title(self, title_ms: int):
+        """A seek on the title's clock, which may land in another part."""
+        if not self._parts:
+            self._seek_to(title_ms)
+            return
+        index, local = parts.locate(self._parts, max(0, title_ms))
+        if index == self._part_idx:
+            self._seek_to(local)
+        else:
+            self._switch_part(index, local)
+
+    def _switch_part(self, index: int, local_ms: int):
+        """Play another part from `local_ms` on a fresh negotiation, as a
+        quality change does: a session made in advance would expire."""
+        self._part_idx = index
+        self.file_id = self._parts[index].get("id")
+        self._file_subtitle_tracks = self._parts[index].get("subtitle_tracks")
+        self.resume_ms = local_ms or None
+        self._restarting = True
+        try:
+            self.ui_player.stop()
+        except RuntimeError:
+            pass
+        self.setProperty("player_state", self.STATE_OPENING)
+        self._start_playback()
+
+    def advance_part(self) -> bool:
+        """At the end of a part that is not the last, play the next one."""
+        if self._on_last_part():
+            return False
+        self._switch_part(self._part_idx + 1, 0)
+        return True
+
+    def finish_parts(self, position_ms: Optional[int] = None):
+        """Leaving the last part past the server's finish point: mark the
+        others watched too, so none holds a resume point in a finished title."""
+        if not (self._parts and self.client and self._on_last_part()):
+            return
+        last = int(self._parts[-1].get("duration_ms") or 0)
+        if position_ms is not None and position_ms < parts.finish_point_ms(last):
+            return
+        for part in self._parts[:-1]:
+            try:
+                self.client.update_watched(part.get("id"), True)
+            except Exception as exc:                        # noqa: BLE001
+                log.warning(f"player: could not finish part {part.get('id')}: {exc!r}")
+
     def _position_ms(self) -> int:
         """Where we are in the FILE, which is not always where Kodi thinks.
 
@@ -4645,10 +4753,10 @@ class PlayerWindow(kodigui.ControlledDialog):
         # where the burst had got to, which is what the viewer is watching
         # the toast count.
         base = (self._quick_seek_ms if self._quick_seek_ms is not None
-                else self._position_ms())
+                else self._title_position_ms())
         self._quick_seek_ms = max(
             0, min(base + (step if forward else -step),
-                   self._duration_ms or base))
+                   self._title_duration_ms() or base))
         self._quick_seek_commit_at = time.monotonic() + QUICK_SEEK_COMMIT_S
         self.setProperty("player_seek_toast", "forward" if forward else "back")
         # The toast announces the ACCUMULATED movement, not the last step:
@@ -4656,7 +4764,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # one rung of it. It had "10s" hardcoded in the XML once, which
         # stopped being true the moment the step escalated; showing one step
         # of a burst is the same fault in a smaller way.
-        moved = self._quick_seek_ms - self._position_ms()
+        moved = self._quick_seek_ms - self._title_position_ms()
         self.setProperty("player_seek_amount",
                          _seek_amount_label(abs(moved)) if moved else "")
         # 8.9: and where the burst lands, as a monospaced timecode.
@@ -4672,7 +4780,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._quick_seek_commit_at = 0.0
         # A committed seek ends the gesture, exactly as commit_scrub does.
         self._reset_seek_ladder()
-        self._seek_to(target)
+        self._seek_to_title(target)
         self._toast_deadline = time.monotonic() + QUICK_SEEK_TOAST_AFTER_S
         return True
 
@@ -4716,7 +4824,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         position = self._position_ms()
         if not self._chapters:
             step = self._scrub_step_ms()
-            self._seek_to(position + (step if forward else -step))
+            self._seek_to_title(self._title_position_ms() + (step if forward else -step))
             self.setProperty("player_seek_toast", "forward" if forward else "back")
             self._toast_deadline = time.monotonic() + SEEK_TOAST_S
             return
@@ -4912,9 +5020,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         in spirit -- a single press still moves a small, predictable amount.
         """
         step = self._seek_step_ms(forward)
-        base = self._scrub_ms if self._scrub_ms is not None else self._position_ms()
+        base = self._scrub_ms if self._scrub_ms is not None else self._title_position_ms()
         self._scrub_ms = max(0, min(base + (step if forward else -step),
-                                    self._duration_ms or base))
+                                    self._title_duration_ms() or base))
         self.setProperty("player_scrubbing", "1")
         self.anchor_chrome()
         self.refresh_progress()
@@ -4925,7 +5033,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._reset_seek_ladder()
         if self._scrub_ms is None:
             return False
-        self._seek_to(self._scrub_ms)
+        self._seek_to_title(self._scrub_ms)
         self._scrub_ms = None
         self.setProperty("player_scrubbing", "")
         self.refresh_progress()
@@ -5274,6 +5382,9 @@ class PlayerWindow(kodigui.ControlledDialog):
             return
         if self._next_up is None or self._next_up_dismissed or not self._duration_ms:
             return
+        # A split title's next episode waits for its last part.
+        if not self._on_last_part():
+            return
         # `none` means the rail never appears, so the reveal is not even
         # evaluated -- and because nothing opens, nothing auto-advances.
         if self._auto_play_next_mode() == AUTO_PLAY_NEXT_NONE:
@@ -5363,8 +5474,9 @@ class PlayerWindow(kodigui.ControlledDialog):
             self._duration_ms = self._resolve_duration_ms()
             if not self._duration_ms:
                 return
-        pos_ms = self._scrub_ms if self._scrub_ms is not None else self._position_ms()
-        pct = max(0.0, min(1.0, pos_ms / self._duration_ms))
+        pos_ms = self._scrub_ms if self._scrub_ms is not None else self._title_position_ms()
+        title_ms = self._title_duration_ms() or self._duration_ms
+        pct = max(0.0, min(1.0, pos_ms / title_ms))
         # The fill is an ordinary image resized from here, not a Kodi
         # progress control -- see the XML's own note on why. Its width never
         # drops below the capsule's own height: a 9-patch narrower than its
@@ -5375,7 +5487,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         self.setProperty("player_scrub_time", _format_time(pos_ms))
         self.setProperty("player_elapsed", _format_time(pos_ms))
         self.setProperty("player_remaining",
-                         "-" + _format_time(max(0, self._duration_ms - pos_ms)))
+                         "-" + _format_time(max(0, title_ms - pos_ms)))
         # 8.2's buffered range. Player.ProgressCache is how far into the
         # FILE the cache reaches as a percent, so it is an absolute
         # position on the track, not an amount ahead of the head.
@@ -5403,7 +5515,8 @@ class PlayerWindow(kodigui.ControlledDialog):
                     self.getControl(cid).setPosition(bubble_x, _PREVIEW_TILE_Y)
                 except RuntimeError as exc:
                     log.debug(f"player: preview control {cid} not placeable: {exc!r}")
-            self._refresh_preview(pos_ms)
+            # The preview sheets are the playing part's own.
+            self._refresh_preview(pos_ms - self._part_start_ms())
             has_tile = bool(self.getProperty("player_preview_ready"))
             if has_tile:
                 try:
@@ -6498,6 +6611,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # played through the plain directory route would have this stream's
         # offset added to its positions.
         monitor.publish_time_offset(0)
+        monitor.publish_progress_cap(None, None)
         # LET GO OF THE PLAYER. An xbmc.Player subclass keeps receiving
         # callbacks for as long as it is alive -- Kodi does not know or care
         # that the window that made it has closed. Dropping our reference is

@@ -48,6 +48,9 @@ check("dying at the very start is premature", ended_prematurely(0, 2_780_832))
 
 # ---- onPlayBackEnded routing ----------------------------------------------
 class RecordingWindow:
+    def advance_part(self): return False
+    def finish_parts(self, position_ms=None): pass
+    def _position_ms(self): return 0
     def __init__(self, *, premature, restarting=False):
         self._premature, self._restarting = premature, restarting
         self.failed_with = None

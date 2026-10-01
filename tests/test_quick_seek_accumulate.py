@@ -24,6 +24,11 @@ def check(name, ok, detail=""):
 
 class Fake:
     """Only what quick_seek / commit / cancel touch."""
+    _parts = []
+    _part_start_ms = P.PlayerWindow._part_start_ms
+    _title_position_ms = P.PlayerWindow._title_position_ms
+    _title_duration_ms = P.PlayerWindow._title_duration_ms
+    _seek_to_title = P.PlayerWindow._seek_to_title
     def __init__(self, position=60_000, duration=600_000, step=10_000):
         self._pos, self._duration_ms, self._step = position, duration, step
         self._quick_seek_ms = None

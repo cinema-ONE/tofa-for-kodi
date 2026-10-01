@@ -15,6 +15,7 @@ Run:  python3 test_subtitle_contract_per_file.py
 import copy
 
 import kodi_stubs  # noqa: F401  -- installs the Kodi stubs
+import resources.lib.windows.player as P_  # noqa: E402
 from resources.lib import http, playback, tracks
 from resources.lib.profile import CapabilityProfile
 from resources.lib.windows import detail as detail_mod, player as player_mod, playoptions
@@ -108,6 +109,8 @@ class FakeDetail:
     _play = DetailWindow._play
     _play_file = DetailWindow._play_file
     _available_files = DetailWindow._available_files
+    _launch_point = DetailWindow._launch_point
+    _episode_files = DetailWindow._episode_files
 
     def __init__(self, file_tracks, client):
         f = {"id": "f1", "available": True}
@@ -188,6 +191,10 @@ class UiPlayer:
 
 
 class FakePlayer:
+    _parts = []
+    _part_idx = 0
+    _publish_part_cap = P_.PlayerWindow._publish_part_cap
+    _on_last_part = P_.PlayerWindow._on_last_part
     STATE_OPENING = PlayerWindow.STATE_OPENING
     _start_playback = PlayerWindow._start_playback
     _add_contract_fields = PlayerWindow._add_contract_fields

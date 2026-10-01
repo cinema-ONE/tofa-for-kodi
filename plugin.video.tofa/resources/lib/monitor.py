@@ -137,6 +137,29 @@ def _time_offset_ms() -> int:
         return 0
 
 
+#: The furthest a part that is not the last may be reported, published by
+#: PlayerWindow while one plays. See publish_progress_cap and parts.py.
+PROGRESS_CAP_PROPERTY = "plugin.video.tofa.progress_cap"
+
+
+def publish_progress_cap(file_id: Optional[str], cap_ms: Optional[int]) -> None:
+    """Hold this file's progress under `cap_ms` and never report it ended:
+    finishing one part of a split title finishes the whole title."""
+    win = xbmcgui.Window(10000)
+    if file_id and cap_ms is not None:
+        win.setProperty(PROGRESS_CAP_PROPERTY, json.dumps({"file_id": file_id, "cap_ms": int(cap_ms)}))
+    else:
+        win.clearProperty(PROGRESS_CAP_PROPERTY)
+
+
+def _progress_cap_ms(file_id: Optional[str]) -> Optional[int]:
+    try:
+        cap = json.loads(xbmcgui.Window(10000).getProperty(PROGRESS_CAP_PROPERTY) or "{}")
+    except ValueError:
+        return None
+    return int(cap["cap_ms"]) if file_id and cap.get("file_id") == file_id else None
+
+
 def _pending_file_id() -> Optional[str]:
     """The file a handoff has been stashed for but not yet adopted, if any.
 
@@ -233,6 +256,9 @@ class TofaPlayer(xbmc.Player):
         if not client:
             return
         position_ms = self._position_ms()
+        cap = _progress_cap_ms(self._session["file_id"])
+        if cap is not None:
+            position_ms, ended = min(position_ms, cap), False
         # Independent calls: one failing (e.g. 410 on the session endpoint)
         # must not skip the other -- only update_progress persists resume.
         try:
@@ -441,7 +467,7 @@ class TofaPlayer(xbmc.Player):
         # completion from the last heartbeat position.
         if self._session:
             client = self._client()
-            if client:
+            if client and _progress_cap_ms(self._session["file_id"]) is None:
                 try:
                     client.update_watched(self._session["file_id"], True)
                 except http.ApiError as exc:

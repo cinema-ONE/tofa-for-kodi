@@ -14,6 +14,7 @@ import os
 import re
 
 import kodi_stubs  # noqa: F401  -- installs the Kodi stubs
+import resources.lib.windows.player as P_  # noqa: E402
 from resources.lib import http, playback
 from resources.lib.windows import player as player_mod, playoptions
 from resources.lib.windows.player import PlayerWindow
@@ -127,6 +128,10 @@ class TierClient:
 
 
 class Starter:
+    _parts = []
+    _part_idx = 0
+    _publish_part_cap = P_.PlayerWindow._publish_part_cap
+    _on_last_part = P_.PlayerWindow._on_last_part
     _start_playback = PlayerWindow._start_playback
     _lower_quality = PlayerWindow._lower_quality
 
