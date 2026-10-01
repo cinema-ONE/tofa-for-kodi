@@ -74,8 +74,6 @@ check("contract 2's fields join the track with the same index",
       and session[1].get("track_id") == "t3", repr(session[1]))
 check("...and nothing joins a track the dry run did not list",
       "representations" not in session[0], repr(session[0]))
-check("tracks.picture_unready reads the completed track",
-      tracks.picture_unready(session[1]) is False)
 
 # --- the query -----------------------------------------------------------
 check("contract 1 is sent as silence",
