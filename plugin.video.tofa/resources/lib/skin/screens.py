@@ -150,6 +150,14 @@ def render_main() -> str:
         label_prefix="", label_property="genre_label",
     )
 
+    # View: first in the row on a library, naming the view on screen (the
+    # library's own kind, or Folders); MainWindow shifts Sort/Filter/Genre
+    # one slot right to make room, and hides them in the folder view.
+    folders_item, folders_focused = fragments.browse_pill(
+        6130, icon="$INFO[ListItem.Property(view_glyph)]",
+        label_prefix="", label_property="view_label",
+    )
+
     alpha_item, alpha_focused = fragments.alpha_rail_pill(6220)
 
     (top_result_item, top_result_focused,
@@ -193,12 +201,22 @@ def render_main() -> str:
     # Browse's "back to all collections" pill. Only drawn while a collection
     # is open; the real app keeps the viewer inside Browse and offers this
     # rather than a separate screen.
+    # The folder view's two states with nothing to show; words set by
+    # MainWindow._browse_load_folder_grid.
+    folder_state = fragments.empty_state(
+        visible="!String.IsEmpty(Window.Property(browse_folder_state))",
+        glyph=f"&#x{icon_glyphs.FOLDER:04X};",
+        title="$INFO[Window.Property(browse_folder_title)]",
+        message="$INFO[Window.Property(browse_folder_message)]",
+        posx=440, width=1432, indent="            ",
+    )
     collection_back = fragments.glass_pill(
         # height 58, not an invented 56: glass_pill() builds its texture
         # name from the height, and capsule-h56.png does not exist, so the
         # pill rendered as bare text with no glass behind it.
         6260, group_id=6261, x=1526, width=346, height=64, ondown=6200, onleft=6100,
-        visible="!String.IsEmpty(Window.Property(browse_heading))",
+        visible=("!String.IsEmpty(Window.Property(browse_heading))"
+                 " + String.IsEmpty(Window.Property(browse_folders))"),
         label_xml=fragments.action_pill_content(
             346, "All Collections", "&#xE06E;", height=64),
     )
@@ -465,6 +483,7 @@ def render_main() -> str:
             caption_property="settings_qr_caption",
         ),
         collection_back=collection_back,
+        folder_state=folder_state,
         collection_item=collection_item,
         collection_focused=collection_focused,
         **T.template_kwargs(),
@@ -486,6 +505,8 @@ def render_main() -> str:
         # the Filter dialog, and the template stopped naming it then. The
         # fragment was still being built and passed for nothing.
         genre_item=genre_item,
+        folders_item=folders_item,
+        folders_focused=folders_focused,
         genre_focused=genre_focused,
         alpha_item=alpha_item,
         alpha_focused=alpha_focused,

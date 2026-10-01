@@ -472,6 +472,8 @@
 {collection_back}
             </control>
 
+{folder_state}
+
             <!-- Sort/Filter/Quality/Genre: 4 evenly-spaced wide buttons
                  spanning the full row width, each showing its current
                  value via a *_label ListItem property kept in sync by
@@ -535,6 +537,26 @@
 {genre_item}
 
 {genre_focused}
+            </control>
+
+            <!-- View: on library sources only, always the first slot. main.py
+                 sets every toolbar pill's x and left/right at runtime. -->
+            <control type="list" id="6130">
+                <visible>!String.IsEmpty(Window.Property(browse_folders_offered))</visible>
+                <posx>440</posx>
+                <posy>190</posy>
+                <width>346</width>
+                <height>62</height>
+                <onup>3000</onup>
+                <onleft>6100</onleft>
+                <onright>6130</onright>
+                <ondown>6200</ondown>
+                <orientation>horizontal</orientation>
+                <itemwidth>346</itemwidth>
+                <itemheight>62</itemheight>
+{folders_item}
+
+{folders_focused}
             </control>
 
             <!-- Main 5-column poster grid. -->

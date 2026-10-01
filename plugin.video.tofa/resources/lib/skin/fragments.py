@@ -486,6 +486,7 @@ def poster_placeholder(zoom_anim: str = "") -> str:
                         <control type="group">
                             <visible>String.IsEmpty(ListItem.Art(poster))</visible>
                             <control type="label">
+                                <visible>String.IsEmpty(ListItem.Property(is_folder))</visible>
                                 <posx>0</posx>
                                 <posy>{T.POSTER_PLACEHOLDER_ICON_Y}</posy>
                                 <width>{T.POSTER_W}</width>
@@ -495,6 +496,18 @@ def poster_placeholder(zoom_anim: str = "") -> str:
                                 <font>{T.FONT_ICON_56}</font>
                                 <textcolor>{T.POSTER_PLACEHOLDER_INK}</textcolor>
                                 <label>&#x{icon_glyphs.FILM:04X};</label>{zoom_anim}
+                            </control>
+                            <control type="label">
+                                <visible>!String.IsEmpty(ListItem.Property(is_folder))</visible>
+                                <posx>0</posx>
+                                <posy>{T.POSTER_PLACEHOLDER_ICON_Y}</posy>
+                                <width>{T.POSTER_W}</width>
+                                <height>{T.POSTER_PLACEHOLDER_ICON_H}</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_ICON_56}</font>
+                                <textcolor>{T.POSTER_PLACEHOLDER_INK}</textcolor>
+                                <label>&#x{icon_glyphs.FOLDER:04X};</label>{zoom_anim}
                             </control>
                             <control type="label">
                                 <posx>{T.POSTER_PLACEHOLDER_PAD}</posx>

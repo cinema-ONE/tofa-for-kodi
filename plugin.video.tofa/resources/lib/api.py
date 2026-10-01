@@ -609,6 +609,16 @@ class MediaServerClient:
         `"media.watched_played"` being present here)."""
         return self._get("/api/v1/system/info")
 
+    def library_folders(self, library_id: str, path: str = "", page: int = 1,
+                        per_page: int = 40) -> Any:
+        """One folder level of a library: `breadcrumbs`, `folders` (name,
+        path, item_count -- counted recursively) and `items`, folders first
+        across the pages. Paths are relative to the library root, "" the root."""
+        params = {"page": page, "per_page": per_page}
+        if path:
+            params["path"] = path
+        return self._get(f"/api/v1/libraries/{library_id}/folders", params=params)
+
     def libraries(self) -> Any:
         """Each entry has `id`/`name`/`media_type` (`movie`/`tv`/`other`,
         same enum as `/media`'s filter) -- a library's own type says which
