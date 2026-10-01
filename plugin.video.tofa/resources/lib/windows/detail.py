@@ -26,7 +26,7 @@ from . import cardoptions, cards, focusmemory, kodigui, person, playoptions, pro
 from .. import api, artcache, auth, badges as fmt_badges, capabilities, http, log
 from .. import playbackprefs
 from .. import episodes as episodes_fmt
-from .. import playback, prefs, progress, regional, textmetrics, toast, tracks
+from .. import parts, playback, prefs, progress, regional, textmetrics, toast, tracks
 from ..api import MediaServerClient
 # Module level, not the local import a few methods use: PILL_LAYOUT below is
 # evaluated when the class is defined. skin.fragments pulls in only
@@ -1065,6 +1065,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 position_ms, completed = progress.position_of(
                     self._nextup_progress.get(self.play_file_id))
                 self.play_duration_ms = f.get("duration_ms") or 0
+                group = parts.set_of(self._episode_files(f), self.play_file_id)
+                if group:
+                    # A split episode is one title: part 1 names it, and its
+                    # runtime and resume point span every part.
+                    self.play_file_id = group[0].get("id")
+                    self.play_duration_ms = parts.duration_ms(group)
+                    position_ms, completed = self._set_progress(client, group)
                 # Same rule as movies: Rewatch means "restart the episode the
                 # primary button would resume", so it needs a resume point.
                 self._apply_primary_progress(position_ms, completed)
@@ -1105,6 +1112,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         position_ms, completed = self._progress(client, self.play_file_id, chosen)
         self.play_duration_ms = chosen.get("duration_ms") or 0
+        group = parts.set_of(self._episode_files(chosen), self.play_file_id)
+        if group:
+            self.play_file_id = group[0].get("id")
+            self.play_duration_ms = parts.duration_ms(group)
+            position_ms, completed = self._set_progress(client, group)
 
         # "Remove from Continue Watching" leaves the position on the server,
         # so a dismissed title would otherwise keep offering Resume here long
@@ -1958,14 +1970,22 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not f:
             return
         client = self._get_client()
-        position_ms, completed = self._progress(client, f.get("id"), f) if client else (0, False)
+        group = parts.set_of(self._episode_files(f), f.get("id"))
+        if group and client:
+            position_ms, completed = self._set_progress(client, group)
+        else:
+            position_ms, completed = (self._progress(client, f.get("id"), f) if client
+                                      else (0, False))
         ep = item.dataSource.get("episode") or {}
         from .player import PlayerWindow
-        self._renew_profile_token_for((f.get("duration_ms") or 0) - (position_ms or 0))
+        self._renew_profile_token_for((parts.duration_ms(group) or f.get("duration_ms") or 0)
+                                      - (position_ms or 0))
+        file_id, resume_ms = self._launch_point(
+            f, position_ms if position_ms and not completed else 0)
         PlayerWindow.open(
-            file_id=f.get("id"),
+            file_id=file_id,
             media_id=self.media_id,
-            resume_ms=(position_ms if position_ms and not completed else None),
+            resume_ms=resume_ms or None,
             title=ep.get("title") or self.media.get("title"),
             subtitle_tracks=f.get("subtitle_tracks"),
             # Hand over the art we already resolved, so 8.6's opening
@@ -3063,12 +3083,19 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.play_file_id = f.get("id")
         self.play_duration_ms = f.get("duration_ms") or 0
         position_ms, completed = progress.position_of(progress_map.get(f.get("id")))
+        group = parts.set_of(self._episode_files(f), f.get("id"))
+        client = self._get_client()
+        if group and client:
+            self.play_duration_ms = parts.duration_ms(group)
+            position_ms, completed = self._set_progress(client, group)
         from .player import PlayerWindow
         self._renew_profile_token_for(self.play_duration_ms - (position_ms or 0))
+        file_id, resume_ms = self._launch_point(
+            f, position_ms if position_ms and not completed else 0)
         PlayerWindow.open(
-            file_id=f.get("id"),
+            file_id=file_id,
             media_id=self.media_id,
-            resume_ms=(position_ms if position_ms and not completed else None),
+            resume_ms=resume_ms or None,
             title=episode.get("title") or self.media.get("title"),
             subtitle_tracks=f.get("subtitle_tracks"),
             # Hand over the art we already resolved, so 8.6's opening
@@ -3198,6 +3225,33 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         return False
 
+    def _episode_files(self, f: dict) -> list:
+        """The available files of the episode (or film) `f` belongs to."""
+        files = [x for x in (self.media.get("files") or []) if x.get("available")]
+        if (self.media.get("media_type") or "") != "tv":
+            return files
+        return [x for x in files if x.get("episode_id") == f.get("episode_id")]
+
+    def _set_progress(self, client: MediaServerClient, group: list) -> tuple:
+        """(position on the title, finished) for a split title, from every
+        part's progress in one request."""
+        try:
+            items = (client.media_progress_batch([f.get("id") for f in group]) or {}).get("items")
+        except http.ApiError:
+            items = None
+        recs = {r.get("media_file_id"): r for r in items or []}
+        index, local = parts.resume_point(group, recs)
+        finished = bool((recs.get(group[-1].get("id")) or {}).get("completed"))
+        return (0 if finished else parts.start_ms(group, index) + local), finished
+
+    def _launch_point(self, f: dict, title_ms: int) -> tuple:
+        """(file to start, position in it) for `f`, or its set at title_ms."""
+        group = parts.set_of(self._episode_files(f), f.get("id"))
+        if not group:
+            return f.get("id"), title_ms
+        index, local = parts.locate(group, title_ms or 0)
+        return group[index].get("id"), local
+
     def _available_files(self) -> list:
         """Every file the Edition pill may offer -- which on a SHOW is not
         every file the show has.
@@ -3297,14 +3351,14 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         the minority -- 7.7 gates its whole file-picker surface the same way,
         showing the edition eyebrow headers only where a second edition
         exists."""
-        available = self._available_files()
-        if len(available) < 2:
+        versions = parts.sets(self._available_files())
+        if len(versions) < 2:
             self.setProperty("show_version", "")
             self.setProperty("version_label", "")
             return
         self.setProperty("show_version", "1")
-        current = next((f for f in available if f.get("id") == self.play_file_id),
-                       available[0])
+        current = next((g[0] for g in versions
+                        if any(f.get("id") == self.play_file_id for f in g)), versions[0][0])
         self.setProperty("version_label", self._version_pill_label(current))
 
     @classmethod
@@ -3345,15 +3399,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         because Browse's Sort/Filter buttons are pixel-matched to the real
         app; this pill is not.
         """
-        available = self._available_files()
-        if len(available) < 2:
+        versions = parts.sets(self._available_files())
+        if len(versions) < 2:
             return
         rows = []
-        for f in available:
-            label, detail = self._version_row_parts(f, full=True)
-            rows.append({"label": label, "detail": detail})
-        selected = next((i for i, f in enumerate(available)
-                         if f.get("id") == self.play_file_id), 0)
+        for group in versions:
+            label, detail = self._version_row_parts(group[0], full=True)
+            rows.append({"label": label, "detail": _dot_join(detail, parts.label(group) or "")})
+        selected = next((i for i, g in enumerate(versions)
+                         if any(f.get("id") == self.play_file_id for f in g)), 0)
         picked = playoptions.show_editions(
             title="Edition",
             subtitle=self.media.get("title") or "",
@@ -3362,7 +3416,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         )
         if picked is None:
             return
-        self._select_file(available[picked])
+        self._select_file(versions[picked][0])
 
     def _select_file(self, chosen: dict):
         """Adopt a file as the one Play will use, and re-render everything
@@ -3373,7 +3427,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.play_file_id = chosen.get("id")
         self.play_selection = playoptions.Selection()
         self.play_duration_ms = chosen.get("duration_ms") or 0
-        position_ms, completed = self._progress(self._get_client(), self.play_file_id, chosen)
+        group = parts.set_of(self._episode_files(chosen), self.play_file_id)
+        if group:
+            self.play_duration_ms = parts.duration_ms(group)
+            position_ms, completed = self._set_progress(self._get_client(), group)
+        else:
+            position_ms, completed = self._progress(self._get_client(), self.play_file_id, chosen)
         self._apply_primary_progress(position_ms, completed)
         self._render_format_badges(chosen)
         self._render_version_pill()
@@ -3677,6 +3736,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         client = self._get_client() if self.play_file_id else None
         if not client:
             return self.resume_ms
+        chosen = self._play_file() or {}
+        group = parts.set_of(self._episode_files(chosen), self.play_file_id) if chosen else []
+        if group:
+            position_ms, finished = self._set_progress(client, group)
+            return 0 if finished else position_ms
         return progress.resume_position_ms(
             client, self.play_file_id, fallback=self.resume_ms) or 0
 
@@ -3695,9 +3759,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         from .player import PlayerWindow
 
         self._renew_profile_token_for((self.play_duration_ms or 0) - (resume_ms or 0))
+        file_id, resume_ms = self._launch_point(self._play_file() or {"id": self.play_file_id},
+                                                resume_ms or 0)
 
         PlayerWindow.open(
-            file_id=self.play_file_id,
+            file_id=file_id,
             media_id=self.media_id,
             resume_ms=resume_ms or None,
             title=self.media.get("title"),
