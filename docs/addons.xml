@@ -1,5 +1,83 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.38" provider-name="cinemaONE">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="script.module.requests" version="2.31.0"/>
+    <!-- The .ttf files our screens name. A dependency, not bundled, because
+         Kodi resolves a font FILE against every enabled kodi.resource.font
+         add-on but never against a plugin's own directory. See
+         resources/lib/fontinstall.py.
+
+         BOTH attributes, and minversion is the load-bearing one. Kodi keeps
+         an already-installed dependency unless it fails
+         CAddonInfo::MeetsVersion(versionMin, version), which is
+             !(versionMin > installed.version || version < installed.minversion)
+         so `version` is an ABI statement about the dependency, and
+         `minversion` is the only floor on it. With minversion absent, a user
+         sitting on an older resource.font.tofa is "good enough" forever, and
+         a newly added font file would reach them only whenever the repo's
+         own update timer happened to notice; until then this add-on names a
+         file that is not there, which draws as tofu.
+
+         SO: adding or changing a font means bumping resource.font.tofa's
+         version AND this minversion to match. tests/test_font_resource_addon.py
+         fails if they drift. -->
+    <import addon="resource.font.tofa" minversion="1.0.0" version="1.0.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="addon.py">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.python.script" library="launch_home.py">
+    <provides>executable</provides>
+  </extension>
+  <extension point="xbmc.service" library="service.py" start="startup"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
+    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
+
+Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
+
+Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
+
+Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
+    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
+    <platform>all</platform>
+    <license>GPL-2.0-only</license>
+    <website>https://tofa.tv</website>
+    <news>
+      - Needs tofa media server 0.11.0 or newer. An older server still works,
+        but you are told once per session that some screens may be incomplete.
+      - Search now finds collections of every kind: your own, film series like
+        James Bond, and tofa's curated sets. The best match appears as a row of
+        the titles you have, just below the top result.
+      - More Like This no longer waits and asks again when a title has nothing
+        similar; the server now says so straight away.
+      - Browse a library by its folders: a View button at the start of the row
+        switches between the library's own view and Folders. Libraries of home
+        videos open in Folders. Back goes up a level, and selecting the library
+        again returns to its top.
+      - A film or episode split across several files now plays as one: one
+        timeline over all its parts, and no picking between "versions" that are
+        really part 1 and part 2.
+      - Cast and crew photos now load from your own server.
+      - Dolby Vision Profile 5 videos are converted on devices without Dolby
+        Vision, instead of playing in the wrong colours.
+      - Picture subtitles on a converted stream can be chosen again before the
+        server has prepared them; they appear once it has the whole track.
+    </news>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
+      <screenshot>resources/screenshots/01-home.jpg</screenshot>
+      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
+      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
+      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
+      <screenshot>resources/screenshots/05-player.jpg</screenshot>
+      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
+    </assets>
+  <size>8605933</size><path>plugin.video.tofa/plugin.video.tofa-0.9.38.zip</path></extension>
+</addon>
 <addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.37" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
@@ -130,88 +208,6 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
   <size>8598293</size><path>plugin.video.tofa/plugin.video.tofa-0.9.36.zip</path></extension>
-</addon>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="0.9.35" provider-name="cinemaONE">
-  <requires>
-    <import addon="xbmc.python" version="3.0.0"/>
-    <import addon="script.module.requests" version="2.31.0"/>
-    <!-- The .ttf files our screens name. A dependency, not bundled, because
-         Kodi resolves a font FILE against every enabled kodi.resource.font
-         add-on but never against a plugin's own directory. See
-         resources/lib/fontinstall.py.
-
-         BOTH attributes, and minversion is the load-bearing one. Kodi keeps
-         an already-installed dependency unless it fails
-         CAddonInfo::MeetsVersion(versionMin, version), which is
-             !(versionMin > installed.version || version < installed.minversion)
-         so `version` is an ABI statement about the dependency, and
-         `minversion` is the only floor on it. With minversion absent, a user
-         sitting on an older resource.font.tofa is "good enough" forever, and
-         a newly added font file would reach them only whenever the repo's
-         own update timer happened to notice; until then this add-on names a
-         file that is not there, which draws as tofu.
-
-         SO: adding or changing a font means bumping resource.font.tofa's
-         version AND this minversion to match. tests/test_font_resource_addon.py
-         fails if they drift. -->
-    <import addon="resource.font.tofa" minversion="1.0.0" version="1.0.0"/>
-  </requires>
-  <extension point="xbmc.python.pluginsource" library="addon.py">
-    <provides>video</provides>
-  </extension>
-  <extension point="xbmc.python.script" library="launch_home.py">
-    <provides>executable</provides>
-  </extension>
-  <extension point="xbmc.service" library="service.py" start="startup"/>
-  <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
-    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
-
-Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
-
-Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
-
-Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
-    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
-    <platform>all</platform>
-    <license>GPL-2.0-only</license>
-    <website>https://tofa.tv</website>
-    <news>
-      - Opening Options on a title's page, and starting playback, is quick again
-        whenever the file plays directly.
-      - When a title cannot start because the server is busy or cannot be reached,
-        the message now offers Try again, and when the server cannot convert it
-        fast enough, Lower quality.
-      - Choosing a different subtitle while your server converts a video now shows
-        the one you picked, instead of switching back to one chosen earlier.
-      - A film that belongs to a series, the James Bond films for instance, now
-        lists the rest of that series first under More Like This, including the
-        ones not in your library yet.
-      - The Who's watching? screen is closer to the other tofa apps: a larger lock
-        on protected profiles, a gentle lift and glow on the one you are about to
-        choose, a ring on the profile you are using, and a background tinted in
-        the chosen profile's colour.
-      - A season with only some of its episodes in your library now counts what
-        you have watched against the episodes you can play.
-      - The language lists in Settings now offer the same 42 languages as the
-        other tofa apps, and each Settings page remembers where you were on it.
-      - Skipping forward or back shows the time you will land on, and the bubble
-        leaves as soon as the jump is made.
-      - Smaller touches to match the other tofa apps: quieter format labels on a
-        title's page, the version at the foot of Settings, your server's name
-        without a library count, and Sign Out's confirmation starting on Cancel.
-    </news>
-    <assets>
-      <icon>icon.png</icon>
-      <fanart>fanart.jpg</fanart>
-      <screenshot>resources/screenshots/01-home.jpg</screenshot>
-      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
-      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
-      <screenshot>resources/screenshots/04-cast.jpg</screenshot>
-      <screenshot>resources/screenshots/05-player.jpg</screenshot>
-      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
-    </assets>
-  <size>8596124</size><path>plugin.video.tofa/plugin.video.tofa-0.9.35.zip</path></extension>
 </addon>
 <addon id="resource.font.tofa" name="tofa fonts" version="1.0.0" provider-name="cinemaONE">
   <requires>
