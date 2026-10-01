@@ -4088,9 +4088,9 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self._active_subtitle_index))
 
     def _offered_subtitle_tracks(self) -> list:
-        """The server's subtitle tracks, less pictures it would have to prepare first."""
-        whole = playback.is_whole_file(self._nego or {})
-        return [t for t in self._subtitle_tracks if tracks.subtitle_offered(t, whole)]
+        """The server's subtitle tracks. A picture track not prepared yet is
+        offered too: it loads once ready (server 0.11.0 never serves it cut)."""
+        return list(self._subtitle_tracks)
 
     def _active_subtitle_track(self):
         """The server track the viewer currently has ON, or None.
@@ -4154,10 +4154,6 @@ class PlayerWindow(kodigui.ControlledDialog):
                 self._active_subtitle_index = server_index
                 return self._switch_subtitle(slot)
         if tracks.delivered_format(track or {}) == "PGS":
-            if tracks.picture_unready(track):
-                log.info(f"player: picture subtitle {server_index} is not ready on the server; "
-                         "not asking for it")
-                return False
             return self._load_picture_subtitle(server_index)
         url = self._external_subtitle_url(server_index)
         if not url:
