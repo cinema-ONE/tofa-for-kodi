@@ -305,22 +305,25 @@ def _search_meta_line(item: dict) -> str:
     return _dot_join(*parts)
 
 
-def match_custom_collection(collections: list, query: str) -> dict | None:
-    """The custom collection whose name holds every word of `query`, or None.
+def search_collection_title(name: str) -> str:
+    """The row's header; a franchise named "... Collection" says so already."""
+    return name if name.casefold().endswith("collection") else u"Collection: {0}".format(name)
 
-    Case-insensitive; a name that starts with the query wins, then the
-    shorter name. Needs two characters, like a useful search does."""
-    q = " ".join((query or "").casefold().split())
-    if len(q.replace(" ", "")) < 2:
-        return None
-    words = q.split()
-    hits = [c for c in collections or []
-            if isinstance(c, dict)
-            and all(w in (c.get("name") or "").casefold() for w in words)]
-    if not hits:
-        return None
-    return min(hits, key=lambda c: (not (c.get("name") or "").casefold().startswith(q),
-                                    len(c.get("name") or "")))
+
+def search_collection_members(kind: str, items: list) -> list:
+    """A searched collection's members as library cards, in its own order.
+
+    A custom set holds library titles already; a franchise or curated one
+    lists TMDB titles, of which only those in the library are kept."""
+    if kind == "custom":
+        members = [dict(m) for m in items or []]
+        # MediaSummary carries release_date, not the year the card caption reads.
+        for m in members:
+            if m.get("year") is None and str(m.get("release_date") or "")[:4].isdigit():
+                m["year"] = int(str(m["release_date"])[:4])
+        return members
+    return [dict(m, id=m["local_media_id"], media_type=m.get("type"))
+            for m in items or [] if m.get("in_library") and m.get("local_media_id")]
 
 
 def _search_ratings_line(item: dict) -> str:
@@ -4819,13 +4822,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         raw_movies, actors, discover = [], [], []
         if client:
             try:
-                resp = client.search(q, movie_limit=40, actor_limit=12, discover_limit=12) or {}
+                resp = client.search(q, movie_limit=40, actor_limit=12, discover_limit=12,
+                                     collection_limit=1) or {}
                 raw_movies = resp.get("movies") or []
                 actors = resp.get("actors") or []
                 discover = resp.get("discover") or []
+                found = resp.get("collections") or []
             except http.ApiError as exc:
                 kodigui.ERROR("main.py: search failed: {0}".format(exc))
-        collection, members = self._search_custom_collection(client, q)
+                found = []
+        collection, members = self._search_collection(client, found[0] if found else {})
 
         # The #1 match becomes Top Result, so it is held OUT of the shelves
         # rather than listed a second time a few hundred pixels below itself.
@@ -4854,7 +4860,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._search_fill_top_result(top_item)
         self._search_fill_shelf(self.search_collection_list, members)
         self.setProperty("search_collection_title",
-                         u"Collection: {0}".format(collection.get("name") or "")
+                         search_collection_title(collection.get("name") or "")
                          if members else "")
         self.setProperty("search_collection_count", str(len(members)))
         self._search_fill_shelf(self.movies_list, movies)
@@ -4884,40 +4890,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "1" if (top_item or members or movies or shows or actors or discover) else "0")
         self._search_wire_right_target()
 
-    #: How long the list of custom collections is trusted while typing.
-    CUSTOM_COLLECTIONS_TTL_S = 60.0
+    def _search_collection(self, client, collection: dict) -> tuple[dict, list]:
+        """The server's best-matching collection and the members to show.
 
-    def _search_custom_collection(self, client, q: str) -> tuple[dict, list]:
-        """The best custom collection for `q`, and the members this viewer
-        may see, in the collection's own order. ({}, []) when none matches.
-
-        The server's search returns no collections (vault #242), so a set
-        someone made on purpose could only be found by scrolling Browse."""
-        if not client:
-            return {}, []
-        cached = getattr(self, "_custom_collections_cache", None)
-        now = time.monotonic()
-        if cached is None or now - cached[0] > self.CUSTOM_COLLECTIONS_TTL_S:
-            try:
-                found = (client.custom_collections() or {}).get("collections") or []
-            except http.ApiError as exc:
-                kodigui.ERROR("main.py: custom collections failed: {0}".format(exc))
-                found = []
-            cached = self._custom_collections_cache = (now, found)
-        best = match_custom_collection(cached[1], q)
-        if not best or not best.get("id"):
+        ({}, []) when there is none, or it holds nothing this viewer has."""
+        cid, kind = str(collection.get("id") or ""), collection.get("kind")
+        if not client or not cid:
             return {}, []
         try:
-            resp = client.custom_collection(str(best["id"])) or {}
+            resp = (client.custom_collection(cid) if kind == "custom"
+                    else client.collection(cid)) or {}
         except http.ApiError as exc:
-            kodigui.ERROR("main.py: collection {0} failed: {1}".format(best["id"], exc))
+            kodigui.ERROR("main.py: collection {0} failed: {1}".format(cid, exc))
             return {}, []
-        members = resp.get("items") or []
-        # MediaSummary carries release_date, not the year the card caption reads.
-        for m in members:
-            if m.get("year") is None and str(m.get("release_date") or "")[:4].isdigit():
-                m["year"] = int(str(m["release_date"])[:4])
-        return best, members
+        return collection, search_collection_members(kind, resp.get("items") or [])
 
     def _search_fill_top_result(self, item: dict | None):
         if self.top_result_list is None:
