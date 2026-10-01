@@ -403,6 +403,7 @@ def _build_video() -> dict:
     screen_w, screen_h = _parse_mode(screen)
     build = xbmc.getInfoLabel("System.BuildVersion") or ""       # "22.0-BETA2 (21.90.802) ..."
     hdr_capable = hdr_switching is not None or bool(hdr_types)
+    coreelec = any(str(e.get("id", "")).startswith("coreelec.") for e in _all_settings())
     dolby_vision = (("dolby vision" in hdr_types.lower())
                     and bool(hdr_switching) and dv_allowed and not dv_disabled)
     # "hdr10+", not "hdr10": the plain string is a PREFIX of the plus one, so
@@ -446,9 +447,12 @@ def _build_video() -> dict:
         "whitelist_wholenumber": bool(_setting("videoscreen.whitelistwholenumber")),
         # Kodi's mode search differs by build: see _kodi_mode(). CoreELEC 21
         # lacks disabledolbyvision, so look for any of its own settings.
-        "coreelec": any(str(e.get("id", "")).startswith("coreelec.")
-                        for e in _all_settings()),
+        "coreelec": coreelec,
         "kodi_major": _major(build),
+        # Profile 5 has no HDR10 base layer: only a Dolby Vision decoder shows
+        # it in true colour, which Kodi has on CoreELEC and Android alone.
+        "dv_profile5": bool(_BEST["dolby_vision"] or dolby_vision) and (
+            coreelec or xbmc.getCondVisibility("System.Platform.Android")),
     }
 
 

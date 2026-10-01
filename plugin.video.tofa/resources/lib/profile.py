@@ -66,6 +66,7 @@ _BOOL_FIELDS = (
     "client_render_embedded_vobsub_subtitles",
     "include_native_subtitle_rendition",
     "dolby_vision_supported",
+    "dolby_vision_profile_5_supported",
 )
 
 
@@ -134,6 +135,9 @@ class CapabilityProfile:
     max_bitrate: Optional[int] = None
     include_native_subtitle_rendition: Optional[bool] = None
     dolby_vision_supported: Optional[bool] = None
+    #: Server 0.11.0. False makes the server convert a Profile 5 file to SDR
+    #: instead of sending colours this box would show wrong; unset is "yes".
+    dolby_vision_profile_5_supported: Optional[bool] = None
     #: Only meaningful together. Absent, the server falls back to its older
     #: stereo AAC path -- so a forced quality tier costs you surround. Set them from the OUTPUT ROUTE via for_device(), never by
     #: hand: asking for a rendition this player cannot take would turn a
@@ -204,6 +208,14 @@ class CapabilityProfile:
             try:
                 from . import capabilities
                 kwargs.update(capabilities.audio_delivery())
+            except Exception:                               # noqa: BLE001
+                pass
+        if "dolby_vision_profile_5_supported" not in kwargs:
+            try:
+                from . import capabilities
+                caps = capabilities.video()
+                if caps.get("known") and not caps.get("dv_profile5"):
+                    kwargs["dolby_vision_profile_5_supported"] = False
             except Exception:                               # noqa: BLE001
                 pass
         return cls(**kwargs)
