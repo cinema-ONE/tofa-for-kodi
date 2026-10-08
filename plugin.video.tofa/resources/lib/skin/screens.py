@@ -449,6 +449,7 @@ def render_main() -> str:
         custom_item=custom_item,
         browse_sort_panel=fragments.browse_sort_panel(6230),
         browse_wall=fragments.browse_wall() + fragments.browse_poster_row(),
+        browse_feature=fragments.browse_feature(),
         custom_focused=custom_focused,
         **T.template_kwargs(),
         logo_block=fragments.logo_block(),

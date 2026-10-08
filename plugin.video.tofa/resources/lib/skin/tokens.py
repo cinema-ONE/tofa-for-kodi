@@ -592,6 +592,17 @@ BROWSE_ROW_PITCH = 289
 BROWSE_ROW_Y = 177
 BROWSE_ROW_COLS = 8                    # per period; the row draws two
 BROWSE_ROW_PERIOD_MS = 130000
+# Collections' backdrop: one collection featured, its name, a line, and the
+# posters of the films you have, on its backdrop darkened from the left.
+BROWSE_FEATURE_TITLE_Y = 175
+BROWSE_FEATURE_LINE_Y = 280
+BROWSE_FEATURE_POSTER_Y = 339
+BROWSE_FEATURE_POSTER_W, BROWSE_FEATURE_POSTER_H = 140, 206
+BROWSE_FEATURE_PITCH = 162
+BROWSE_FEATURE_YEAR_Y = 552
+BROWSE_FEATURE_MAX = 8
+BROWSE_FEATURE_SOLID_W = 300               # canvas, then the fade to the art
+BROWSE_FEATURE_FADE_W = 1200
 # The sort menu (app 2.0): a panel over the dimmed view, a title, then one
 # 56-tall option per 64, 23 in from the panel's sides, and a hint at its foot.
 BROWSE_SORT_X, BROWSE_SORT_Y = 651, 160
@@ -1272,6 +1283,7 @@ FONT_BROWSE_CAPTION = "tofa_font_browse_caption"
 FONT_BROWSE_SECTION = "tofa_font_settings_title"   # bold 38, as Settings
 FONT_CARD_TITLE = "tofa_font_card_title"
 FONT_CARD_META = "tofa_font_card_meta"
+FONT_FEATURE_TITLE = "tofa_font_feature_title"
 FONT_BROWSE_TITLE = "tofa_font_player_title"   # bold 45, by ink width
 FONT_BODY = "tofa_font_body"
 FONT_METADATA = "tofa_font_metadata"

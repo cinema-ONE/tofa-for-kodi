@@ -4564,6 +4564,69 @@ def browse_wall() -> str:
                 </control>"""
 
 
+def browse_feature() -> str:
+    """Collections' backdrop (app 2.0): a featured collection's name, a line
+    such as "2 films \u00b7 2000 to 2024", and the posters of the films you
+    have, over its backdrop."""
+    pw, ph, px = T.BROWSE_FEATURE_POSTER_W, T.BROWSE_FEATURE_POSTER_H, T.BROWSE_FEATURE_PITCH
+    prop = "Window.Property(browse_feature_{0}{1})".format
+    posters = "".join(f"""
+                    <control type="group">
+                        <visible>!String.IsEmpty({prop("p", i)})</visible>
+                        <posx>{T.BROWSE_LEFT + i * px}</posx>
+                        <posy>{T.BROWSE_FEATURE_POSTER_Y}</posy>
+                        <control type="image">
+                            <width>{pw}</width>
+                            <height>{ph}</height>
+                            <aspectratio scalediffuse="false">scale</aspectratio>
+                            <texture diffuse="browse-feature-mask.png" background="true">$INFO[{prop("p", i)}]</texture>
+                        </control>
+                        <control type="label">
+                            <posy>{T.BROWSE_FEATURE_YEAR_Y - T.BROWSE_FEATURE_POSTER_Y}</posy>
+                            <width>{pw}</width>
+                            <height>26</height>
+                            <font>{T.FONT_CARD_META}</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[{prop("y", i)}]</label>
+                        </control>
+                    </control>""" for i in range(T.BROWSE_FEATURE_MAX))
+    return f"""
+                <control type="group">
+                    <visible>String.IsEqual(Window.Property(browse_wall),feature)</visible>
+                    <control type="image">
+                        <width>{T.BROWSE_FEATURE_SOLID_W}</width>
+                        <height>{T.BROWSE_BACKDROP_H}</height>
+                        <colordiffuse>{T.CANVAS}</colordiffuse>
+                        <texture>white-square.png</texture>
+                    </control>
+                    <control type="image">
+                        <posx>{T.BROWSE_FEATURE_SOLID_W}</posx>
+                        <width>{T.BROWSE_FEATURE_FADE_W}</width>
+                        <height>{T.BROWSE_BACKDROP_H}</height>
+                        <colordiffuse>{T.CANVAS}</colordiffuse>
+                        <texture>fade-left.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>{T.BROWSE_LEFT}</posx>
+                        <posy>{T.BROWSE_FEATURE_TITLE_Y}</posy>
+                        <width>{T.SCREEN_W - 2 * T.BROWSE_LEFT}</width>
+                        <height>90</height>
+                        <font>{T.FONT_FEATURE_TITLE}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[Window.Property(browse_feature_title)]</label>
+                    </control>
+                    <control type="label">
+                        <posx>{T.BROWSE_LEFT}</posx>
+                        <posy>{T.BROWSE_FEATURE_LINE_Y}</posy>
+                        <width>1000</width>
+                        <height>36</height>
+                        <font>{T.FONT_BODY}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[Window.Property(browse_feature_line)]</label>
+                    </control>{posters}
+                </control>"""
+
+
 def browse_poster_row() -> str:
     """Watchlist's and History's backdrop (app 2.0): one upright row of their
     posters drifting left, its period drawn twice so the loop is seamless."""
