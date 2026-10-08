@@ -67,8 +67,8 @@ check("history in a late season alone still moves forward",
 # (1) A part-watched episode still wins over the frontier, and the MOST
 # recently touched one when several are going at once.
 part = dict(done(*[f"s{s}e{n}" for s in (1, 2) for n in range(1, 7)]))
-part["s1e3"] = {"position_ms": 500, "updated_at": "2026-01-01"}
-part["s3e2"] = {"position_ms": 900, "updated_at": "2026-06-01"}
+part["s1e3"] = {"position_ms": 500_000, "updated_at": "2026-01-01"}
+part["s3e2"] = {"position_ms": 900_000, "updated_at": "2026-06-01"}
 chosen = progress.next_up(SHOW, part)
 check("a part-watched episode still outranks the frontier",
       (chosen[0], chosen[1]) == (3, 2), label(chosen))

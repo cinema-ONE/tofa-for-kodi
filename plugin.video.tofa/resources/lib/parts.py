@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from . import progress as _progress
+
 #: The server's own finish rule, per file (measured 2026-09-21).
 FINISH_FRACTION = 0.90
 FINISH_LEFT_MS = 300_000
@@ -92,14 +94,14 @@ def resume_point(group: list, progress: dict) -> tuple:
     # A record at 0 that is not finished says nothing (a reset leaves one).
     recorded = [(str(rec.get("updated_at") or ""), i)
                 for i, rec in enumerate(progress.get(f.get("id")) or {} for f in group)
-                if rec.get("completed") or int(rec.get("position_ms") or 0) > 0]
+                if rec.get("completed") or _progress.position_of(rec)[0] > 0]
     if not recorded:
         return 0, 0
     _when, i = max(recorded)
     rec = progress[group[i].get("id")]
     if rec.get("completed"):
         return (i + 1, 0) if i + 1 < len(group) else (0, 0)
-    return i, int(rec.get("position_ms") or 0)
+    return i, _progress.position_of(rec)[0]
 
 
 def label(group: list) -> Optional[str]:

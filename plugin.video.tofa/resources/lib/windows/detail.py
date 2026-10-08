@@ -1156,9 +1156,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             prog = client.get_progress(file_id)
         except http.ApiError:
             prog = None
-        if not prog:
-            return 0, False
-        return prog.get("position_ms") or 0, bool(prog.get("completed"))
+        return progress.position_of(prog)
 
     def _is_dismissed(self, client: MediaServerClient, media_id, position_ms: int) -> bool:
         """Whether this title was removed from Continue Watching while still
