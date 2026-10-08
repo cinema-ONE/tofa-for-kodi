@@ -1923,50 +1923,12 @@
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
                     <scrolltime>{SCROLLTIME}</scrolltime>
 
-                    <!-- FOX -->
+                    <!-- THEME -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_FOX_GROUP_H}</height>
+                        <height>{SETTINGS_THEME_GROUP_H}</height>
 {settings_fox_eyebrow}
-                        <control type="image">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_FOX_CARD_H}</height>
-                            <colordiffuse>{PANEL_WASH}</colordiffuse>
-                            <texture border="20">rounded-20.png</texture>
-                        </control>
-                        <control type="textbox">
-                            <posx>{SETTINGS_FOX_CARD_PAD}</posx>
-                            <posy>{SETTINGS_FOX_BLURB_ABS_Y}</posy>
-                            <width>{SETTINGS_FOX_BLURB_W}</width>
-                            <height>{SETTINGS_FOX_BLURB_H}</height>
-                            <font>{FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                            <label>$INFO[Window.Property(settings_fox_blurb)]</label>
-                        </control>
-                        <control type="panel" id="8200">
-                            <posx>{SETTINGS_FOX_CARD_PAD}</posx>
-                            <posy>{SETTINGS_FOX_GRID_ABS_Y}</posy>
-                            <width>{SETTINGS_FOX_GRID_W}</width>
-                            <height>{SETTINGS_FOX_GRID_H}</height>
-                            <!-- The nav bar, like every other first row in
-                                 the app. Without a target here Kodi wraps a
-                                 vertical panel instead: Up cycled row 1 ->
-                                 2 -> 3 -> 1 forever and the fox grid could
-                                 never be left upward at all. -->
-                            <onup>8000</onup>
-                            <onleft>8200</onleft>
-                            <onright>8200</onright>
-                            <orientation>vertical</orientation>
-                            <itemwidth>{SETTINGS_FOX_CELL_W}</itemwidth>
-                            <itemheight>{SETTINGS_FOX_CELL_H}</itemheight>
-                            <scrolltime>{SCROLLTIME}</scrolltime>
-
-{settings_fox_item}
-
-{settings_fox_focused}
-                        </control>
+{settings_fox_row}
                     </control>
 
                     <!-- MEDIA CARDS -->

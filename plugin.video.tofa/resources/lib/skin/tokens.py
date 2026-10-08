@@ -804,42 +804,14 @@ SETTINGS_ROW_FOCUS_ALPHA = "4D"         # 30%, measured on app 2.0
 # reported the same two facts before switching existed -- keeping both put
 # the bottom at 1205, off the screen with nothing able to scroll to it.
 
-# --- 9.4's fox / accent picker, on the Appearance page ---
-# 9.4 asks for a grid of fox tiles, one for each of the 14 accents in 2's
-# list. Measured off
-# internal-docs/atv-reference/settings-appearance.png: the card runs the full
-# detail width with a 26px inset, six columns of 157 on a 173.5 pitch, rows on
-# a 175 pitch. Tile width is derived from the column count so the two cannot
-# disagree -- the gap is what absorbs the rounding, exactly as the app's does.
-SETTINGS_FOX_COLS = 6
-SETTINGS_FOX_ROWS = 3                   # 14 tiles over 6 columns
-SETTINGS_FOX_CARD_PAD = 26
-SETTINGS_FOX_GAP_X = 17
-SETTINGS_FOX_GAP_Y = 29
-SETTINGS_FOX_TILE_W = (
-    (SETTINGS_DETAIL_W_WIDE - 2 * SETTINGS_FOX_CARD_PAD
-     - (SETTINGS_FOX_COLS - 1) * SETTINGS_FOX_GAP_X) // SETTINGS_FOX_COLS
-)                                       # 157
-SETTINGS_FOX_TILE_H = 146
-SETTINGS_FOX_CELL_W = SETTINGS_FOX_TILE_W + SETTINGS_FOX_GAP_X
-SETTINGS_FOX_CELL_H = SETTINGS_FOX_TILE_H + SETTINGS_FOX_GAP_Y
-# Blurb above the tiles ("Pick a fox. It sets your accent ..."), two lines.
-SETTINGS_FOX_BLURB_Y = 20
-SETTINGS_FOX_BLURB_H = 72
-SETTINGS_FOX_GRID_Y = SETTINGS_FOX_BLURB_Y + SETTINGS_FOX_BLURB_H + 6
-SETTINGS_FOX_CARD_H = (
-    SETTINGS_FOX_GRID_Y + SETTINGS_FOX_ROWS * SETTINGS_FOX_CELL_H
-    - SETTINGS_FOX_GAP_Y + SETTINGS_FOX_CARD_PAD
-)
-SETTINGS_FOX_BLURB_W = SETTINGS_DETAIL_W_WIDE - 2 * SETTINGS_FOX_CARD_PAD
-# The "original" star badge on the Tofa Fox tile. Literal teal, and literal on
-# purpose: it names ONE tile, so it must not follow the window accent (which
-# changes with the pick, and previews mid-move) nor read a per-item property
-# in a <textcolor> (Kodi resolves that against the container's FOCUSED item,
-# not the item being drawn, so the badge took whichever fox had the cursor).
-# Same hex as theme.DEFAULT_ACCENT / settings.xml's <default>, which cannot be
-# imported here -- this module has to render outside Kodi.
-SETTINGS_FOX_DEFAULT_BADGE = "0xFF2DD4BF"
+# --- The fox picker (app 2.0): 14 tiles, five across, in the picker panel ---
+# Measured on the capture: 174x156 tiles, 15 apart both ways.
+SETTINGS_FOX_COLS = 5
+SETTINGS_FOX_ROWS = 3
+SETTINGS_FOX_TILE_W = 174
+SETTINGS_FOX_TILE_H = 156
+SETTINGS_FOX_CELL_W = SETTINGS_FOX_TILE_W + 15
+SETTINGS_FOX_CELL_H = SETTINGS_FOX_TILE_H + 15
 
 # --- the scrolling detail pane ---
 # Groups are children of a grouplist, so their geometry is RELATIVE to the
@@ -939,9 +911,8 @@ SETTINGS_ACCOUNT_RELAY_NOTE_H = 18 + 34 + 4 + 2 * 27 + 18  # 128, two body lines
 SETTINGS_ACCOUNT_TAIL_GROUP_H = (
     SETTINGS_ACCOUNT_RELAY_NOTE_Y + SETTINGS_ACCOUNT_RELAY_NOTE_H
     + SETTINGS_GROUP_TRAIL)
-SETTINGS_FOX_BLURB_ABS_Y = SETTINGS_SECTION_BAND + SETTINGS_FOX_BLURB_Y
-SETTINGS_FOX_GRID_ABS_Y = SETTINGS_SECTION_BAND + SETTINGS_FOX_GRID_Y
-SETTINGS_FOX_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_FOX_CARD_H + SETTINGS_GROUP_TRAIL
+# THEME: the Fox accent row alone.
+SETTINGS_THEME_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
 # Media cards: three rows, each its own one-item list. Same in-group spacing
 # as any other stacked pair, named separately only for its call sites.
 SETTINGS_MEDIACARDS_ROW_GAP = SETTINGS_STACK_ROW_GAP
@@ -1086,12 +1057,6 @@ SETTINGS_ARTCACHE_ROW1_Y = settings_stack_row_y(1)
 # Its row is an ACTION-height list (it opens a picker), not a value row --
 # they were 29px apart and the region card was clipped by exactly that.
 SETTINGS_REGION_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
-# The panel's own box. Width runs one GAP past the last column so Kodi has
-# somewhere to put the trailing gap of the rightmost cell (a cell is
-# tile+gap); height is whole rows, since a panel scrolls by whole rows and a
-# fractional viewport can never come to rest against its last one.
-SETTINGS_FOX_GRID_W = SETTINGS_FOX_COLS * SETTINGS_FOX_CELL_W
-SETTINGS_FOX_GRID_H = SETTINGS_FOX_ROWS * SETTINGS_FOX_CELL_H
 
 SETTINGS_RAIL_PANEL_H = 430
 SETTINGS_RAIL_RADIUS = 24

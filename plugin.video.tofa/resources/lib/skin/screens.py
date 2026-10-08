@@ -16,6 +16,7 @@ from .. import branding
 from .. import settings_options
 from .. import home_rows
 from .. import settings_pages
+from .. import foxes
 
 _TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
@@ -263,7 +264,6 @@ def render_main() -> str:
     settings_direct_item, settings_direct_focused = fragments.settings_toggle_row(
         8130, width=T.SETTINGS_DETAIL_W)
 
-    settings_fox_item, settings_fox_focused = fragments.settings_fox_tile(8200)
     settings_episodes_item, settings_episodes_focused = fragments.settings_toggle_row(8310)
     settings_spoilers_item, settings_spoilers_focused = fragments.settings_toggle_row(8315)
     settings_spotlight_item, settings_spotlight_focused = fragments.settings_toggle_row(8320)
@@ -293,7 +293,7 @@ def render_main() -> str:
                  "nextupstyle": "settings_nextupstyle_group"}.get(
                      _key, "settings_seg_{0}_group".format(_key))
         if _key == "rating":
-            _y, _up, _down = T.SETTINGS_SECTION_BAND, 8200, 8310
+            _y, _up, _down = T.SETTINGS_SECTION_BAND, 8205, 8310
         else:
             _at = _chain.index(_key)
             _up = _ids[_chain[_at - 1]] if _at else 8000
@@ -370,12 +370,15 @@ def render_main() -> str:
             posy=T.SETTINGS_ACCOUNT_RELAY_NOTE_Y, title="Connection",
             body_property="settings_connection_body",
             height=T.SETTINGS_ACCOUNT_RELAY_NOTE_H),
-        settings_fox_item=settings_fox_item,
-        settings_fox_focused=settings_fox_focused,
+        settings_fox_row=fragments.settings_choice_list(
+            8205, value_property="settings_fox_value",
+            posy=T.SETTINGS_SECTION_BAND, onup=8000, ondown=8900,
+            dot_values=tuple("{0} Fox".format(n) for n, _h, _l in foxes.PRESETS),
+            dot_colour="$INFO[Window.Property(settings_fox_dot)]"),
         # Group-relative, not absolute: inside a grouplist child, posy 0 is
         # the child's own top. Passing the eyebrow BAND puts the label at 0.
         settings_fox_eyebrow=fragments.settings_group_eyebrow(
-            posy=T.SETTINGS_SECTION_BAND, label="FOX",
+            posy=T.SETTINGS_SECTION_BAND, label="THEME",
             indent="                        "),
         settings_mediacards_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="MEDIA CARDS",

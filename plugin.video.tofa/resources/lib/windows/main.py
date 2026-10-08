@@ -553,7 +553,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_PICKER_FILL_ID = 8992
     SETTINGS_PICKER_RIM_ID = 8993
     SETTINGS_SIGN_OUT_ID = 8120
-    SETTINGS_FOX_ID = 8200
+    SETTINGS_FOX_ID = 8200          # the grid, inside the picker panel
+    SETTINGS_FOX_ROW_ID = 8205      # Appearance's "Fox accent" row
     SETTINGS_APPEARANCE_LIST_ID = 8290   # the scrolling grouplist
     SETTINGS_RATING_ID = 8300
     SETTINGS_EPISODES_ID = 8310
@@ -935,6 +936,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_SIGN_OUT_ID, 1)
         self.settings_fox_list = kodigui.ManagedControlList(
             self, self.SETTINGS_FOX_ID, len(theme.PRESETS))
+        self.settings_fox_row_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_FOX_ROW_ID, 1)
         self.settings_episodes_list = kodigui.ManagedControlList(
             self, self.SETTINGS_EPISODES_ID, 1)
         self.settings_spoilers_list = kodigui.ManagedControlList(
@@ -1290,8 +1293,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_direct_only_clicked()
         elif controlID == self.SETTINGS_SIGN_OUT_ID:
             self._settings_sign_out()
-        elif controlID == self.SETTINGS_FOX_ID:
-            self._settings_fox_clicked()
+        elif controlID == self.SETTINGS_FOX_ROW_ID:
+            self._settings_fox_open()
         elif controlID == self.SETTINGS_EPISODES_ID:
             self._settings_episodes_clicked()
         elif controlID == self.SETTINGS_SPOILERS_ID:
@@ -1300,7 +1303,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_spotlight_clicked()
         elif controlID in settings_options.CHOICE_BY_ID:
             self._settings_choice_clicked(settings_options.CHOICE_BY_ID[controlID])
-        elif controlID == self.SETTINGS_PICKER_ID:
+        elif controlID in (self.SETTINGS_PICKER_ID, self.SETTINGS_FOX_ID):
             self._settings_picker_clicked()
         elif (home_rows.HOME_ROW_EDIT_GROUP_IDS[0]
               <= controlID <= home_rows.HOME_ROW_EDIT_IDS[-1][-1]):
@@ -1413,11 +1416,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # 6: re-entering a Settings page returns to the control left last.
         if (self.getProperty("active_section") == "settings"
                 and controlID not in (self.NAV_LIST_ID, self.NAV_AVATAR_ID,
-                                      self.SETTINGS_NAV_ID, self.SETTINGS_PICKER_ID)):
+                                      self.SETTINGS_NAV_ID, self.SETTINGS_PICKER_ID,
+                                      self.SETTINGS_FOX_ID)):
             page = self.getProperty("settings_page")
             if page:
                 self._settings_last_control[page] = controlID
-        if self._settings_picker and controlID != self.SETTINGS_PICKER_ID:
+        if self._settings_picker and controlID != self._settings_picker["list_id"]:
             # Focus went elsewhere (a held Back, say): the picker goes too.
             self._settings_picker = None
             self.setProperty("settings_picker", "")
@@ -1552,12 +1556,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_close_collection()
             return
 
-        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
-                and self.getFocusId() == self.SETTINGS_PICKER_ID):
+        picking = (self._settings_picker
+                   and self.getFocusId() == self._settings_picker["list_id"])
+        if picking and action_id in (xbmcgui.ACTION_PREVIOUS_MENU,
+                                     xbmcgui.ACTION_NAV_BACK):
             self._settings_picker_close()
             return
-
-        if self.getFocusId() == self.SETTINGS_PICKER_ID:
+        if picking:
             self._settings_picker_sync()
 
         if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
@@ -6072,54 +6077,48 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     # --- 9.4's fox / accent picker (Appearance page) -------------------
 
-    SETTINGS_FOX_BLURB = (
-        "Pick a fox. It sets your accent and matching logo across all your "
-        "tofa apps. Buttons, highlights, and progress all follow it. "
-        "Tofa Fox is the original look and the recommended experience."
-    )
-
     def _settings_fill_foxes(self):
-        """The 14 preset tiles, in 2's own order.
-
-        Static, like the sidebar: which foxes exist is not server data. Only
-        WHICH ONE is selected is, and that is re-marked by
-        _settings_mark_selected_fox() whenever the accent changes."""
-        self.setProperty("settings_fox_blurb", self.SETTINGS_FOX_BLURB)
+        """The Fox accent row and the picker's 14 tiles, in the apps' order.
+        Only WHICH fox is current is server data; see _settings_mark_selected_fox."""
+        if not self.settings_fox_row_list.size():
+            self.settings_fox_row_list.addItems([kodigui.ManagedListItem(
+                label=settings_info.ROWS["fox"].title)])
         items = []
         for name, hex_value, logo in theme.PRESETS:
             li = kodigui.ManagedListItem(
-                label="{0} Fox".format(name), data_source=hex_value)
-            li.setProperty("tile_color", "0xFF" + hex_value)
-            # The artwork cannot be tinted at runtime, so each tile carries
-            # its own raster -- see theme.PRESETS.
+                label="{0} Fox".format(name), label2=name, data_source=hex_value)
+            # Each tile shows its OWN hue, so its colours ride on the item.
+            # Alphas measured on the capture: 6% at rest, 15% ticked, 37% focused.
+            for prop, alpha in (("tile_color", "FF"), ("tile_wash", "0F"),
+                                ("tile_current", "25"), ("tile_focus", "5E")):
+                li.setProperty(prop, "0x" + alpha + hex_value)
             li.setArt({"thumb": logo})
-            if hex_value == theme.DEFAULT_ACCENT:
-                li.setProperty("is_default", "1")
             items.append(li)
         self.settings_fox_list.reset()
         self.settings_fox_list.addItems(items)
         self._settings_mark_selected_fox()
 
     def _settings_mark_selected_fox(self):
-        """Flag whichever tile matches the live accent, and park the grid's
-        cursor on it so opening the page lands on the current choice rather
-        than on Tofa Fox.
-
-        Matches on the resolved accent hex, which may be a custom colour that
-        is not any preset -- in that case nothing is flagged, which is honest:
-        none of these 14 IS the current accent. (The LOGO still snaps to the
-        nearest, because there are only 14 rasters; that is theme.default_logo
-        's problem, not this grid's.)"""
+        """Tick the tile matching the live accent and name it on the row.
+        A custom accent matches none of the 14, so nothing is ticked."""
         current = theme.current_accent_hex()
-        selected_index = None
         for idx, (_name, hex_value, _logo) in enumerate(theme.PRESETS):
             li = self.settings_fox_list.getListItem(idx)
-            match = hex_value.upper() == current
-            li.setProperty("selected", "1" if match else "")
-            if match:
-                selected_index = idx
-        if selected_index is not None:
-            self.settings_fox_list.selectItem(selected_index)
+            li.setProperty("selected", "1" if hex_value.upper() == current else "")
+        self.setProperty("settings_fox_value", self._settings_fox_name() or "Custom")
+        self.setProperty("settings_fox_dot", "0xFF" + current.lstrip("#"))
+
+    def _settings_fox_open(self):
+        """The fox picker: the grid in the picker panel; Back keeps the fox."""
+        labels = ["{0} Fox".format(n) for n, _h, _l in theme.PRESETS]
+        name = self._settings_fox_name()
+        selected = labels.index(name) if name in labels else -1
+        rows = -(-len(labels) // T.SETTINGS_FOX_COLS)
+        self._settings_picker_show(
+            "fox", self.settings_fox_list, "fox", settings_info.ROWS["fox"].title,
+            labels, selected, lambda _index: self._settings_fox_clicked(),
+            rows * T.SETTINGS_FOX_CELL_H - (T.SETTINGS_FOX_CELL_H - T.SETTINGS_FOX_TILE_H),
+            hint="Back keeps " + (name or "your accent"))
 
     def _settings_fox_clicked(self):
         """Apply the picked accent: write it, then re-theme this window.
@@ -6184,13 +6183,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         8130: "direct_only", 8710: "setup_device",
         8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
         8550: "sub_lang2", 8530: "always_subs",
-        8200: "fox", 8310: "episodes_remaining", 8315: "hide_spoilers",
+        8205: "fox", 8310: "episodes_remaining", 8315: "hide_spoilers",
         8360: "region", 8320: "spotlight", 8340: "add_row",
         8620: "licences", 8720: "art_budget", 8730: "art_clear",
     }
 
     def _settings_info_key(self, control_id: int) -> str:
-        if control_id == self.SETTINGS_PICKER_ID and self._settings_picker:
+        if self._settings_picker and control_id == self._settings_picker["list_id"]:
             return self._settings_picker["key"]
         if control_id in settings_options.CHOICE_BY_ID:
             return settings_options.CHOICE_BY_ID[control_id]
@@ -6274,7 +6273,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("settings_info_opt{0}_on".format(i + 1),
                              "1" if label and label == value else "")
             self.setProperty("settings_info_opt{0}_dim".format(i + 1), "")
-        if control_id == self.SETTINGS_PICKER_ID:
+        if self._settings_picker and control_id == self._settings_picker["list_id"]:
             self._settings_picker_sync()
 
     def _settings_fox_name(self) -> str:
@@ -6420,19 +6419,28 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_picker_list.reset()
         self.settings_picker_list.addItems(items)
         shown = min(len(rows), T.SETTINGS_PICKER_MAX_ROWS)
-        height = (T.SETTINGS_PICKER_LIST_Y + shown * T.SETTINGS_PICKER_PITCH
-                  - (T.SETTINGS_PICKER_PITCH - T.SETTINGS_PICKER_ROW_H)
-                  + T.SETTINGS_PICKER_FOOT)
+        self._settings_picker_show(
+            "list", self.settings_picker_list, key, title,
+            [r["label"] for r in rows], selected, pick,
+            shown * T.SETTINGS_PICKER_PITCH
+            - (T.SETTINGS_PICKER_PITCH - T.SETTINGS_PICKER_ROW_H))
+
+    def _settings_picker_show(self, mode: str, lst, key: str, title: str,
+                              labels: list, selected: int, pick, body_h: int,
+                              hint: str = "") -> None:
+        """Size the panel to `body_h`, show `mode`'s content and focus `lst`."""
+        height = T.SETTINGS_PICKER_LIST_Y + body_h + T.SETTINGS_PICKER_FOOT
         for cid in (self.SETTINGS_PICKER_FILL_ID, self.SETTINGS_PICKER_RIM_ID):
             self.getControl(cid).setHeight(height)
         self._settings_picker = {
-            "key": key, "origin": self.getFocusId(), "pick": pick,
-            "current": selected, "labels": [r["label"] for r in rows]}
+            "key": key, "origin": self.getFocusId(), "pick": pick, "list": lst,
+            "list_id": lst.controlID, "current": selected, "labels": labels}
         self.setProperty("settings_picker_title", title)
-        self.setProperty("settings_picker", "1")
-        self.setFocusId(self.SETTINGS_PICKER_ID)
-        self.settings_picker_list.selectItem(max(selected, 0))
-        self._settings_sync_info(self.SETTINGS_PICKER_ID)
+        self.setProperty("settings_picker_hint", hint)
+        self.setProperty("settings_picker", mode)
+        self.setFocusId(lst.controlID)
+        lst.selectItem(max(selected, 0))
+        self._settings_sync_info(lst.controlID)
 
     def _settings_picker_close(self) -> dict | None:
         """Hide the picker and put focus back on its row."""
@@ -6443,10 +6451,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return picker
 
     def _settings_picker_clicked(self):
-        index = self.settings_picker_list.getSelectedPosition()
-        picker = self._settings_picker_close()
-        if picker and index is not None and index >= 0:
-            picker["pick"](index)
+        """Apply, THEN close: focus returning to the row is what makes Kodi
+        redraw it, so it has to come after the new value is set."""
+        picker = self._settings_picker
+        if not picker:
+            return
+        index = picker["list"].getSelectedPosition()
+        try:
+            if index is not None and index >= 0:
+                picker["pick"](index)
+        finally:
+            self._settings_picker_close()
 
     def _settings_picker_sync(self):
         """The left column names the focused option, and the current one
@@ -6455,7 +6470,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not picker:
             return
         labels = picker["labels"]
-        pos = self.settings_picker_list.getSelectedPosition()
+        pos = picker["list"].getSelectedPosition()
         focused = labels[pos] if pos is not None and 0 <= pos < len(labels) else ""
         current = labels[picker["current"]] if 0 <= picker["current"] < len(labels) else ""
         self.setProperty("settings_info_value", focused)
@@ -6480,8 +6495,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             nextup.controlUp(quality)
             style.controlDown(intro)
             intro.controlUp(style)
-            foxes, rating = get(self.SETTINGS_FOX_ID), get(ids["rating"])
+            foxes, rating = get(self.SETTINGS_FOX_ROW_ID), get(ids["rating"])
             episodes = get(self.SETTINGS_EPISODES_ID)
+            foxes.controlUp(get(self.SETTINGS_NAV_ID))
             foxes.controlDown(rating)
             rating.controlUp(foxes)
             rating.controlDown(episodes)
