@@ -345,31 +345,16 @@ DISCOVER_TAB_KINDS: dict[str, tuple[str, ...]] = {
 DISCOVER_UNKNOWN_KIND_TAB = "acclaimed"
 DISCOVER_DEFAULT_TAB = "now"
 
-# (tab key, label, pill width). Widths are measured, not guessed: the labels are
-# static, so each pill is exactly its rendered label plus 26px padding a side at
-# tofa_font_button (inter_tight_semibold 28). Verified against the reference --
-# 110/186/144/165 measured off the capture vs. text widths of 58/134/91/111,
-# i.e. a constant 52-54px total padding across all four. Recompute with:
-#   PIL.ImageFont.truetype("inter_tight_semibold.ttf", 28).getbbox(label)
-# if a label ever changes; fragments.py can't do it itself (stdlib-only, and
-# PIL doesn't exist inside Kodi).
-DISCOVER_TABS: tuple[tuple[str, str, int], ...] = (
-    ("now", "Now", 110),
-    ("acclaimed", "Acclaimed", 186),
-    ("genres", "Genres", 144),
-    ("decades", "Decades", 165),
+# (tab key, label), in screen order.
+DISCOVER_TABS: tuple[tuple[str, str], ...] = (
+    ("now", "Now"),
+    ("acclaimed", "Acclaimed"),
+    ("genres", "Genres"),
+    ("decades", "Decades"),
 )
-DISCOVER_TAB_GAP = 18
-DISCOVER_TAB_HEIGHT = 54
-
-# One single-item list per pill, same shape as Browse's four Sort/Filter/
-# Quality/Genre pills -- a Kodi <list> has one fixed itemwidth, so four
-# text-hugging widths can't be one list. 6900+ is clear of Browse (6000-6200),
-# Search (6700-6860) and the Discover rows (7000-7310).
-DISCOVER_TAB_LIST_IDS: tuple[int, ...] = tuple(6900 + 10 * i for i in range(len(DISCOVER_TABS)))
-
-# Pill x offsets are NOT here: they derive from tokens.CONTENT_LEFT, and this
-# module stays free of that dependency. See fragments.discover_tab_positions().
+# The sub-tabs are one list (app 2.0.0's text tabs), clear of Browse
+# (6000-6200), Search (6700-6860) and the Discover rows (7000-7310).
+DISCOVER_TAB_STRIP_ID = 6900
 
 
 def row_title(row: dict, localize, shelf_titles: dict | None = None) -> str:

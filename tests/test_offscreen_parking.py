@@ -158,7 +158,7 @@ from resources.lib.skin import tokens as T  # noqa: E402
 
 for name, (left, width) in {
     "Home rows": (T.HOME_ROWS_X, T.HOME_ROWS_W),
-    "Discover rows": (T.DISCOVER_ROWS_X, T.DISCOVER_ROWS_W),
+    "Discover page": (T.DISCOVER_CLIP_X, T.DISCOVER_CLIP_W),
     "Search shelves": (T.SEARCH_SHELF_X, T.SEARCH_SHELF_CLIP_W),
     "Detail shelves": (T.DETAIL_SHELF_X, T.DETAIL_SHELF_W),
 }.items():

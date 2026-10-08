@@ -35,17 +35,15 @@ SCREEN_H = 1080
 # internal-docs/atv-reference/, not eyeballed:
 #
 #   Home      156   hero title, meta, ratings, synopsis, row headers, logo
-#   Discover  170   tab pills, row headers, poster art
+#   Discover   96   sub-tabs, row headers, poster art (app 2.0.0; 170 before)
 #   Browse     68   sidebar rail's outer edge (see nav/sidebar fragments)
 #   Search     80   keyboard column (its own documented edge)
 #
-# The design spec states these as 76 and 90, which is the SAME geometry read
-# from inside the 80px inset tvOS applies to its layout container: 76+80=156,
-# 90+80=170, and the 14px gap between the two screens matches exactly. Its
-# horizontal numbers are relative, so never paste them in as coordinates --
-# see project_tv_design_spec_margins_are_inset.
+# The design spec's numbers are read from inside the 80px inset tvOS applies
+# to its layout container, so never paste them in as coordinates -- see
+# project_tv_design_spec_margins_are_inset.
 HOME_LEFT = 156
-DISCOVER_LEFT = 170
+DISCOVER_LEFT = 96
 
 # Width available to a row's label/list. Derived from the LARGER margin so the
 # one value is safe on both screens: on Home it simply stops 14px short of the
@@ -210,8 +208,10 @@ ROWS_CLIP_RIGHT = SCREEN_W
 # first card's glow down its left side; poster_row() insets its contents.
 HOME_ROWS_X = HOME_LEFT - HPAD
 DISCOVER_ROWS_X = DISCOVER_LEFT - HPAD
+#: Discover's page slides as one group, clipped to the whole screen.
+DISCOVER_CLIP_X = 0
+DISCOVER_CLIP_W = ROWS_CLIP_RIGHT - DISCOVER_CLIP_X
 HOME_ROWS_W = ROWS_CLIP_RIGHT - HOME_ROWS_X
-DISCOVER_ROWS_W = ROWS_CLIP_RIGHT - DISCOVER_ROWS_X
 
 
 
@@ -301,7 +301,33 @@ HOME_ROWS_H_NOHERO = SCREEN_H - HOME_ROWS_Y_NOHERO
 # Search's shelves sit at an ABSOLUTE 382 (parent group 6800's 324 + a local
 # 58) -- the parent's offset has to be in the sum or Kodi's
 # keep-focused-item-in-view math under-scrolls and cuts off the lower rows.
-DISCOVER_ROWS_H = SCREEN_H - 252
+
+# --------------------------------------------------------------- discover --
+# App 2.0.0's Discover, measured off atv-reference/2026-10-08-discover-*.png.
+# Sub-tabs are text tabs on one list, five 384px slots (the fifth is Filters).
+DISCOVER_SUBTAB_SLOT = 384
+#: Centre of each sub-tab's ink, and its ink width in tofa_font_caption.
+DISCOVER_SUBTAB_CENTRES = (124, 262, 421, 570)
+DISCOVER_SUBTAB_INK_W = (52, 118, 81, 100)
+#: Cap top 150 on the capture.
+DISCOVER_SUBTAB_LABEL_Y = 139
+DISCOVER_SUBTAB_LABEL_H = 34
+DISCOVER_SUBTAB_UNDERLINE_Y = 187
+DISCOVER_SUBTAB_DOT_Y = 186
+#: A 1px rule under the sub-tabs, white at ~7%.
+DISCOVER_DIVIDER_Y = 221
+DISCOVER_DIVIDER_W = 1823 - DISCOVER_LEFT
+DISCOVER_DIVIDER = "0x12FFFFFF"
+#: Row 0's header label top (ink at 261) and the row pitch, 586 as on the app.
+DISCOVER_ROWS_Y = 247
+DISCOVER_ROW_PITCH = 586
+#: Past row 0 the focused row's header ink sits at 387. The grouplist does it
+#: itself: each row block is screen-tall, padded so its row sits there, and
+#: the negative gap restores the 586 pitch. Row 0's block is shorter.
+DISCOVER_FOCUS_ROW_Y = 387 - 14
+DISCOVER_ROW_PAD_BOTTOM = SCREEN_H - DISCOVER_FOCUS_ROW_Y - DISCOVER_ROW_PITCH
+DISCOVER_ROWS_GAP = -(DISCOVER_FOCUS_ROW_Y + DISCOVER_ROW_PAD_BOTTOM)
+DISCOVER_ROW0_H = DISCOVER_ROWS_Y + DISCOVER_ROW_PITCH + DISCOVER_ROW_PAD_BOTTOM
 # The shelves' own local posy inside group 6800, and the ABSOLUTE y that
 # lands on. Both are needed: Kodi's keep-focused-item-in-view math wants the
 # region's true screen position, so the parent's 324 has to be in the sum or
@@ -527,7 +553,7 @@ ALPHA_RAIL_Y = 301
 #: take the pad with it.
 ALPHA_ITEM_TRAIL = ALPHA_PITCH - ALPHA_PILL_H
 #: Runs to the screen edge, like every other scrolling region here
-#: (DISCOVER_ROWS_H, SEARCH_SHELVES_H, DETAIL_SHELF_H, PERSON_GRID_H,
+#: (SEARCH_SHELVES_H, DETAIL_SHELF_H, PERSON_GRID_H,
 #: SETTINGS_GROUPLIST_H all end at SCREEN_H).
 #:
 #: It used to be a whole number of pitches -- 11 x 68 = 748 -- which left 31
@@ -858,7 +884,7 @@ SETTINGS_SECTION_BAND = SETTINGS_SECTION_LEAD + SETTINGS_GROUP_EYEBROW_BAND
 SETTINGS_GROUPLIST_Y = (SETTINGS_CONTENT_Y - SETTINGS_GROUP_EYEBROW_BAND
                         + (SETTINGS_GROUP_TRAIL - SETTINGS_GROUPLIST_GAP))
 # Runs to the screen edge, like every other scrolling region here
-# (DISCOVER_ROWS_H, SEARCH_SHELVES_H, DETAIL_SHELF_H, PERSON_GRID_H all end
+# (SEARCH_SHELVES_H, DETAIL_SHELF_H, PERSON_GRID_H all end
 # at SCREEN_H). This one used to stop 24px short on the reasoning that a card
 # flush with the edge reads as clipped -- but a region that stops short reads
 # as the content ENDING, which is worse and was the whole point of 72294b7.
