@@ -2802,8 +2802,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return "", ""
         total = resp.get("total")
         items = resp.get("items") or []
-        return (regional.number(total) if isinstance(total, int) else "",
-                self._browse_item_art(client, items[0]) if items else "")
+        art = self._browse_item_art(client, items[0]) if items else ""
+        if items and not art:
+            # A library of clips: its newest titles are likelier to have art.
+            params.update(per_page=20, sort="added_at", order="desc")
+            try:
+                newest = (client._get("/api/v1/media", params=params) or {}).get("items") or []
+            except http.ApiError:
+                newest = []
+            art = next((a for a in (self._browse_item_art(client, it) for it in newest) if a), "")
+        return (regional.number(total) if isinstance(total, int) else "", art)
 
     @staticmethod
     def _browse_item_art(client: MediaServerClient, item: dict) -> str:
