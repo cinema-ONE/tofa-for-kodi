@@ -6,7 +6,7 @@ secondary promotes nothing, and the Sign Out confirmation opens on Cancel.
 Run:  python3 test_settings_spec_fixes.py
 """
 import kodi_stubs  # noqa: F401  -- installs the Kodi stubs
-from resources.lib.windows import cardoptions, playoptions
+from resources.lib.windows import cardoptions
 from resources.lib.windows.main import MainWindow
 
 RESULTS = []
@@ -20,6 +20,7 @@ def check(name, ok, detail=""):
 
 class Fake:
     _settings_language_clicked = MainWindow._settings_language_clicked
+    _settings_language_pick = MainWindow._settings_language_pick
 
     def __init__(self, current):
         self.current, self.writes = list(current), []
@@ -39,10 +40,13 @@ class Fake:
     def _settings_fill_audio(self):
         pass
 
+    def _settings_choose(self, _key, _title, _rows, _selected, pick):
+        pick(self.index)                                # row 0 is "None"
+
 
 def pick(slot, index, current=("eng", "ger")):
-    playoptions.show_choice = lambda **_k: index        # row 0 is "None"
     win = Fake(current)
+    win.index = index
     win._settings_language_clicked("preferred_subtitle_languages", slot)
     return win.writes[-1]["playback"]["preferred_subtitle_languages"]
 

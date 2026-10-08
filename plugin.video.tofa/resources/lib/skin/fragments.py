@@ -2841,7 +2841,11 @@ def settings_info_panel() -> str:
                             <visible>!{on}</visible>
                         </control>""" + label(
             0, 30, T.FONT_POSTER_TITLE, white,
-            f"$INFO[Window.Property(settings_info_opt{n})]", lx=30, lw=w - 30) + label(
+            f"$INFO[Window.Property(settings_info_opt{n})]",
+            f"!{prop_set(f'settings_info_opt{n}_dim')}", lx=30, lw=w - 30) + label(
+            0, 30, T.FONT_POSTER_TITLE, grey,
+            f"$INFO[Window.Property(settings_info_opt{n})]",
+            prop_set(f"settings_info_opt{n}_dim"), lx=30, lw=w - 30) + label(
             32, 28, T.FONT_METADATA, grey,
             f"$INFO[Window.Property(settings_info_opt{n}_desc)]", lx=30, lw=w - 30) + """
                     </control>"""
@@ -2865,10 +2869,41 @@ def settings_info_panel() -> str:
                     <height>10</height>
                     <colordiffuse>{accent}</colordiffuse>
                     <texture>circle.png</texture>
-                    <visible>{prop_set("settings_info_value")}</visible>
-                </control>""" + label(
-        T.SETTINGS_INFO_VALUE_Y, 34, T.FONT_ROW_TITLE, white,
-        "$INFO[Window.Property(settings_info_value)]", lx=24) + f"""
+                    <visible>{prop_set("settings_info_value")} + !{prop_set("settings_info_now")}</visible>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>{T.SETTINGS_INFO_VALUE_Y + 11}</posy>
+                    <width>12</width>
+                    <height>12</height>
+                    <colordiffuse>{accent}</colordiffuse>
+                    <texture>circle-outline.png</texture>
+                    <visible>{prop_set("settings_info_now")}</visible>
+                </control>
+                <control type="grouplist">
+                    <posx>24</posx>
+                    <posy>{T.SETTINGS_INFO_VALUE_Y}</posy>
+                    <width>{w - 24}</width>
+                    <height>34</height>
+                    <orientation>horizontal</orientation>
+                    <itemgap>14</itemgap>
+                    <usecontrolcoords>true</usecontrolcoords>
+                    <control type="label">
+                        <width>auto</width>
+                        <height>34</height>
+                        <font>{T.FONT_ROW_TITLE}</font>
+                        <textcolor>{white}</textcolor>
+                        <label>$INFO[Window.Property(settings_info_value)]</label>
+                    </control>
+                    <control type="label">
+                        <width>auto</width>
+                        <height>34</height>
+                        <font>{T.FONT_SIDEBAR}</font>
+                        <textcolor>{grey}</textcolor>
+                        <label>$INFO[Window.Property(settings_info_now)]</label>
+                        <visible>{prop_set("settings_info_now")}</visible>
+                    </control>
+                </control>""" + f"""
                 <control type="grouplist">
                     <posy>{T.SETTINGS_INFO_BODY_Y}</posy>
                     <width>{w}</width>
@@ -4719,73 +4754,45 @@ def collection_card(list_id: int) -> tuple[str, str]:
 
 
 def settings_action_row(list_id: int, width: int = T.SETTINGS_DETAIL_W) -> tuple[str, str]:
-    """A focusable detail-pane row: title over an explanatory line, with a
-    trailing glyph. Switch Profile and Sign Out are both this shape.
+    """A focusable one-line row with a trailing glyph (Switch Profile, Sign
+    Out), as a one-item list so the grouplist scrolls it into view.
 
-    Rendered as a one-item list rather than a button, the same idiom Browse
-    already uses for its Sort/Filter/Genre controls -- a Kodi <button> has one
-    label and one label2 and cannot stack two lines, and a list gives the
-    itemlayout/focusedlayout split every other styled control here uses.
-
-    One item per list, and one list per grouplist child, is also what keeps
-    the pane scrollable: a grouplist scrolls to reveal a focused CHILD and
-    never for focus moving around inside one, so a row that is its own child
-    always scrolls into view (project_kodi_grouplist_scroll_limit).
-
-    `destructive` on the ListItem turns the title and glyph red -- 2's rule is
-    that destructive reads as red TEXT over glass, not as a filled red row.
-
-    Every layer of the focusedlayout, TEXT INCLUDED, is gated on
-    `Control.HasFocus(list_id)`. A one-item list's only item is permanently
-    "selected", so Kodi draws its focusedlayout the whole time the section is
-    open -- ungated, Switch Profile rendered in accent while focus was still
-    over in the sidebar, looking like the row the user was on."""
+    `destructive` on the ListItem turns the title and glyph red. Every focus
+    layer is gated on Control.HasFocus: a one-item list's item is always
+    "selected", so Kodi draws its focusedlayout even while focus is away."""
     H = T.SETTINGS_ACTION_ROW_H
-    TEXT_X = 18             # ink lands at 659 against a card at 632
+    TEXT_X = 27
     GLYPH_X = width - 76
     TEXT_W = GLYPH_X - TEXT_X - 16
 
-    def _labels(title_color: str, sub_color: str, glyph_color: str,
-                gate: str = "") -> str:
+    def _labels(title_color: str, glyph_color: str, gate: str = "") -> str:
         focus = f"{gate} + " if gate else ""
-        # For the one label with no condition of its own to AND onto.
-        focus_only = gate or "true"
+        red = "String.IsEqual(ListItem.Property(destructive),1)"
         return f"""
                     <control type="label">
-                        <visible>{focus}!String.IsEqual(ListItem.Property(destructive),1)</visible>
+                        <visible>{focus}!{red}</visible>
                         <posx>{TEXT_X}</posx>
-                        <posy>23</posy>
+                        <posy>0</posy>
                         <width>{TEXT_W}</width>
-                        <height>34</height>
+                        <height>{H}</height>
                         <aligny>center</aligny>
-                        <font>{T.FONT_ROW_TITLE}</font>
+                        <font>{T.FONT_SETTINGS_ROW}</font>
                         <textcolor>{title_color}</textcolor>
                         <label>$INFO[ListItem.Label]</label>
                     </control>
                     <control type="label">
-                        <visible>{focus}String.IsEqual(ListItem.Property(destructive),1)</visible>
+                        <visible>{focus}{red}</visible>
                         <posx>{TEXT_X}</posx>
-                        <posy>23</posy>
+                        <posy>0</posy>
                         <width>{TEXT_W}</width>
-                        <height>34</height>
+                        <height>{H}</height>
                         <aligny>center</aligny>
-                        <font>{T.FONT_ROW_TITLE}</font>
+                        <font>{T.FONT_SETTINGS_ROW}</font>
                         <textcolor>{T.STATUS_RED}</textcolor>
                         <label>$INFO[ListItem.Label]</label>
                     </control>
                     <control type="label">
-                        <visible>{focus_only}</visible>
-                        <posx>{TEXT_X}</posx>
-                        <posy>58</posy>
-                        <width>{TEXT_W}</width>
-                        <height>28</height>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_METADATA}</font>
-                        <textcolor>{sub_color}</textcolor>
-                        <label>$INFO[ListItem.Property(summary)]</label>
-                    </control>
-                    <control type="label">
-                        <visible>!String.IsEqual(ListItem.Property(destructive),1)</visible>
+                        <visible>{focus}!{red}</visible>
                         <posx>{GLYPH_X}</posx>
                         <posy>{H // 2 - 18}</posy>
                         <width>36</width>
@@ -4797,7 +4804,7 @@ def settings_action_row(list_id: int, width: int = T.SETTINGS_DETAIL_W) -> tuple
                         <label>$INFO[ListItem.Property(icon_glyph)]</label>
                     </control>
                     <control type="label">
-                        <visible>{focus}String.IsEqual(ListItem.Property(destructive),1)</visible>
+                        <visible>{focus}{red}</visible>
                         <posx>{GLYPH_X}</posx>
                         <posy>{H // 2 - 18}</posy>
                         <width>36</width>
@@ -4809,35 +4816,45 @@ def settings_action_row(list_id: int, width: int = T.SETTINGS_DETAIL_W) -> tuple
                         <label>$INFO[ListItem.Property(icon_glyph)]</label>
                     </control>"""
 
-    item = f"""                <itemlayout width="{width}" height="{H}">
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{H}</height>
-                        <colordiffuse>{T.SURFACE_REST}</colordiffuse>
-                        <texture border="20">rounded-20.png</texture>
-                    </control>{_labels(
+    card = _settings_row_card(width, H)
+    item = f"""                <itemlayout width="{width}" height="{H}">{card}{_labels(
                         "$INFO[Window.Property(text_primary)]",
-                        "$INFO[Window.Property(text_secondary)]",
                         "$INFO[Window.Property(text_secondary)]")}
                 </itemlayout>"""
+    focused = f"""                <focusedlayout width="{width}" height="{H}">{card}{
+                        _settings_row_focus(list_id, width, H)}{_labels(
+                        "$INFO[Window.Property(accent_color)]",
+                        "$INFO[Window.Property(accent_color)]",
+                        gate=f"Control.HasFocus({list_id})")}{_labels(
+                        "$INFO[Window.Property(text_primary)]",
+                        "$INFO[Window.Property(text_secondary)]",
+                        gate=f"!Control.HasFocus({list_id})")}
+                </focusedlayout>"""
+    return item, focused
 
-    focused = f"""                <focusedlayout width="{width}" height="{H}">
+
+def _settings_row_card(width: int, height: int) -> str:
+    """A Settings row's resting glass."""
+    return f"""
                     <control type="image">
                         <posx>0</posx>
                         <posy>0</posy>
                         <width>{width}</width>
-                        <height>{H}</height>
+                        <height>{height}</height>
                         <colordiffuse>{T.SURFACE_REST}</colordiffuse>
                         <texture border="20">rounded-20.png</texture>
-                    </control>
+                    </control>"""
+
+
+def _settings_row_focus(list_id: int, width: int, height: int) -> str:
+    """The focused row's accent wash and rim, only while `list_id` has focus."""
+    return f"""
                     <control type="image">
                         <visible>Control.HasFocus({list_id})</visible>
                         <posx>0</posx>
                         <posy>0</posy>
                         <width>{width}</width>
-                        <height>{H}</height>
+                        <height>{height}</height>
                         <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
                         <texture border="20">rounded-20.png</texture>
                     </control>
@@ -4846,20 +4863,10 @@ def settings_action_row(list_id: int, width: int = T.SETTINGS_DETAIL_W) -> tuple
                         <posx>0</posx>
                         <posy>0</posy>
                         <width>{width}</width>
-                        <height>{H}</height>
+                        <height>{height}</height>
                         <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                         <texture border="20">rounded-20-outline.png</texture>
-                    </control>{_labels(
-                        "$INFO[Window.Property(accent_color)]",
-                        "$INFO[Window.Property(text_secondary)]",
-                        "$INFO[Window.Property(accent_color)]",
-                        gate=f"Control.HasFocus({list_id})")}{_labels(
-                        "$INFO[Window.Property(text_primary)]",
-                        "$INFO[Window.Property(text_secondary)]",
-                        "$INFO[Window.Property(text_secondary)]",
-                        gate=f"!Control.HasFocus({list_id})")}
-                </focusedlayout>"""
-    return item, focused
+                    </control>"""
 
 
 def settings_value_row(*, posy: int, label: str, value_property: str,
@@ -4882,7 +4889,8 @@ def settings_value_row(*, posy: int, label: str, value_property: str,
     several rows sharing one card (Server over Libraries): the text still
     centres on its own `height`, while the background covers the whole card.
     `card_height=0` paints none at all, for the rows after that first one."""
-    TEXT_X = 19
+    # Outside a list, Kodi takes a right-aligned label's posx as its RIGHT edge.
+    TEXT_X = 27
     fill_h = height if card_height is None else card_height
     background = f"""
 {indent}<control type="image">
@@ -4902,18 +4910,18 @@ def settings_value_row(*, posy: int, label: str, value_property: str,
 {indent}        <width>{width // 2}</width>
 {indent}        <height>{height}</height>
 {indent}        <aligny>center</aligny>
-{indent}        <font>{T.FONT_ROW_TITLE}</font>
+{indent}        <font>{T.FONT_SETTINGS_ROW}</font>
 {indent}        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
 {indent}        <label>{label}</label>
 {indent}    </control>
 {indent}    <control type="label">
-{indent}        <posx>{width - 29}</posx>
+{indent}        <posx>{width - 27}</posx>
 {indent}        <posy>0</posy>
 {indent}        <width>{width // 2 - 40}</width>
 {indent}        <height>{height}</height>
 {indent}        <align>right</align>
 {indent}        <aligny>center</aligny>
-{indent}        <font>{T.FONT_BODY}</font>
+{indent}        <font>{T.FONT_SETTINGS_VALUE}</font>
 {indent}        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
 {indent}        <label>$INFO[Window.Property({value_property})]</label>
 {indent}    </control>
@@ -4942,7 +4950,7 @@ def settings_name_row(*, posy: int, title: str, subtitle: tuple[str, ...],
     Written for ABOUT's "tofa for Kodi" over its unofficial-status note, and
     shares a card with the Version row below it the way Server shares one with
     Libraries -- hence the same `card_height` escape hatch."""
-    TEXT_X = 19
+    TEXT_X = 27
     fill_h = height if card_height is None else card_height
     background = f"""
 {indent}<control type="image">
@@ -5163,124 +5171,59 @@ def settings_fox_tile(list_id: int) -> tuple[str, str]:
     return item, focused
 
 
-def _settings_control_row(list_id: int, *, trailing: str, trailing_w: int = 360,
+def _settings_control_row(list_id: int, *, trailing: str, trailing_focused: str = "",
+                          trailing_w: int = 360,
                           width: int = T.SETTINGS_DETAIL_W_WIDE,
                           height: int = T.SETTINGS_ACTION_ROW_H) -> tuple[str, str]:
-    """Shared body for the detail pane's two INTERACTIVE row shapes -- a
-    toggle and a segmented choice. They differ only in what sits at the right
-    end, so everything else (fill, focus wash, focus rim, title, subtitle,
-    the two-copy focus gating) is built once here.
+    """The body shared by the toggle and choice rows: glass, focus wash and
+    rim, and a one-line title, with `trailing` against the right edge.
 
-    Split out rather than copied because settings_action_row already proved
-    how easily these drift: it shipped with its focus colours ungated and the
-    row rendered focused while focus was elsewhere. One body, one fix.
-
-    `trailing` is XML positioned against the row's right edge by its caller."""
-    TEXT_X = 18
-    # The label column is whatever the trailing control leaves. Passed in
-    # rather than fixed: three "Do nothing"-sized pills need half again what
-    # a toggle does, and a label sized for the toggle would run under them.
+    `trailing_focused` replaces `trailing` in the focusedlayout, for a value
+    that turns accent with its row."""
+    TEXT_X = 27
     TEXT_W = width - TEXT_X - trailing_w
 
-    def _body(title_color: str, sub_color: str, gate: str) -> str:
+    def _title(colour: str, gate: str = "") -> str:
         vis = f"""
                         <visible>{gate}</visible>""" if gate else ""
         return f"""
-                    <control type="group">{vis}
-                        <control type="label">
-                            <posx>{TEXT_X}</posx>
-                            <posy>23</posy>
-                            <width>{TEXT_W}</width>
-                            <height>34</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ROW_TITLE}</font>
-                            <textcolor>{title_color}</textcolor>
-                            <label>$INFO[ListItem.Label]</label>
-                        </control>
-                        <control type="label">
-                            <posx>{TEXT_X}</posx>
-                            <posy>58</posy>
-                            <width>{TEXT_W}</width>
-                            <height>28</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>{sub_color}</textcolor>
-                            <label>$INFO[ListItem.Property(summary)]</label>
-                        </control>
+                    <control type="label">{vis}
+                        <posx>{TEXT_X}</posx>
+                        <posy>0</posy>
+                        <width>{TEXT_W}</width>
+                        <height>{height}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_SETTINGS_ROW}</font>
+                        <textcolor>{colour}</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
                     </control>"""
 
-    card = f"""
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{height}</height>
-                        <colordiffuse>{T.SURFACE_REST}</colordiffuse>
-                        <texture border="20">rounded-20.png</texture>
-                    </control>"""
-
-    focus_layers = f"""
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{height}</height>
-                        <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
-                        <texture border="20">rounded-20.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{height}</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="20">rounded-20-outline.png</texture>
-                    </control>"""
-
-    rest = _body("$INFO[Window.Property(text_primary)]",
-                 "$INFO[Window.Property(text_secondary)]", "")
-    item = f"""                <itemlayout width="{width}" height="{height}">{card}{rest}{trailing}
+    card = _settings_row_card(width, height)
+    item = f"""                <itemlayout width="{width}" height="{height}">{card}{_title(
+                        "$INFO[Window.Property(text_primary)]")}{trailing}
                 </itemlayout>"""
-    focused = f"""                <focusedlayout width="{width}" height="{height}">{card}{focus_layers}{_body(
+    focused = f"""                <focusedlayout width="{width}" height="{height}">{card}{
+                        _settings_row_focus(list_id, width, height)}{_title(
                         "$INFO[Window.Property(accent_color)]",
-                        "$INFO[Window.Property(text_secondary)]",
-                        f"Control.HasFocus({list_id})")}{_body(
+                        f"Control.HasFocus({list_id})")}{_title(
                         "$INFO[Window.Property(text_primary)]",
-                        "$INFO[Window.Property(text_secondary)]",
-                        f"!Control.HasFocus({list_id})")}{trailing}
+                        f"!Control.HasFocus({list_id})")}{trailing_focused or trailing}
                 </focusedlayout>"""
     return item, focused
 
 
 def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
-    """A detail-pane row whose value is on/off, drawn as a capsule switch.
+    """A row whose value is on/off, drawn as the app's capsule switch: 64x38,
+    a white knob, the accent track when on.
 
-    Kodi has a <radiobutton>, deliberately not used: its ON/OFF art is the
-    host skin's, so it would render differently under every skin the add-on
-    runs on -- the same reason nothing here uses a Kodi built-in font.
-
-    Reads `width` out of kwargs rather than assuming the wide detail column:
-    Privacy & About is a narrow page (it carries a QR rail), and a switch
-    positioned against the wide width lands clean off a 660px row."""
+    Our own art rather than Kodi's <radiobutton>, whose art is the host
+    skin's. The knob cannot slide: Kodi swaps two parked knobs instead."""
     W = kwargs.get("width", T.SETTINGS_DETAIL_W_WIDE)
-    SW, SH = 72, 38
-    X = W - 28 - SW
-    Y = (T.SETTINGS_ACTION_ROW_H - SH) // 2
-    KNOB = 30
-
-    # 7.10.3 asks for the knob to travel in about 160ms, eased out. KODI CANNOT
-    # DO IT, measured twice rather than assumed -- see ANIMATION.md. The knob
-    # is two controls parked at each end and swapped by <visible> on a
-    # ListItem property, because nothing can move a control from Python. A
-    # slide animation on the arriving one does not play: that visibility is
-    # re-evaluated WITH the itemlayout rather than treated as a transition,
-    # so the Visible animation never fires. Tried on the control, on a
-    # wrapping group, and finally at time="2000" where a real slide would be
-    # impossible to miss -- screen-recorded at 30fps, the knob still moves in
-    # a SINGLE frame. Confirmed on screen by the repo owner too.
-
+    H = kwargs.get("height", T.SETTINGS_ACTION_ROW_H)
+    SW, SH, KNOB = 64, 38, 32
+    X = W - 27 - SW
+    Y = (H - SH) // 2
+    on = "String.IsEqual(ListItem.Property(checked),1)"
     trailing = f"""
                     <control type="image">
                         <posx>{X}</posx>
@@ -5291,7 +5234,7 @@ def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
                         <texture border="19">capsule-h38.png</texture>
                     </control>
                     <control type="image">
-                        <visible>String.IsEqual(ListItem.Property(checked),1)</visible>
+                        <visible>{on}</visible>
                         <posx>{X}</posx>
                         <posy>{Y}</posy>
                         <width>{SW}</width>
@@ -5300,171 +5243,25 @@ def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
                         <texture border="19">capsule-h38.png</texture>
                     </control>
                     <control type="image">
-                        <visible>!String.IsEqual(ListItem.Property(checked),1)</visible>
-                        <posx>{X + 4}</posx>
-                        <posy>{Y + 4}</posy>
+                        <visible>!{on}</visible>
+                        <posx>{X + 3}</posx>
+                        <posy>{Y + 3}</posy>
                         <width>{KNOB}</width>
                         <height>{KNOB}</height>
-                        <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
+                        <colordiffuse>white</colordiffuse>
                         <texture>circle.png</texture>
                     </control>
                     <control type="image">
-                        <visible>String.IsEqual(ListItem.Property(checked),1)</visible>
-                        <posx>{X + SW - KNOB - 4}</posx>
-                        <posy>{Y + 4}</posy>
+                        <visible>{on}</visible>
+                        <posx>{X + SW - KNOB - 3}</posx>
+                        <posy>{Y + 3}</posy>
                         <width>{KNOB}</width>
                         <height>{KNOB}</height>
-                        <colordiffuse>$INFO[Window.Property(on_accent_color)]</colordiffuse>
+                        <colordiffuse>white</colordiffuse>
                         <texture>circle.png</texture>
                     </control>"""
-    # The switch and its inset, nothing more -- the default 360 was sized for
-    # a segmented control and left a narrow page's subtitle ellipsised.
     return _settings_control_row(list_id, trailing=trailing,
-                                 trailing_w=SW + 56, **kwargs)
-
-
-def settings_segmented_group(group_id: int, seg_ids: tuple, *,
-                             prop: str, seg_width: int = 108,
-                             posy: str = "0",
-                             width: int = T.SETTINGS_DETAIL_W_WIDE,
-                             height: int = T.SETTINGS_ACTION_ROW_H) -> str:
-    """A settings row whose options are each independently focusable, as the
-    reference app has them: `[Auto][Original]`, `[Play][Ask][Skip]`.
-
-    The shape before it was a single focusable row whose Select CYCLED to the
-    next option, chosen because "Left/Right cannot do it here -- Left already
-    means back to the sidebar for every row on this pane". True for a LIST,
-    whose row is one focus target; not true once each segment is its own
-    control, because then only the LEFTMOST segment needs Left to mean the
-    sidebar and the others move between segments. Same resolution as the
-    home-row editor's arrows.
-
-    Everything reads WINDOW properties under `prop`, since a group has no
-    list item: <prop>_title, <prop>_summary, and per segment <prop>_seg<i>
-    and <prop>_seg<i>_on. main.py fills them.
-
-    The row's own focus wash/rim light up when ANY of its segments has
-    focus, so the row still reads as one thing.
-
-    FOCUS IS A RING AROUND THE SEGMENT, not an outline on it. Every segment
-    gets one, selected or not: before this the outline was gated on `!on`,
-    so the SELECTED segment -- the likeliest place to be sitting -- carried
-    no focus mark at all. Reported 2026-08-28.
-
-    Drawn OUTSIDE the segment, which is the whole point. An outline on the
-    pill puts a stroke on top of the accent fill, and the stroke is
-    anti-aliased: measured off capsule-h38-outline, its cross-section runs
-    152/255/226/53, so the flank facing the fill lets 40-79% of the bright
-    colour through. A dark ring drawn there is visibly speckled with the
-    pill's own colour on the curved shoulders -- reported, and reproduced at
-    8x. Stacking copies compounds the alpha but cannot reach opaque.
-
-    Outside, there is nothing under the ring but the row surface, so the
-    anti-aliasing blends dark-on-dark and one colour works for every accent.
-    That also retires the per-accent outline colour this first tried: a
-    white outline ON the fill scores 1.15:1 against Snow and under 2:1
-    against Amber, Tofa and Emerald.
-
-    Same shape as the home-row toggle's ring a few rows up, which has always
-    drawn its focus outside the switch for the same reason.
-    """
-    TEXT_X = 18
-    SEG_H = 38
-    GAP = 6
-    # The focus ring sits OUTSIDE the segment. 2 all round, which is the
-    # stroke's own width, so the ring's INNER edge lands flush on the
-    # segment: at 3 a 1px line of row surface showed between the two.
-    # Still inside the 6px gap, so a ring never reaches its neighbour.
-    RING_PAD = 2
-    n = len(seg_ids)
-    total = n * seg_width + (n - 1) * GAP
-    X0 = width - 28 - total
-    Y = (height - SEG_H) // 2
-    TEXT_W = width - TEXT_X - (total + 56)
-    anyfocus = " | ".join(f"Control.HasFocus({i})" for i in seg_ids)
-
-    segs = []
-    for i, sid in enumerate(seg_ids):
-        x = X0 + i * (seg_width + GAP)
-        on = f"String.IsEqual(Window.Property({prop}_seg{i}_on),1)"
-        focused = f"Control.HasFocus({sid})"
-        segs.append(f"""
-                        <control type="image">
-                            <visible>{on}</visible>
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{seg_width}</width><height>{SEG_H}</height>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <texture border="19">capsule-h38.png</texture>
-                        </control>
-                        <control type="image">
-                            <visible>{focused}</visible>
-                            <posx>{x - RING_PAD}</posx><posy>{Y - RING_PAD}</posy>
-                            <width>{seg_width + 2 * RING_PAD}</width>
-                            <height>{SEG_H + 2 * RING_PAD}</height>
-                            <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
-                        </control>
-                        <control type="label">
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{seg_width}</width><height>{SEG_H}</height>
-                            <align>center</align><aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                            <label>$INFO[Window.Property({prop}_seg{i})]</label>
-                            <visible>{on}</visible>
-                        </control>
-                        <control type="label">
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{seg_width}</width><height>{SEG_H}</height>
-                            <align>center</align><aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                            <label>$INFO[Window.Property({prop}_seg{i})]</label>
-                            <visible>!{on}</visible>
-                        </control>
-                        <control type="button" id="{sid}">
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{seg_width}</width><height>{SEG_H}</height>
-                            <texturefocus>transparent-6px.png</texturefocus>
-                            <texturenofocus>transparent-6px.png</texturenofocus>
-                            <label></label>
-                        </control>""")
-
-    return f"""
-                    <control type="group" id="{group_id}">
-                        <posy>{posy}</posy>
-                        <width>{width}</width>
-                        <height>{height}</height>
-                        <control type="image">
-                            <posx>0</posx><posy>0</posy>
-                            <width>{width}</width><height>{height}</height>
-                            <colordiffuse>{T.SURFACE_REST}</colordiffuse>
-                            <texture border="20">rounded-20.png</texture>
-                        </control>
-                        <control type="image">
-                            <visible>{anyfocus}</visible>
-                            <posx>0</posx><posy>0</posy>
-                            <width>{width}</width><height>{height}</height>
-                            <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
-                            <texture border="20">rounded-20.png</texture>
-                        </control>
-                        <control type="label">
-                            <posx>{TEXT_X}</posx><posy>23</posy>
-                            <width>{TEXT_W}</width><height>34</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ROW_TITLE}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                            <label>$INFO[Window.Property({prop}_title)]</label>
-                        </control>
-                        <control type="label">
-                            <posx>{TEXT_X}</posx><posy>58</posy>
-                            <width>{TEXT_W}</width><height>28</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                            <label>$INFO[Window.Property({prop}_summary)]</label>
-                        </control>{"".join(segs)}
-                    </control>"""
+                                 trailing_w=SW + 54, **kwargs)
 
 
 def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> str:
@@ -5903,38 +5700,207 @@ def settings_add_row(list_id: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> tup
 
 def settings_choice_row(list_id: int, *, value_property: str,
                         **kwargs) -> tuple[str, str]:
-    """A detail-pane row whose value is one of many, shown as text with a
-    chevron and picked in a dialog.
-
-    Used where a segmented control would not fit: 27 regions and 9 languages
-    are both far past what three inline pills can hold. Same body as the
-    toggle and the segmented row, so the four stay visually one family."""
+    """A row whose value is one of several, shown as "value >" and picked in
+    the right-column picker (app 2.0). The value turns accent with its row."""
     W = kwargs.get("width", T.SETTINGS_DETAIL_W_WIDE)
-    trailing = f"""
-                    <control type="label">
-                        <posx>{W - 68 - 400}</posx>
+    H = kwargs.get("height", T.SETTINGS_ACTION_ROW_H)
+
+    def _trailing(colour: str, gate: str = "") -> str:
+        vis = f"""
+                        <visible>{gate}</visible>""" if gate else ""
+        return f"""
+                    <control type="label">{vis}
+                        <posx>{W - 57 - 460}</posx>
                         <posy>0</posy>
-                        <width>400</width>
-                        <height>{T.SETTINGS_ACTION_ROW_H}</height>
+                        <width>460</width>
+                        <height>{H}</height>
                         <align>right</align>
                         <aligny>center</aligny>
-                        <font>{T.FONT_BODY}</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <font>{T.FONT_SETTINGS_VALUE}</font>
+                        <textcolor>{colour}</textcolor>
                         <label>$INFO[Window.Property({value_property})]</label>
                     </control>
-                    <control type="label">
-                        <posx>{W - 56}</posx>
+                    <control type="label">{vis}
+                        <posx>{W - 52}</posx>
                         <posy>0</posy>
-                        <width>28</width>
-                        <height>{T.SETTINGS_ACTION_ROW_H}</height>
+                        <width>36</width>
+                        <height>{H}</height>
                         <align>center</align>
                         <aligny>center</aligny>
-                        <font>{T.FONT_ICON_19}</font>
-                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                        <font>{T.FONT_ICON_29}</font>
+                        <textcolor>{colour}</textcolor>
                         <label>&#x{icon_glyphs.CHEVRON_RIGHT:04X};</label>
                     </control>"""
-    return _settings_control_row(list_id, trailing=trailing,
-                                 trailing_w=468, **kwargs)
+
+    rest = _trailing("$INFO[Window.Property(text_secondary)]")
+    focused = (_trailing("$INFO[Window.Property(accent_color)]",
+                         f"Control.HasFocus({list_id})")
+               + _trailing("$INFO[Window.Property(text_secondary)]",
+                           f"!Control.HasFocus({list_id})"))
+    return _settings_control_row(list_id, trailing=rest, trailing_focused=focused,
+                                 trailing_w=460 + 57, **kwargs)
+
+
+def settings_choice_list(list_id: int, *, value_property: str, posy: int,
+                         onup: int, ondown: int,
+                         width: int = T.SETTINGS_DETAIL_W_WIDE) -> str:
+    """A whole one-item list holding a settings_choice_row."""
+    H = T.SETTINGS_ACTION_ROW_H
+    item, focused = settings_choice_row(list_id, value_property=value_property,
+                                        width=width)
+    return f"""
+                        <control type="list" id="{list_id}">
+                            <posx>0</posx>
+                            <posy>{posy}</posy>
+                            <width>{width}</width>
+                            <height>{H}</height>
+                            <onup>{onup}</onup>
+                            <ondown>{ondown}</ondown>
+                            <onleft>{list_id}</onleft>
+                            <onright>{list_id}</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{H}</itemheight>
+                            <scrolltime>0</scrolltime>
+{item}
+{focused}
+                        </control>"""
+
+
+def settings_picker_panel() -> str:
+    """The app 2.0 picker: a panel over the top of the right column with the
+    row's title and its options, the current one ticked, the rest of the
+    column dimmed. windows/main.py sizes 8992/8993/8990 to the options."""
+    x, y = T.SETTINGS_DETAIL_X, T.SETTINGS_PICKER_Y
+    w = T.SETTINGS_DETAIL_W
+    lw = w - 2 * T.SETTINGS_PICKER_PAD
+    rh = T.SETTINGS_PICKER_ROW_H
+    max_h = T.SETTINGS_PICKER_MAX_ROWS * T.SETTINGS_PICKER_PITCH
+    panel_h = T.SETTINGS_PICKER_LIST_Y + max_h - 3 + T.SETTINGS_PICKER_FOOT
+    current = "String.IsEqual(ListItem.Property(current),1)"
+    has_detail = "!String.IsEmpty(ListItem.Property(detail))"
+
+    def _row(colour: str, rim: str, wash: str = "") -> str:
+        fill = f"""
+                        <control type="image">
+                            <width>{lw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{wash}</colordiffuse>
+                            <texture border="20">rounded-20.png</texture>
+                        </control>""" if wash else f"""
+                        <control type="image">
+                            <width>{lw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{T.SETTINGS_PICKER_ROW}</colordiffuse>
+                            <texture border="20">rounded-20.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{current}</visible>
+                            <width>{lw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{T.SETTINGS_PICKER_CURRENT}</colordiffuse>
+                            <texture border="20">rounded-20.png</texture>
+                        </control>"""
+        return fill + f"""
+                        <control type="image">
+                            <visible>{current if not wash else "true"}</visible>
+                            <width>{lw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{rim}</colordiffuse>
+                            <texture border="20">rounded-20-outline.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>27</posx>
+                            <width>{lw - 220}</width>
+                            <height>{rh}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_SETTINGS_OPTION}</font>
+                            <textcolor>{colour}</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                        </control>
+                        <control type="label">
+                            <visible>{has_detail}</visible>
+                            <posx>{lw - 90 - 160}</posx>
+                            <width>160</width>
+                            <height>{rh}</height>
+                            <align>right</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_SETTINGS_VALUE}</font>
+                            <textcolor>{colour if wash else "$INFO[Window.Property(text_secondary)]"}</textcolor>
+                            <label>$INFO[ListItem.Property(detail)]</label>
+                        </control>
+                        <control type="label">
+                            <visible>{current}</visible>
+                            <posx>{lw - 60}</posx>
+                            <width>36</width>
+                            <height>{rh}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ICON_29}</font>
+                            <textcolor>{colour}</textcolor>
+                            <label>&#x{icon_glyphs.CHECK:04X};</label>
+                        </control>"""
+
+    item = _row("$INFO[Window.Property(text_primary)]", T.SETTINGS_PICKER_CURRENT_RIM)
+    focused = _row("$INFO[Window.Property(accent_color)]",
+                   "$INFO[Window.Property(accent_color)]",
+                   wash="$INFO[Window.Property(settings_row_wash)]")
+    return f"""
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(settings_picker))</visible>
+                <control type="image">
+                    <posx>{x - 40}</posx>
+                    <posy>{T.SETTINGS_CONTENT_Y - 60}</posy>
+                    <width>{T.SCREEN_W - x + 40}</width>
+                    <height>{T.SCREEN_H - T.SETTINGS_CONTENT_Y + 60}</height>
+                    <colordiffuse>{T.SETTINGS_PICKER_DIM}</colordiffuse>
+                    <texture>white-square.png</texture>
+                </control>
+                <control type="group">
+                    <posx>{x}</posx>
+                    <posy>{y}</posy>
+                    <control type="image" id="8992">
+                        <!-- resized-at-runtime -->
+                        <width>{w}</width>
+                        <height>{panel_h}</height>
+                        <colordiffuse>{T.SETTINGS_PICKER_FILL}</colordiffuse>
+                        <texture border="20">rounded-20.png</texture>
+                    </control>
+                    <control type="image" id="8993">
+                        <!-- resized-at-runtime -->
+                        <width>{w}</width>
+                        <height>{panel_h}</height>
+                        <colordiffuse>{T.SETTINGS_PICKER_RIM}</colordiffuse>
+                        <texture border="20">rounded-20-outline.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>27</posx>
+                        <posy>26</posy>
+                        <width>{w - 54}</width>
+                        <height>44</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_SETTINGS_PICKER}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[Window.Property(settings_picker_title)]</label>
+                    </control>
+                    <control type="list" id="8990">
+                        <posx>{T.SETTINGS_PICKER_PAD}</posx>
+                        <posy>{T.SETTINGS_PICKER_LIST_Y}</posy>
+                        <width>{lw}</width>
+                        <height>{max_h}</height>
+                        <onup>8990</onup>
+                        <ondown>8990</ondown>
+                        <onleft>8990</onleft>
+                        <onright>8990</onright>
+                        <orientation>vertical</orientation>
+                        <itemheight>{T.SETTINGS_PICKER_PITCH}</itemheight>
+                        <scrolltime>{T.SCROLLTIME}</scrolltime>
+                        <itemlayout width="{lw}" height="{T.SETTINGS_PICKER_PITCH}">{item}
+                        </itemlayout>
+                        <focusedlayout width="{lw}" height="{T.SETTINGS_PICKER_PITCH}">{focused}
+                        </focusedlayout>
+                    </control>
+                </control>
+            </control>"""
 
 
 def settings_note_card(*, posy: int, title: str, body_property: str,
@@ -5962,9 +5928,9 @@ def settings_note_card(*, posy: int, title: str, body_property: str,
 {indent}        <texture border="20">rounded-20.png</texture>
 {indent}    </control>
 {indent}    <control type="label">
-{indent}        <posx>19</posx>
+{indent}        <posx>27</posx>
 {indent}        <posy>18</posy>
-{indent}        <width>{width - 38}</width>
+{indent}        <width>{width - 54}</width>
 {indent}        <height>34</height>
 {indent}        <aligny>center</aligny>
 {indent}        <font>{T.FONT_ROW_TITLE}</font>
@@ -5972,9 +5938,9 @@ def settings_note_card(*, posy: int, title: str, body_property: str,
 {indent}        <label>{title}</label>
 {indent}    </control>
 {indent}    <control type="textbox">
-{indent}        <posx>19</posx>
+{indent}        <posx>27</posx>
 {indent}        <posy>56</posy>
-{indent}        <width>{width - 38}</width>
+{indent}        <width>{width - 54}</width>
 {indent}        <height>{height - 70}</height>
 {indent}        <font>{T.FONT_METADATA}</font>
 {indent}        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>

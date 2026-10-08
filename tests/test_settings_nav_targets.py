@@ -46,17 +46,14 @@ check("every RIGHT_TARGETS id exists in the rendered window",
       not missing,
       "Right does nothing on these pages: %s" % missing)
 
-seg_missing = [(k, i) for k, gid, sids, _p in settings_options.SEGMENTED_GROUPS
-               for i in (gid,) + sids if i not in IDS]
-check("every segmented group and pill id exists",
-      not seg_missing, str(seg_missing))
+choice_missing = [lid for _k, lid, _p in settings_options.CHOICE_ROWS
+                  if lid not in IDS]
+check("every picker row id exists", not choice_missing, str(choice_missing))
+check("the picker list exists", 8990 in IDS)
 
-# The pane is entered by Right, so a target that is not a segmented pill or
-# a real row is worth a second look -- but the only hard rule is existence.
-check("playback's target is one of Streaming quality's pills",
-      settings_pages.RIGHT_TARGETS["playback"] in
-      dict((k, s) for k, _g, s, _p in settings_options.SEGMENTED_GROUPS)["quality"],
-      "entering the page should land on its FIRST row")
+check("playback's target is Streaming quality, its first row",
+      settings_pages.RIGHT_TARGETS["playback"] ==
+      dict((k, lid) for k, lid, _p in settings_options.CHOICE_ROWS)["quality"])
 
 check("the tabs are the app's six, in its order",
       [p.label for p in settings_pages.PAGES] == [

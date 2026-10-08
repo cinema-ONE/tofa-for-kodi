@@ -724,7 +724,7 @@ SETTINGS_TAB_SLOT = 320
 SETTINGS_TAB_CENTRES = (148, 355, 619, 851, 1014, 1196)
 SETTINGS_TAB_INK_W = (97, 194, 192, 138, 67, 179)
 #: First row's top; its group eyebrow inks at 255.
-SETTINGS_CONTENT_Y = 285
+SETTINGS_CONTENT_Y = 283
 #: The left column's page summary: eyebrow ink 364, value ink 389, 84 apart.
 SETTINGS_SUM_Y = 360
 SETTINGS_SUM_PITCH = 84
@@ -736,13 +736,28 @@ SETTINGS_INFO_BODY_Y = 459
 SETTINGS_INFO_NOTE_GAP = 45
 SETTINGS_INFO_OPTS_GAP = 60
 SETTINGS_INFO_OPT_PITCH = 82
+# The choice picker (app 2.0): a panel at the top of the right column, a
+# title, then one 79-tall option per 82, 18 in from the panel's sides.
+SETTINGS_PICKER_Y = 253
+SETTINGS_PICKER_PAD = 18
+SETTINGS_PICKER_LIST_Y = 83
+SETTINGS_PICKER_PITCH = 82
+SETTINGS_PICKER_ROW_H = 79
+SETTINGS_PICKER_FOOT = 22
+SETTINGS_PICKER_MAX_ROWS = 8
+# Measured on the capture: near-black panel, a faint rim, options at ~7%
+# white, the current one ~22% with a brighter rim; the column behind fades.
+SETTINGS_PICKER_FILL = "0xFF070E11"
+SETTINGS_PICKER_RIM = "0x30FFFFFF"
+SETTINGS_PICKER_ROW = "0x12FFFFFF"
+SETTINGS_PICKER_CURRENT = "0x38FFFFFF"
+SETTINGS_PICKER_CURRENT_RIM = "0x66FFFFFF"
+SETTINGS_PICKER_DIM = "0xD0030B10"           # CANVAS, so the edge does not show
 
-# Rows. A two-line action row (a title over an explanatory line, e.g. Switch
-# Profile, Sign Out) is 109; a single-line value row (label left, value right,
-# e.g. Email) is 80. Both measured, and they are genuinely different rather
-# than one padded to the other.
-SETTINGS_ACTION_ROW_H = 109
-SETTINGS_VALUE_ROW_H = 80
+# Rows (app 2.0): every row is ONE line now, title left and value or switch
+# right, 86 tall on a 94 pitch; the left column carries the explanation.
+SETTINGS_ACTION_ROW_H = 86
+SETTINGS_VALUE_ROW_H = SETTINGS_ACTION_ROW_H
 # Two value rows sharing one card (Server over Libraries) are shorter than a
 # lone one: the app's two-row card is 153 tall, not 160. There is no divider
 # rule between them -- looked for one, the fill is constant across the seam.
@@ -750,11 +765,10 @@ SETTINGS_VALUE_ROW_STACKED_H = 76
 # Card bottom to next card top for two rows INSIDE one group, as against
 # SETTINGS_GROUP_GAP between groups. Defined here with the row heights it
 # goes with, since several sections stack rows this way.
-SETTINGS_STACK_ROW_GAP = 12
-# Card bottom to the next card top. The group's eyebrow label lives inside
-# this gap, 25 above the card it introduces. Measured 60/61/61 down the page;
-# taking 60 puts our four Account cards within 2px of the app's at the bottom.
-SETTINGS_GROUP_GAP = 60
+SETTINGS_STACK_ROW_GAP = 8
+# Card bottom to the next card top, the next group's eyebrow inside it:
+# 61 on the app 2.0 captures, within a pane and across grouplist children.
+SETTINGS_GROUP_GAP = 61
 SETTINGS_GROUP_EYEBROW_RISE = 25
 SETTINGS_ROW_RADIUS = 18                # 6: "glass value rows (radius ~18)"
 # A detail-pane row that DOES something is brighter at rest than one that
@@ -772,7 +786,7 @@ SETTINGS_ROW_RADIUS = 18                # 6: "glass value rows (radius ~18)"
 # applied to the LIVE accent, which is per-profile server data and cannot be a
 # constant here -- windows/main.py sets it as the `settings_row_wash` property
 # via theme.accent_with_alpha(), the same way accent_pill_fill already works.
-SETTINGS_ROW_FOCUS_ALPHA = "20"         # 12.5%, measured
+SETTINGS_ROW_FOCUS_ALPHA = "4D"         # 30%, measured on app 2.0
 
 # Right rail: eyebrow, then one glass panel holding the QR card and its
 # caption. The QR asset is a fixed-size 292 square with the white card and its
@@ -860,19 +874,15 @@ SETTINGS_GROUPLIST_GAP = 12
 # faithful match; copying the 28 would be copying a text metric.
 SETTINGS_GROUP_TRAIL = SPACE_MD
 SETTINGS_GROUPLIST_ITEMGAP = 0
-# Boundaries between groups must still measure SETTINGS_GROUP_GAP, and that
-# budget is now split differently: more of it sits under a group as its pad,
-# so less is left as the next group's lead-in.
-SETTINGS_SECTION_LEAD = SETTINGS_GROUP_GAP - SETTINGS_GROUP_TRAIL
+# Boundaries between groups still measure SETTINGS_GROUP_GAP: the trail
+# under one group, then the next one's lead-in and eyebrow band.
+SETTINGS_SECTION_LEAD = (SETTINGS_GROUP_GAP - SETTINGS_GROUP_TRAIL
+                         - SETTINGS_GROUP_EYEBROW_BAND)
 # Where a section-leading child's first row starts: its lead-in, then the
 # band its eyebrow occupies.
 SETTINGS_SECTION_BAND = SETTINGS_SECTION_LEAD + SETTINGS_GROUP_EYEBROW_BAND
-# Shifted by whatever the pad took OUT of the section lead-in, so growing the
-# pad moves the bottom of the region's content and nothing else. Without this
-# the first section on every page would ride up by that same amount, which is
-# a page-wide change nobody asked for in return for a gap at the bottom.
-SETTINGS_GROUPLIST_Y = (SETTINGS_CONTENT_Y - SETTINGS_GROUP_EYEBROW_BAND
-                        + (SETTINGS_GROUP_TRAIL - SETTINGS_GROUPLIST_GAP))
+# So the first section's first card lands on SETTINGS_CONTENT_Y.
+SETTINGS_GROUPLIST_Y = SETTINGS_CONTENT_Y - SETTINGS_SECTION_BAND
 # Runs to the screen edge, like every other scrolling region here
 # (SEARCH_SHELVES_H, PERSON_GRID_H all end
 # at SCREEN_H). This one used to stop 24px short on the reasoning that a card
@@ -999,7 +1009,7 @@ def settings_stack_row_y(index: int) -> int:
 
 
 # Five segment rows (intro/recap/preview/outro/commercial), as the web and
-# desktop apps show. 5*109 + 4*12 + 37 = 630, inside the 687 grouplist
+# desktop apps show. 5*86 + 4*8 + 37 = 499, inside the grouplist
 # viewport -- so the whole group is one child that fits, and focus moving
 # between its rows needs no scroll (project_kodi_grouplist_scroll_limit).
 SETTINGS_SEGMENT_COUNT = 5
@@ -1011,18 +1021,11 @@ SETTINGS_QUALITY_GROUP_H = (
     SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL)
 SETTINGS_SKIP_ROW_Y = tuple(settings_stack_row_y(i)
                             for i in range(SETTINGS_SEGMENT_COUNT))
-# "Do nothing" is 108px of ink, so these pills are half again the default.
-SETTINGS_SEGMENT_PILL_W = 150
 # NEXT EPISODE is a SECOND child of the playback grouplist rather than a
-# sixth SEGMENTS row: six rows would be 6*109 + 5*12 + 37 = 751 against a 687
-# viewport, and a child taller than the viewport cannot be scrolled to
+# sixth SEGMENTS row: a child taller than the viewport cannot be scrolled to
 # (project_kodi_grouplist_scroll_limit). Two children each shorter than the
 # viewport is exactly the shape that grouplist scrolling does handle.
 SETTINGS_NEXTUP_GROUP_H = settings_stack_group_h(2)   # + Next Up style
-#: "Automatically" is 133px of ink against "Do nothing"'s 108, so this row
-#: gets its own width -- reusing SETTINGS_SEGMENT_PILL_W would leave it 8px
-#: of padding where the segment rows get 21, and read as a different control.
-SETTINGS_NEXTUP_PILL_W = 175
 # Audio & Subtitles is TWO groups, mirroring the web/desktop app's two cards:
 # Audio (primary + secondary language) and Subtitles (primary + secondary +
 # the always-show toggle). It was one "LANGUAGE" group with a single language
@@ -1249,6 +1252,10 @@ FONT_BUTTON = "tofa_font_button"            # CTA pills
 FONT_LINK = "tofa_font_link"                # pairing URL (mono)
 FONT_CODE = "tofa_font_code"                # pairing code (mono, oversized)
 FONT_POSTER_TITLE = "tofa_font_poster_title"
+FONT_SETTINGS_ROW = "tofa_font_settings_row"
+FONT_SETTINGS_VALUE = "tofa_font_settings_value"
+FONT_SETTINGS_OPTION = "tofa_font_settings_option"
+FONT_SETTINGS_PICKER = "tofa_font_settings_picker"
 FONT_BODY = "tofa_font_body"
 FONT_METADATA = "tofa_font_metadata"
 #: Settings' identity card, first line; see fontinstall.FONTS.

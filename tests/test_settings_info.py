@@ -21,7 +21,7 @@ segment_labels = {
     "nextup": [l for _v, l in settings_options.AUTO_PLAY_NEXT_ACTIONS],
     "nextupstyle": [l for _v, l in settings_options.NEXT_UP_STYLES],
 }
-for key, _g, sids, _p in settings_options.SEGMENTED_GROUPS:
+for key, _lid, _p in settings_options.CHOICE_ROWS:
     info = settings_info.ROWS.get(key)
     check(f"{key}: has words", info is not None)
     if info is None:

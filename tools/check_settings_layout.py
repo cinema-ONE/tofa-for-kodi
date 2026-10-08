@@ -11,8 +11,8 @@ Two invariants, both of which fail SILENTLY and look like something else.
    is 6px over the viewport for exactly that reason and is fine.
 
 2. **The trailing pad must replace the itemgap, not add to it.** Group
-   boundaries are supposed to measure SETTINGS_GROUP_GAP: a group's own pad,
-   plus the grouplist's itemgap, plus the next group's section lead-in. Get
+   boundaries are supposed to measure SETTINGS_GROUP_GAP, card to card: a
+   group's own pad, the itemgap, the next group's lead-in and eyebrow. Get
    that wrong and every page's rhythm shifts by a few pixels, which is exactly
    the kind of change nobody notices in review and everybody notices on a TV.
 
@@ -72,12 +72,14 @@ def main() -> int:
                     "be scrolled to (pad excluded)" % (name, content, viewport))
 
     # 2. the pad replaces the itemgap
-    boundary = trail + T.SETTINGS_GROUPLIST_ITEMGAP + T.SETTINGS_SECTION_LEAD
+    boundary = (trail + T.SETTINGS_GROUPLIST_ITEMGAP + T.SETTINGS_SECTION_LEAD
+                + T.SETTINGS_GROUP_EYEBROW_BAND)
     if boundary != T.SETTINGS_GROUP_GAP:
         fails.append("group boundary measures %d, not SETTINGS_GROUP_GAP (%d): "
-                     "trail %d + itemgap %d + section lead %d"
+                     "trail %d + itemgap %d + section lead %d + eyebrow %d"
                      % (boundary, T.SETTINGS_GROUP_GAP, trail,
-                        T.SETTINGS_GROUPLIST_ITEMGAP, T.SETTINGS_SECTION_LEAD))
+                        T.SETTINGS_GROUPLIST_ITEMGAP, T.SETTINGS_SECTION_LEAD,
+                        T.SETTINGS_GROUP_EYEBROW_BAND))
 
     # 3. the region still reaches the screen edge
     if T.SETTINGS_GROUPLIST_Y + viewport != T.SCREEN_H:
