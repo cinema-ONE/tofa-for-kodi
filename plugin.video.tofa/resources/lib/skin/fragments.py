@@ -721,6 +721,7 @@ def poster_card(
     extra_bottom_pad: int = 0,
     hide_rating_on_focus: bool = True,
     size: PosterSize = POSTER_STD,
+    cell_w: int | None = None,
 ) -> tuple[str, str]:
     """Returns (itemlayout_xml, focusedlayout_xml) for a CELL_W-wide poster
     card (poster POSTER_W x POSTER_H, rating badge, optional accent progress bar,
@@ -787,7 +788,8 @@ def poster_card(
         hide_rating_on_focus=hide_rating_on_focus,
         size=size,
     )
-    cell_w = poster_cell(size)[0]
+    # A wider cell only widens the gap: the poster stays at HPAD.
+    cell_w = cell_w or poster_cell(size)[0]
 
     # The meta line is TWO controls sharing one baseline, not one string.
     # 6 wants YEAR and NN MIN LEFT justified to opposite card edges on
@@ -2665,6 +2667,7 @@ def poster_row(
     item_xml: str,
     focused_xml: str,
     list_width: int = T.CONTENT_WIDTH,
+    cell_w: int = T.CELL_W,
     indent: str = "            ",
     pos: tuple[int, int] | None = None,
     block_h: int = T.ROW_BLOCK_H,
@@ -2701,7 +2704,7 @@ def poster_row(
 {indent}        <onup>{onup}</onup>
 {indent}        <ondown>{ondown}</ondown>
 {indent}        <orientation>horizontal</orientation>
-{indent}        <itemwidth>{T.CELL_W}</itemwidth>
+{indent}        <itemwidth>{cell_w}</itemwidth>
 {indent}        <itemheight>{T.CELL_H}</itemheight>
 {indent}        <scrolltime>{T.SCROLLTIME}</scrolltime>
 {item_xml}
@@ -3373,7 +3376,7 @@ def discover_row_block(index: int, row_xml: str, header_xml: str = "") -> str:
 # POSTER_H=378 that is the same 672 they were before.
 DISCOVER_FOCUS_ART_H = T.POSTER_H
 DISCOVER_FOCUS_ART_W = DISCOVER_FOCUS_ART_H * 16 // 9
-DISCOVER_FOCUS_CELL_W = DISCOVER_FOCUS_ART_W + 2 * T.HPAD
+DISCOVER_FOCUS_CELL_W = DISCOVER_FOCUS_ART_W + T.ROW_CELL_W - T.POSTER_W
 
 
 def discover_card(
@@ -3401,6 +3404,7 @@ def discover_card(
         caption_field=caption_field,
         extra_item_xml=watchlist_badge_item(),
         extra_focused_xml=watchlist_badge_focused(),
+        cell_w=T.ROW_CELL_W,
     )
 
     # The itemlayout is the poster card's, unwrapped. It briefly carried a

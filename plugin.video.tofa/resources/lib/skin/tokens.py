@@ -176,6 +176,9 @@ TOP_PAD = 10
 # visibly looser than the real thing -- the card width was only 3.5% off but
 # the GAP was nearly double.
 CELL_W = POSTER_W + 2 * HPAD
+# Home's and Discover's rows leave 44 between cards: a 296 pitch, measured
+# on the app's 1.x and 2.0.0 alike. The grids above keep CELL_W.
+ROW_CELL_W = POSTER_W + 44
 
 # The right edge every bleeding row runs to: one HPAD past the screen, so
 # the trailing cell padding falls off it. A rows REGION (the grouplist that
