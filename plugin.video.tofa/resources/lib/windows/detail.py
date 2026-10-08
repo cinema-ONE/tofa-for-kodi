@@ -228,7 +228,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     P2_SECTIONS = (
         ("episodes", 5410, (SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL),
          T.DETAIL_P2_EPISODES_H, "EPISODES", ""),
-        ("collection", 5420, (COLLECTION_LIST,), T.DETAIL_P2_ROW_H, "COLLECTION", "COLLECTION"),
+        ("collection", 5420, (COLLECTION_LIST,), T.DETAIL_P2_COLLECTION_H, "COLLECTION", "COLLECTION"),
         ("cast", 5430, (CAST_LIST,), T.DETAIL_P2_CAST_H, "CAST", "CAST & CREW"),
         ("similar", 5440, (SIMILAR_LIST,), T.DETAIL_P2_ROW_H, "MORE", "MORE LIKE THIS"),
         ("discover", 5450, (DISCOVER_LIST,), T.DETAIL_P2_ROW_H, "MORE", "MORE TO DISCOVER"),

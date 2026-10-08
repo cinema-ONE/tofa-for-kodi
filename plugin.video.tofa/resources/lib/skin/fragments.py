@@ -16,6 +16,8 @@ this is where you would look first when the output surprises you.
 """
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from . import icon_glyphs
 from . import tokens as T
 
@@ -236,6 +238,29 @@ CHIP_INSET = 8
 CHIP_X = T.POSTER_W - CHIP_SIZE - CHIP_INSET
 
 
+class PosterSize(NamedTuple):
+    """A poster card's size and the exact-size art cut for it: Kodi scales a
+    texture's corner and stroke with it, so each size has its own set."""
+    w: int
+    h: int
+    mask: str
+    border: str
+    glow: str
+
+
+POSTER_STD = PosterSize(T.POSTER_W, T.POSTER_H,
+                        "poster-mask.png", "poster-border.png", "card-glow.png")
+# The title page's shelves (app 2.0.0), on the Top Result's 220x330 art.
+POSTER_COMPACT = PosterSize(T.DETAIL_P2_POSTER_W, T.DETAIL_P2_POSTER_H,
+                            "top-result-mask.png", "top-result-border.png",
+                            "top-result-glow.png")
+
+
+def poster_cell(size: PosterSize = POSTER_STD) -> tuple[int, int]:
+    """(width, height) of a poster_card() cell at `size`."""
+    return size.w + 2 * T.HPAD, T.CELL_H - T.POSTER_H + size.h
+
+
 def badge_glyph_labels(x: int, y: int) -> str:
     """The card chip's glyph, drawn TWICE with opposite conditions.
 
@@ -277,12 +302,13 @@ def badge_glyph_labels(x: int, y: int) -> str:
                     </control>"""
 
 
-def watchlist_badge_item() -> str:
+def watchlist_badge_item(size: PosterSize = POSTER_STD) -> str:
     """Circular +/checkmark badge, top-right, Discover-only (its items
     aren't necessarily in the library yet, so need a way to add them).
     28x28, same 8px edge inset as the rating badge."""
+    chip_x = size.w - CHIP_SIZE - CHIP_INSET
     return f"""                    <control type="image">
-                        <posx>{CHIP_X}</posx>
+                        <posx>{chip_x}</posx>
                         <posy>8</posy>
                         <width>28</width>
                         <height>28</height>
@@ -291,7 +317,7 @@ def watchlist_badge_item() -> str:
                         <visible>!String.IsEmpty(ListItem.Property(watchlist_glyph))</visible>
                     </control>
                     <control type="image">
-                        <posx>{CHIP_X}</posx>
+                        <posx>{chip_x}</posx>
                         <posy>8</posy>
                         <width>28</width>
                         <height>28</height>
@@ -299,9 +325,9 @@ def watchlist_badge_item() -> str:
                         <texture border="14">capsule-h28-outline.png</texture>
                         <visible>!String.IsEmpty(ListItem.Property(watchlist_glyph))</visible>
                     </control>
-{badge_glyph_labels(CHIP_X, 8)}
+{badge_glyph_labels(chip_x, 8)}
                     <control type="image">
-                        <posx>{CHIP_X}</posx>
+                        <posx>{chip_x}</posx>
                         <posy>44</posy>
                         <width>28</width>
                         <height>28</height>
@@ -310,7 +336,7 @@ def watchlist_badge_item() -> str:
                         <visible>!String.IsEmpty(ListItem.Property(cinema_glyph))</visible>
                     </control>
                     <control type="label">
-                        <posx>{CHIP_X}</posx>
+                        <posx>{chip_x}</posx>
                         <posy>44</posy>
                         <width>28</width>
                         <height>28</height>
@@ -323,7 +349,7 @@ def watchlist_badge_item() -> str:
                     </control>"""
 
 
-def watchlist_badge_focused() -> str:
+def watchlist_badge_focused(size: PosterSize = POSTER_STD) -> str:
     """The SAME badge as watchlist_badge_item(): dark chip, soft outline,
     white glyph. A focusedlayout needs its own copy of the markup, which is
     the only reason this exists separately.
@@ -338,8 +364,9 @@ def watchlist_badge_focused() -> str:
     selected card in every Discover-style row drew a notdef blob on a teal
     circle. Shared fragment, so Discover's own rows and Search's Discover
     shelf had it too."""
+    chip_x = size.w - CHIP_SIZE - CHIP_INSET
     return f"""                    <control type="image">
-                        <posx>{CHIP_X}</posx>
+                        <posx>{chip_x}</posx>
                         <posy>8</posy>
                         <width>28</width>
                         <height>28</height>
@@ -348,7 +375,7 @@ def watchlist_badge_focused() -> str:
                         <visible>!String.IsEmpty(ListItem.Property(watchlist_glyph))</visible>
                     </control>
                     <control type="image">
-                        <posx>{CHIP_X}</posx>
+                        <posx>{chip_x}</posx>
                         <posy>8</posy>
                         <width>28</width>
                         <height>28</height>
@@ -356,7 +383,7 @@ def watchlist_badge_focused() -> str:
                         <texture border="14">capsule-h28-outline.png</texture>
                         <visible>!String.IsEmpty(ListItem.Property(watchlist_glyph))</visible>
                     </control>
-{badge_glyph_labels(CHIP_X, 8)}"""
+{badge_glyph_labels(chip_x, 8)}"""
 
 
 HPAD, TOP_PAD = T.HPAD, T.TOP_PAD  # poster_visual()'s inset; see its docstring
@@ -432,7 +459,8 @@ def format_badges(zoom_anim: str = "") -> str:
             + stack(T.CARD_BADGE_TOP_Y, "String.IsEmpty(ListItem.Property(rating))"))
 
 
-def poster_placeholder(zoom_anim: str = "") -> str:
+def poster_placeholder(zoom_anim: str = "",
+                       size: PosterSize = POSTER_STD) -> str:
     """The wash, mark and title an artwork-less card shows.
 
     ONE definition, used by BOTH copies poster_visual builds. The first pass
@@ -448,20 +476,23 @@ def poster_placeholder(zoom_anim: str = "") -> str:
     title scale as one rigid unit with the card instead of sitting still while
     it grows.
     """
+    # The mark and title keep their place on the card at any size.
+    icon_y = round(T.POSTER_PLACEHOLDER_ICON_Y * size.h / T.POSTER_H)
+    title_y = round(T.POSTER_PLACEHOLDER_TITLE_Y * size.h / T.POSTER_H)
     return f"""                        <control type="image">
                             <posx>0</posx>
                             <posy>0</posy>
-                            <width>{T.POSTER_W}</width>
-                            <height>{T.POSTER_H}</height>
-                            <texture diffuse="poster-mask.png">poster-placeholder.png</texture>{zoom_anim}
+                            <width>{size.w}</width>
+                            <height>{size.h}</height>
+                            <texture diffuse="{size.mask}">poster-placeholder.png</texture>{zoom_anim}
                         </control>
                         <control type="group">
                             <visible>String.IsEmpty(ListItem.Art(poster))</visible>
                             <control type="label">
                                 <visible>String.IsEmpty(ListItem.Property(is_folder))</visible>
                                 <posx>0</posx>
-                                <posy>{T.POSTER_PLACEHOLDER_ICON_Y}</posy>
-                                <width>{T.POSTER_W}</width>
+                                <posy>{icon_y}</posy>
+                                <width>{size.w}</width>
                                 <height>{T.POSTER_PLACEHOLDER_ICON_H}</height>
                                 <align>center</align>
                                 <aligny>center</aligny>
@@ -472,8 +503,8 @@ def poster_placeholder(zoom_anim: str = "") -> str:
                             <control type="label">
                                 <visible>!String.IsEmpty(ListItem.Property(is_folder))</visible>
                                 <posx>0</posx>
-                                <posy>{T.POSTER_PLACEHOLDER_ICON_Y}</posy>
-                                <width>{T.POSTER_W}</width>
+                                <posy>{icon_y}</posy>
+                                <width>{size.w}</width>
                                 <height>{T.POSTER_PLACEHOLDER_ICON_H}</height>
                                 <align>center</align>
                                 <aligny>center</aligny>
@@ -483,8 +514,8 @@ def poster_placeholder(zoom_anim: str = "") -> str:
                             </control>
                             <control type="label">
                                 <posx>{T.POSTER_PLACEHOLDER_PAD}</posx>
-                                <posy>{T.POSTER_PLACEHOLDER_TITLE_Y}</posy>
-                                <width>{T.POSTER_W - T.POSTER_PLACEHOLDER_PAD * 2}</width>
+                                <posy>{title_y}</posy>
+                                <width>{size.w - T.POSTER_PLACEHOLDER_PAD * 2}</width>
                                 <height>{T.POSTER_PLACEHOLDER_TITLE_H}</height>
                                 <align>center</align>
                                 <font>{T.FONT_METADATA}</font>
@@ -501,6 +532,7 @@ def poster_visual(
     extra_item_xml: str = "",
     extra_focused_xml: str = "",
     hide_rating_on_focus: bool = True,
+    size: PosterSize = POSTER_STD,
 ) -> tuple[str, str]:
     """Returns (item_xml, focused_xml): just the poster's own visual block
     (placeholder tile, poster art, rating badge, optional progress bar,
@@ -527,7 +559,7 @@ def poster_visual(
     # and the card's parts then scale about different points -- which is how
     # the progress bar came to slide out from under the focus border while
     # the poster and its border, being identical in size, still agreed.
-    ZOOM = (f'center="{T.POSTER_W // 2},{T.POSTER_H // 2}" '
+    ZOOM = (f'center="{size.w // 2},{size.h // 2}" '
             'time="140" tween="cubic" easing="out"')
     # The rating badge stays on the FOCUSED card too. Apple TV clears it out
     # from under the focus on Browse/Home (verified in browse-full.png: the
@@ -544,6 +576,8 @@ def poster_visual(
     def _progress_block(zoom_anim: str) -> str:
         if not has_progress:
             return ""
+        # The strips are cut to the standard card's width and corners.
+        assert size == POSTER_STD, "progress strips exist at POSTER_STD only"
         return f"""
                     <!-- 6's progress bar: bottom-aligned INSIDE the poster,
                          touching its left, bottom and right edges, track
@@ -551,7 +585,7 @@ def poster_visual(
 
                          posy is computed, never typed. It was once the
                          literal 362, correct for the 248x372 poster of the
-                         day; the card later grew to {T.POSTER_W}x{T.POSTER_H}
+                         day; the card later grew to {size.w}x{size.h}
                          and left the bar floating 6px clear of the bottom,
                          with the corner clipping baked into each strip no
                          longer lining up with the corner it was cut for.
@@ -568,8 +602,8 @@ def poster_visual(
                     <control type="image">
                         <visible>!String.IsEmpty(ListItem.Property(progress_pct))</visible>
                         <posx>0</posx>
-                        <posy>{T.POSTER_H - _POSTER_BAR_H}</posy>
-                        <width>{T.POSTER_W}</width>
+                        <posy>{size.h - _POSTER_BAR_H}</posy>
+                        <width>{size.w}</width>
                         <height>{_POSTER_BAR_H}</height>
                         <colordiffuse>{T.CARD_PROGRESS_TRACK}</colordiffuse>
                         <texture>poster-progress/100.png</texture>{zoom_anim}
@@ -577,8 +611,8 @@ def poster_visual(
                     <control type="image">
                         <visible>!String.IsEmpty(ListItem.Property(progress_pct))</visible>
                         <posx>0</posx>
-                        <posy>{T.POSTER_H - _POSTER_BAR_H}</posy>
-                        <width>{T.POSTER_W}</width>
+                        <posy>{size.h - _POSTER_BAR_H}</posy>
+                        <width>{size.w}</width>
                         <height>{_POSTER_BAR_H}</height>
                         <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                         <texture>$INFO[ListItem.Property(progress_fill)]</texture>{zoom_anim}
@@ -592,14 +626,14 @@ def poster_visual(
     item = f"""                    <control type="group">
                         <posx>{HPAD}</posx>
                         <posy>{TOP_PAD}</posy>
-{poster_placeholder()}
+{poster_placeholder(size=size)}
                         <control type="image">
                             <posx>0</posx>
                             <posy>0</posy>
-                            <width>{T.POSTER_W}</width>
-                            <height>{T.POSTER_H}</height>
+                            <width>{size.w}</width>
+                            <height>{size.h}</height>
                             <aspectratio scalediffuse="false" aligny="top">scale</aspectratio>
-                            <texture diffuse="poster-mask.png">$INFO[ListItem.Art(poster)]</texture>
+                            <texture diffuse="{size.mask}">$INFO[ListItem.Art(poster)]</texture>
                         </control>
 {rating_badge()}
 {format_badges()}{progress_block}
@@ -619,10 +653,10 @@ def poster_visual(
                             <visible>Control.HasFocus({list_id})</visible>
                             <posx>-{GLOW_PAD}</posx>
                             <posy>-{GLOW_PAD}</posy>
-                            <width>{T.POSTER_W + 2 * GLOW_PAD}</width>
-                            <height>{T.POSTER_H + 2 * GLOW_PAD}</height>
+                            <width>{size.w + 2 * GLOW_PAD}</width>
+                            <height>{size.h + 2 * GLOW_PAD}</height>
                             <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <texture>card-glow.png</texture>
+                            <texture>{size.glow}</texture>
                             <!-- Centre is POSTER_W/2, matching the poster
                                  and border rather than this control's own
                                  width: an animation centre is expressed in
@@ -632,7 +666,7 @@ def poster_visual(
                                  its own half-width put the centre 10px down
                                  and right, which zoomed the halo about a
                                  different point than the card it wraps. -->
-                            <animation effect="zoom" start="100" end="104.5" center="{T.POSTER_W // 2},{T.POSTER_H // 2}" time="140" tween="cubic" easing="out">Focus</animation>
+                            <animation effect="zoom" start="100" end="104.5" center="{size.w // 2},{size.h // 2}" time="140" tween="cubic" easing="out">Focus</animation>
                         </control>
                         <!-- The placeholder plate zooms with everything
                              else. It is what a card with no artwork has
@@ -645,15 +679,15 @@ def poster_visual(
                              card that has art, since the art covers the
                              plate; the only cards it ever showed on were
                              the ones the plate exists for. -->
-{poster_placeholder(zoom_anim)}
+{poster_placeholder(zoom_anim, size)}
                         <control type="image">
                             <posx>0</posx>
                             <posy>0</posy>
-                            <width>{T.POSTER_W}</width>
-                            <height>{T.POSTER_H}</height>
+                            <width>{size.w}</width>
+                            <height>{size.h}</height>
                             <aspectratio scalediffuse="false" aligny="top">scale</aspectratio>
-                            <texture diffuse="poster-mask.png">$INFO[ListItem.Art(poster)]</texture>
-                            <animation effect="zoom" start="100" end="104.5" center="{T.POSTER_W // 2},{T.POSTER_H // 2}" time="140" tween="cubic" easing="out">Focus</animation>
+                            <texture diffuse="{size.mask}">$INFO[ListItem.Art(poster)]</texture>
+                            <animation effect="zoom" start="100" end="104.5" center="{size.w // 2},{size.h // 2}" time="140" tween="cubic" easing="out">Focus</animation>
                         </control>
                         <!-- Gated on real container focus, not just
                              list-cursor position: focusedlayout otherwise
@@ -664,11 +698,11 @@ def poster_visual(
                             <visible>Control.HasFocus({list_id})</visible>
                             <posx>0</posx>
                             <posy>0</posy>
-                            <width>{T.POSTER_W}</width>
-                            <height>{T.POSTER_H}</height>
+                            <width>{size.w}</width>
+                            <height>{size.h}</height>
                             <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <texture>poster-border.png</texture>
-                            <animation effect="zoom" start="100" end="104.5" center="{T.POSTER_W // 2},{T.POSTER_H // 2}" time="140" tween="cubic" easing="out">Focus</animation>
+                            <texture>{size.border}</texture>
+                            <animation effect="zoom" start="100" end="104.5" center="{size.w // 2},{size.h // 2}" time="140" tween="cubic" easing="out">Focus</animation>
                         </control>
 {rating_badge(zoom_anim, extra_visible=_focus_gate)}
 {format_badges(zoom_anim)}{progress_block_focused}
@@ -686,6 +720,7 @@ def poster_card(
     extra_focused_xml: str = "",
     extra_bottom_pad: int = 0,
     hide_rating_on_focus: bool = True,
+    size: PosterSize = POSTER_STD,
 ) -> tuple[str, str]:
     """Returns (itemlayout_xml, focusedlayout_xml) for a CELL_W-wide poster
     card (poster POSTER_W x POSTER_H, rating badge, optional accent progress bar,
@@ -720,7 +755,7 @@ def poster_card(
     # add up to T.CELL_H, which every row list's height comes from, and they
     # were previously typed out again here -- so a change in one place moved
     # the captions while every list kept its old height, or the reverse.
-    CAPTION_TITLE_TOP = TOP_PAD + T.POSTER_H + T.CAPTION_GAP
+    CAPTION_TITLE_TOP = TOP_PAD + size.h + T.CAPTION_GAP
     CAPTION_TITLE_HEIGHT = T.CAPTION_TITLE_H  # poster_title is 24pt; Kodi clips
     # item-layout content strictly to the cell, so a title with descenders
     # needs enough height not to have them cut off.
@@ -742,7 +777,7 @@ def poster_card(
     # recorded reason, so a Home card ellipsized 20px earlier than it needed
     # to and its right edge did not line up with the trailing "NN MIN LEFT".
     # Now all three captions share one column, 18..262 inside a 14..266 art.
-    CAPTION_W = T.POSTER_W - 8
+    CAPTION_W = size.w - 8
 
     item_visual, focused_visual = poster_visual(
         list_id,
@@ -750,7 +785,9 @@ def poster_card(
         extra_item_xml=extra_item_xml,
         extra_focused_xml=extra_focused_xml,
         hide_rating_on_focus=hide_rating_on_focus,
+        size=size,
     )
+    cell_w = poster_cell(size)[0]
 
     # The meta line is TWO controls sharing one baseline, not one string.
     # 6 wants YEAR and NN MIN LEFT justified to opposite card edges on
@@ -846,7 +883,7 @@ def poster_card(
                     <control type="label">
                         <posx>{CAPTION_X}</posx>
                         <posy>{CAPTION_TOP + _MICRO_BASELINE_DROP}</posy>
-                        <width>{T.POSTER_W - 8}</width>
+                        <width>{size.w - 8}</width>
                         <height>{T.CAPTION_META_H + T.CAPTION_BOTTOM - _MICRO_BASELINE_DROP}</height>
                         <align>right</align>
                         <font>{T.FONT_MICRO}</font>
@@ -854,7 +891,7 @@ def poster_card(
                         <label>$INFO[ListItem.Property(caption_trailing)]</label>
                     </control>"""
 
-    item = f"""                <itemlayout width="{T.CELL_W}" height="{CELL_HEIGHT}">
+    item = f"""                <itemlayout width="{cell_w}" height="{CELL_HEIGHT}">
 {item_visual}
                     <control type="label">
                         <posx>{CAPTION_X}</posx>
@@ -889,7 +926,7 @@ def poster_card(
                     </control>
                 </itemlayout>"""
 
-    focused = f"""                <focusedlayout width="{T.CELL_W}" height="{CELL_HEIGHT}">
+    focused = f"""                <focusedlayout width="{cell_w}" height="{CELL_HEIGHT}">
 {focused_visual}
                     <control type="label">
                         <posx>{CAPTION_X}</posx>
@@ -2998,15 +3035,16 @@ def _p2_block(key: str, block_id: int, visible: str, content: str) -> str:
 
 
 def _p2_row(list_id: int, title_property: str, item_xml: str, focused_xml: str) -> str:
+    cell_w, cell_h = poster_cell(POSTER_COMPACT)
     return _p2_header(f"$INFO[Window.Property({title_property})]") + f"""
                         <control type="list" id="{list_id}">
                             <posx>{T.DETAIL_P2_LEFT - T.HPAD}</posx>
                             <posy>{T.DETAIL_P2_ROW_LIST_Y}</posy>
                             <width>{T.row_bleed_width(T.DETAIL_P2_LEFT)}</width>
-                            <height>{T.CELL_H}</height>
+                            <height>{cell_h}</height>
                             <orientation>horizontal</orientation>
-                            <itemwidth>{T.CELL_W}</itemwidth>
-                            <itemheight>{T.CELL_H}</itemheight>
+                            <itemwidth>{cell_w}</itemwidth>
+                            <itemheight>{cell_h}</itemheight>
                             <scrolltime>{T.SCROLLTIME}</scrolltime>
 {item_xml}
 {focused_xml}
@@ -3112,6 +3150,10 @@ def detail_page2(*, cast_cards, collection_cards, similar_cards, discover_cards,
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[Window.Property(p2_title)]</label>
                         </control>
+                        <control type="group">
+                            <!-- The episode's details show only while its row or pills have focus, as in the app. -->
+                            <visible>ControlGroup(5410).HasFocus()</visible>
+                            <animation effect="fade" time="150">VisibleChange</animation>
                         <control type="label">
                             <posx>{left}</posx>
                             <posy>{T.DETAIL_EP_META_Y}</posy>
@@ -3160,6 +3202,7 @@ def detail_page2(*, cast_cards, collection_cards, similar_cards, discover_cards,
                             <font>{T.FONT_METADATA}</font>
                             <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                             <label>$INFO[Window.Property(ep_hint)]</label>
+                        </control>
                         </control>
                         <control type="list" id="6400">
                             <posx>{left}</posx>

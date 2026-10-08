@@ -1280,7 +1280,9 @@ DETAIL_P2_HEADER_Y = 560
 DETAIL_P2_FIRST_Y = 119
 #: Header label top to the next header, per section kind.
 DETAIL_P2_CAST_H = 330
-DETAIL_P2_ROW_H = 548
+DETAIL_P2_ROW_H = 490
+# The collection row is always first, and the app puts Cast 480 below it.
+DETAIL_P2_COLLECTION_H = 480
 DETAIL_P2_ABOUT_H = 460
 #: The episode block runs from the page top to the next header's label.
 DETAIL_P2_EPISODES_H = 1081
@@ -1288,6 +1290,9 @@ DETAIL_P2_EPISODES_H = 1081
 DETAIL_P2_GAP = -(SCREEN_H - DETAIL_P2_CAST_H) // 2
 #: Header to its row, label top to the list's top (art at ink + 43).
 DETAIL_P2_ROW_LIST_Y = 41
+# The shelves' posters: smaller than the grids', on a 248 pitch (app 2.0.0).
+DETAIL_P2_POSTER_W = 220
+DETAIL_P2_POSTER_H = 330
 DETAIL_P2_CAST_LIST_Y = 43
 DETAIL_P2_CAST_CELL = 214
 DETAIL_P2_CAST_PHOTO = 160
