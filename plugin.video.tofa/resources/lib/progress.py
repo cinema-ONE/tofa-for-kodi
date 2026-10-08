@@ -112,11 +112,18 @@ def fetch_many(client: MediaServerClient, file_ids: list, *,
     return found
 
 
+#: Under a minute in, a title has not been started: "Resume" at 0:06 is
+#: noise, and the server keeps nothing that short itself.
+RESUME_FLOOR_MS = 60_000
+
+
 def position_of(record: Optional[dict]) -> tuple[int, bool]:
-    """(position_ms, completed) from a record that may be None."""
+    """(position_ms, completed) from a record that may be None; a position
+    under RESUME_FLOOR_MS reads as 0."""
     if not record:
         return 0, False
-    return int(record.get("position_ms") or 0), bool(record.get("completed"))
+    position = int(record.get("position_ms") or 0)
+    return (position if position >= RESUME_FLOOR_MS else 0), bool(record.get("completed"))
 
 
 def episode_candidates(seasons: Any) -> list:
@@ -163,7 +170,7 @@ def next_up(candidates: list, progress_map: dict, prefer_file_id: Any = None):
                 return c
     started = [
         c for c in candidates
-        if (progress_map.get(c[3].get("id")) or {}).get("position_ms")
+        if position_of(progress_map.get(c[3].get("id")))[0]
         and not (progress_map.get(c[3].get("id")) or {}).get("completed")
     ]
     if started:
