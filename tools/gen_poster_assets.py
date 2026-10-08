@@ -415,33 +415,63 @@ def gen_person_glow(photo: int) -> None:
 TOP_RESULT_W, TOP_RESULT_H = 220, 330
 
 
-def gen_top_result_assets() -> None:
-    """Mask, focus border and focus glow for the Top Result's bare poster."""
-    sz = (TOP_RESULT_W * S, TOP_RESULT_H * S)
+def gen_card_set(w: int, h: int, prefix: str) -> None:
+    """Mask, focus border and focus glow for a bare poster of w x h."""
+    sz = (w * S, h * S)
     im = Image.new("RGBA", sz, (0, 0, 0, 0))
     ImageDraw.Draw(im).rounded_rectangle(
         [0, 0, sz[0] - 1, sz[1] - 1], radius=POSTER_RADIUS * S, fill="white")
-    _save(im, "top-result-mask.png", (TOP_RESULT_W, TOP_RESULT_H))
+    _save(im, prefix + "-mask.png", (w, h))
 
     im = Image.new("RGBA", sz, (0, 0, 0, 0))
     ImageDraw.Draw(im).rounded_rectangle(
         [0, 0, sz[0] - 1, sz[1] - 1], radius=POSTER_RADIUS * S,
         outline="white", width=BORDER_STROKE * S)
-    _save(im, "top-result-border.png", (TOP_RESULT_W, TOP_RESULT_H))
+    _save(im, prefix + "-border.png", (w, h))
 
-    w = (TOP_RESULT_W + GLOW_PAD * 2) * S
-    h = (TOP_RESULT_H + GLOW_PAD * 2) * S
-    mask = Image.new("L", (w, h), 0)
+    gw, gh = (w + GLOW_PAD * 2) * S, (h + GLOW_PAD * 2) * S
+    mask = Image.new("L", (gw, gh), 0)
     ImageDraw.Draw(mask).rounded_rectangle(
-        [GLOW_PAD * S, GLOW_PAD * S,
-         GLOW_PAD * S + TOP_RESULT_W * S - 1, GLOW_PAD * S + TOP_RESULT_H * S - 1],
+        [GLOW_PAD * S, GLOW_PAD * S, GLOW_PAD * S + w * S - 1, GLOW_PAD * S + h * S - 1],
         radius=POSTER_RADIUS * S + GLOW_PAD * S // 2, fill=255)
     mask = mask.filter(ImageFilter.GaussianBlur(GLOW_PAD * S // 2))
     mask = mask.point(lambda v: v * GLOW_ALPHA // 255)
-    im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    im = Image.new("RGBA", (gw, gh), (255, 255, 255, 0))
     im.putalpha(mask)
-    _save(im, "top-result-glow.png",
-          (TOP_RESULT_W + GLOW_PAD * 2, TOP_RESULT_H + GLOW_PAD * 2))
+    _save(im, prefix + "-glow.png", (w + GLOW_PAD * 2, h + GLOW_PAD * 2))
+
+
+def gen_top_result_assets() -> None:
+    """Mask, focus border and focus glow for the Top Result's bare poster."""
+    gen_card_set(TOP_RESULT_W, TOP_RESULT_H, "top-result")
+
+
+# Browse's grid poster (app 2.0): seven columns of 212x318.
+GRID_POSTER_W, GRID_POSTER_H = 212, 318
+# Browse's landing tiles (app 2.0): 411x176, the poster's corner radius.
+BROWSE_TILE_W, BROWSE_TILE_H = 411, 176
+
+
+def gen_browse_tile_assets() -> None:
+    """The landing tile's mask, focus border and glow, and Surprise me's art:
+    soft blobs of colour of our own making, under a dark wash."""
+    gen_card_set(BROWSE_TILE_W, BROWSE_TILE_H, "browse-tile")
+    w, h = BROWSE_TILE_W * S, BROWSE_TILE_H * S
+    art = Image.new("RGB", (w, h), (24, 32, 52))
+    draw = ImageDraw.Draw(art)
+    for cx, cy, r, colour in ((0.15, 0.3, 0.45, (64, 96, 170)), (0.55, 0.15, 0.4, (180, 120, 160)),
+                              (0.85, 0.55, 0.45, (210, 170, 110)), (0.35, 0.9, 0.4, (70, 140, 150))):
+        draw.ellipse([(cx - r) * w, (cy - r) * w, (cx + r) * w, (cy + r) * w], fill=colour)
+    art = art.filter(ImageFilter.GaussianBlur(w // 12))
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1], radius=POSTER_RADIUS * S, fill=255)
+    out = art.convert("RGBA")
+    out.putalpha(mask)
+    _save(out, "browse-surprise.png", (BROWSE_TILE_W, BROWSE_TILE_H))
+    # The rule between a view's Filter chip and its genres: 1px, centred.
+    rule = Image.new("RGBA", (13 * S, 40 * S), (255, 255, 255, 0))
+    ImageDraw.Draw(rule).rectangle([6 * S, 0, 7 * S - 1, 40 * S - 1], fill="white")
+    _save(rule, "browse-divider.png", (13, 40))
 
 
 # The nav bar's profile avatar sits on the Home hero's own artwork, which can
@@ -648,6 +678,8 @@ def main() -> None:
     gen_hairline_ring(PROFILE_PHOTO)
     gen_hairline_ring(LOCK_CHIP)
     gen_top_result_assets()
+    gen_card_set(GRID_POSTER_W, GRID_POSTER_H, "grid-poster")
+    gen_browse_tile_assets()
     gen_avatar_shadow()
     gen_collection_mask()
     gen_collection_glow()

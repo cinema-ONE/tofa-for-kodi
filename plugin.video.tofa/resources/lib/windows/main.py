@@ -382,28 +382,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     # Browse section control ids -- 6000-6299 block, kept collision-free
     # from Home's 4000-5899/9000 block.
-    SIDEBAR_ID = 6000
-    # Fixed sources (Watchlist/History/Collections/Surprise Me) and
-    # per-library rows are two separate list controls, not one -- Kodi's
-    # <list> can't vary itemheight per item, and the real app has a
-    # genuine ~29px empty gap between the two groups, not just a thin rule
-    # crammed into the same ~6px gap every other row pair gets.
-    SIDEBAR_LIBRARY_ID = 6010
-    # A single-item list, same as SORT_ID/FILTER_ID -- clicking
-    # it opens a PickerDialog rather than acting as a real multi-item pill
-    # row (variable-width genre names made a fixed-itemwidth pill row
-    # truncate). See _browse_genre_clicked().
-    GENRE_ID = 6100
+    #: The landing's tiles (app 2.0); each opens a full-width view.
+    TILES_ID = 6020
     GRID_ID = 6200
     ALPHA_RAIL_ID = 6220
     SORT_ID = 6110
+    UNWATCHED_ID = 6115
     FILTER_ID = 6120
     # 6130 was Quality, now an axis of the Filter dialog. The id is reused
     # for View, which leads the row on a library.
     FOLDERS_ID = 6130
-    TOOLBAR_IDS = (6110, 6120, 6100, 6130)
-    #: The toolbar's four slots, left to right.
-    _TOOLBAR_SLOTS_X = (440, 802, 1164, 1526)
+    SURPRISE_PILL_ID = 6140
+    #: The view's genre chips, in a horizontal grouplist.
+    GENRE_GROUP_ID = 6150
+    GENRE_CHIP_IDS = tuple(range(6151, 6151 + T.BROWSE_GENRE_CHIPS))
+    #: Chips the grid's Up returns to: the one it was left from.
+    CHIP_IDS = (SORT_ID, UNWATCHED_ID, FILTER_ID) + GENRE_CHIP_IDS
     #: Folder listings cost ~30 ms per entry on the server (a 200-entry page
     #: of TV Shows' root took 6 s), so they are asked for in small pages.
     BROWSE_FOLDER_PAGE_SIZE = 40
@@ -413,13 +407,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # self._sources always starts with exactly these 3 fixed rows (in this
     # order), before any per-library rows -- see _browse_build_sidebar().
     BROWSE_FIXED_SOURCE_COUNT = 3
-    # Position of the "Surprise Me" action row within the FIXED sidebar
-    # list (id 6000) -- the last of its 4 items, right after the 3 fixed
-    # sources. Not itself a source (no data to load, never "active"), so
-    # it needs its own position<->index mapping -- see
-    # _browse_fixed_pos_to_source_idx() / _browse_library_pos_to_source_idx().
-    BROWSE_SURPRISE_ME_LIST_POS = BROWSE_FIXED_SOURCE_COUNT
-
     # (label, api sort value, api order value), offered by the Sort pill's
     # picker dialog. "Shuffle" (api value "random") is a persistent random
     # ORDER for the whole grid, paginated stably via a seed (see
@@ -652,11 +639,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._row_kinds: dict[int, str] = {}
 
         # ---- browse section state ----
-        self.sidebar_list: kodigui.ManagedControlList | None = None
-        self.sidebar_library_list: kodigui.ManagedControlList | None = None
-        self.sort_list: kodigui.ManagedControlList | None = None
-        self.filter_list: kodigui.ManagedControlList | None = None
-        self.genre_list: kodigui.ManagedControlList | None = None
+        self.tiles_list: kodigui.ManagedControlList | None = None
+        self._browse_loaded_idx: int | None = None   # the source on screen
+        self._browse_focus_after_load = False
         self.grid_list: kodigui.ManagedControlList | None = None
         # each: {"kind": "watchlist"|"history"|"collections"|"library", ...}
         # -- always exactly BROWSE_FIXED_SOURCE_COUNT fixed entries first,
@@ -667,7 +652,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # genre name -> how many titles carry it in the CURRENT scope. Keyed
         # by name so it survives _genres' synthetic "All" row.
         self._genre_counts: dict[str, int] = {}
-        self._active_source_idx = 0
+        self._active_source_idx: int | None = None
         # The collection drilled into, or None while the Collections grid
         # itself is showing.
         self._browse_collection: dict | None = None
@@ -822,7 +807,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # A grid that filtered down to nothing sends them back to the
             # sidebar, which is where the source and filters live -- i.e.
             # where the emptiness gets undone.
-            return (self.SIDEBAR_ID, self.ALPHA_RAIL_ID, control_id)
+            return (self.SORT_ID, self.ALPHA_RAIL_ID, control_id)
         if control_id in self.SEARCH_RESULT_LIST_IDS:
             return self.SEARCH_RESULT_LIST_IDS
         return ()
@@ -838,8 +823,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.GRID_ID: self.grid_list,
             self.COLLECTION_GRID_ID: self.collection_list,
             self.ALPHA_RAIL_ID: self.alpha_list,
-            self.SIDEBAR_ID: self.sidebar_list,
-            self.SIDEBAR_LIBRARY_ID: self.sidebar_library_list,
+            self.TILES_ID: self.tiles_list,
             self.TOP_RESULT_LIST_ID: self.top_result_list,
             self.MOVIES_LIST_ID: self.movies_list,
             self.SHOWS_LIST_ID: self.shows_list,
@@ -910,11 +894,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # starting section, since a fixed control id can be a
         # Down-navigation target (see _section_down_targets) even before
         # Browse is first shown.
-        self.sidebar_list = kodigui.ManagedControlList(self, self.SIDEBAR_ID, 4)
-        self.sidebar_library_list = kodigui.ManagedControlList(self, self.SIDEBAR_LIBRARY_ID, 12)
-        self.sort_list = kodigui.ManagedControlList(self, self.SORT_ID, 1)
-        self.filter_list = kodigui.ManagedControlList(self, self.FILTER_ID, 1)
-        self.genre_list = kodigui.ManagedControlList(self, self.GENRE_ID, 1)
+        self.tiles_list = kodigui.ManagedControlList(self, self.TILES_ID, 8)
+        self.surprise_list = kodigui.ManagedControlList(self, self.SURPRISE_PILL_ID, 1)
         self.folders_list = kodigui.ManagedControlList(self, self.FOLDERS_ID, 1)
         self.alpha_list = kodigui.ManagedControlList(
             self, self.ALPHA_RAIL_ID, len(T.ALPHA_KEYS))
@@ -986,18 +967,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # item that's never rebuilt (Kodi caches the item's rendered
         # layout), while a ListItem property does invalidate it. See
         # _browse_sort_clicked().
-        sort_item = kodigui.ManagedListItem(label="Sort")
-        sort_item.setProperty("sort_label", self.BROWSE_SORT_OPTIONS[self._browse_sort_idx][0])
-        sort_item.setProperty("sort_glyph", self._browse_sort_glyph())
-        self.sort_list.addItems([sort_item])
-        filter_item = kodigui.ManagedListItem(label="Filter")
-        filter_item.setProperty("filter_label", self._browse_filter_label())
-        self.filter_list.addItems([filter_item])
-        genre_item = kodigui.ManagedListItem(label="Genre")
-        genre_item.setProperty("genre_label", self._browse_genre_label())
-        self.genre_list.addItems([genre_item])
         self.folders_list.addItems([kodigui.ManagedListItem(label="View")])
-        self._section_down_targets["browse"] = self.SIDEBAR_ID
+        self.surprise_list.addItems([kodigui.ManagedListItem(label="Surprise me")])
+        self._section_down_targets["browse"] = self.TILES_ID
 
         # Down target is fixed at row-0's list regardless of how many rows
         # end up populated, unlike Home's per-load rewire -- if row0 is
@@ -1324,22 +1296,24 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_artbudget_clicked()
         elif controlID == self.SETTINGS_ARTCLEAR_ID:
             self._settings_artclear_clicked()
-        elif controlID in (self.SIDEBAR_ID, self.SIDEBAR_LIBRARY_ID):
-            self._browse_sidebar_clicked(controlID)
+        elif controlID == self.TILES_ID:
+            self._browse_tile_clicked()
         elif controlID == self.ALPHA_RAIL_ID:
             self._browse_alpha_clicked()
         elif controlID == self.SORT_ID:
             self._browse_sort_clicked()
+        elif controlID == self.UNWATCHED_ID:
+            self._browse_unwatched_clicked()
         elif controlID == self.FILTER_ID:
             self._browse_filter_clicked()
-        elif controlID == self.GENRE_ID:
-            self._browse_genre_clicked()
+        elif controlID in self.GENRE_CHIP_IDS:
+            self._browse_genre_chip_clicked(controlID)
+        elif controlID == self.SURPRISE_PILL_ID:
+            self._browse_surprise_me_clicked(scoped=True)
         elif controlID == self.COLLECTION_GRID_ID:
             item = self.collection_list.getSelectedItem()
             if item:
                 self._browse_open_collection(item)
-        elif controlID == self.COLLECTION_BACK_ID:
-            self._browse_close_collection()
         elif controlID == self.FOLDERS_ID:
             self._browse_folders_clicked()
         elif controlID == self.GRID_ID:
@@ -1434,28 +1408,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # whole filter row. Same remembered-entry idea as Discover's group
         # pills and 7.9.7's deterministic entry -- re-pointed here because
         # "which pill" is only known at runtime.
-        if controlID in self.TOOLBAR_IDS:
+        if controlID in self.CHIP_IDS:
             try:
                 self.getControl(self.GRID_ID).controlUp(self.getControl(controlID))
             except Exception:
                 pass
-
-        # Browse's sidebar is two lists that read as one; keep the fixed
-        # one's cursor where the crossing needs it. See
-        # _browse_park_fixed_cursor for why this is done BEFORE the press
-        # rather than in onAction.
-        if controlID == self.SIDEBAR_LIBRARY_ID:
-            # Up from the library list must land on the row directly above
-            # it, which is the LAST fixed row ("Surprise Me").
-            #
-            # ONLY this crossing. An earlier cut also parked the cursor at 0
-            # whenever the nav bar took focus in Browse, on the theory that
-            # coming back down should land on the first row -- but measured
-            # live, Down off the nav bar goes to the GRID, not the sidebar,
-            # so that branch never fired; and it would have overwritten the
-            # cursor that _browse_rewire_grid_left relies on to return Left
-            # from the grid to the ACTIVE source.
-            self._browse_park_fixed_cursor(len(self.sidebar_list or []) - 1)
+        if controlID == self.TILES_ID:
+            self._browse_sync_backdrop()
 
         mlist = self.row_lists.get(controlID)
         if mlist:
@@ -1554,6 +1513,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # what the viewer means before leaving Browse.
             self._browse_close_collection()
             return
+
+        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self.getProperty("active_section") == "browse"
+                and self._browse_close_view()):
+            # A Browse view's Back returns to the landing's tiles.
+            return
+
+        if self.getFocusId() == self.TILES_ID:
+            self._browse_sync_backdrop()
 
         picking = (self._settings_picker
                    and self.getFocusId() == self._settings_picker["list_id"])
@@ -2481,13 +2449,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # ==================================================================
 
     def _browse_load(self):
+        """The landing's tiles; a view's grid loads when its tile is opened,
+        or here again when a view is open (a profile switch, say)."""
         self._ensure_capabilities()
         self._browse_build_sidebar()
-        # The rail is filled from the facets, so it is built at the END of
-        # _browse_apply_facets() rather than here -- it has nothing to show
-        # until that response is in. Same overlapped load a source switch
-        # uses; entering Browse pays the same two requests.
-        self._browse_load_source_content()
+        self._browse_wire_nav_down()
+        if self.getProperty("browse_view"):
+            self._browse_loaded_idx = self._active_source_idx
+            self._browse_load_source_content()
+        else:
+            self._browse_loaded_idx = None
 
     def _ensure_capabilities(self):
         """Server-wide feature flags, fetched at most once per window.
@@ -2612,7 +2583,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             options.append(("Played", "played"))
         return tuple(options)
 
-    def _browse_filter_label(self) -> str:
+    def _browse_filter_label(self, skip_unwatched: bool = False) -> str:
         """The whole line on the Filter pill -- every axis that is set, in
         the order the dialog asks about them: "Unwatched", "4K, 2020s",
         "In Progress, Dolby Vision, Before 1980".
@@ -2645,7 +2616,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # viewer reached last, and that only holds if this matches _browse_
         # open_filter's `sections`.
         parts = []
-        if self._browse_watched_idx != 0:
+        if self._browse_watched_idx != 0 and not (
+                skip_unwatched and self._browse_watched_idx == self._browse_unwatched_idx()):
             parts.append(self._browse_watched_options()[self._browse_watched_idx][0])
         if self._browse_quality_idx != 0:
             parts.append(self.BROWSE_QUALITY_OPTIONS[self._browse_quality_idx][0])
@@ -2708,12 +2680,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         log.debug("main.py: server default_sort %r has no row here" % default_sort)
 
     def _browse_sync_sort_pill(self):
-        """Write the Sort pill from whatever _browse_sort_idx now is."""
-        if self.sort_list is None:
-            return
-        self.sort_list[0].setProperty(
-            "sort_label", self.BROWSE_SORT_OPTIONS[self._browse_sort_idx][0])
-        self.sort_list[0].setProperty("sort_glyph", self._browse_sort_glyph())
+        self._browse_sync_chips()
 
     def _browse_sort_glyph(self) -> str:
         """The Sort pill's leading mark: which way this sort actually runs.
@@ -2747,20 +2714,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return chr(icon_glyphs.ARROW_DOWN if order == "desc"
                    else icon_glyphs.ARROW_UP)
 
-    def _browse_genre_label(self) -> str:
-        """The Genre pill's whole line: the genre, or the bare word "Genre".
-
-        Same rule as _browse_filter_label, for the same reason. The pill used
-        to read "Genre: Action", and dropping the prefix everywhere else made
-        the unset value the problem rather than the width: a lone "All" next
-        to a Sort pill reading "Date Added" says nothing about what it is all
-        OF. Naming itself is what the row's other value-less control already
-        does.
-        """
-        genre = self._active_genre
-        return genre if genre and genre != self.ALL_GENRES else "Genre"
-
     def _browse_build_sidebar(self):
+        """The landing's tiles (app 2.0): every library, then Watchlist,
+        History, Collections and Surprise me, each with art from the library
+        and a line under its name (a count, or the last title watched)."""
         client = self._get_client()
         self._sources = [
             {"kind": "watchlist", "name": "Watchlist", "glyph": icon_glyphs.BOOKMARK},
@@ -2775,111 +2732,55 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 libs = []
             for lib in libs:
                 media_type = lib.get("media_type")
-                if media_type == "movie":
-                    glyph = icon_glyphs.CLAPPERBOARD
-                elif media_type == "tv":
-                    glyph = icon_glyphs.TV
-                else:
-                    glyph = icon_glyphs.VIDEO
+                glyph = {"movie": icon_glyphs.CLAPPERBOARD, "tv": icon_glyphs.TV}.get(
+                    media_type, icon_glyphs.VIDEO)
+                count, art = self._browse_library_count_art(client, lib)
                 self._sources.append({
-                    "kind": "library",
-                    "id": lib.get("id"),
-                    "name": lib.get("name") or "Library",
-                    "media_type": media_type,
-                    "glyph": glyph,
-                    # /api/v1/libraries carries no item count; a per_page=1
-                    # /media call returns the `total` cheaply.
-                    "count": _library_count(lib) or self._browse_fetch_library_count(client, lib),
+                    "kind": "library", "id": lib.get("id"),
+                    "name": lib.get("name") or "Library", "media_type": media_type,
+                    "glyph": glyph, "count": _library_count(lib) or count, "art": art,
                 })
+            self._browse_fixed_tile_facts(client)
+        if self._active_source_idx is None or self._active_source_idx >= len(self._sources):
+            # A library first, where there is one, else Watchlist.
+            self._active_source_idx = (self.BROWSE_FIXED_SOURCE_COUNT
+                                       if len(self._sources) > self.BROWSE_FIXED_SOURCE_COUNT else 0)
+        order = (list(range(self.BROWSE_FIXED_SOURCE_COUNT, len(self._sources)))
+                 + list(range(self.BROWSE_FIXED_SOURCE_COUNT)) + [None])
+        tiles = []
+        for idx in order:
+            src = self._sources[idx] if idx is not None else {"kind": "surprise_me"}
+            name = src.get("name") or "Surprise me"
+            mli = kodigui.ManagedListItem(label=name, label2=self._browse_tile_line(src),
+                                          data_source=idx)
+            mli.setProperty("kind", src["kind"])
+            mli.setArt({"thumb": src.get("art") or ("browse-surprise.png" if idx is None else "")})
+            tiles.append(mli)
+        self.tiles_list.reset()
+        self.tiles_list.addItems(tiles)
+        self.tiles_list.selectItem(order.index(self._active_source_idx)
+                                   if self._active_source_idx in order else 0)
+        self._browse_sync_backdrop()
 
-            # Collections' own sidebar count badge (matches the real app
-            # showing e.g. "522" next to Collections) -- cheap, one small
-            # call, no per-item cost.
-            try:
-                collections_resp = client.collections() or {}
-                count = len(collections_resp.get("collections") or [])
-                # User-made collections (0.9.33) count too -- the grid
-                # shows both, so the badge must agree with it.
-                try:
-                    count += len((client.custom_collections() or {}).get("collections") or [])
-                except http.ApiError as exc:
-                    kodigui.ERROR("main.py: browse custom collections count failed: {0}".format(exc))
-                self._sources[2]["count"] = str(count)
-            except http.ApiError as exc:
-                kodigui.ERROR("main.py: browse collections count failed: {0}".format(exc))
+    #: The count's noun on a library tile, by media type.
+    _TILE_NOUN = {"movie": "titles", "tv": "shows"}
 
-        # default active = first real library if one exists, else Watchlist.
-        self._active_source_idx = self.BROWSE_FIXED_SOURCE_COUNT if len(self._sources) > self.BROWSE_FIXED_SOURCE_COUNT else 0
+    def _browse_tile_line(self, src: dict) -> str:
+        """The line under a tile's name."""
+        kind = src.get("kind")
+        if kind == "surprise_me":
+            return "A random title you haven't seen"
+        if kind == "history":
+            return src.get("last_title") or ""
+        count = src.get("count") or ""
+        if not count:
+            return ""
+        noun = {"collections": "collections", "watchlist": "titles"}.get(
+            kind, self._TILE_NOUN.get(src.get("media_type"), "videos"))
+        return "{0} {1}".format(count, noun)
 
-        fixed_managed = []
-        for idx in range(self.BROWSE_FIXED_SOURCE_COUNT):
-            src = self._sources[idx]
-            mli = kodigui.ManagedListItem(label=src["name"], data_source=src)
-            mli.setProperty("icon_glyph", chr(src["glyph"]))
-            mli.setProperty("count", src.get("count", ""))
-            mli.setProperty("active", "1" if idx == self._active_source_idx else "0")
-            fixed_managed.append(mli)
-        # "Surprise Me" action row, wedged in right after the fixed sources
-        # -- deliberately NOT part of self._sources, see
-        # BROWSE_SURPRISE_ME_LIST_POS's docstring.
-        surprise_mli = kodigui.ManagedListItem(label="Surprise Me", data_source={"kind": "surprise_me"})
-        surprise_mli.setProperty("icon_glyph", chr(icon_glyphs.SHUFFLE))
-        fixed_managed.append(surprise_mli)
-        self.sidebar_list.reset()
-        self.sidebar_list.addItems(fixed_managed)
-
-        library_managed = []
-        for idx in range(self.BROWSE_FIXED_SOURCE_COUNT, len(self._sources)):
-            src = self._sources[idx]
-            mli = kodigui.ManagedListItem(label=src["name"], data_source=src)
-            mli.setProperty("icon_glyph", chr(src["glyph"]))
-            mli.setProperty("count", src.get("count", ""))
-            mli.setProperty("active", "1" if idx == self._active_source_idx else "0")
-            library_managed.append(mli)
-        self.sidebar_library_list.reset()
-        self.sidebar_library_list.addItems(library_managed)
-
-        if self._active_source_idx < self.BROWSE_FIXED_SOURCE_COUNT:
-            self.sidebar_list.selectItem(self._active_source_idx)
-        else:
-            self.sidebar_library_list.selectItem(self._active_source_idx - self.BROWSE_FIXED_SOURCE_COUNT)
-        self._browse_rewire_grid_left(self._active_source_idx)
-
-    def _browse_fixed_pos_to_source_idx(self, pos: int) -> int | None:
-        """Position in the fixed-sources list (6000) -> self._sources
-        index. None means this position IS the Surprise Me row, not a
-        real source."""
-        if pos == self.BROWSE_SURPRISE_ME_LIST_POS:
-            return None
-        return pos
-
-    def _browse_library_pos_to_source_idx(self, pos: int) -> int:
-        """Position in the per-library list (6010) -> self._sources index."""
-        return self.BROWSE_FIXED_SOURCE_COUNT + pos
-
-    def _browse_set_source_active(self, idx: int, active: bool):
-        """Sets the "active" ListItem property on whichever single row
-        (fixed list or library list) corresponds to source index `idx` --
-        see _browse_switch_source()'s own comment for why this touches
-        exactly one row instead of relisting either list."""
-        value = "1" if active else "0"
-        if idx < self.BROWSE_FIXED_SOURCE_COUNT:
-            li = self.sidebar_list[idx]
-        else:
-            li = self.sidebar_library_list[idx - self.BROWSE_FIXED_SOURCE_COUNT]
-        if li:
-            li.setProperty("active", value)
-
-    def _browse_rewire_grid_left(self, idx: int):
-        """The grid's Left target has to follow whichever sidebar list
-        currently holds the active source -- Kodi's onleft is a static
-        per-control target, and the sidebar is split into two list
-        controls (see SIDEBAR_LIBRARY_ID), so a fixed XML target would be
-        wrong half the time."""
-        target_id = self.SIDEBAR_ID if idx < self.BROWSE_FIXED_SOURCE_COUNT else self.SIDEBAR_LIBRARY_ID
-        self.getControl(self.GRID_ID).controlLeft(self.getControl(target_id))
-
-    def _browse_fetch_library_count(self, client: MediaServerClient, lib: dict) -> str:
+    def _browse_library_count_art(self, client: MediaServerClient, lib: dict) -> tuple:
+        """(count, backdrop) for a library: one per_page=1 page answers both."""
         params = {"library_id": lib.get("id"), "per_page": 1}
         if lib.get("media_type"):
             params["media_type"] = lib["media_type"]
@@ -2887,21 +2788,199 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             resp = client._get("/api/v1/media", params=params)
         except http.ApiError as exc:
             kodigui.ERROR("main.py: browse library count failed: {0}".format(exc))
-            return ""
-        if isinstance(resp, dict):
-            total = resp.get("total")
-            if isinstance(total, int):
-                # Grouped the same way _library_count does. This is the path
-                # that actually runs: /api/v1/libraries carries no count, so
-                # every sidebar row lands here.
-                return regional.number(total)
-        return ""
+            return "", ""
+        if not isinstance(resp, dict):
+            return "", ""
+        total = resp.get("total")
+        items = resp.get("items") or []
+        return (regional.number(total) if isinstance(total, int) else "",
+                self._browse_item_art(client, items[0]) if items else "")
+
+    @staticmethod
+    def _browse_item_art(client: MediaServerClient, item: dict) -> str:
+        """A title's backdrop, or its poster when it has none."""
+        return (client.resolve_image_url(item.get("backdrop_path") or item.get("backdrop_url"))
+                or client.resolve_image_url(item.get("poster_path") or item.get("poster_url"))
+                or "")
+
+    def _browse_fixed_tile_facts(self, client: MediaServerClient):
+        """Counts and art for Watchlist, History and Collections. Each call
+        stands alone: one that fails only blanks its own tile."""
+        watchlist, history, collections = self._sources[:3]
+        try:
+            items = client.watchlist() or []
+            items = items if isinstance(items, list) else (items.get("items") or [])
+            watchlist["count"] = regional.number(len(items))
+            watchlist["art"] = self._browse_item_art(client, items[0]) if items else ""
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: browse watchlist tile failed: {0}".format(exc))
+        try:
+            items = (client.watch_history(limit=1) or {}).get("items") or []
+            if items:
+                history["last_title"] = items[0].get("series_title") or items[0].get("title") or ""
+                history["art"] = self._browse_item_art(client, items[0])
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: browse history tile failed: {0}".format(exc))
+        try:
+            found = (client.collections() or {}).get("collections") or []
+            count = len(found)
+            try:
+                count += len((client.custom_collections() or {}).get("collections") or [])
+            except http.ApiError as exc:
+                kodigui.ERROR("main.py: browse custom collections count failed: {0}".format(exc))
+            collections["count"] = regional.number(count)
+            collections["art"] = self._browse_item_art(client, found[0]) if found else ""
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: browse collections count failed: {0}".format(exc))
+
+    def _browse_sync_backdrop(self):
+        """The landing's backdrop follows the focused tile."""
+        item = self.tiles_list.getSelectedItem() if self.tiles_list else None
+        art = ""
+        if item is not None:
+            idx = item.dataSource
+            art = (self._sources[idx].get("art") if idx is not None
+                   else "") or ""
+        self.setProperty("browse_backdrop", art)
+
+    def _browse_tile_clicked(self):
+        """Open the focused tile: its view, or Surprise me's title."""
+        item = self.tiles_list.getSelectedItem()
+        if item is None:
+            return
+        if item.dataSource is None:
+            self._browse_surprise_me_clicked(scoped=False)
+            return
+        self._browse_open_view(item.dataSource)
+
+    def _browse_open_view(self, idx: int):
+        """Show source `idx` full width, loading it unless it already is."""
+        self.setProperty("browse_view", "1")
+        self.setProperty("nav_hidden", "1")
+        self._browse_layout_header()
+        if idx != self._active_source_idx or self._browse_loaded_idx != idx:
+            self._browse_loaded_idx = idx
+            # The tiles are hidden now; hold focus on the title row until
+            # the grid it is waiting for has loaded.
+            self._browse_focus_after_load = True
+            self.setFocusId(self.SURPRISE_PILL_ID)
+            self._browse_switch_source(idx, force=True)
+            return
+        self._browse_focus_view()
+
+    def _browse_focus_view(self):
+        """Land in the view: the grid, or the chips when it is empty."""
+        collections = bool(self.getProperty("browse_collections"))
+        grid = self.collection_list if collections else self.grid_list
+        target = self.COLLECTION_GRID_ID if collections else self.GRID_ID
+        if grid is None or not len(grid):
+            target = self.SORT_ID if self.getProperty("browse_filterbar") else self.SURPRISE_PILL_ID
+        try:
+            self.setFocusId(target)
+        except RuntimeError:
+            pass
+
+    def _browse_close_view(self) -> bool:
+        """Back from a view to the landing, onto the tile it came from."""
+        if not self.getProperty("browse_view"):
+            return False
+        self.setProperty("browse_view", "")
+        self.setProperty("nav_hidden", "")
+        for pos, item in enumerate(self.tiles_list or []):
+            if item.dataSource == self._active_source_idx:
+                self.tiles_list.selectItem(pos)
+                break
+        self._browse_sync_backdrop()
+        self.setFocusId(self.TILES_ID)
+        return True
+
+    def _browse_layout_header(self):
+        """Title, count, then Folders and Surprise me after them. Kodi cannot
+        flow controls by text width, so x comes from the measured fonts."""
+        src = self._browse_active_source() if self._sources else {}
+        heading = self.getProperty("browse_heading")
+        title = heading or src.get("name") or ""
+        count = "" if heading else self._browse_tile_line(src) if src.get("kind") != "history" else ""
+        self.setProperty("browse_title", title)
+        self.setProperty("browse_count", count)
+        x = T.BROWSE_LEFT + int(textmetrics.hero_title_width(title) * 45 / 61)
+        try:
+            if count:
+                self.getControl(6251).setPosition(x + 24, T.BROWSE_HEAD_Y)
+                x += 24 + textmetrics.text_width(count)
+            x += 26
+            if self.getProperty("browse_folders_offered"):
+                self.getControl(self.FOLDERS_ID).setPosition(x, T.BROWSE_HEAD_Y)
+                x += T.BROWSE_FOLDERS_W + 13
+                self.getControl(6132).setPosition(x, T.BROWSE_DIVIDER_Y)
+                x += 14
+            self.getControl(self.SURPRISE_PILL_ID).setPosition(x, T.BROWSE_HEAD_Y)
+        except RuntimeError:
+            pass
+
+    def _browse_chip_width(self, text: str) -> int:
+        """A chip's width for `text` in its 24px face (metrics are 23px)."""
+        # 10 spare: Kodi's own measure runs a little wider than ours and a
+        # label it thinks does not fit gets cut to "...".
+        return (int(round(textmetrics.text_width(text) * 24 / textmetrics.SIZE))
+                + 2 * T.BROWSE_CHIP_PAD + 10)
+
+    def _browse_sync_chips(self):
+        """Words, widths and chosen fills of the chip row (Sort, Unwatched,
+        Filter, then the genres); its grouplist lays them out."""
+        rest, chosen = "0x1AFFFFFF", "0x4DFFFFFF"
+        # The chip is one label in the text face, so its mark is the face's
+        # own arrow (the icon font's would need a second control).
+        arrow = {chr(icon_glyphs.ARROW_DOWN): u"\u2193", chr(icon_glyphs.ARROW_UP): u"\u2191"}.get(
+            self._browse_sort_glyph(), u"\u2195")
+        sort_label = u"{0}  {1}".format(arrow, self.BROWSE_SORT_OPTIONS[self._browse_sort_idx][0])
+        unwatched = self._browse_unwatched_idx()
+        filter_label = self._browse_filter_label(skip_unwatched=True)
+        words = [(self.SORT_ID, sort_label), (self.UNWATCHED_ID, "Unwatched"),
+                 (self.FILTER_ID, filter_label)]
+        words += [(cid, self._genres[i] if i < len(self._genres) else "")
+                  for i, cid in enumerate(self.GENRE_CHIP_IDS)]
+        try:
+            for cid, label in words:
+                self.setProperty("browse_chip_{0}_label".format(cid), label)
+                chip = self.getControl(cid)
+                chip.setVisible(bool(label))
+                if label:
+                    chip.setWidth(self._browse_chip_width(label))
+        except RuntimeError:
+            return
+        self.setProperty("browse_chip_{0}".format(self.SORT_ID), rest)
+        self.setProperty("browse_chip_{0}".format(self.UNWATCHED_ID),
+                         chosen if self._browse_watched_idx == unwatched else rest)
+        self.setProperty("browse_chip_{0}".format(self.FILTER_ID),
+                         chosen if filter_label != "Filter" else rest)
+        for i, cid in enumerate(self.GENRE_CHIP_IDS):
+            on = i < len(self._genres) and self._genres[i] == self._active_genre
+            self.setProperty("browse_chip_{0}".format(cid), chosen if on else rest)
+
+    def _browse_unwatched_idx(self) -> int:
+        """The Watch status option the Unwatched chip stands for."""
+        values = [value for _label, value in self._browse_watched_options()]
+        return values.index("unwatched") if "unwatched" in values else 1
+
+    def _browse_unwatched_clicked(self):
+        unwatched = self._browse_unwatched_idx()
+        self._browse_watched_idx = 0 if self._browse_watched_idx == unwatched else unwatched
+        self._browse_sync_chips()
+        self._browse_load_grid()
+
+    def _browse_genre_chip_clicked(self, control_id: int):
+        index = self.GENRE_CHIP_IDS.index(control_id)
+        if index >= len(self._genres) or self._genres[index] == self._active_genre:
+            return
+        self._active_genre = self._genres[index]
+        self._browse_sync_chips()
+        self._browse_load_grid()
 
     # The collection currently drilled into, or None while the Collections
     # grid itself is showing. The real app keeps this INSIDE Browse rather
     # than opening a separate screen, so it is a state of this section and
     # not a window of its own.
-    COLLECTION_BACK_ID = 6260
     COLLECTION_GRID_ID = 6210
 
     def _browse_active_source(self) -> dict:
@@ -2937,8 +3016,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         wanted = self._browse_filterbar_visible(src)
         self.setProperty("browse_filterbar", "1" if wanted else "")
         self._active_genre = self.ALL_GENRES
-        self.genre_list[0].setProperty("genre_label", self._browse_genre_label())
-        self.genre_list[0].setProperty("active", "")
         if not wanted or not client:
             self._browse_apply_facets([], {})
             return None
@@ -3033,6 +3110,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self._browse_sort_user_picked = False
         self._browse_apply_server_sort_default(default_sort, default_order)
         self._browse_fill_alpha_rail()
+        self._browse_sync_chips()
 
     def _browse_load_grid(self):
         """Load whichever source the sidebar has selected, then re-aim the
@@ -3043,29 +3121,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_wire_nav_down()
 
     def _browse_wire_nav_down(self):
-        """Down out of the top nav enters the GRID, not the left menu.
-
-        The left menu is still one Left away from the grid, and landing on
-        the content is what the section is for -- a viewer who wanted to
-        change source would have gone there deliberately.
-
-        Falls back to the left menu when the grid came back EMPTY (a genre
-        with no matches, an empty Watchlist). Kodi will not focus an empty
-        list, so pointing Down at one strands the viewer on the nav bar with
-        no way into the section at all -- worse than landing on the menu.
-        """
-        collections = bool(self.getProperty("browse_collections"))
-        grid = self.collection_list if collections else self.grid_list
-        target_id = self.COLLECTION_GRID_ID if collections else self.GRID_ID
-        # `not len(grid)` rather than `not grid`: a ManagedControlList is
-        # falsy when EMPTY, which is exactly the case being tested, but the
-        # None check has to stay separate to say so.
-        if grid is None or not len(grid):
-            target_id = self.SIDEBAR_ID
-        self._section_down_targets["browse"] = target_id
+        """Down out of the top bar lands on the landing's tiles."""
+        self._section_down_targets["browse"] = self.TILES_ID
         if self._current_target == "browse_window":
             try:
-                down = self.getControl(target_id)
+                down = self.getControl(self.TILES_ID)
                 self.getControl(self.NAV_LIST_ID).controlDown(down)
                 self.getControl(self.NAV_AVATAR_ID).controlDown(down)
             except RuntimeError:
@@ -3081,15 +3141,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("browse_heading", "")
         self.setProperty("browse_collections", "")
         self._browse_folder_state("")
-        self._browse_point_sidebar_at(self.GRID_ID)
         self._browse_grid_geometry(in_collection=False)
-        # Undo the drill-down's own wiring: with the pill gone, Genre is
-        # the end of the row again.
-        try:
-            genre = self.getControl(self.GENRE_ID)
-            genre.controlRight(genre)
-        except RuntimeError:
-            pass
         client = self._get_client()
         self.grid_list.reset()
         # Disarm paging on EVERY refill, so only the branch that actually
@@ -3465,51 +3517,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return src.get("media_type") not in ("movie", "tv") if on is None else on
 
     def _browse_sync_folders_pill(self, src: dict):
-        """View leads the row on a library, so it never moves when the view
-        does; Sort/Filter/Genre step one slot right to make room."""
+        """The title row's view pill names where it goes (app 2.0): Folders,
+        or the library's own kind while in its folders."""
         offered = self._browse_folders_offered(src)
         on = offered and self._browse_in_folders(src)
         self.setProperty("browse_folders_offered", "1" if offered else "")
         self.setProperty("browse_folders", "1" if on else "")
         own = self._VIEW_KIND.get(src.get("media_type"), self._VIEW_OTHER)
         view = self.folders_list[0]
-        view.setProperty("view_label", "Folders" if on else own)
+        view.setProperty("view_label", own if on else "Folders")
         view.setProperty("view_glyph", chr(
-            icon_glyphs.FOLDER if on else src.get("glyph") or icon_glyphs.VIDEO))
-        row = ([self.FOLDERS_ID] if on else
-               [self.FOLDERS_ID, self.SORT_ID, self.FILTER_ID, self.GENRE_ID] if offered else
-               [self.SORT_ID, self.FILTER_ID, self.GENRE_ID])
-        try:
-            controls = [self.getControl(cid) for cid in row]
-            for slot, control in enumerate(controls):
-                control.setPosition(self._TOOLBAR_SLOTS_X[slot], control.getY())
-                control.controlLeft(controls[slot - 1] if slot else self.getControl(self.SIDEBAR_ID))
-                control.controlRight(controls[slot + 1] if slot + 1 < len(controls) else control)
-            # Up from the grid must land on a pill that is on screen: in the
-            # folder view Sort is hidden, and Kodi will not focus it.
-            self.getControl(self.GRID_ID).controlUp(controls[0])
-        except RuntimeError:
-            pass
+            src.get("glyph") or icon_glyphs.VIDEO if on else icon_glyphs.FOLDER))
+        self._browse_layout_header()
 
     def _browse_folders_clicked(self):
+        """The view pill switches between the library and its folders
+        directly; it names where it goes (app 2.0)."""
         src = self._browse_active_source()
         if not self._browse_folders_offered(src):
             return
-        from .picker import PickerDialog
-        own = self._VIEW_KIND.get(src.get("media_type"), self._VIEW_OTHER)
-        on = self._browse_in_folders(src)
-        dialog = PickerDialog.open(
-            heading="View",
-            hint="{0}: every title, to sort and filter. Folders: as stored on "
-                 "the server.".format(own),
-            rows=[(own, not on, None), ("Folders", on, None)],
-            selected_idx=1 if on else 0,
-        )
-        if not dialog or dialog.canceled or dialog.picked_idx is None:
-            return
-        if (dialog.picked_idx == 1) == on:
-            return
-        self._browse_folders_on[src.get("id")] = dialog.picked_idx == 1
+        self._browse_folders_on[src.get("id")] = not self._browse_in_folders(src)
         self._browse_load_source_content()
 
     @staticmethod
@@ -3611,8 +3638,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Back inside a sub-folder: up one level, as it was left and onto
         the folder we came out of. False when there is nothing to go up from."""
         if (self.getProperty("active_section") != "browse"
-                or self.getFocusId() in (self.NAV_LIST_ID, self.SIDEBAR_ID,
-                                         self.SIDEBAR_LIBRARY_ID)):
+                or self.getFocusId() in (self.NAV_LIST_ID, self.TILES_ID)):
             return False
         src = self._browse_active_source()
         lib_id = src.get("id")
@@ -3727,7 +3753,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("browse_collections", "1")
         # The sidebar's <onright> is baked at the poster grid, which is
         # hidden in this state, so right out of the sidebar went nowhere.
-        self._browse_point_sidebar_at(self.COLLECTION_GRID_ID)
         self.collection_list.reset()
         if self._collection_items:
             self.collection_list.addItems(
@@ -3891,26 +3916,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._genre_counts = counts
         self._genres = [self.ALL_GENRES] + genres
         self._active_genre = self.ALL_GENRES
-        self.genre_list[0].setProperty("genre_label", self._browse_genre_label())
-        self.genre_list[0].setProperty("active", "")
         self.setProperty("browse_filterbar", "1")
-        self._browse_point_sidebar_at(self.GRID_ID)
+        self._browse_sync_chips()
         self._browse_grid_geometry(in_collection=True)
         self._browse_render_collection_members()
-        # The drill-down inserts a back pill the static XML knows nothing
-        # about, so its links are wired here.
-        #
-        # The pill IS the fourth toolbar slot, sitting beside Sort/Filter/
-        # Quality/Genre rather than under them -- so it joins the row
-        # horizontally (Genre's Right), and the grid's Up goes to the
-        # toolbar exactly as it does outside a collection.
-        try:
-            pill = self.getControl(self.COLLECTION_BACK_ID)
-            self.getControl(self.GENRE_ID).controlRight(pill)
-            pill.controlDown(self.getControl(self.GRID_ID))
-            self.getControl(self.GRID_ID).controlUp(self.getControl(self.SORT_ID))
-        except RuntimeError:
-            pass
         if resp.get("items"):
             self.setFocusId(self.GRID_ID)
 
@@ -3923,45 +3932,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # below that at 381. Ours matches, with the back pill beside the title
     # rather than inline with Sort, which our four full-width buttons leave
     # no room for.
-    _GRID_Y = 299
-    _GRID_H = 781
-    _GRID_Y_COLLECTION = 381
-    _GRID_H_COLLECTION = 699
-    _TOOLBAR_Y = 190
-    _TOOLBAR_Y_COLLECTION = 262
-
     def _browse_grid_geometry(self, *, in_collection: bool):
-        # The toolbar moves too: with a heading above it, its library
-        # position would sit on top of the title.
-        toolbar_y = (self._TOOLBAR_Y_COLLECTION if in_collection
-                     else self._TOOLBAR_Y)
-        for toolbar_id in self.TOOLBAR_IDS:
-            try:
-                control = self.getControl(toolbar_id)
-                control.setPosition(control.getX(), toolbar_y)
-            except (RuntimeError, AttributeError):
-                pass
-        try:
-            grid = self.getControl(self.GRID_ID)
-        except RuntimeError:
-            return
-        grid.setPosition(
-            T.BROWSE_GRID_X,
-            self._GRID_Y_COLLECTION if in_collection else self._GRID_Y)
-        grid.setHeight(
-            self._GRID_H_COLLECTION if in_collection else self._GRID_H)
-
-    def _browse_point_sidebar_at(self, target_id: int):
-        """Aim both sidebar lists' right at whichever grid is on screen."""
-        try:
-            target = self.getControl(target_id)
-        except RuntimeError:
-            return
-        for list_id in (self.SIDEBAR_ID, self.SIDEBAR_LIBRARY_ID):
-            try:
-                self.getControl(list_id).controlRight(target)
-            except RuntimeError:
-                pass
+        """The grid sits under the title row and chips in every state; the
+        heading (a collection, a folder) takes the title's place."""
+        self._browse_layout_header()
 
     def _browse_render_collection_members(self):
         """Apply the genre pill and the sort to the members, client-side.
@@ -4021,51 +3995,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             pass
         return True
 
-    def _browse_sidebar_idx_from(self, control_id: int) -> int | None:
-        """Reads the currently-selected position out of whichever sidebar
-        list `control_id` refers to and maps it to a self._sources index
-        (None for the Surprise Me action row)."""
-        if control_id == self.SIDEBAR_ID:
-            return self._browse_fixed_pos_to_source_idx(self.sidebar_list.getSelectedPosition())
-        return self._browse_library_pos_to_source_idx(self.sidebar_library_list.getSelectedPosition())
-
-    def _browse_park_fixed_cursor(self, pos: int):
-        """Move the FIXED sidebar list's cursor while it is not focused.
-
-        Browse's sidebar reads as one list and is two controls (see
-        SIDEBAR_LIBRARY_ID). Crossing between them is where that shows: Kodi
-        moves focus to the other LIST, which lands on whatever cursor that
-        list was left with -- so Up from "Movies" jumped over Collections and
-        Surprise Me to "Watchlist" at the top. Reported 2026-08-11.
-
-        Done from onFocus, and PRE-emptively, for a measured reason: Kodi's
-        focus engine runs BEFORE onAction, so by the time an Up press reaches
-        us the jump has already happened and correcting it there would move
-        the highlight a second time, visibly, on a box that paints slowly.
-        Parking the cursor while the list is off-focus is invisible: the
-        crossing then lands where the viewer already expects.
-
-        Same reason detail.py cannot undo a panel wrap in onAction either --
-        see reference_kodi_layout_traps.
-        """
-        fixed = self.sidebar_list
-        # `is None`, never truthiness: an empty ManagedControlList is falsy
-        # (feedback_managedcontrollist_truthiness).
-        if fixed is None or not len(fixed):
-            return
-        try:
-            fixed.setSelectedItemByPos(max(0, min(pos, len(fixed) - 1)))
-        except (RuntimeError, AttributeError):
-            pass
-
-    def _browse_sidebar_clicked(self, control_id: int):
-        idx = self._browse_sidebar_idx_from(control_id)
-        if idx is None:
-            self._browse_surprise_me_clicked()
-            return
-        self._browse_switch_source(idx)
-
-    def _browse_switch_source(self, idx: int):
+    def _browse_switch_source(self, idx: int, force: bool = False):
         """SELECT only. This used to fire on focus too, tvOS-style, the way
         the nav bar's Left/Right still does -- moving onto a source loaded
         it. Adrian had it changed (2026-08-06) because of what it costs on
@@ -4079,7 +4009,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_collection = None
         if idx == self._active_source_idx and self._browse_folder_root():
             return
-        if idx < 0 or idx >= len(self._sources) or idx == self._active_source_idx:
+        if idx < 0 or idx >= len(self._sources) or (idx == self._active_source_idx and not force):
             return
         # Touch only the (at most) two rows that actually change state --
         # clear the old active row, set the new one -- rather than
@@ -4088,10 +4018,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # relist left a window where a fast Up/Down flurry could render a
         # stray "active" highlight in the wrong list before the next
         # re-render caught up.
-        self._browse_set_source_active(self._active_source_idx, False)
-        self._browse_set_source_active(idx, True)
         self._active_source_idx = idx
-        self._browse_rewire_grid_left(idx)
+        self._browse_loaded_idx = idx
         # Filter/Quality are per-source in the real app -- reset both to
         # their defaults on every source switch rather than carrying a
         # selection over into a library it wasn't chosen for. Sort is
@@ -4100,8 +4028,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_year_idx = 0
         self._browse_quality_idx = 0
         self._browse_reset_letter()
-        self.filter_list[0].setProperty("active", "")
-        self.filter_list[0].setProperty("filter_label", self._browse_filter_label())
+        self._active_genre = self.ALL_GENRES
+        self._browse_sync_chips()
+        self._browse_layout_header()
         # Everything above is local state and repaints instantly, so the
         # highlight lands on the pressed row at once. These two are HTTP.
         # They stay on the settle timer even though a click cannot burst
@@ -4250,18 +4179,23 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         pending = self._browse_start_facets()
         self._browse_load_grid()
         self._browse_finish_facets(pending)
+        if self._browse_focus_after_load:
+            self._browse_focus_after_load = False
+            self._browse_focus_view()
 
-    def _browse_surprise_me_clicked(self):
-        """Instant action, not a navigable source -- picks one random title
-        from the whole library (no media_type/library scoping) and opens
-        its Detail directly."""
+    def _browse_surprise_me_clicked(self, scoped: bool = False):
+        """Open one random unwatched title: from the view's library when
+        `scoped` and the view is one, else from everything."""
         client = self._get_client()
         if not client:
             return
+        params = {"sort": "random", "seed": random.randint(0, 2 ** 31 - 1), "per_page": 1,
+                  "watched": "unwatched"}
+        src = self._browse_active_source() if scoped and self._sources else {}
+        if src.get("kind") == "library":
+            params["library_id"] = src.get("id")
         try:
-            resp = client._get("/api/v1/media", params={
-                "sort": "random", "seed": random.randint(0, 2 ** 31 - 1), "per_page": 1,
-            })
+            resp = client._get("/api/v1/media", params=params)
         except http.ApiError as exc:
             kodigui.ERROR("main.py: browse surprise me failed: {0}".format(exc))
             return
@@ -4306,7 +4240,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_sort_user_picked = True
             # The label is unchanged here -- same sort, other way round -- so
             # the arrow is the ONLY thing that can report a reverse toggle.
-            self.sort_list[0].setProperty("sort_glyph", self._browse_sort_glyph())
+            self._browse_sync_chips()
         elif dialog.picked_idx is not None:
             # Back through `offered`: picked_idx is a position in the rows
             # shown, not an index into BROWSE_SORT_OPTIONS.
@@ -4404,36 +4338,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # default -- ListItem property, same reasoning as sort_label: a
         # Window property doesn't reliably re-render inside a static list
         # item.
-        is_active = bool(watched_choice or year_choice or quality_choice)
-        self.filter_list[0].setProperty("active", "1" if is_active else "")
-        self.filter_list[0].setProperty("filter_label", self._browse_filter_label())
+        self._browse_sync_chips()
         self._browse_load_grid()
-    def _browse_genre_clicked(self):
-        from .picker import PickerDialog
-        current_idx = self._genres.index(self._active_genre) if self._active_genre in self._genres else 0
-        # 4th element: the count, right-aligned and small. Deliberately absent
-        # on "All" -- genres overlap (a title can be Action AND Adventure), so
-        # there is no honest total to sum here, and the library's own count
-        # already sits in the sidebar.
-        rows = [(name, i == current_idx, None,
-                 regional.number(self._genre_counts[name])
-                 if name in self._genre_counts else "")
-                for i, name in enumerate(self._genres)]
-        dialog = PickerDialog.open(
-            heading="Genre",
-            rows=rows,
-            selected_idx=current_idx,
-        )
-        if not dialog or dialog.canceled or dialog.picked_idx is None:
-            return
-        idx = dialog.picked_idx
-        if idx < 0 or idx >= len(self._genres):
-            return
-        self._active_genre = self._genres[idx]
-        self.genre_list[0].setProperty("genre_label", self._browse_genre_label())
-        self.genre_list[0].setProperty("active", "1" if idx != 0 else "")
-        self._browse_load_grid()
-
     def _browse_grid_clicked(self):
         item = self.grid_list.getSelectedItem()
         if not item:
@@ -4969,9 +4875,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         except (RuntimeError, AttributeError):
             return
         if not remaining:
-            # Kodi will not focus an empty list, and _browse_wire_nav_down has
-            # already re-aimed the nav bar at the sidebar for exactly this.
-            self.setFocusId(self.SIDEBAR_ID)
+            # Kodi will not focus an empty list: the chips are where the
+            # emptiness gets undone.
+            self.setFocusId(self.SORT_ID)
             return
         try:
             self.grid_list.setSelectedItemByPos(min(pos, remaining - 1))

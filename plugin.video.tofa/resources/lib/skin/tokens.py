@@ -533,13 +533,46 @@ HERO_CROSSFADE_MS = 300
 # a row is caught changing width mid-transition because two clocks disagreed.
 HERO_TEXT_DISSOLVE_MS = HERO_CROSSFADE_MS // 2
 
-# Browse's 5-column grid. Derived rather than typed so the grid follows
-# CELL_W: at 296 the hand-written 420/1480 pair happened to be exact, and
-# silently stopped being so the moment the cell changed width.
-BROWSE_COLS = 5
-BROWSE_GRID_X = 440 - HPAD      # poster art lands on the 440 edge the nav
-                                # bar and Sort pill share
-BROWSE_GRID_W = BROWSE_COLS * CELL_W
+# --- Browse (app 2.0), measured on the 2026-10-08 captures ----------------
+# A landing of tiles (libraries, then Watchlist/History/Collections/Surprise
+# me), four across, under a backdrop that follows the focused tile.
+BROWSE_LEFT = 96
+BROWSE_TILE_W, BROWSE_TILE_H = 411, 176
+BROWSE_TILE_PITCH_X, BROWSE_TILE_PITCH_Y = 439, 220
+BROWSE_TILE_COLS = 4
+BROWSE_TILES_Y = 600
+BROWSE_BACKDROP_H = 640
+# Each tile opens a full-width view, the top bar gone: a title row, a row of
+# chips, then seven columns of 212x318 posters on a 240 x 411 pitch.
+BROWSE_HEAD_Y = 66
+BROWSE_HEAD_H = 59
+BROWSE_CHIPS_Y = 140
+BROWSE_CHIP_H = 60
+BROWSE_CHIP_GAP = 12
+BROWSE_CHIP_PAD = 26
+BROWSE_GENRE_CHIPS = 40
+GRID_POSTER_W, GRID_POSTER_H = 212, 318
+BROWSE_COLS = 7
+BROWSE_CELL_W = GRID_POSTER_W + 2 * HPAD
+BROWSE_GRID_X = BROWSE_LEFT - HPAD
+BROWSE_GRID_Y = 222 - TOP_PAD
+BROWSE_GRID_W = BROWSE_COLS * BROWSE_CELL_W
+BROWSE_GRID_H = SCREEN_H - BROWSE_GRID_Y
+BROWSE_TILES_W = BROWSE_TILE_COLS * BROWSE_TILE_PITCH_X
+BROWSE_TILES_H = SCREEN_H - BROWSE_TILES_Y
+# The backdrop fades into the canvas just above the tiles.
+BROWSE_BACKDROP_FADE_H = 320
+BROWSE_BACKDROP_FADE_Y = BROWSE_BACKDROP_H - BROWSE_BACKDROP_FADE_H
+# Title row: the pills' widths as measured; the thin rules between groups.
+BROWSE_FOLDERS_W = 167
+BROWSE_SURPRISE_W = 212
+BROWSE_DIVIDER_H = 40
+BROWSE_DIVIDER_Y = BROWSE_HEAD_Y + (BROWSE_CHIP_H - BROWSE_DIVIDER_H) // 2
+BROWSE_CHIP_DIVIDER_Y = (BROWSE_CHIP_H - BROWSE_DIVIDER_H) // 2
+BROWSE_CHIPS_W = SCREEN_W - BROWSE_LEFT
+# The rule between Filter and the genres: 1px drawn centred in its own slot.
+BROWSE_CHIP_DIVIDER_W = 13
+BROWSE_COLLECTIONS_X = BROWSE_LEFT - 10
 
 # ------------------------------------------------ Browse's A-Z rail (right) --
 # "All", A..Z, then "#", down the right margin. Measured off the Android TV
@@ -568,11 +601,13 @@ BROWSE_GRID_W = BROWSE_COLS * CELL_W
 #
 # Height and pitch are still the app's, so only the axis that had to move
 # has moved.
-ALPHA_PILL_W = 64
-ALPHA_PILL_H = 58
-ALPHA_PITCH = 68
-ALPHA_RAIL_X = 1848
-ALPHA_RAIL_Y = 301
+# App 2.0 (Apple TV): a slim rail right of the seventh column, small letters
+# with "All" in a disc, all 28 on screen at once.
+ALPHA_PILL_W = 46
+ALPHA_PILL_H = 26
+ALPHA_PITCH = 28
+ALPHA_RAIL_X = 1773
+ALPHA_RAIL_Y = 225
 #: The pill is 58 tall in a 68 box, so every item CARRIES its own 10px
 #: trailing pad and the list needs no itemgap. That is what lets the rail
 #: run to the screen edge while the pill that comes to rest at the bottom
@@ -651,9 +686,10 @@ COLLECTION_GRID_W = COLLECTION_COLS * COLLECTION_CELL_W
 # panel's <itemheight> to the matching *_CELL_H. Setting only one silently
 # does nothing.
 GRID_GAP = 17                                 # the default for a poster grid
-GRID_GAP_BROWSE = 32                          # Browse's measured exception
+# Browse's 411 row pitch (app 2.0) under a 212x318 poster's card.
+GRID_GAP_BROWSE = 411 - (CELL_H - POSTER_H + GRID_POSTER_H)
 GRID_CELL_H = CELL_H + GRID_GAP               # 489, app measures 489 (person)
-BROWSE_CELL_H = CELL_H + GRID_GAP_BROWSE      # 504, app measures 505
+BROWSE_CELL_H = CELL_H - POSTER_H + GRID_POSTER_H + GRID_GAP_BROWSE   # 411
 
 # 2's status triad, semantic ONLY: red belongs to status and destructive
 # actions and nowhere else.
@@ -1200,6 +1236,8 @@ FONT_SETTINGS_VALUE = "tofa_font_settings_value"
 FONT_SETTINGS_OPTION = "tofa_font_settings_option"
 FONT_SETTINGS_PICKER = "tofa_font_settings_picker"
 FONT_SETTINGS_TITLE = "tofa_font_settings_title"
+FONT_BROWSE_CAPTION = "tofa_font_browse_caption"
+FONT_BROWSE_TITLE = "tofa_font_player_title"   # bold 45, by ink width
 FONT_BODY = "tofa_font_body"
 FONT_METADATA = "tofa_font_metadata"
 #: Settings' identity card, first line; see fontinstall.FONTS.
