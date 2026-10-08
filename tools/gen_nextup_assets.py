@@ -256,6 +256,22 @@ def gen_style_still_masks() -> None:
         print("saved {0} (r{1})".format(name, r))
 
 
+def gen_preview_mask() -> None:
+    """Settings' preview card (app 2.0), 608x342 with rounded-20's radius so
+    the rim drawn over it lines up."""
+    w, h, r = 608, 342, 20
+    size = (w * S, h * S)
+    im = Image.new("L", size, 0)
+    ImageDraw.Draw(im).rounded_rectangle(
+        [0, 0, size[0] - 1, size[1] - 1], radius=r * S, fill=255)
+    im = im.resize((w * ASSET_SCALE, h * ASSET_SCALE), Image.LANCZOS)
+    out = Image.new("RGBA", im.size, (255, 255, 255, 0))
+    out.putalpha(im)
+    name = "settings-preview-mask-{0}x{1}.png".format(w, h)
+    out.save(os.path.join(_MEDIA_DIR, name))
+    print("saved {0} (r{1})".format(name, r))
+
+
 def gen_lower_scrim() -> None:
     """A vertical ramp, eased so the band has no visible top edge; tinted
     down at runtime like the rail's scrim."""
@@ -269,6 +285,7 @@ def gen_lower_scrim() -> None:
 
 
 def main() -> None:
+    gen_preview_mask()
     gen_countdown_ring()
     gen_still_mask()
     gen_still_outline()

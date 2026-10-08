@@ -156,6 +156,18 @@ NEXT_UP_STYLES: tuple[tuple[str, str], ...] = (
 )
 NEXT_UP_STYLE_DEFAULT = "compact"
 
+#: Per style: Play Next and close rects, ring (centre x, y, size) and the
+#: season bar (x, y, width), measured off the app 2.0's captures. The player
+#: places its controls from it; Settings draws its preview from it.
+NEXT_UP_GEOMETRY = {
+    "compact": ((1221, 933, 517, 64), (1752, 933, 64, 64), (1695, 965, 44), None),
+    "minimal": ((1536, 937, 204, 72), (1756, 937, 72, 72), None, None),
+    "lower": ((1450, 945, 303, 72), (1768, 945, 72, 72), (1707, 981, 48),
+              (468, 1011, 562)),
+    "full": ((1204, 950, 582, 76), (1801, 956, 64, 64), (1736, 988, 52),
+             (1206, 645, 660)),
+}
+
 
 def next_up_style() -> str:
     """This box's Next Up style; anything unknown reads as the default."""

@@ -3311,16 +3311,8 @@ class PlayerWindow(kodigui.ControlledDialog):
 
     #: The season bar's pool of segments (ids 9710..9739).
     _NEXTUP_SEGMENTS = 30
-    #: Per style: Play Next and close rects, ring (centre x, y, size), and the
-    #: season bar (x, y, width), measured off the app 2.0's captures.
-    _NEXTUP_GEOMETRY = {
-        "compact": ((1221, 933, 517, 64), (1752, 933, 64, 64), (1695, 965, 44), None),
-        "minimal": ((1536, 937, 204, 72), (1756, 937, 72, 72), None, None),
-        "lower": ((1450, 945, 303, 72), (1768, 945, 72, 72), (1707, 981, 48),
-                  (468, 1011, 562)),
-        "full": ((1204, 950, 582, 76), (1801, 956, 64, 64), (1736, 988, 52),
-                 (1206, 645, 660)),
-    }
+    #: Per style geometry, shared with Settings' preview (settings_options).
+    _NEXTUP_GEOMETRY = settings_options.NEXT_UP_GEOMETRY
 
     def _place_next_up(self, style: str):
         """Move the shared buttons, ring and season bar to `style`'s spots."""

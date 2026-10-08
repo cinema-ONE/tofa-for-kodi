@@ -1730,6 +1730,7 @@
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>$INFO[Window.Property(settings_title)]</label>
             </control>
+{settings_preview}
 {settings_info_panel}
 
             <!-- ================= DETAIL: ACCOUNT ================= -->

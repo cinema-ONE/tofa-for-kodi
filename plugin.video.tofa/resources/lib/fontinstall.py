@@ -80,7 +80,7 @@ from . import addonref, log
 #: <import> and resource.font.tofa's own id.
 FONT_ADDON_ID = "resource.font.tofa"
 
-FONT_SET_VERSION = 27
+FONT_SET_VERSION = 28
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
 # All lazy, see addonref.py -- this module's import-time Addon lookup is the
@@ -141,11 +141,12 @@ FONTS: dict[str, tuple[str, int, str]] = {
     # which is 33 through the 0.7275 cap ratio. "Home" then inks 89px, as there.
     "tofa_font_nav_tab": ("inter_tight_semibold.ttf", 33, "Regular"),
     # Settings (app 2.0), matched by ink width on the captures: row title,
-    # row value, a picker's options and its title.
+    # row value, a picker's options and title, and the title under a preview.
     "tofa_font_settings_row": ("inter_tight_semibold.ttf", 29, "Regular"),
     "tofa_font_settings_value": ("inter_tight_regular.ttf", 28, "Regular"),
     "tofa_font_settings_option": ("inter_tight_regular.ttf", 30, "Regular"),
     "tofa_font_settings_picker": ("inter_tight_bold.ttf", 32, "Regular"),
+    "tofa_font_settings_title": ("inter_tight_bold.ttf", 38, "Regular"),
     "tofa_font_micro": ("inter_tight_regular.ttf", 16, "Regular"),
     # eyebrow: section labels -- design spec calls for letterspacing, which
     # Kodi has no control for, so only size/weight are replicated. metadata:

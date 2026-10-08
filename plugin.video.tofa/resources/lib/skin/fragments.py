@@ -16,10 +16,13 @@ this is where you would look first when the output surprises you.
 """
 from __future__ import annotations
 
+import os
+import re
 from typing import NamedTuple
 
 from . import icon_glyphs
 from . import tokens as T
+from .. import settings_options
 from .. import textmetrics
 
 
@@ -2851,21 +2854,19 @@ def settings_info_panel() -> str:
             f"$INFO[Window.Property(settings_info_opt{n}_desc)]", lx=30, lw=w - 30) + """
                     </control>"""
 
-    return f"""
+
+
+    def row_group(vis, title_y, title_h, title_font, value_y, body_y):
+        return f"""
             <control type="group">
                 <posx>{x}</posx>
                 <posy>0</posy>
-                <visible>!{row}</visible>{summary}
-            </control>
-            <control type="group">
-                <posx>{x}</posx>
-                <posy>0</posy>
-                <visible>{row}</visible>""" + label(
-        T.SETTINGS_INFO_TITLE_Y, 80, T.FONT_HERO_TITLE, white,
-        "$INFO[Window.Property(settings_info_title)]") + f"""
+                <visible>{vis}</visible>""" + label(
+            title_y, title_h, title_font, white,
+            "$INFO[Window.Property(settings_info_title)]") + f"""
                 <control type="image">
                     <posx>1</posx>
-                    <posy>{T.SETTINGS_INFO_VALUE_Y + 12}</posy>
+                    <posy>{value_y + 12}</posy>
                     <width>10</width>
                     <height>10</height>
                     <colordiffuse>{accent}</colordiffuse>
@@ -2874,7 +2875,7 @@ def settings_info_panel() -> str:
                 </control>
                 <control type="image">
                     <posx>0</posx>
-                    <posy>{T.SETTINGS_INFO_VALUE_Y + 11}</posy>
+                    <posy>{value_y + 11}</posy>
                     <width>12</width>
                     <height>12</height>
                     <colordiffuse>{accent}</colordiffuse>
@@ -2883,7 +2884,7 @@ def settings_info_panel() -> str:
                 </control>
                 <control type="grouplist">
                     <posx>24</posx>
-                    <posy>{T.SETTINGS_INFO_VALUE_Y}</posy>
+                    <posy>{value_y}</posy>
                     <width>{w - 24}</width>
                     <height>34</height>
                     <orientation>horizontal</orientation>
@@ -2904,16 +2905,207 @@ def settings_info_panel() -> str:
                         <label>$INFO[Window.Property(settings_info_now)]</label>
                         <visible>{prop_set("settings_info_now")}</visible>
                     </control>
-                </control>""" + f"""
+                </control>
                 <control type="grouplist">
-                    <posy>{T.SETTINGS_INFO_BODY_Y}</posy>
+                    <posy>{body_y}</posy>
                     <width>{w}</width>
-                    <height>{T.SCREEN_H - T.SETTINGS_INFO_BODY_Y}</height>
+                    <height>{T.SCREEN_H - body_y}</height>
                     <orientation>vertical</orientation>
                     <itemgap>0</itemgap>
                     <usecontrolcoords>true</usecontrolcoords>{stack}
                 </control>
             </control>"""
+
+    # Under a preview (app 2.0) the words move down and the title shrinks.
+    preview = "!String.IsEmpty(Window.Property(settings_preview))"
+    return f"""
+            <control type="group">
+                <posx>{x}</posx>
+                <posy>0</posy>
+                <visible>!{row}</visible>{summary}
+            </control>
+""" + row_group(
+        f"{row} + !{preview}", T.SETTINGS_INFO_TITLE_Y, 80, T.FONT_HERO_TITLE,
+        T.SETTINGS_INFO_VALUE_Y, T.SETTINGS_INFO_BODY_Y) + row_group(
+        f"{row} + {preview}", T.SETTINGS_PREVIEW_TITLE_Y, 50, T.FONT_SETTINGS_TITLE,
+        T.SETTINGS_PREVIEW_VALUE_Y, T.SETTINGS_PREVIEW_BODY_Y)
+
+
+def _nextup_overlays_for_preview() -> str:
+    """The player's four Next Up styles, lifted from its static XML for the
+    Settings preview: ids dropped, the style read from settings_preview_style,
+    plus each style's ring and season bar, which the player places at runtime."""
+    path = os.path.join(os.path.dirname(__file__), "static", "script-tofa-player.xml")
+    with open(path, encoding="utf-8") as f:
+        xml = f.read()
+    start = xml.index("            <!-- compact -->")
+    end = xml.index("            <control type=\"group\">\n"
+                    "                <visible>!String.IsEmpty(Window.Property(nextup_segments))</visible>",
+                    start)
+    body = re.sub(r' id="\d+"', "", xml[start:end])
+    body = body.replace("Window.Property(nextup_style)", "Window.Property(settings_preview_style)")
+    accent = "$INFO[Window.Property(accent_color)]"
+    extra = ""
+    for style, (_play, _close, ring, bar) in settings_options.NEXT_UP_GEOMETRY.items():
+        parts = ""
+        if ring:
+            cx, cy, d = ring
+            box = f"<posx>{cx - d // 2}</posx><posy>{cy - d // 2}</posy><width>{d}</width><height>{d}</height>"
+            parts += f"""
+                <control type="image">{box}
+                    <colordiffuse>$INFO[Window.Property(nextup_ring_track)]</colordiffuse>
+                    <texture>nextup-ring-track.png</texture>
+                </control>
+                <control type="image">{box}
+                    <colordiffuse>{accent}</colordiffuse>
+                    <texture>nextup-ring/28.png</texture>
+                </control>"""
+        if bar:
+            x0, y, total = bar
+            count, gap = 5, 6
+            seg = (total - gap * (count - 1)) / count
+            for i in range(count):
+                colour = accent if i == 2 else "0x4DFFFFFF"
+                parts += f"""
+                <control type="image">
+                    <posx>{int(round(x0 + i * (seg + gap)))}</posx><posy>{y}</posy>
+                    <width>{int(round(seg))}</width><height>4</height>
+                    <colordiffuse>{colour}</colordiffuse>
+                    <texture>white-square.png</texture>
+                </control>"""
+        if parts:
+            extra += f"""
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(settings_preview_style),{style})</visible>{parts}
+            </control>"""
+    return body + extra
+
+
+def settings_preview() -> str:
+    """The left column's preview card (app 2.0): a backdrop from the library
+    with our own player drawn over it -- Next Up in the focused style, or a
+    skip button on the scrub bar -- for the rows that change what plays."""
+    x, y = T.SETTINGS_LEFT, T.SETTINGS_PREVIEW_Y
+    w, h = T.SETTINGS_PREVIEW_W, T.SETTINGS_PREVIEW_H
+    kind = "String.IsEqual(Window.Property(settings_preview),{0})".format
+    at_end = "String.IsEqual(Window.Property(settings_preview_at),end)"
+    accent = "$INFO[Window.Property(accent_color)]"
+    white = "$INFO[Window.Property(text_primary)]"
+    grey = "$INFO[Window.Property(text_secondary)]"
+    mask = "settings-preview-mask-{0}x{1}.png".format(w, h)
+
+    def label(lx, ly, lw, lh, font, colour, text, align="left", vis=""):
+        # Outside a list, a right-aligned label's posx is its RIGHT edge.
+        v = f"<visible>{vis}</visible>" if vis else ""
+        return f"""
+                    <control type="label">{v}
+                        <posx>{lx}</posx><posy>{ly}</posy>
+                        <width>{lw}</width><height>{lh}</height>
+                        <align>{align}</align><aligny>center</aligny>
+                        <font>{font}</font>
+                        <textcolor>{colour}</textcolor>
+                        <label>{text}</label>
+                    </control>"""
+
+    def rect(rx, ry, rw, rh, colour, texture="white-square.png", border="", vis=""):
+        v = f"<visible>{vis}</visible>" if vis else ""
+        b = f' border="{border}"' if border else ""
+        return f"""
+                    <control type="image">{v}
+                        <posx>{rx}</posx><posy>{ry}</posy>
+                        <width>{rw}</width><height>{rh}</height>
+                        <colordiffuse>{colour}</colordiffuse>
+                        <texture{b}>{texture}</texture>
+                    </control>"""
+
+    def scrub(knob_x, left_time, right_time, vis=""):
+        """The player's scrub bar, filled to `knob_x`, with its two times."""
+        return (rect(22, 293, 557, 5, "0x4DFFFFFF", vis=vis)
+                + rect(22, 293, knob_x - 22, 5, accent, vis=vis)
+                + rect(knob_x - 8, 287, 16, 16, "white", "circle.png", vis=vis)
+                + label(22, 306, 200, 24, T.FONT_MICRO, white, left_time, vis=vis)
+                + label(586, 306, 200, 24, T.FONT_MICRO, white, right_time, "right", vis=vis))
+
+    play_next = (
+        rect(296, 196, 289, 81, "0xE6101418", "rounded-14.png", "14")
+        + f"""
+                    <control type="image">
+                        <posx>306</posx><posy>206</posy>
+                        <width>110</width><height>62</height>
+                        <aspectratio>scale</aspectratio>
+                        <texture diffuse="nextup-mask-128x72.png">$INFO[Window.Property(settings_preview_art)]</texture>
+                    </control>"""
+        + label(429, 208, 150, 28, T.FONT_ACCOUNT, white, "Episode 5")
+        + label(429, 234, 150, 24, T.FONT_MICRO, grey, "Playing in 8 seconds")
+        + rect(429, 263, 130, 3, "0x33FFFFFF") + rect(429, 263, 52, 3, accent)
+        + scrub(579, "42:44", "-0:38"))
+
+    pill = (rect(420, 238, 166, 42, "$INFO[Window.Property(accent_pill_fill)]",
+                 "capsule-h40.png", "20")
+            + rect(420, 238, 166, 42, accent, "capsule-h40-outline.png", "20")
+            + label(436, 238, 24, 42, T.FONT_ICON_19, accent,
+                    f"&#x{icon_glyphs.CHEVRONS_RIGHT:04X};")
+            + label(462, 238, 120, 42, T.FONT_ACCOUNT, accent,
+                    "$INFO[Window.Property(settings_preview_skip)]"))
+    skip = (pill
+            + label(36, 262, 200, 24, T.FONT_MICRO, white,
+                    "$INFO[Window.Property(settings_preview_segment)]", vis=f"!{at_end}")
+            + rect(53, 293, 22, 5, "0x99FFFFFF", vis=f"!{at_end}")
+            + rect(532, 293, 47, 5, "0x99FFFFFF", vis=at_end)
+            + scrub(53, "1:24", "-42:12", vis=f"!{at_end}")
+            + scrub(532, "40:51", "-2:09", vis=at_end))
+
+    # The overlays keep their 1920x1080 coordinates and are scaled onto the
+    # card: zooming about c maps (0, 0) to c * (1 - s), so c = card / (1 - s).
+    scale = float(w) / T.SCREEN_W
+    zoom = round(100.0 * scale, 3)
+    cx, cy = round(x / (1 - scale), 2), round(y / (1 - scale), 2)
+    overlays = f"""
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(settings_info)) + {kind("nextup_style")}</visible>
+                <animation effect="zoom" start="{zoom}" end="{zoom}" center="{cx},{cy}" time="0" condition="true">Conditional</animation>
+{_nextup_overlays_for_preview()}
+            </control>"""
+    return f"""
+            <control type="group">
+                <posx>{x}</posx>
+                <posy>{y}</posy>
+                <visible>!String.IsEmpty(Window.Property(settings_info)) + !String.IsEmpty(Window.Property(settings_preview))</visible>
+                <control type="image">
+                    <width>{w}</width>
+                    <height>{h}</height>
+                    <colordiffuse>0xFF16222B</colordiffuse>
+                    <texture diffuse="{mask}">white-square.png</texture>
+                </control>
+                <control type="image">
+                    <width>{w}</width>
+                    <height>{h}</height>
+                    <aspectratio>scale</aspectratio>
+                    <texture diffuse="{mask}">$INFO[Window.Property(settings_preview_art)]</texture>
+                </control>
+                <control type="group">
+                    <visible>!{kind("nextup_style")}</visible>
+                    <control type="image">
+                        <posy>{h - 140}</posy>
+                        <width>{w}</width>
+                        <height>140</height>
+                        <colordiffuse>0x99000000</colordiffuse>
+                        <texture diffuse="{mask}">fade-bottom.png</texture>
+                    </control>
+                </control>
+                <control type="group">
+                    <visible>{kind("play_next")}</visible>{play_next}
+                </control>
+                <control type="group">
+                    <visible>{kind("skip")}</visible>{skip}
+                </control>
+                <control type="image">
+                    <width>{w}</width>
+                    <height>{h}</height>
+                    <colordiffuse>0x26FFFFFF</colordiffuse>
+                    <texture border="20">rounded-20-outline.png</texture>
+                </control>
+            </control>""" + overlays
 
 
 def settings_tab_strip(*, list_id: int, onup: int, ondown: int) -> str:

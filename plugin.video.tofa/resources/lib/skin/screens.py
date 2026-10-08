@@ -345,6 +345,7 @@ def render_main() -> str:
         toast=fragments.toast(),
         hero_scroll_when=hero_scroll_when,
         settings_info_panel=fragments.settings_info_panel(),
+        settings_preview=fragments.settings_preview(),
         settings_picker_panel=fragments.settings_picker_panel(),
         settings_tab_strip=fragments.settings_tab_strip(
             list_id=8000, onup=3000, ondown=8110),
