@@ -78,11 +78,12 @@ def render_main() -> str:
     watchlist_item_xml = fragments.watchlist_badge_item()
     watchlist_focused_xml = fragments.watchlist_badge_focused()
     discover_blocks = []
+    strip_id = home_rows.DISCOVER_TAB_STRIP_ID
     for idx, list_id in enumerate(home_rows.DISCOVER_ROW_LIST_IDS):
         # Discover's focused card is the wide backdrop one, not the portrait
         # poster every other row uses -- see fragments.discover_card().
         item_xml, focused_xml = fragments.discover_card(list_id)
-        prev_id = home_rows.DISCOVER_ROW_LIST_IDS[idx - 1] if idx else NAV_LIST_ID
+        prev_id = home_rows.DISCOVER_ROW_LIST_IDS[idx - 1] if idx else strip_id
         next_id = (home_rows.DISCOVER_ROW_LIST_IDS[idx + 1]
                    if idx + 1 < len(home_rows.DISCOVER_ROW_LIST_IDS) else list_id)
         discover_blocks.append(fragments.poster_row(
@@ -92,27 +93,15 @@ def render_main() -> str:
             onup=prev_id, ondown=next_id,
             item_xml=item_xml, focused_xml=focused_xml,
             list_width=T.row_bleed_width(T.DISCOVER_LEFT),
+            pos=(T.DISCOVER_ROWS_X, T.DISCOVER_FOCUS_ROW_Y if idx else T.DISCOVER_ROWS_Y),
+            block_h=T.DISCOVER_ROW_PITCH,
+            indent="                    ",
         ))
-    row_kwargs["discover_rows"] = "\n\n".join(discover_blocks)
-
-    # Discover's four tab pills. Each is its own 1-item list (see
-    # fragments.discover_tab_pill), wired into a ring so Left/Right cycles
-    # through them; Down always lands on the first row slot, which
-    # MainWindow re-points per tab at runtime the same way Home's rows are.
-    tab_ids = home_rows.DISCOVER_TAB_LIST_IDS
-    tab_x = fragments.discover_tab_positions()
-    tab_blocks = []
-    for idx, (key, _label, width) in enumerate(home_rows.DISCOVER_TABS):
-        tab_blocks.append(fragments.discover_tab_pill(
-            tab_ids[idx],
-            tab_key=key,
-            width=width,
-            posx=tab_x[idx],
-            onleft=tab_ids[idx - 1] if idx else tab_ids[0],
-            onright=tab_ids[idx + 1] if idx + 1 < len(tab_ids) else tab_ids[-1],
-            ondown=home_rows.DISCOVER_ROW_LIST_IDS[0],
-        ))
-    row_kwargs["discover_tabs"] = "\n\n".join(tab_blocks)
+    strip = fragments.discover_subtab_strip(
+        list_id=strip_id, onup=NAV_LIST_ID, ondown=home_rows.DISCOVER_ROW_LIST_IDS[0])
+    row_kwargs["discover_rows"] = "\n\n".join(
+        fragments.discover_row_block(idx, xml, strip if idx == 0 else "")
+        for idx, xml in enumerate(discover_blocks))
 
     sidebar_item, sidebar_focused = fragments.sidebar_row(6000)
     sidebar_lib_item, sidebar_lib_focused = fragments.sidebar_row(6010)

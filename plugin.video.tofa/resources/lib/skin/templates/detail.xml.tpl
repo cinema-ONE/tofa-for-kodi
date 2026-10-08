@@ -1190,9 +1190,8 @@
                          while Cast stayed pinned above it; the page could
                          never move as a unit.
 
-                         Same construction Home (grouplist 4090) and
-                         Discover (6390) already use for their stacked
-                         shelves. A grouplist stacks its children by their
+                         Same construction Home (grouplist 4090) uses for
+                         its stacked shelves. A grouplist stacks its children by their
                          own declared heights and ignores their posy, so
                          nothing in here carries an absolute y, and it skips
                          invisible children, which is what lets Crew's
@@ -1551,7 +1550,7 @@
                      and built a flat 6-column grid mixing the two.
 
                      Stacked in a grouplist, the same construction Home
-                     (4090) and Discover (6390) use. Each shelf is wrapped in
+                     (4090) uses. Each shelf is wrapped in
                      its own group by poster_row(), which is what keeps the
                      grouplist's navigation override off the focusable lists
                      inside; Cast & Crew's panels sit directly in their

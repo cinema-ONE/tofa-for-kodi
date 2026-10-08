@@ -2631,6 +2631,8 @@ def poster_row(
     focused_xml: str,
     list_width: int = T.CONTENT_WIDTH,
     indent: str = "            ",
+    pos: tuple[int, int] | None = None,
+    block_h: int = T.ROW_BLOCK_H,
 ) -> str:
     """One complete poster row: header label + horizontal list, wrapped in a
     group that hides itself when `title_property` is empty.
@@ -2643,8 +2645,10 @@ def poster_row(
     # The region starts at the lists' edge (HOME_ROWS_X), and a grouplist
     # ignores its children's own posx, so the inset goes on what is inside.
     inset = -T.ROW_LIST_X
-    return f"""{indent}<control type="group" id="{group_id}">
-{indent}    <height>{T.ROW_BLOCK_H}</height>
+    at = (f"\n{indent}    <posx>{pos[0]}</posx>\n{indent}    <posy>{pos[1]}</posy>"
+          if pos else "")
+    return f"""{indent}<control type="group" id="{group_id}">{at}
+{indent}    <height>{block_h}</height>
 {indent}    <visible>!String.IsEmpty(Window.Property({title_property}))</visible>
 {indent}    <control type="label">
 {indent}        <posx>{inset}</posx>
@@ -2672,150 +2676,89 @@ def poster_row(
 {indent}</control>"""
 
 
-def discover_tab_positions() -> tuple[int, ...]:
-    """Left edge of each Discover tab pill, laid out from DISCOVER_LEFT.
+def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
+    """Discover's sub-tabs as one list of text tabs, same grammar as the top
+    bar: half-white at rest, white when current, an underline on the focused
+    tab and a dot under the current one once focus has left the strip."""
+    focused = f"Control.HasFocus({list_id})"
+    current = "!String.IsEmpty(ListItem.Property(is_current))"
+    white = "$INFO[Window.Property(text_primary)]"
 
-    Lives here rather than in home_rows.py because the offsets derive from
-    tokens.DISCOVER_LEFT, and home_rows.py is deliberately dependency-free."""
-    from .. import home_rows
-
-    xs, x = [], T.DISCOVER_LEFT
-    for _, _, width in home_rows.DISCOVER_TABS:
-        xs.append(x)
-        x += width + home_rows.DISCOVER_TAB_GAP
-    return tuple(xs)
-
-
-def discover_tab_pill(
-    list_id: int,
-    *,
-    tab_key: str,
-    width: int,
-    posx: int,
-    onleft: int,
-    onright: int,
-    ondown: int,
-    onup: int = 3000,
-) -> str:
-    """One Discover tab pill, as a complete single-item `<control type="list">`.
-
-    Four text-hugging widths can't share one Kodi list (a list has a single
-    itemwidth), so each pill is its own 1-item list -- the same shape Browse's
-    Sort/Filter/Quality/Genre pills already use. Unlike those, position IS a
-    parameter: the widths come from the measured label table in home_rows.py,
-    so the x offsets can only be computed, not hand-written.
-
-    Which pill is ACTIVE cannot ride on itemlayout-vs-focusedlayout. Kodi draws
-    a list's current item through focusedlayout whether or not the list holds
-    input focus, and in a 1-item list the sole item is always current -- so all
-    four pills would render identically (they did, first time round). The
-    active state is therefore gated on Window.Property(discover_tab) matching
-    this pill's own key, which is baked in at render time since the four keys
-    are static. Focus is a separate axis on top, via Control.HasFocus().
-    """
-    h = 54  # home_rows.DISCOVER_TAB_HEIGHT, measured off the reference
-    active = f"String.IsEqual(Window.Property(discover_tab),{tab_key})"
-
-    def _body() -> str:
-        return f"""                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{h}</height>
-                        <colordiffuse>{T.SURFACE_FAINT}</colordiffuse>
-                        <texture border="27">capsule-h54.png</texture>
-                        <visible>!{active}</visible>
-                    </control>
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{h}</height>
-                        <colordiffuse>{T.SURFACE_RAISED}</colordiffuse>
-                        <texture border="27">capsule-h54-outline.png</texture>
-                        <visible>!{active}</visible>
-                    </control>
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{h}</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="27">capsule-h54.png</texture>
-                        <visible>{active}</visible>
-                    </control>
-                    <!-- Focus reads as a white outline over whichever fill is
-                         showing, so a focused pill keeps its active/inactive
-                         colour identity instead of swapping to a third look.
-
-                         NOT the outside ring the settings segments use. A
-                         pill here is a LIST ITEM, and Kodi clips a list's
-                         content to the list's own rectangle: drawn at -6 the
-                         ring came back as four corner arcs with the straight
-                         runs cut off. Tried 2026-08-28.
-
-                         White rather than on_accent_color for the active
-                         pill, though white scores only 1.15:1 on the Snow
-                         accent. A dark outline fixes that number and looks
-                         worse on the other thirteen: the stroke's flanks are
-                         21-60% opaque, so a dark ring on an accent fill is
-                         speckled with the fill's own colour along the
-                         curves. Fixing it properly needs the pill rebuilt so
-                         a ring can sit outside it. -->
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{h}</height>
-                        <colordiffuse>white</colordiffuse>
-                        <texture border="27">capsule-h54-outline.png</texture>
-                        <visible>Control.HasFocus({list_id})</visible>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{h}</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_BUTTON}</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!{active}</visible>
-                    </control>
-                    <control type="label">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{h}</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_BUTTON}</font>
-                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>{active}</visible>
+    def slot(idx: int, selected: bool) -> str:
+        off = idx * T.DISCOVER_SUBTAB_SLOT
+        w = T.DISCOVER_SUBTAB_INK_W[idx]
+        centre = T.DISCOVER_SUBTAB_CENTRES[idx] - off
+        x = centre - w // 2
+        y = T.DISCOVER_SUBTAB_LABEL_Y
+        if selected:
+            colours = ((white, ""),)
+        else:
+            colours = ((white, f"<visible>{current}</visible>"),
+                       (T.NAV_TAB_REST, "<visible>String.IsEmpty(ListItem.Property(is_current))</visible>"))
+        labels = "".join(f"""
+                        <control type="label">
+                            <posx>{x}</posx>
+                            <posy>{y}</posy>
+                            <width>{w + 20}</width>
+                            <height>{T.DISCOVER_SUBTAB_LABEL_H}</height>
+                            <font>{T.FONT_CAPTION}</font>
+                            <textcolor>{colour}</textcolor>
+                            <label>$INFO[ListItem.Label]</label>{vis}
+                        </control>""" for colour, vis in colours)
+        marks = _nav_mark(centre - T.NAV_DOT_SIZE // 2, T.NAV_DOT_SIZE,
+                          T.DISCOVER_SUBTAB_DOT_Y + _NAV_LIST_Y, T.NAV_DOT_SIZE,
+                          ">circle.png", f"!{focused} + {current}")
+        if selected:
+            marks += _nav_mark(x - 1, w + 2, T.DISCOVER_SUBTAB_UNDERLINE_Y + _NAV_LIST_Y,
+                               T.NAV_UNDERLINE_H,
+                               f' border="{T.NAV_UNDERLINE_H // 2}">capsule-h{T.NAV_UNDERLINE_H}.png',
+                               focused)
+        return f"""
+                    <control type="group">
+                        <visible>String.IsEqual(ListItem.Property(tab_idx),{idx})</visible>{labels}{marks}
                     </control>"""
 
+    n = len(T.DISCOVER_SUBTAB_CENTRES)
+    item = "".join(slot(i, False) for i in range(n))
+    sel = "".join(slot(i, True) for i in range(n))
     return f"""            <control type="list" id="{list_id}">
-                <posx>{posx}</posx>
-                <posy>174</posy>
-                <width>{width}</width>
-                <height>{h}</height>
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>{T.DISCOVER_SUBTAB_SLOT * n}</width>
+                <height>{T.DISCOVER_DIVIDER_Y}</height>
+                <orientation>horizontal</orientation>
                 <onup>{onup}</onup>
                 <ondown>{ondown}</ondown>
-                <onleft>{onleft}</onleft>
-                <onright>{onright}</onright>
-                <orientation>horizontal</orientation>
-                <itemwidth>{width}</itemwidth>
-                <itemheight>{h}</itemheight>
-                <itemlayout width="{width}" height="{h}">
-{_body()}
+                <onleft>{list_id}</onleft>
+                <onright>{list_id}</onright>
+                <itemlayout width="{T.DISCOVER_SUBTAB_SLOT}" height="{T.DISCOVER_DIVIDER_Y}">{item}
                 </itemlayout>
-
-                <focusedlayout width="{width}" height="{h}">
-{_body()}
+                <focusedlayout width="{T.DISCOVER_SUBTAB_SLOT}" height="{T.DISCOVER_DIVIDER_Y}">{sel}
                 </focusedlayout>
+            </control>
+            <control type="image">
+                <posx>{T.DISCOVER_LEFT}</posx>
+                <posy>{T.DISCOVER_DIVIDER_Y}</posy>
+                <width>{T.DISCOVER_DIVIDER_W}</width>
+                <height>1</height>
+                <colordiffuse>{T.DISCOVER_DIVIDER}</colordiffuse>
+                <texture>white-square.png</texture>
             </control>"""
+
+
+def discover_row_block(index: int, row_xml: str, header_xml: str = "") -> str:
+    """One child of Discover's grouplist: a screen-tall block with its row at
+    DISCOVER_FOCUS_ROW_Y, or row 0's shorter block under the sub-tabs."""
+    if index:
+        h, gate = T.SCREEN_H, f"\n                    <visible>!String.IsEmpty(Window.Property(discover_row{index}_title))</visible>"
+    else:
+        h, gate = T.DISCOVER_ROW0_H, ""
+    return f"""                <control type="group">
+                    <height>{h}</height>{gate}
+{header_xml}
+{row_xml}
+                </control>"""
+
 
 # Discover's focused card is a WIDE backdrop card, not the portrait poster the
 # other screens use. Measured off the real app 2026-07-31: unfocused cards keep
@@ -4946,8 +4889,7 @@ def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -
     makes Kodi wrap internally (reference_kodi_grouplist_children). See
     _settings_wire_home_rows.
     """
-    # Local import for the same reason discover_tab_positions does it:
-    # home_rows.py is deliberately dependency-free.
+    # Local import: home_rows.py is deliberately dependency-free.
     from .. import home_rows
 
     up_id, down_id, tog_id, rm_id = home_rows.HOME_ROW_EDIT_IDS[slot]

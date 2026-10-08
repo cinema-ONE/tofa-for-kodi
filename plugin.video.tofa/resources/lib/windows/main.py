@@ -813,7 +813,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # The tab pills sit above the shelves and are always there, so a
             # tab whose every shelf came back empty still has somewhere to
             # land -- on the pill that chose it.
-            return home_rows.DISCOVER_TAB_LIST_IDS + tuple(self.DISCOVER_ROW_LIST_IDS)
+            return (home_rows.DISCOVER_TAB_STRIP_ID,) + tuple(self.DISCOVER_ROW_LIST_IDS)
         if control_id in (self.GRID_ID, self.COLLECTION_GRID_ID):
             # A grid that filtered down to nothing sends them back to the
             # sidebar, which is where the source and filters live -- i.e.
@@ -826,7 +826,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def focus_memory_list(self, control_id):
         """Every card container in this window, across all five sections."""
         for lists in (self.row_lists, self.discover_rows,
-                      self._discover_tab_lists):
+                      {home_rows.DISCOVER_TAB_STRIP_ID: self._discover_strip}):
             mcl = (lists or {}).get(control_id)
             if mcl is not None:
                 return mcl
@@ -993,25 +993,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         for list_id in self.DISCOVER_ROW_LIST_IDS:
             self.discover_rows[list_id] = kodigui.ManagedControlList(self, list_id, 12)
 
-        # Tab pills. Each is a 1-item list holding its own static label; the
-        # selected pill is the one Kodi draws through focusedlayout, so
-        # "which tab is active" is just which pill list is selected -- no
-        # extra property needed for the visual state. Down from the pills
-        # lands on the rows; Down from nav lands on the pills, so the pills
-        # are the section's real entry point.
-        self._discover_tab_lists: dict[int, kodigui.ManagedControlList] = {}
-        for idx, (key, label, _w) in enumerate(home_rows.DISCOVER_TABS):
-            list_id = home_rows.DISCOVER_TAB_LIST_IDS[idx]
-            mcl = kodigui.ManagedControlList(self, list_id, 1)
-            mcl.reset()
-            mcl.addItems([kodigui.ManagedListItem(label=label, data_source=key)])
-            self._discover_tab_lists[list_id] = mcl
+        # The sub-tabs: one list, the section's entry point from the nav bar.
+        # Focusing a tab switches to it after a short settle, as in app 2.0.0.
         self._discover_tab = home_rows.DISCOVER_DEFAULT_TAB
         self._discover_shelves_by_tab: dict[str, list[dict]] = {}
-        # Drives every pill's active/inactive look; see
-        # fragments.discover_tab_pill() for why it can't be layout-based.
-        self.setProperty("discover_tab", self._discover_tab)
-        self._section_down_targets["discover"] = home_rows.DISCOVER_TAB_LIST_IDS[0]
+        self._discover_strip = kodigui.ManagedControlList(
+            self, home_rows.DISCOVER_TAB_STRIP_ID, len(home_rows.DISCOVER_TABS))
+        self._discover_strip.reset()
+        self._discover_strip.addItems([
+            kodigui.ManagedListItem(label=label, data_source=key,
+                                    properties={"tab_idx": str(idx)})
+            for idx, (key, label) in enumerate(home_rows.DISCOVER_TABS)])
+        self._discover_mark_current_tab()
+        self._discover_tab_settle = kodigui.SettleTimer(
+            T.FOCUS_SETTLE_MS, "tofa-discover-tab")
+        self._section_down_targets["discover"] = home_rows.DISCOVER_TAB_STRIP_ID
 
         # Search section's own control construction (cheap, no HTTP --
         # unlike every other section, Search has no initial data load at
@@ -1317,8 +1313,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_grid_clicked()
         elif controlID in self.discover_rows:
             self._discover_card_clicked(controlID)
-        elif controlID in home_rows.DISCOVER_TAB_LIST_IDS:
-            self._discover_tab_clicked(controlID)
+        elif controlID == home_rows.DISCOVER_TAB_STRIP_ID:
+            self._discover_tab_focused(now=True)
         elif controlID == self.TAB_LIST_ID:
             self._search_tab_clicked()
         elif controlID in (self.KEYBOARD_ID, self.NUMPAD_ID):
@@ -1471,6 +1467,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # callback would setImage() on a control that no longer exists.
         self._settle.stop()
         self._section_settle.stop()
+        self._discover_tab_settle.stop()
         self._hero_swap.stop()
         self._remember_section()
         kodigui.ControlledWindow.onClosed(self)
@@ -1528,6 +1525,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # immediately closing the screen. A second Back, now with nav
             # itself focused, falls through to ControlledWindow's own Back
             # handling below and actually exits.
+            if self.getFocusId() in self.DISCOVER_ROW_LIST_IDS:
+                # Via the sub-tabs, which scrolls Discover's page back up.
+                self.setFocusId(home_rows.DISCOVER_TAB_STRIP_ID)
             self.setFocusId(self.NAV_LIST_ID)
             return
 
@@ -1605,6 +1605,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 if target:
                     self._open_nav_target(target)
                     return
+                kodigui.ControlledWindow.onAction(self, action)
+                return
+            if self.getFocusId() == home_rows.DISCOVER_TAB_STRIP_ID:
+                # Kodi has already moved the strip's selection, as on the nav.
+                self._discover_tab_focused()
                 kodigui.ControlledWindow.onAction(self, action)
                 return
             mlist = self.row_lists.get(self.getFocusId())
@@ -4476,7 +4481,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not client:
             return
         self._discover_tab = tab
-        self.setProperty("discover_tab", tab)
+        self._discover_mark_current_tab()
         shelves = self._discover_shelves_by_tab.get(tab, [])[: self.MAX_DISCOVER_ROWS]
 
         for idx in range(self.MAX_DISCOVER_ROWS):
@@ -4501,48 +4506,33 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         log.info("discover: %s -- %d shelf/shelves in %.2fs"
                  % (tab, len(shelves), time.monotonic() - started))
 
-        # Every tab pill's Down must land on a row that actually exists; with
-        # no shelves at all it stays on the pills rather than dropping focus
-        # into a hidden control.
-        target = self.DISCOVER_ROW_LIST_IDS[0] if shelves else None
-        for idx, list_id in enumerate(home_rows.DISCOVER_TAB_LIST_IDS):
-            try:
-                ctl = self.getControl(list_id)
-            except Exception:
-                continue
-            if target is not None:
-                ctl.controlDown(self.getControl(target))
-
-        # ...and the first row's Up must come back to the pill you're ON.
-        # The template can only carry ONE static onup, so it named the nav bar
-        # -- which meant Down from the pills into the row and then Up again
-        # skipped the pill row entirely and jumped to the nav bar, losing the
-        # group you were in. 7.9.2's focus gate is explicit that arriving
-        # from outside must land on the group you are IN, and the tab row can't
-        # be a single control (four text-hugging pill widths, one <itemwidth>
-        # per Kodi list), so the target changes with the tab and has to be
-        # wired here rather than in XML.
-        if target is not None:
-            try:
-                tab_idx = [t[0] for t in home_rows.DISCOVER_TABS].index(tab)
-            except ValueError:
-                tab_idx = 0
-            try:
-                self.getControl(target).controlUp(
-                    self.getControl(home_rows.DISCOVER_TAB_LIST_IDS[tab_idx])
-                )
-            except Exception:
-                pass
-
-    def _discover_tab_clicked(self, control_id):
+        # Down from the strip must land on a row that exists; with no shelves
+        # it stays on the strip rather than dropping into a hidden control.
+        target = self.DISCOVER_ROW_LIST_IDS[0] if shelves else home_rows.DISCOVER_TAB_STRIP_ID
         try:
-            idx = home_rows.DISCOVER_TAB_LIST_IDS.index(control_id)
-        except ValueError:
+            self.getControl(home_rows.DISCOVER_TAB_STRIP_ID).controlDown(self.getControl(target))
+        except Exception:
+            pass
+
+    def _discover_mark_current_tab(self) -> None:
+        for idx, (key, _label) in enumerate(home_rows.DISCOVER_TABS):
+            self._discover_strip.getListItem(idx).setProperty(
+                "is_current", "1" if key == self._discover_tab else "")
+
+    def _discover_tab_focused(self, now: bool = False) -> None:
+        """Switch to the sub-tab under focus; on a Left/Right only once focus
+        has settled, so walking across the strip renders one tab, not four."""
+        pos = self._discover_strip.getSelectedPos()
+        if pos is None or pos >= len(home_rows.DISCOVER_TABS):
             return
-        tab = home_rows.DISCOVER_TABS[idx][0]
+        tab = home_rows.DISCOVER_TABS[pos][0]
         if tab == self._discover_tab:
+            self._discover_tab_settle.stop()
             return
-        self._discover_render_tab(tab)
+        if now:
+            self._discover_render_tab(tab)
+        else:
+            self._discover_tab_settle.schedule(lambda t=tab: self._discover_render_tab(t))
 
     def _discover_stage_first_screenful(self, client: MediaServerClient,
                                         shelves: list) -> None:

@@ -646,6 +646,16 @@ function pill({{w, h, radius = h/2, fill = 'transparent', border, borderColor, b
   return `<div class="p-pill" style="${{style}}">${{ic}}<span>${{label||''}}</span>${{tr}}</div>`;
 }}
 
+// ---------- primitive 1b: text tab (top bar, Discover sub-tabs) ----------
+function texttab({{label, color = '#fff', mark, size = 16}}) {{
+  const m = mark === 'line'
+    ? `<div style="height:3px;border-radius:2px;background:${{ACCENT}};margin-top:6px"></div>`
+    : mark === 'dot'
+      ? `<div style="width:5px;height:5px;border-radius:50%;background:${{ACCENT}};margin:6px auto 0"></div>`
+      : `<div style="height:3px;margin-top:6px"></div>`;
+  return `<div style="display:inline-block;color:${{color}};font-weight:600;font-size:${{size}}px">${{label}}${{m}}</div>`;
+}}
+
 // ---------- primitive 2: list row ----------
 function row({{w = 300, h = 54, fill = 'transparent', border, borderColor, accentBar = false,
                icon, label, count, textColor = '#fff', countColor = 'rgba(255,255,255,0.62)'}}) {{
@@ -827,14 +837,14 @@ const pillsHost = document.getElementById('pillsHost');
     props: [['Size','346&times;62, radius 29'],['Active gate','ListItem.Property(active)'],['Focus gate','Control.HasFocus(id) &mdash; re-armed independently of active state']],
   }},
   {{
-    name: 'Discover Tab Pill (Now / Acclaimed / Genres / Decades)', src: 'fragments.py:discover_tab_pill(), ids 6900/6910/6920/6930',
-    desc: 'Groups the server\'s 32 flat shelves into four tabs by each shelf\'s own <code class="mono">kind</code>. Four separate 1-item lists rather than one 4-item list: a Kodi list has a single itemwidth, and these pills hug their labels (110/186/144/165 measured off the real app, = label width at {tab_font} plus 26px padding a side). Active state is gated on <code class="mono">Window.Property(discover_tab)</code>, NOT on itemlayout-vs-focusedlayout &mdash; a 1-item list\'s sole item is always "current", so Kodi draws every pill through focusedlayout and all four rendered accent-filled on the first attempt.',
+    name: 'Discover Sub-tab (Now / Acclaimed / Genres / Decades)', src: 'fragments.py:discover_subtab_strip(), id 6900',
+    desc: 'Groups the server\'s 32 flat shelves into four tabs by each shelf\'s own <code class="mono">kind</code>. Text tabs on one list, the top bar\'s grammar (app 2.0.0): focusing a tab switches to it once focus settles, and the page slides so the focused row\'s header stays at y 387.',
     states: [
-      {{ label: 'Inactive', render: () => pill({{w:144,h:54,radius:27,fill:'rgba(255,255,255,{tab_faint_css})',border:true,borderColor:'rgba(255,255,255,{tab_raised_css})',textColor:'#fff',label:'Genres',size:15}}) }},
-      {{ label: 'Active', render: () => pill({{w:110,h:54,radius:27,fill:'var(--accent)',textColor:'var(--on-accent)',label:'Now',size:15}}) }},
-      {{ label: 'Active, focused', render: () => pill({{w:110,h:54,radius:27,fill:'var(--accent)',border:true,borderColor:'#fff',textColor:'var(--on-accent)',label:'Now',size:15}}) }},
+      {{ label: 'Resting', render: () => texttab({{label:'Acclaimed',color:'rgba(255,255,255,0.5)'}}) }},
+      {{ label: 'Current, focus elsewhere', render: () => texttab({{label:'Now',mark:'dot'}}) }},
+      {{ label: 'Current, focused', render: () => texttab({{label:'Now',mark:'line'}}) }},
     ],
-    props: [['Size','height 54, width per label (110/186/144/165)'],['Layout','x from CONTENT_LEFT, 18px gaps &mdash; fragments.discover_tab_positions()'],['Active gate','Window.Property(discover_tab) equals the pill\'s own key'],['Focus','white outline over whichever fill is showing, so colour identity is kept']],
+    props: [['Font','tofa_font_caption (semibold 25)'],['Slots','384px each; ink centred on the measured 124/262/421/570'],['Marks','4px underline at y 187, 6px dot at y 186, accent'],['Rule','1px at y 221, white 7%']],
   }},
   {{
     name: 'Tab Bar Pill (Detail)', src: 'detail.xml.tpl &mdash; exact-size PNGs, no 9-patch',
@@ -881,13 +891,13 @@ const rowsHost = document.getElementById('rowsHost');
 [
   {{
     name: 'Top Nav Bar Tab', src: 'fragments.py:nav_bar()',
-    desc: 'Two focus sizes for the same tab: a full 204&times;64 pill while the nav bar itself has literal cursor focus, shrinking to an inset 188&times;44 "still selected, but focus moved into the screen" pill otherwise.',
+    desc: 'Text tabs after the fox (app 2.0.0): an accent underline on the focused tab, a dot under the current one once focus has moved into the page. Settings is a gear and the avatar takes focus. Past a page\'s first row the bar fades out and the fox shrinks.',
     states: [
-      {{ label: 'Resting', render: () => pill({{w:150,h:56,radius:22,textColor:'#fff',icon:'&#xE1F3;',label:'Home',align:'left'}}) }},
-      {{ label: 'Selected (nav has focus)', render: () => pill({{w:150,h:56,radius:22,fill:'rgba(var(--ar),var(--ag),var(--ab),0.239)',textColor:'var(--accent)',icon:'&#xE1F3;',label:'Home',align:'left'}}) }},
-      {{ label: 'Selected (focus moved away)', render: () => pill({{w:135,h:40,radius:16,fill:'rgba(var(--ar),var(--ag),var(--ab),0.239)',textColor:'var(--accent)',icon:'&#xE1F3;',label:'Home',align:'left',size:12}}) }},
+      {{ label: 'Resting', render: () => texttab({{label:'Browse',color:'rgba(255,255,255,0.5)',size:20}}) }},
+      {{ label: 'Current, focus in the page', render: () => texttab({{label:'Home',mark:'dot',size:20}}) }},
+      {{ label: 'Focused', render: () => texttab({{label:'Home',mark:'line',size:20}}) }},
     ],
-    props: [['Full / small pill','204&times;60 / 188&times;44, both accent_pill_fill'],['Small pill inset','8px on every side &mdash; a dedicated flat asset, not a smaller border= on the same 9-patch'],['Fill both states','accent_pill_fill (0x3D+accent)']],
+    props: [['Font','tofa_font_nav_tab (semibold 33)'],['Marks','4px underline at y 97, 6px dot at y 98, accent'],['Collapse','Window.Property(nav_collapsed); fade 200ms, fox to 69%']],
   }},
   {{
     name: 'Sidebar Row (Browse sources / Season list)', src: 'fragments.py:sidebar_row() &rarr; main.xml.tpl 6000/6010; detail.xml.tpl 6400 stays hand-typed',
@@ -1067,6 +1077,7 @@ const typeScale = document.getElementById('typeScale');
   ['tofa_font_dialog_title', 'Inter Tight Bold', 34, 700, 'Remove from Watchlist?'],
   ['tofa_font_section_title', 'Inter Tight SemiBold', 39, 600, 'Continue Watching'],
   ['tofa_font_row_title', 'Inter Tight SemiBold', 26, 600, 'Cast &amp; Crew'],
+  ['tofa_font_nav_tab', 'Inter Tight SemiBold', 33, 600, 'Home'],
   ['tofa_font_poster_title', 'Inter Tight SemiBold', 24, 600, 'Up'],
   ['tofa_font_sidebar_label', 'Inter Tight Regular', 26, 400, 'Movies'],
   ['tofa_font_body', 'Inter Tight Regular', 24, 400, 'By tying thousands of balloons to his house&hellip;'],

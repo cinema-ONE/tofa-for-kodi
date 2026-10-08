@@ -688,33 +688,18 @@
                 <texture>fade-top.png</texture>
             </control>
 
-            <!-- No screen title: the nav bar already marks the section, and
-                 the real app opens straight onto its tab pills. -->
-
-            <!-- Tab pills (Now / Acclaimed / Genres / Decades). The server
-                 sends all 32 shelves flat; these group them by the shelf's
-                 own `kind`, matching the real app. See home_rows.py's
-                 DISCOVER_TAB_KINDS for the mapping and why "Now" holds
-                 three kinds. -->
-{discover_tabs}
-
-            <!-- grouplist, not a plain group with conditional slide
-                 animations: those don't auto-scroll, see Home's own row
-                 region. posy 252, not 267: the reference's first row title
-                 has its INK at ~265, and a label's ink sits ~13px below its
-                 control's top (font ascent). 267 was measured off the ink and
-                 used as the control position, which pushed the whole rows
-                 region (and every caption under it) 16px low. -->
+            <!-- Sub-tabs, rule and rows in one grouplist: it scrolls them
+                 together and clips at the screen edge (skin zoom below 100%
+                 shows past it). Padded blocks put a focused row where the app
+                 does; see tokens.DISCOVER_FOCUS_ROW_Y. -->
             <control type="grouplist" id="6390">
-                <posx>{DISCOVER_ROWS_X}</posx>
-                <posy>252</posy>
-                <width>{DISCOVER_ROWS_W}</width>
-                <height>{DISCOVER_ROWS_H}</height>
+                <posx>{DISCOVER_CLIP_X}</posx>
+                <posy>0</posy>
+                <width>{DISCOVER_CLIP_W}</width>
+                <height>{SCREEN_H}</height>
                 <orientation>vertical</orientation>
-                <itemgap>0</itemgap>
+                <itemgap>{DISCOVER_ROWS_GAP}</itemgap>
                 <scrolltime>{SCROLLTIME}</scrolltime>
-
-            <!-- ============================ ROW 0 ============================ -->
 {discover_rows}
             </control>
         </control>
