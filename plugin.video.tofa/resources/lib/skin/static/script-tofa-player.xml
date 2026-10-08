@@ -3599,471 +3599,391 @@
             </control>
         </control>
 
-        <!-- ============================= 8.10 episode drawer ========== -->
-        <!-- Trailing full-height panel, opened from the utility capsule's
-             list button. Geometry measured off the real Apple TV app in
-             internal-docs/atv-reference/player-episode-drawer.png: panel
-             x1248 w672, season chips 82x43 at (1268,156), rows 87 tall on a
-             pitch of 93.
-
-             An in-window GROUP rather than a dialog, for the same reason
-             8.3's rail is: Kodi's window-id pool is hard capped, and this
-             also keeps live video behind it without a transparent-window
-             dance.
-
-             One deviation, forced by Kodi: a list has ONE itemheight, so
-             the reference's taller 121pt row for the episode that is
-             playing is not expressible. That row is marked by its play
-             badge, accent progress capsule and accent title instead, and
-             the reference's third "Now playing" line is dropped. -->
+        <!-- ============================== episodes row =============== -->
+        <!-- The app's episodes row (1.1 and 2.0 alike): season pills, the
+             focused episode named above, 416x234 cards on a 456 pitch, the
+             focused one held third from the left. -->
         <control type="group" id="9800">
             <visible>!String.IsEmpty(Window.Property(player_episodes))</visible>
-            <animation effect="slide" start="672,0" end="0,0" time="250" tween="cubic" easing="out">Visible</animation>
             <animation effect="fade" start="0" end="100" time="250">Visible</animation>
-            <animation effect="slide" start="0,0" end="672,0" time="200" tween="cubic" easing="in">Hidden</animation>
+            <animation effect="slide" start="0,60" end="0,0" time="250" tween="cubic" easing="out">Visible</animation>
             <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
-
             <control type="image">
-                <posx>1248</posx>
+                <posx>0</posx>
                 <posy>0</posy>
-                <width>672</width>
+                <width>1920</width>
                 <height>1080</height>
-                <colordiffuse>0xE6060A0F</colordiffuse>
+                <colordiffuse>0x66000000</colordiffuse>
                 <texture>white-square.png</texture>
             </control>
             <control type="image">
-                <posx>1248</posx>
-                <posy>0</posy>
-                <width>2</width>
-                <height>1080</height>
-                <colordiffuse>0x1AFFFFFF</colordiffuse>
-                <texture>white-square.png</texture>
-            </control>
-
-            <control type="label">
-                <posx>1268</posx>
-                <posy>44</posy>
-                <width>500</width>
-                <height>26</height>
-                <font>tofa_font_eyebrow</font>
-                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                <label>$INFO[Window.Property(drawer_season)]</label>
+                <posx>0</posx>
+                <posy>300</posy>
+                <width>1920</width>
+                <height>780</height>
+                <colordiffuse>0xCC000000</colordiffuse>
+                <texture>nextup-lower-scrim.png</texture>
             </control>
             <control type="label">
-                <posx>1268</posx>
-                <posy>76</posy>
-                <width>500</width>
-                <height>58</height>
-                <font>tofa_font_heading</font>
+                <posx>20</posx>
+                <posy>389</posy>
+                <width>150</width>
+                <height>46</height>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>Episodes</label>
             </control>
-
-            <!-- Season chips. Selected is solid white with dark text, which
-                 8.10 calls the same sanctioned exception as the filter
-                 pills; unselected is glass. -->
             <control type="list" id="9801">
-                <!-- 1263, not the 1268 the chips are measured at: each chip
-                     is inset 5 inside its pitch (see below), so the list has
-                     to start half a gap earlier for the FIRST chip to land
-                     on 1268 and stay flush with the heading above it. -->
-                <posx>1263</posx>
-                <posy>156</posy>
-                <!-- 644, not 640: seven whole pitches. A list draws
-                     floor(box / step) items, so a box that is not a whole
-                     number of steps wide silently drops its last chip. -->
-                <width>644</width>
-                <height>43</height>
+                <posx>180</posx>
+                <posy>388</posy>
+                <width>1680</width>
+                <height>48</height>
                 <orientation>horizontal</orientation>
-                <!-- The 10 between chips is built into the LAYOUT; it is no
-                     longer declared as an itemgap. That tag is a GROUPLIST
-                     property: on a type="list" Kodi ignores it outright and
-                     steps by the ITEMLAYOUT's own size, so the gap never
-                     reached the screen and the chips rendered flush against
-                     each other. This list is horizontal, so the size that
-                     steps is the WIDTH: a pitch of 92 carrying the 82 chip
-                     inset 5 either side.
-
-                     itemwidth/itemheight are still REQUIRED even though they
-                     do not set the step. Without them a list renders every
-                     row with an empty icon and label, which is the other
-                     half of the same trap and is what this list had.
-                     project_kodi_list_itemheight_tag has both. -->
-                <itemwidth>92</itemwidth>
-                <itemheight>43</itemheight>
+                <itemwidth>80</itemwidth>
+                <itemheight>48</itemheight>
+                <scrolltime>200</scrolltime>
                 <onup>9801</onup>
                 <ondown>9802</ondown>
-                <itemlayout width="92" height="43">
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0xF0FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>0xFF06090D</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
+                <itemlayout width="80" height="48">
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <texture border="23">capsule-h46.png</texture>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                        </control>
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <texture border="23">capsule-h46.png</texture>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                        </control>
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x33FFFFFF</colordiffuse>
+                            <texture border="23">capsule-h46-outline.png</texture>
+                            <visible>!String.IsEmpty(ListItem.Property(active)) + !false</visible>
+                        </control>
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture border="23">capsule-h46-outline.png</texture>
+                            <visible>false</visible>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>false</visible>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>!false</visible>
+                        </control>
                 </itemlayout>
-                <focusedlayout width="92" height="43">
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>Control.HasFocus(9801)</visible>
-                    </control>
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0xF0FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>!Control.HasFocus(9801) + !String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>!Control.HasFocus(9801) + String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>Control.HasFocus(9801)</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>0xFF06090D</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!Control.HasFocus(9801) + !String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!Control.HasFocus(9801) + String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
+                <focusedlayout width="80" height="48">
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <texture border="23">capsule-h46.png</texture>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                        </control>
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <texture border="23">capsule-h46.png</texture>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                        </control>
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x33FFFFFF</colordiffuse>
+                            <texture border="23">capsule-h46-outline.png</texture>
+                            <visible>!String.IsEmpty(ListItem.Property(active)) + !Control.HasFocus(9801)</visible>
+                        </control>
+                        <control type="image">
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture border="23">capsule-h46-outline.png</texture>
+                            <visible>Control.HasFocus(9801)</visible>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>Control.HasFocus(9801)</visible>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>!Control.HasFocus(9801)</visible>
+                        </control>
                 </focusedlayout>
             </control>
-
-            <!-- Episode rows. -->
-            <control type="list" id="9802">
-                <posx>1268</posx>
-                <!-- 214, not the 217 the first row is measured at: the row
-                     is inset 3 inside its pitch (see below), so the list
-                     starts half a gap earlier and the first row's rim still
-                     lands on 217. -->
-                <posy>214</posy>
-                <width>640</width>
-                <height>837</height>
-                <orientation>vertical</orientation>
-                <!-- Pitch 93, which is the reference's own: 87 of row plus 6
-                     of gap, with the row's content inset 3 top and bottom.
-                     The 6 used to be an itemgap, and an itemgap is a
-                     GROUPLIST property that a type="list" ignores; the list
-                     steps by the ITEMLAYOUT's height instead, so the rows
-                     sat flush while the height below was budgeted as though
-                     they were not. Same fix as the 8.4 panel's list 9906 and
-                     Browse's A-Z rail; see project_kodi_list_itemheight_tag.
-
-                     837 is already 9 whole pitches, which is why the box
-                     needs no change: a list that is not a whole number of
-                     steps tall draws floor(height / step) rows and silently
-                     loses the last one. -->
-                <itemheight>93</itemheight>
+            <!-- The focused episode, named above the row. A horizontal
+                 grouplist so each label takes its own width. -->
+            <control type="grouplist">
+                <posx>20</posx>
+                <posy>462</posy>
+                <width>1800</width>
+                <height>50</height>
+                <orientation>horizontal</orientation>
+                <itemgap>18</itemgap>
+                <usecontrolcoords>true</usecontrolcoords>
+                <control type="label">
+                    <width>auto</width>
+                    <height>50</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_dialog_title</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>$INFO[Container(9802).ListItem.Property(number)]</label>
+                </control>
+                <control type="label">
+                    <width>auto</width>
+                    <height>50</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_dialog_title</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Container(9802).ListItem.Label]</label>
+                </control>
+                <control type="label">
+                    <posy>6</posy>
+                    <width>auto</width>
+                    <height>50</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_metadata</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>$INFO[Container(9802).ListItem.Property(state)]</label>
+                </control>
+            </control>
+            <control type="fixedlist" id="9802">
+                <posx>-160</posx>
+                <posy>530</posy>
+                <width>2280</width>
+                <height>330</height>
+                <orientation>horizontal</orientation>
+                <itemwidth>456</itemwidth>
+                <itemheight>330</itemheight>
+                <focusposition>2</focusposition>
+                <movement>2</movement>
+                <scrolltime>200</scrolltime>
                 <onup>9801</onup>
                 <ondown>9802</ondown>
-                <itemlayout width="640" height="93">
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <aspectratio scalediffuse="false">scale</aspectratio>
-                        <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
-                    </control>
-                    <!-- Watched: 8.10's checkmark on a black 55% scrim. -->
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x8C000000</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE06C;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <!-- Now playing: 8.10's play badge. -->
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE080;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
-                    </control>
-                    <!-- Accent progress capsule, flush with the still's
-                         bottom edge, same treatment the cards use. -->
-                    <!-- Kodi does NOT evaluate $INFO inside a <width>: a bar
-                         sized from a ListItem property silently renders at
-                         the parent's full width. So the fill is a strip per
-                         even percent, picked by filename, exactly as the
-                         poster and episode cards do it. 100.png doubles as
-                         the track, already clipped to the still's corners. -->
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>0x1AFFFFFF</colordiffuse>
-                        <texture>drawer-progress/100.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture>$INFO[ListItem.Property(progress)]</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>11</posy>
-                        <width>468</width>
-                        <height>28</height>
-                        <font>tofa_font_metadata</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[ListItem.Property(meta)]</label>
-                    </control>
-                    <!-- One label per state rather than a colour carried on
-                         the ListItem: every other textcolor in this add-on is
-                         a Window.Property reference, and a property holding a
-                         colour silently falls back to the skin default when
-                         it is empty. 8.10 dims a watched title and the one
-                         playing takes the accent, since a Kodi list has a
-                         single itemheight and cannot give it the taller row
-                         the reference does. -->
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
+                <itemlayout width="456" height="330">
+                        <control type="group">
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <colordiffuse>0x14FFFFFF</colordiffuse>
+                                <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                            </control>
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <aspectratio scalediffuse="false">scale</aspectratio>
+                                <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>0x33FFFFFF</colordiffuse>
+                                <texture>drawer-progress/100.png</texture>
+                                <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                                <texture>$INFO[ListItem.Property(progress)]</texture>
+                            </control>
+                            <control type="image">
+                                <posx>12</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <colordiffuse>0xB3000000</colordiffuse>
+                                <texture border="20">capsule-h40.png</texture>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                            </control>
+                            <control type="label">
+                                <posx>14</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>tofa_font_icons_19</font>
+                                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                                <label>&#xE13C;</label>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                            </control>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Property(caption)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Property(number)] $INFO[ListItem.Label]</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[ListItem.Property(meta)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>Playing</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
                 </itemlayout>
-                <focusedlayout width="640" height="93">
-                    <control type="image">
-                        <posy>3</posy>
-                        <width>640</width>
-                        <height>87</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture border="14">rounded-14.png</texture>
-                        <visible>Control.HasFocus(9802)</visible>
-                    </control>
-                    <control type="image">
-                        <posy>3</posy>
-                        <width>640</width>
-                        <height>87</height>
-                        <colordiffuse>0x33FFFFFF</colordiffuse>
-                        <texture border="14">rounded-14-outline.png</texture>
-                        <visible>Control.HasFocus(9802)</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <aspectratio scalediffuse="false">scale</aspectratio>
-                        <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x8C000000</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE06C;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE080;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
-                    </control>
-                    <!-- Kodi does NOT evaluate $INFO inside a <width>: a bar
-                         sized from a ListItem property silently renders at
-                         the parent's full width. So the fill is a strip per
-                         even percent, picked by filename, exactly as the
-                         poster and episode cards do it. 100.png doubles as
-                         the track, already clipped to the still's corners. -->
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>0x1AFFFFFF</colordiffuse>
-                        <texture>drawer-progress/100.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture>$INFO[ListItem.Property(progress)]</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>11</posy>
-                        <width>468</width>
-                        <height>28</height>
-                        <font>tofa_font_metadata</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[ListItem.Property(meta)]</label>
-                    </control>
-                    <!-- One label per state rather than a colour carried on
-                         the ListItem: every other textcolor in this add-on is
-                         a Window.Property reference, and a property holding a
-                         colour silently falls back to the skin default when
-                         it is empty. 8.10 dims a watched title and the one
-                         playing takes the accent, since a Kodi list has a
-                         single itemheight and cannot give it the taller row
-                         the reference does. -->
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
+                <focusedlayout width="456" height="330">
+                        <control type="group">
+                            <animation effect="zoom" start="100" end="105.8" center="208,248" time="140" tween="cubic" easing="out" condition="Control.HasFocus(9802)">Conditional</animation>
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <colordiffuse>0x14FFFFFF</colordiffuse>
+                                <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                            </control>
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <aspectratio scalediffuse="false">scale</aspectratio>
+                                <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>0x33FFFFFF</colordiffuse>
+                                <texture>drawer-progress/100.png</texture>
+                                <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                                <texture>$INFO[ListItem.Property(progress)]</texture>
+                            </control>
+                            <control type="image">
+                                <posx>12</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <colordiffuse>0xB3000000</colordiffuse>
+                                <texture border="20">capsule-h40.png</texture>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                            </control>
+                            <control type="label">
+                                <posx>14</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>tofa_font_icons_19</font>
+                                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                                <label>&#xE13C;</label>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                            </control>
+                            <control type="image">
+                                <posx>-2</posx>
+                                <posy>12</posy>
+                                <width>420</width>
+                                <height>238</height>
+                                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                                <texture border="14">rounded-14-outline.png</texture>
+                                <visible>Control.HasFocus(9802)</visible>
+                            </control>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Property(caption)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Property(number)] $INFO[ListItem.Label]</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[ListItem.Property(meta)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>Playing</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
                 </focusedlayout>
             </control>
         </control>
