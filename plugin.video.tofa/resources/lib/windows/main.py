@@ -663,13 +663,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_folder_path: dict = {}
         self._browse_folder_levels: dict = {}
         self._browse_page_size = self.BROWSE_PAGE_SIZE
-        # Index position to restore when Back leaves a collection.
-        self._collection_return_pos = 0
-        # The collections index as DATA, plus which slots have been turned
-        # into cards -- the same shape the poster grid uses, for the same
-        # reason. See _browse_fill_collection_window.
+        # (list, row, card) to restore when Back leaves a collection.
+        self._collection_return: tuple | None = None
+        # The series index as DATA in rows of three, plus which rows have been
+        # turned into cards. See _browse_fill_collection_window.
         self._collection_items: list = []
         self._collection_filled: set = set()
+        self._custom_items: list = []
         self._active_genre = self.ALL_GENRES
         self._browse_sort_idx = 0           # index into BROWSE_SORT_OPTIONS
         # The sort keys THIS server accepts, straight off the facets response
@@ -803,7 +803,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # tab whose every shelf came back empty still has somewhere to
             # land -- on the pill that chose it.
             return (home_rows.DISCOVER_TAB_STRIP_ID,) + tuple(self.DISCOVER_ROW_LIST_IDS)
-        if control_id in (self.GRID_ID, self.COLLECTION_GRID_ID):
+        if control_id in (self.GRID_ID,) + self.COLLECTION_IDS:
             # A grid that filtered down to nothing sends them back to the
             # sidebar, which is where the source and filters live -- i.e.
             # where the emptiness gets undone.
@@ -822,6 +822,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return {
             self.GRID_ID: self.grid_list,
             self.COLLECTION_GRID_ID: self.collection_list,
+            self.CUSTOM_COLLECTION_ID: self.custom_collection_list,
             self.ALPHA_RAIL_ID: self.alpha_list,
             self.TILES_ID: self.tiles_list,
             self.TOP_RESULT_LIST_ID: self.top_result_list,
@@ -955,9 +956,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_picker_list = kodigui.ManagedControlList(
             self, self.SETTINGS_PICKER_ID, T.SETTINGS_PICKER_MAX_ROWS)
         self.grid_list = kodigui.ManagedControlList(self, self.GRID_ID, 25)
-        # 7.5's index is landscape, so it needs its own panel: a Kodi panel
-        # has a single itemwidth/itemheight and cannot switch shape.
-        self.collection_list = kodigui.ManagedControlList(self, self.COLLECTION_GRID_ID, 12)
+        # Collections: one list item per row of three cards, per section.
+        self.collection_list = kodigui.ManagedControlList(self, self.COLLECTION_GRID_ID, 4)
+        self.custom_collection_list = kodigui.ManagedControlList(
+            self, self.CUSTOM_COLLECTION_ID, 4)
         # Sort/Filter/Quality/Genre are single always-present rows (not a
         # real choice list -- clicking any of them opens a picker dialog),
         # so they're built with one static item each, right here, rather
@@ -1310,10 +1312,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_genre_chip_clicked(controlID)
         elif controlID == self.SURPRISE_PILL_ID:
             self._browse_surprise_me_clicked(scoped=True)
-        elif controlID == self.COLLECTION_GRID_ID:
-            item = self.collection_list.getSelectedItem()
-            if item:
-                self._browse_open_collection(item)
+        elif controlID in self.COLLECTION_IDS:
+            self._browse_collection_clicked(controlID)
         elif controlID == self.FOLDERS_ID:
             self._browse_folders_clicked()
         elif controlID == self.GRID_ID:
@@ -1654,15 +1654,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         if (action_id in (xbmcgui.ACTION_MOVE_UP, xbmcgui.ACTION_MOVE_DOWN,
                           xbmcgui.ACTION_MOVE_LEFT, xbmcgui.ACTION_MOVE_RIGHT)
-                and self.getFocusId() == self.COLLECTION_GRID_ID):
-            # The collections index is windowed like the poster grid, so it
-            # tops up the same way: move first, then fill where it landed.
-            # It never pages -- the whole index arrives in one response --
-            # so there is no _browse_maybe_load_more equivalent here.
+                and self.getFocusId() in self.COLLECTION_IDS):
+            # Kodi moves between rows; the card within a row is ours.
+            step = {xbmcgui.ACTION_MOVE_LEFT: -1, xbmcgui.ACTION_MOVE_RIGHT: 1}.get(action_id, 0)
             kodigui.ControlledWindow.onAction(self, action)
-            client = self._get_client()
-            if client:
-                self._browse_fill_collection_window(client)
+            self._browse_collection_moved(self.getFocusId(), step)
             return
 
         if (action_id in (xbmcgui.ACTION_MOVE_UP, xbmcgui.ACTION_MOVE_DOWN,
@@ -2871,8 +2867,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _browse_focus_view(self):
         """Land in the view: the grid, or the chips when it is empty."""
         collections = bool(self.getProperty("browse_collections"))
-        grid = self.collection_list if collections else self.grid_list
-        target = self.COLLECTION_GRID_ID if collections else self.GRID_ID
+        grid, target = self.grid_list, self.GRID_ID
+        if collections:
+            grid, target = ((self.custom_collection_list, self.CUSTOM_COLLECTION_ID)
+                            if self._custom_items else
+                            (self.collection_list, self.COLLECTION_GRID_ID))
         if grid is None or not len(grid):
             target = self.SORT_ID if self.getProperty("browse_filterbar") else self.SURPRISE_PILL_ID
         try:
@@ -2981,7 +2980,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # grid itself is showing. The real app keeps this INSIDE Browse rather
     # than opening a separate screen, so it is a state of this section and
     # not a window of its own.
-    COLLECTION_GRID_ID = 6210
+    COLLECTION_GRID_ID = 6210       # Film series and sets
+    CUSTOM_COLLECTION_ID = 6215     # Your collections
+    COLLECTION_IDS = (CUSTOM_COLLECTION_ID, COLLECTION_GRID_ID)
 
     def _browse_active_source(self) -> dict:
         return self._sources[self._active_source_idx]
@@ -3707,21 +3708,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return mli
 
     def _browse_load_collections_grid(self, client: MediaServerClient):
-        """7.5's landscape index. Renders into its OWN panel, not the poster
-        grid, and flips browse_collections so the two swap places."""
+        """The Collections view: your own collections, then film series and
+        sets, each as rows of three cards (app 2.0)."""
         try:
             resp = client.collections() or {}
         except http.ApiError as exc:
             kodigui.ERROR("main.py: browse collections failed: {0}".format(exc))
             resp = {}
         collections = resp.get("collections") or []
-        # User-made collections (server 0.9.33) live on their own route and
-        # come FIRST: someone on this server made each of them on purpose,
-        # there will only ever be a handful, and behind five hundred
-        # franchise tiles nobody would learn they exist. Marked so the card
-        # builder and the drill-in know which field family and which fetch
-        # applies. Read-only here by decision (2026-08-24): the server's
-        # own apps have create/edit; we show.
+        # User-made collections (server 0.9.33) have their own route and
+        # field family; read-only here by decision (2026-08-24).
         try:
             custom = (client.custom_collections() or {}).get("collections") or []
         except http.ApiError as exc:
@@ -3729,144 +3725,154 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             custom = []
         for it in custom:
             it["_custom"] = True
-        # Curated collections carry absolute poster_url/backdrop_url on our
-        # own server rather than the usual relative *_path, and both are
-        # drawn on the card -- stage_pair knows the difference, this only
-        # has to name the right fields. Custom ones carry the ordinary
-        # relative pair, so they stage as a second small batch.
         started = time.monotonic()
-        # ALLOCATE, DON'T BUILD. This screen used to stage every tile's art
-        # and build every card before showing anything, on the assumption
-        # (written here) of "~15 tiles". The real library answers **529**,
-        # so it staged ~1058 images across two blocking prefetches and then
-        # made 529 cards at ~10 C++ writes each, on the action thread,
-        # before the first tile appeared: measured on the cinema box at
-        # 1.62s warm and 10.6-33.3s cold, EVERY time the section was opened.
-        #
-        # Same fix the poster grid already carries (_browse_blanks +
-        # _browse_fill_window): allocate the full length up front while the
-        # selection is still at 0, then fill a window around it and stage
-        # only that window's art. ~15 tiles are ever on screen, which is
-        # what the old comment assumed the whole index was.
-        self._collection_items = custom + collections
+        cols = T.COLLECTION_COLS
+        self._custom_items = custom
+        self._collection_items = collections
         self._collection_filled = set()
+        custom_rows = [custom[i:i + cols] for i in range(0, len(custom), cols)]
+        self.setProperty("browse_coll_rows", str(min(len(custom_rows), 2)) if custom_rows else "")
+        self.setProperty("browse_coll_col", "0")
         self.setProperty("browse_collections", "1")
-        # The sidebar's <onright> is baked at the poster grid, which is
-        # hidden in this state, so right out of the sidebar went nowhere.
+        # A collection's own chips go when Back returns to the index.
+        self.setProperty("browse_filterbar", "")
+        total = len(custom) + len(collections)
+
+        # Yours are a handful: built whole. The series run to hundreds, so
+        # they ALLOCATE blank rows and fill a window around the selection.
+        self.custom_collection_list.reset()
+        if custom_rows:
+            self._browse_stage_collection_art(client, custom)
+            self.custom_collection_list.addItems(
+                [self._browse_apply_collection_row(client, kodigui.ManagedListItem(), row)
+                 for row in custom_rows])
+            self.custom_collection_list.selectItem(0)
+        self._browse_sync_custom_last()
         self.collection_list.reset()
-        if self._collection_items:
+        if collections:
             self.collection_list.addItems(
-                self._browse_blanks(len(self._collection_items)))
+                self._browse_blanks(-(-len(collections) // cols)))
             self.collection_list.selectItem(0)
             self._browse_fill_collection_window(client)
         log.info("browse: %d collection(s) (%d custom) in %.2fs"
-                 % (len(collections) + len(custom), len(custom),
-                    time.monotonic() - started))
+                 % (total, len(custom), time.monotonic() - started))
+
+    #: Rows of series cards filled around the selection: half behind, all ahead.
+    COLLECTION_FILL_ROWS = 6
 
     def _browse_fill_collection_window(self, client: MediaServerClient):
-        """Turn the blanks near the selection into real collection tiles.
-
-        The poster grid's _browse_fill_window in miniature, and the same
-        reasoning: only the slots a viewer can see are worth ~10 C++ writes
-        each. The one difference is the art, which comes in two field
-        families -- curated collections carry absolute *_url on our own
-        server, user-made ones the ordinary relative *_path -- so the window
-        stages as two small batches rather than one.
-
-        include_cdn stays set for the curated batch: some of that art is
-        served by the cloud, and this is a screen the viewer has navigated
-        to and is waiting on. It is affordable now because the batch is a
-        window rather than all 529.
-        """
+        """Turn the blank rows near the selection into real cards, staging
+        only their art: ~3 rows are ever on screen of ~180."""
         if self.collection_list is None or not len(self.collection_list):
             return
+        cols = T.COLLECTION_COLS
         here = self.collection_list.getSelectedPosition()
-        lo = max(0, here - self.BROWSE_FILL_WINDOW // 2)
-        hi = min(len(self.collection_list), here + self.BROWSE_FILL_WINDOW + 1)
-        pending = [(pos, self._collection_items[pos])
-                   for pos in range(lo, hi)
-                   if pos not in self._collection_filled
-                   and pos < len(self._collection_items)]
+        lo = max(0, here - self.COLLECTION_FILL_ROWS // 2)
+        hi = min(len(self.collection_list), here + self.COLLECTION_FILL_ROWS + 1)
+        pending = [r for r in range(lo, hi) if r not in self._collection_filled]
         if not pending:
             return
+        rows = [self._collection_items[r * cols:(r + 1) * cols] for r in pending]
+        self._browse_stage_collection_art(client, [it for row in rows for it in row])
+        for r, row in zip(pending, rows):
+            self._browse_apply_collection_row(client, self.collection_list[r], row)
+            self._collection_filled.add(r)
 
-        items = [it for _pos, it in pending]
+    def _browse_stage_collection_art(self, client: MediaServerClient, items: list):
+        """Prefetch what the cards will draw. Series carry absolute *_url
+        (some cloud-served), your own the relative *_path pair plus up to
+        four member posters for the mosaic."""
         curated = [it for it in items if not it.get("_custom")]
         made = [it for it in items if it.get("_custom")]
         if curated:
             artcache.prefetch(client.stage_pairs(curated, "poster_url",
                                                  "backdrop_url", include_cdn=True))
         if made:
-            artcache.prefetch(client.stage_pairs(made, "poster_path",
+            posters = [{"poster_path": p} for it in made
+                       for p in (it.get("poster_paths") or [])[:4]]
+            artcache.prefetch(client.stage_pairs(made + posters, "poster_path",
                                                  "backdrop_path"))
-        for pos, item in pending:
-            self._browse_apply_collection_item(
-                client, self.collection_list[pos], item)
-            self._collection_filled.add(pos)
 
-    def _browse_build_collection_item(self, client: MediaServerClient, item: dict) -> kodigui.ManagedListItem:
-        return self._browse_apply_collection_item(
-            client, kodigui.ManagedListItem(), item)
+    def _browse_collection_art(self, client: MediaServerClient, item: dict) -> dict:
+        """One card's art: backdrop, else a 2x2 mosaic of four member posters,
+        else one poster, else nothing."""
+        if not item.get("_custom"):
+            return {"_art": client.resolve_image_url(item.get("backdrop_url")) or "",
+                    "_poster": client.resolve_image_url(item.get("poster_url")) or ""}
+        art = {"_art": client.resolve_image_url(item.get("backdrop_path")) or ""}
+        paths = [p for p in (item.get("poster_paths") or []) if p]
+        if item.get("poster_path"):
+            art["_poster"] = client.resolve_image_url(item["poster_path"]) or ""
+        elif len(paths) >= 4:
+            for n, path in enumerate(paths[:4], 1):
+                art["_m%d" % n] = client.resolve_image_url(path) or ""
+        elif paths:
+            art["_poster"] = client.resolve_image_url(paths[0]) or ""
+        return art
 
-    def _browse_apply_collection_item(self, client: MediaServerClient, mli, item: dict):
-        """Everything a collection tile shows, applied to `mli`.
-
-        Split from the constructor for the same reason the poster grid's
-        was: a blank already sitting in the grid becomes a real tile in
-        place, without changing the container's length and so without
-        moving the selection."""
-        title = item.get("name") or ""
-        # 7.5's artwork ladder wants BOTH: the backdrop is the tile's normal
-        # art, and the poster is the fallback that must be fitted rather
-        # than cropped. They go in different slots so the layout can tell
-        # them apart and pick its own treatment for each.
-        if item.get("_custom"):
-            # The relative *_path family, like media. A collection nobody
-            # has given a poster still answers `poster_paths` -- up to four
-            # member posters -- and the first of those beats an empty slot;
-            # a composite tile would need layout work this read-only pass
-            # doesn't buy.
-            poster_path = item.get("poster_path")
-            if not poster_path:
-                paths = item.get("poster_paths") or []
-                poster_path = paths[0] if paths else None
-            backdrop = client.resolve_image_url(item.get("backdrop_path")) or ""
-            poster = client.resolve_image_url(poster_path) or ""
-        else:
-            backdrop = client.resolve_image_url(item.get("backdrop_url")) or ""
-            poster = client.resolve_image_url(item.get("poster_url")) or ""
-        # Same idiom as cards.apply_poster: assign thumbnailImage rather
-        # than calling the setter, so a blank standing in the grid becomes
-        # the tile in place.
-        mli.dataSource = item
-        mli.setLabel(title)
-        mli.thumbnailImage = backdrop
-        mli.setArt({"thumb": backdrop, "poster": poster})
-        mli.setProperty("poster", poster)
-
-        count = item.get("item_count")
-        if isinstance(count, int):
-            mli.setProperty("caption_meta", "{0} title{1}".format(count, "" if count == 1 else "s"))
-
-        # Collection tiles live in their own list (COLLECTION_GRID_ID), so a
-        # click routes through onClick's COLLECTION_GRID_ID branch to
-        # _browse_open_collection (the drill-in) -- NOT the poster grid's
-        # _browse_grid_clicked. The tile carries the collection's own id in its
-        # data_source, not a media_id.
+    def _browse_apply_collection_row(self, client: MediaServerClient, mli, row: list):
+        """Up to three cards' worth of properties on one list item, in place,
+        so a blank row becomes real without moving the selection."""
+        mli.dataSource = row
+        mli.setProperty("last", str(len(row) - 1))
+        for i in range(T.COLLECTION_COLS):
+            item = row[i] if i < len(row) else {}
+            c = "c%d" % i
+            art = self._browse_collection_art(client, item) if item else {}
+            mli.setProperty(c, item.get("name") or "")
+            for key in ("_art", "_poster", "_m1", "_m2", "_m3", "_m4"):
+                mli.setProperty(c + key, art.get(key, ""))
+            count = item.get("item_count")
+            mli.setProperty(c + "_meta", "{0} title{1}".format(count, "" if count == 1 else "s")
+                            if isinstance(count, int) else "")
         return mli
 
-    def _browse_open_collection(self, item: kodigui.ManagedListItem):
-        """Drill into a collection, staying inside Browse."""
-        # Where to put focus back when Back returns to the index. Captured
-        # before anything is fetched, because the index list is rebuilt on
-        # the way back and its selection would otherwise reset to the first
-        # tile -- leaving the viewer to hunt for the collection they had
-        # just been in.
+    def _browse_collection_list(self, list_id: int):
+        return (self.custom_collection_list if list_id == self.CUSTOM_COLLECTION_ID
+                else self.collection_list)
+
+    def _browse_collection_col(self, list_id: int) -> int:
+        """The focused card in the selected row, clamped to the row's length."""
+        item = self._browse_collection_list(list_id).getSelectedItem()
+        row = (item.dataSource if item else None) or []
         try:
-            self._collection_return_pos = self.collection_list.getSelectedPosition()
-        except (RuntimeError, AttributeError):
-            self._collection_return_pos = 0
-        data = item.dataSource or {}
+            col = int(self.getProperty("browse_coll_col") or 0)
+        except ValueError:
+            col = 0
+        return max(0, min(col, len(row) - 1))
+
+    def _browse_collection_moved(self, list_id: int, step: int):
+        """Left/Right move the card; Up/Down (Kodi's) keep it, clamped to a
+        shorter row, and top up the series window."""
+        col = self._browse_collection_col(list_id)
+        item = self._browse_collection_list(list_id).getSelectedItem()
+        row = (item.dataSource if item else None) or []
+        self.setProperty("browse_coll_col", str(max(0, min(col + step, len(row) - 1))))
+        self._browse_sync_custom_last()
+        if list_id == self.COLLECTION_GRID_ID:
+            client = self._get_client()
+            if client:
+                self._browse_fill_collection_window(client)
+
+    def _browse_sync_custom_last(self):
+        """Flag your last row as selected: the series section then waits just
+        below it, so Down has somewhere to go."""
+        mlist = self.custom_collection_list
+        last = bool(len(mlist)) and mlist.getSelectedPosition() == len(mlist) - 1
+        self.setProperty("browse_coll_a_last", "1" if last else "")
+
+    def _browse_collection_clicked(self, list_id: int):
+        mlist = self._browse_collection_list(list_id)
+        item = mlist.getSelectedItem()
+        row = (item.dataSource if item else None) or []
+        if not row:
+            return
+        col = self._browse_collection_col(list_id)
+        self._collection_return = (list_id, mlist.getSelectedPosition(), col)
+        self._browse_open_collection(row[col])
+
+    def _browse_open_collection(self, data: dict):
+        """Drill into a collection, staying inside Browse."""
         collection_id = data.get("id")
         if not collection_id:
             return
@@ -3891,7 +3897,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             kodigui.ERROR("main.py: collection {0} failed: {1}".format(collection_id, exc))
             return
         self._browse_collection = resp
-        self.setProperty("browse_heading", resp.get("name") or item.getLabel() or "")
+        self.setProperty("browse_heading", resp.get("name") or data.get("name") or "")
         # Members are titles again, so the poster grid comes back and the
         # toolbar returns with it: both apps show Sort/Quality/Filter and
         # the collection's own genres here (verified on Android TV, whose
@@ -3979,18 +3985,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_collection = None
         self.setProperty("browse_heading", "")
         self._browse_load_grid()
-        # Focus goes to the COLLECTIONS grid, not the poster one -- that is
-        # what is on screen now -- and onto the tile we came from.
+        # Back onto the card we came from; the series section also shows
+        # your last row above it, as it did on the way in.
+        if not self._collection_return:
+            return True
+        list_id, row, col = self._collection_return
         try:
-            self.setFocusId(self.COLLECTION_GRID_ID)
-            if self._collection_return_pos:
-                self.collection_list.setSelectedItemByPos(self._collection_return_pos)
-                # The rebuilt index fills a window around position 0, and
-                # this jump can land well outside it -- on a blank, with no
-                # keypress coming to fill it. Fill where we actually landed.
-                client = self._get_client()
-                if client:
-                    self._browse_fill_collection_window(client)
+            if list_id == self.COLLECTION_GRID_ID and len(self.custom_collection_list):
+                self.custom_collection_list.selectItem(len(self.custom_collection_list) - 1)
+                self.setProperty("browse_coll_a_last", "1")
+            self._browse_collection_list(list_id).selectItem(row)
+            self.setProperty("browse_coll_col", str(col))
+            self.setFocusId(list_id)
+            client = self._get_client()
+            if client and list_id == self.COLLECTION_GRID_ID:
+                self._browse_fill_collection_window(client)
         except (RuntimeError, AttributeError):
             pass
         return True

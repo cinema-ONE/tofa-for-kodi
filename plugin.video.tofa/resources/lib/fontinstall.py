@@ -80,7 +80,7 @@ from . import addonref, log
 #: <import> and resource.font.tofa's own id.
 FONT_ADDON_ID = "resource.font.tofa"
 
-FONT_SET_VERSION = 29
+FONT_SET_VERSION = 30
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
 # All lazy, see addonref.py -- this module's import-time Addon lookup is the
@@ -149,6 +149,8 @@ FONTS: dict[str, tuple[str, int, str]] = {
     "tofa_font_settings_title": ("inter_tight_bold.ttf", 38, "Regular"),
     # Browse tiles' count line (app 2.0), by ink width.
     "tofa_font_browse_caption": ("inter_tight_regular.ttf", 20, "Regular"),
+    # A collection card's name (app 2.0), by cap height and ink width.
+    "tofa_font_card_title": ("inter_tight_semibold.ttf", 22, "Regular"),
     "tofa_font_micro": ("inter_tight_regular.ttf", 16, "Regular"),
     # eyebrow: section labels -- design spec calls for letterspacing, which
     # Kodi has no control for, so only size/weight are replicated. metadata:

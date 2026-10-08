@@ -572,7 +572,6 @@ BROWSE_CHIP_DIVIDER_Y = (BROWSE_CHIP_H - BROWSE_DIVIDER_H) // 2
 BROWSE_CHIPS_W = SCREEN_W - BROWSE_LEFT
 # The rule between Filter and the genres: 1px drawn centred in its own slot.
 BROWSE_CHIP_DIVIDER_W = 13
-BROWSE_COLLECTIONS_X = BROWSE_LEFT - 10
 
 # ------------------------------------------------ Browse's A-Z rail (right) --
 # "All", A..Z, then "#", down the right margin. Measured off the Android TV
@@ -637,33 +636,35 @@ ALPHA_KEYS = ("All",) + tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + ("#",)
 #: navigation column beside it costs more attention than it saves.
 ALPHA_MIN_TITLES = 120
 
-# ------------------------------------------------- collections index (7.5) --
-# 7.5 treats a collection as a set rather than as a title, so its tile is
-# landscape 16:9 where every other tile is 2:3 portrait. Three columns,
-# tiles 448pt wide, radius 14, with gaps of 30 and 44. The caption under
-# each one is a fixed 86pt tall so the rows stay aligned: the name at 22pt
-# semibold over at most two lines, then the title count, tabular, white 50%.
-#
-# Verified independently against the Android TV app, which lays its own out
-# at exactly these numbers: columns at x 432/910/1388 (pitch 478 = 448 + 30)
-# and a row pitch of 382 (252 + 86 + 44).
+# ------------------------------------------ collections view (app 2.0) --
+# "Your collections", then "Film series and sets": three 16:9 cards on a 586
+# pitch, rows 443 apart. Once the view scrolls the focused row holds at
+# y 501 with the row before it clipped at y 140, as in the app.
 COLLECTION_COLS = 3
-COLLECTION_TILE_W = 448
-COLLECTION_TILE_H = COLLECTION_TILE_W * 9 // 16    # 252
-COLLECTION_RADIUS = 14
-COLLECTION_GAP_X = 30
-# SPACE_LG. Was 44, an off-scale number that made sense when the caption
-# reserved two lines for the name and most tiles left the second one empty:
-# the row gap and that empty line read as one space. With a single-line
-# caption the 44 is the whole gap, and 32 puts it back on the scale.
-COLLECTION_GAP_Y = SPACE_LG
-# Fixed, so rows align: the 10px gap under the tile, one line of title, then
-# the count. 86 when the title reserved TWO lines -- which left a hole between
-# a one-line name and its count, and none at all when a name wrapped.
-COLLECTION_CAPTION_H = 10 + CAPTION_TITLE_H + 26
-COLLECTION_CELL_W = COLLECTION_TILE_W + COLLECTION_GAP_X
-COLLECTION_CELL_H = COLLECTION_TILE_H + COLLECTION_CAPTION_H + COLLECTION_GAP_Y
-COLLECTION_GRID_W = COLLECTION_COLS * COLLECTION_CELL_W
+COLLECTION_TILE_W, COLLECTION_TILE_H = 556, 312
+COLLECTION_RADIUS = 12
+COLLECTION_PITCH_X = 586
+COLLECTION_PITCH_Y = 443
+COLLECTION_PAD = 30                   # room for the focus lift and glow
+COLLECTION_FOCUS_Y = 501              # the held row's card top
+COLLECTION_FIRST_Y = 262              # a section's first row, at rest
+COLLECTION_HEAD_Y = 416               # its heading's cap top, over row 501
+COLLECTION_SECTION_GAP = 565          # last card top to the next section's
+COLLECTION_CLIP_Y = 140               # content scrolls under the title band
+COLLECTION_REST_SHIFT = COLLECTION_FIRST_Y - COLLECTION_FOCUS_Y      # -239
+COLLECTION_LIST_X = BROWSE_LEFT - COLLECTION_PAD
+COLLECTION_LIST_Y = COLLECTION_FOCUS_Y - COLLECTION_PITCH_Y - COLLECTION_PAD
+COLLECTION_LIST_W = (COLLECTION_COLS - 1) * COLLECTION_PITCH_X + COLLECTION_TILE_W \
+    + 2 * COLLECTION_PAD
+# Tall enough to reach the bottom while slid up to a section's first row.
+COLLECTION_LIST_H = SCREEN_H - COLLECTION_LIST_Y - COLLECTION_REST_SHIFT
+COLLECTION_HEAD_LABEL_Y = COLLECTION_HEAD_Y - 15
+# With one row of your own, the series section starts in view below it.
+COLLECTION_BELOW_ONE_ROW = COLLECTION_FIRST_Y + COLLECTION_SECTION_GAP - COLLECTION_FOCUS_Y
+COLLECTION_CAPTION_Y = 11             # card bottom to the name's label box
+COLLECTION_META_DY = 34               # name box top to the count's
+# An empty card: white 4% over the canvas, opaque so the focus glow stays out.
+COLLECTION_PLATE = "0xFF0D1519"
 
 # --------------------------------------------------------- grid row pitch --
 # A vertical GRID needs more air below the caption than a horizontal row
@@ -1237,6 +1238,8 @@ FONT_SETTINGS_OPTION = "tofa_font_settings_option"
 FONT_SETTINGS_PICKER = "tofa_font_settings_picker"
 FONT_SETTINGS_TITLE = "tofa_font_settings_title"
 FONT_BROWSE_CAPTION = "tofa_font_browse_caption"
+FONT_BROWSE_SECTION = "tofa_font_settings_title"   # bold 38, as Settings
+FONT_CARD_TITLE = "tofa_font_card_title"
 FONT_BROWSE_TITLE = "tofa_font_player_title"   # bold 45, by ink width
 FONT_BODY = "tofa_font_body"
 FONT_METADATA = "tofa_font_metadata"

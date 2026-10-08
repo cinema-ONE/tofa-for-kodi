@@ -411,9 +411,104 @@
                 </control>
             </control>
 
+            <!-- COLLECTIONS: "Your collections" (6215), then "Film series and
+                 sets" (6210). A list holds its focused row at y 501; the
+                 slides put a section's first row at y 262, as the app does. -->
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(browse_view)) + !String.IsEmpty(Window.Property(browse_collections))</visible>
+                <control type="group">
+                    <visible>!String.IsEmpty(Window.Property(browse_coll_rows)) + ![Control.HasFocus(6210) + Integer.IsGreater(Container(6210).CurrentItem,1)]</visible>
+                    <animation effect="slide" end="0,{COLLECTION_REST_SHIFT}" time="{SCROLLTIME}" condition="!Control.HasFocus(6210) + Integer.IsLess(Container(6215).CurrentItem,2)">Conditional</animation>
+                    <animation effect="slide" end="0,-{COLLECTION_SECTION_GAP}" time="{SCROLLTIME}" condition="Control.HasFocus(6210)">Conditional</animation>
+                    <animation effect="slide" end="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Hidden</animation>
+                    <animation effect="fade" end="0" time="{SCROLLTIME}">Hidden</animation>
+                    <animation effect="slide" start="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Visible</animation>
+                    <animation effect="fade" start="0" time="{SCROLLTIME}">Visible</animation>
+                    <control type="label">
+                        <visible>Integer.IsLess(Container(6215).CurrentItem,2)</visible>
+                        <posx>{BROWSE_LEFT}</posx>
+                        <posy>{COLLECTION_HEAD_LABEL_Y}</posy>
+                        <width>1400</width>
+                        <height>50</height>
+                        <font>{FONT_BROWSE_SECTION}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>Your collections</label>
+                        <animation effect="slide" end="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Hidden</animation>
+                        <animation effect="fade" end="0" time="{SCROLLTIME}">Hidden</animation>
+                        <animation effect="slide" start="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Visible</animation>
+                        <animation effect="fade" start="0" time="{SCROLLTIME}">Visible</animation>
+                    </control>
+                    <control type="fixedlist" id="6215">
+                        <posx>{COLLECTION_LIST_X}</posx>
+                        <posy>{COLLECTION_LIST_Y}</posy>
+                        <width>{COLLECTION_LIST_W}</width>
+                        <height>{COLLECTION_LIST_H}</height>
+                        <onup>6215</onup>
+                        <ondown>6210</ondown>
+                        <onleft>6215</onleft>
+                        <onright>6215</onright>
+                        <orientation>vertical</orientation>
+                        <focusposition>1</focusposition>
+                        <movement>0</movement>
+                        <scrolltime>{SCROLLTIME}</scrolltime>
+{custom_item}
+{custom_focused}
+                    </control>
+                </control>
+                <control type="group">
+                    <visible>String.IsEmpty(Window.Property(browse_coll_rows)) | Control.HasFocus(6210) | String.IsEqual(Window.Property(browse_coll_rows),1) | !String.IsEmpty(Window.Property(browse_coll_a_last))</visible>
+                    <animation effect="slide" end="0,{COLLECTION_REST_SHIFT}" time="{SCROLLTIME}" condition="String.IsEmpty(Window.Property(browse_coll_rows)) + Integer.IsLess(Container(6210).CurrentItem,2)">Conditional</animation>
+                    <animation effect="slide" end="0,{COLLECTION_BELOW_ONE_ROW}" time="{SCROLLTIME}" condition="!Control.HasFocus(6210) + String.IsEqual(Window.Property(browse_coll_rows),1)">Conditional</animation>
+                    <animation effect="slide" end="0,{COLLECTION_SECTION_GAP}" time="{SCROLLTIME}" condition="!Control.HasFocus(6210) + String.IsEqual(Window.Property(browse_coll_rows),2) + !String.IsEmpty(Window.Property(browse_coll_a_last))">Conditional</animation>
+                    <animation effect="fade" end="0" time="{SCROLLTIME}">Hidden</animation>
+                    <animation effect="fade" start="0" time="{SCROLLTIME}">Visible</animation>
+                    <control type="label">
+                        <visible>Integer.IsLess(Container(6210).CurrentItem,2)</visible>
+                        <posx>{BROWSE_LEFT}</posx>
+                        <posy>{COLLECTION_HEAD_LABEL_Y}</posy>
+                        <width>1400</width>
+                        <height>50</height>
+                        <font>{FONT_BROWSE_SECTION}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>Film series and sets</label>
+                        <animation effect="slide" end="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Hidden</animation>
+                        <animation effect="fade" end="0" time="{SCROLLTIME}">Hidden</animation>
+                        <animation effect="slide" start="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Visible</animation>
+                        <animation effect="fade" start="0" time="{SCROLLTIME}">Visible</animation>
+                    </control>
+                    <control type="fixedlist" id="6210">
+                        <posx>{COLLECTION_LIST_X}</posx>
+                        <posy>{COLLECTION_LIST_Y}</posy>
+                        <width>{COLLECTION_LIST_W}</width>
+                        <height>{COLLECTION_LIST_H}</height>
+                        <onup condition="!String.IsEmpty(Window.Property(browse_coll_rows))">6215</onup>
+                        <onup>{NAV_STOP}</onup>
+                        <ondown>6210</ondown>
+                        <onleft>6210</onleft>
+                        <onright>6210</onright>
+                        <orientation>vertical</orientation>
+                        <focusposition>1</focusposition>
+                        <movement>0</movement>
+                        <scrolltime>{SCROLLTIME}</scrolltime>
+{collection_item}
+{collection_focused}
+                    </control>
+                </control>
+            </control>
+
             <!-- A TILE'S VIEW: title row, chips, grid and A-Z rail. -->
             <control type="group">
                 <visible>!String.IsEmpty(Window.Property(browse_view))</visible>
+                <!-- Collections scroll under the title. -->
+                <control type="image">
+                    <visible>!String.IsEmpty(Window.Property(browse_collections))</visible>
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>{SCREEN_W}</width>
+                    <height>{COLLECTION_CLIP_Y}</height>
+                    <colordiffuse>{CANVAS}</colordiffuse>
+                    <texture>white-square.png</texture>
+                </control>
                 <control type="label" id="6250">
                     <posx>{BROWSE_LEFT}</posx>
                     <posy>{BROWSE_HEAD_Y}</posy>
@@ -460,6 +555,7 @@
                     <texture>white-square.png</texture>
                 </control>
                 <control type="list" id="6140">
+                    <visible>String.IsEmpty(Window.Property(browse_collections))</visible>
                     <posx>{BROWSE_LEFT}</posx>
                     <posy>{BROWSE_HEAD_Y}</posy>
                     <width>{BROWSE_SURPRISE_W}</width>
@@ -505,22 +601,6 @@
                 </control>
 
 {folder_state}
-            <!-- Collections: wide cards, three across; titles: the poster grid. -->
-            <control type="panel" id="6210">
-                <visible>!String.IsEmpty(Window.Property(browse_collections))</visible>
-                <posx>{BROWSE_COLLECTIONS_X}</posx>
-                <posy>{BROWSE_GRID_Y}</posy>
-                <width>{COLLECTION_GRID_W}</width>
-                <height>{BROWSE_GRID_H}</height>
-                <onleft>6210</onleft>
-                <onup>6140</onup>
-                <orientation>vertical</orientation>
-                <itemwidth>{COLLECTION_CELL_W}</itemwidth>
-                <itemheight>{COLLECTION_CELL_H}</itemheight>
-                <scrolltime>{SCROLLTIME}</scrolltime>
-{collection_item}
-{collection_focused}
-            </control>
             <control type="panel" id="6200">
                 <visible>String.IsEmpty(Window.Property(browse_collections))</visible>
                 <posx>{BROWSE_GRID_X}</posx>

@@ -13,7 +13,8 @@ log line:
     browse: 529 collection(s) (1 custom) in 1.62s     <- warm
 
 So it staged ~1058 images and made 529 cards at ~10 C++ writes each, on the
-action thread, for the ~15 tiles a viewer can actually see. That is the same
+action thread, for the ~15 tiles a viewer can actually see. Since app 2.0 the
+view is rows of three, so the window is counted in rows. That is the same
 mistake the poster grid made and fixed in 4847b47, and the fix is the same
 one: allocate blanks up front, fill a window around the selection, and stage
 only that window's art.
@@ -44,7 +45,8 @@ def check(name, ok, detail=""):
 
 
 TOTAL = 529            # what the real server answers
-CUSTOM = 1
+COLS = 3
+ROWS = -(-TOTAL // COLS)
 
 
 class FakeList:
@@ -79,41 +81,36 @@ class FakeClient:
 class FakeWindow:
     """A stand-in `self`: only what _browse_fill_collection_window touches."""
 
-    BROWSE_FILL_WINDOW = main.MainWindow.BROWSE_FILL_WINDOW
+    COLLECTION_FILL_ROWS = main.MainWindow.COLLECTION_FILL_ROWS
+    _browse_stage_collection_art = main.MainWindow._browse_stage_collection_art
 
     def __init__(self, items):
-        self.collection_list = FakeList(len(items))
+        self.collection_list = FakeList(-(-len(items) // COLS))
         self._collection_items = items
         self._collection_filled = set()
         self.applied = []
 
-    def _browse_apply_collection_item(self, client, mli, item):
-        self.applied.append(item)
+    def _browse_apply_collection_row(self, client, mli, row):
+        self.applied.extend(row)
         return mli
 
 
-def items(n, custom=0):
-    made = [{"id": i, "name": "made %d" % i, "_custom": True,
-             "poster_path": "/p%d" % i, "backdrop_path": "/b%d" % i}
-            for i in range(custom)]
-    curated = [{"id": 1000 + i, "name": "coll %d" % i,
-                "poster_url": "http://x/p%d" % i, "backdrop_url": "http://x/b%d" % i}
-               for i in range(n - custom)]
-    return made + curated
+def items(n):
+    return [{"id": 1000 + i, "name": "coll %d" % i,
+             "poster_url": "http://x/p%d" % i, "backdrop_url": "http://x/b%d" % i}
+            for i in range(n)]
 
 
-#: The window is asymmetric -- half a window behind the selection and a
-#: full one ahead (lo = here - W//2, hi = here + W + 1), so a mid-list top-up
-#: covers W//2 + W + 1 slots. Inherited from _browse_fill_window, which is
-#: the point: one window rule for both grids.
-SPAN = main.MainWindow.BROWSE_FILL_WINDOW // 2 + main.MainWindow.BROWSE_FILL_WINDOW + 1
+#: Half a window of rows behind the selection and a full one ahead.
+SPAN = (main.MainWindow.COLLECTION_FILL_ROWS // 2
+        + main.MainWindow.COLLECTION_FILL_ROWS + 1) * COLS
 
 FILL = main.MainWindow._browse_fill_collection_window
 prefetched = []
 artcache.prefetch = lambda pairs, *a, **k: prefetched.append(list(pairs)) or 0
 
 # --- the window is a window ---------------------------------------------
-win = FakeWindow(items(TOTAL, CUSTOM))
+win = FakeWindow(items(TOTAL))
 client = FakeClient()
 FILL(win, client)
 built = len(win.applied)
@@ -122,31 +119,30 @@ check("opening builds a window, not the whole index",
       f"built {built} of {TOTAL}")
 check("...and stages only that window's art",
       len(client.staged) == built,
-      f"staged {len(client.staged)} for {built} tiles")
+      f"staged {len(client.staged)} for {built} cards")
 
 # --- and it covers what is on screen ------------------------------------
-check("the window starts at the selection",
-      win.applied[0] is win._collection_items[0]
-      and len(win.applied) >= 15,
-      "a screenful is ~15 tiles; the window must cover it")
+check("the window starts at the selection and covers a screenful",
+      win.applied[0] is win._collection_items[0] and len(win.applied) >= 9,
+      "about three rows of three are on screen")
 
 # --- moving tops it up, without redoing work ----------------------------
 before = len(win.applied)
-win.collection_list.pos = 300
+win.collection_list.pos = 100
 FILL(win, client)
 added = len(win.applied) - before
 check("moving fills where it landed",
       0 < added <= SPAN,
       f"added {added}, window span is {SPAN}")
-check("...and never refills a slot",
+check("...and never refills a row",
       len(win.applied) == len(set(id(i) for i in win.applied)),
-      "a filled slot was built twice")
+      "a filled row was built twice")
 
 seen = win._collection_filled
-check("filled slots are recorded around the new position",
-      300 in seen and 299 in seen and 0 in seen)
-check("...and far-away slots are still untouched",
-      528 not in seen and 150 not in seen)
+check("filled rows are recorded around the new position",
+      100 in seen and 99 in seen and 0 in seen)
+check("...and far-away rows are still untouched",
+      ROWS - 1 not in seen and 50 not in seen)
 
 # --- a second call at rest is free --------------------------------------
 before = len(win.applied)
@@ -156,9 +152,9 @@ check("a repeat call at the same position does nothing",
 
 # --- the two art families stage separately ------------------------------
 prefetched.clear()
-win2 = FakeWindow(items(TOTAL, CUSTOM))
-c2 = FakeClient()
-FILL(win2, c2)
+made = [{"id": 1, "name": "mine", "_custom": True,
+         "poster_paths": ["/a", "/b", "/c", "/d"]}]
+FakeWindow._browse_stage_collection_art(win, FakeClient(), made + items(3))
 check("custom and curated art stage as separate batches",
       len(prefetched) == 2,
       f"{len(prefetched)} prefetch call(s); custom uses *_path, curated *_url")
@@ -177,11 +173,8 @@ SRC = open(os.path.join(ROOT, "plugin.video.tofa", "resources", "lib",
                         "windows", "main.py")).read()
 loader = re.search(r"\n    def _browse_load_collections_grid\(.*?\n(.*?)(?=\n    def )",
                    SRC, re.S).group(1)
-check("the loader allocates blanks instead of building every tile",
+check("the loader allocates blank rows for the series",
       "_browse_blanks" in loader and "_browse_fill_collection_window" in loader)
-check("...and no longer builds a card per collection up front",
-      "_browse_build_collection_item(client, it)" not in loader,
-      "the eager list comprehension is back")
 
 print()
 failed = [n for n, ok in RESULTS if not ok]

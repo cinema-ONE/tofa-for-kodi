@@ -4524,220 +4524,137 @@ def _action_pill_label(label_x: int, label_w: int, height: int,
                             </control>"""
 
 
-def collection_card(list_id: int) -> tuple[str, str]:
-    """7.5's collections index tile.
+def collection_row(list_id: int) -> tuple[str, str]:
+    """One row of the collections view: up to three 16:9 cards (app 2.0).
 
-    A collection is a set rather than a title, which is why this is the one
-    LANDSCAPE 16:9 tile in an app of 2:3 portraits; its numbers are the
-    spec's own (tile 448, radius 14, a fixed caption so rows align). The
-    Android TV app lays its own out at exactly the same values, measured
-    off a live uiautomator dump.
+    A row is one list item, so a fixedlist can hold the focused row in place
+    the way the app does; Window.Property(browse_coll_col) says which card
+    has focus, and a short row lends it to its last card.
 
-    7.5's artwork ladder, in the order it gives:
-      backdrop  -> scaled and cropped to the tile, the normal case
-      poster    -> FITTED, never cropped, which 7.5 requires outright,
-                   over a dimmed plate standing in for the blurred copy of
-                   itself the spec asks for, which Kodi cannot produce
-      neither   -> plate plus the film-stack glyph
+    Art, in order: the backdrop; else four member posters, top-cropped, 2x2;
+    else one poster, centre-cropped; else a film glyph."""
+    W, H, P = T.COLLECTION_TILE_W, T.COLLECTION_TILE_H, T.COLLECTION_PAD
+    QW, QH = W // 2, H // 2
+    col = "Window.Property(browse_coll_col)"
 
-    The caption is a fixed height whatever the name's length, which is what
-    keeps a row of tiles aligned. It used to reserve TWO lines for the name;
-    it now holds one that marquees, so the count line sits directly under
-    every name instead of under the taller of two possibilities."""
-    W, H = T.COLLECTION_TILE_W, T.COLLECTION_TILE_H
-    CELL_W, CELL_H = T.COLLECTION_CELL_W, T.COLLECTION_CELL_H
-    CAP_TOP = H + 10
-    # Same focus lift the poster cards use, centred on THIS tile rather than
-    # a poster's; poster_visual keeps its own copy local to itself.
-    ZOOM = (f'\n                            <animation effect="zoom" start="100" end="104.5" '
-            f'center="{W // 2},{H // 2}" time="140" tween="cubic" '
-            f'easing="out">Focus</animation>')
+    def _focus(i: int) -> str:
+        return (f"Control.HasFocus({list_id}) + [String.IsEqual({col},{i}) | "
+                f"[String.IsEqual(ListItem.Property(last),{i}) + "
+                f"Integer.IsGreater({col},{i})]]")
 
-    def _art(anim: str) -> str:
+    def _img(texture: str, visible: str, *, w=W, h=H, x=0, y=0, mask="collection-mask.png",
+             aspect="scale", diffuse="", top=False) -> str:
+        tint = f"\n                            <colordiffuse>{diffuse}</colordiffuse>" if diffuse else ""
+        keep = ' align="center" aligny="center"' if aspect == "keep" else ""
+        keep = ' aligny="top"' if top else keep
         return f"""
                         <control type="image">
-                            <width>{W}</width>
-                            <height>{H}</height>
-                            <colordiffuse>{T.SURFACE_PLACEHOLDER}</colordiffuse>
-                            <texture diffuse="collection-mask.png">white-square.png</texture>{anim}
-                        </control>
-                        <control type="label">
-                            <width>{W}</width>
-                            <height>{H}</height>
-                            <align>center</align>
-                            <aligny>center</aligny>
-                            <font>tofa_font_icons_36</font>
-                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                            <label>&#xE529;</label>
-                            <visible>String.IsEmpty(ListItem.Art(thumb)) + String.IsEmpty(ListItem.Property(poster))</visible>{anim}
-                        </control>
-                        <!-- 7.5 puts the fitted poster over "a blurred (30pt)
-                             dimmed (55%) copy of itself". Kodi has no blur,
-                             so the copy is the same poster CROPPED to fill
-                             and dimmed: it loses the softness but keeps what
-                             the layer is actually for, a colour field drawn
-                             from the artwork instead of a flat plate. -->
-                        <control type="image">
-                            <width>{W}</width>
-                            <height>{H}</height>
-                            <colordiffuse>0x73FFFFFF</colordiffuse>
-                            <aspectratio scalediffuse="false">scale</aspectratio>
-                            <texture diffuse="collection-mask.png">$INFO[ListItem.Property(poster)]</texture>
-                            <visible>String.IsEmpty(ListItem.Art(thumb)) + !String.IsEmpty(ListItem.Property(poster))</visible>{anim}
-                        </control>
-                        <control type="image">
-                            <width>{W}</width>
-                            <height>{H}</height>
-                            <aspectratio scalediffuse="false" align="center" aligny="center">keep</aspectratio>
-                            <texture diffuse="collection-mask.png">$INFO[ListItem.Property(poster)]</texture>
-                            <visible>String.IsEmpty(ListItem.Art(thumb)) + !String.IsEmpty(ListItem.Property(poster))</visible>{anim}
-                        </control>
-                        <control type="image">
-                            <width>{W}</width>
-                            <height>{H}</height>
-                            <aspectratio scalediffuse="false">scale</aspectratio>
-                            <texture diffuse="collection-mask.png">$INFO[ListItem.Art(thumb)]</texture>
-                            <visible>!String.IsEmpty(ListItem.Art(thumb))</visible>{anim}
+                            <visible>{visible}</visible>
+                            <posx>{x}</posx>
+                            <posy>{y}</posy>
+                            <width>{w}</width>
+                            <height>{h}</height>{tint}
+                            <aspectratio scalediffuse="false"{keep}>{aspect}</aspectratio>
+                            <texture diffuse="{mask}">{texture}</texture>
                         </control>"""
 
-    # The caption does NOT take the zoom, in EITHER state. It used to take it
-    # in the focused one, alone in the card family: poster_card, person_card
-    # and episode_card all lift only the artwork block and leave their text
-    # where it is. Worse than merely inconsistent -- an animation centre is in
-    # the parent's coordinates and this one is the TILE's centre (W/2, H/2),
-    # 130px above the caption, so scaling about it pushed the name down ~6px
-    # and the meta line ~10px as well as growing them. Focusing a collection
-    # nudged its own caption out of line with every unfocused caption beside
-    # it in the row.
-    def _caption(active: bool) -> str:
-        """ONE line, and it marquees while the tile has focus.
-
-        It was a 56-high textbox, i.e. two lines reserved whether or not the
-        name needed them, with the count line pinned below the reserve. So a
-        one-line name -- most of them -- showed a hole between itself and its
-        count, while a name that did wrap sat tight against it: the two
-        neighbours in a row did not even agree. Reported 2026-08-28.
-
-        A single line cannot show a long name in 448px, so the focused copy
-        scrolls, which is how every other caption in this add-on handles the
-        same problem.
-
-        TWO COPIES WITH COMPLEMENTARY GATES, not one control with <scroll>:
-        focusedlayout renders for a list's ACTIVE item even when the cursor
-        is elsewhere, so an ungated marquee scrolls in the background
-        forever. <scroll> is a plain boolean with no condition of its own.
-        Same construction and same reason as poster_visual(), which spells it
-        out at length. EM SPACES in the suffix because Kodi strips ordinary
-        whitespace, and a short name does not scroll at all -- Kodi only
-        marquees a label that overruns its box.
-        """
-        def _title(scrolling: bool) -> str:
-            # The gate is Control.HasFocus(LIST), which is true for the whole
-            # grid at once -- it says the cursor is in this list, NOT which
-            # tile it is on. Only the focusedlayout narrows it to one tile,
-            # since Kodi renders that layout for the active item alone. So
-            # the scrolling copy may only ever be emitted there: putting the
-            # pair in both layouts made every long name in the grid marquee
-            # while a different tile was focused.
-            gate = ("" if scrolling else "!") + f"Control.HasFocus({list_id})"
-            marquee = ("""
-                            <scroll>true</scroll>
-                            <scrollsuffix>\u2003\u2003\u2003</scrollsuffix>""" if scrolling else "")
-            return f"""
-                        <control type="label">
+    def _tile(i: int, focused: bool) -> str:
+        c = f"c{i}"
+        prop = lambda name: f"ListItem.Property({c}{name})"  # noqa: E731
+        has = f"!String.IsEmpty({prop('')})"
+        art, poster, m1 = (f"!String.IsEmpty({prop(n)})" for n in ("_art", "_poster", "_m1"))
+        no_art = f"String.IsEmpty({prop('_art')})"
+        cropped = f"{no_art} + String.IsEmpty({prop('_m1')}) + {poster}"
+        x, cx, cy = P + i * T.COLLECTION_PITCH_X, W // 2, H // 2
+        glow = rim = zoom = ""
+        if focused:
+            gate = _focus(i)
+            glow = f"""
+                        <control type="image">
                             <visible>{gate}</visible>
-                            <posy>{CAP_TOP}</posy>
-                            <width>{W}</width>
-                            <height>{T.CAPTION_TITLE_H}</height>
-                            <font>tofa_font_poster_title</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>{marquee}
-                            <label>$INFO[ListItem.Label]</label>
-                        </control>"""
-
-        plain = f"""
-                        <control type="label">
-                            <posy>{CAP_TOP}</posy>
-                            <width>{W}</width>
-                            <height>{T.CAPTION_TITLE_H}</height>
-                            <font>tofa_font_poster_title</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                            <label>$INFO[ListItem.Label]</label>
-                        </control>"""
-        title = (_title(True) + _title(False)) if active else plain
-
-        return f"""{title}
-                        <control type="label">
-                            <posy>{CAP_TOP + T.CAPTION_TITLE_H}</posy>
-                            <width>{W}</width>
-                            <height>26</height>
-                            <font>tofa_font_metadata</font>
-                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                            <label>$INFO[ListItem.Property(caption_meta)]</label>
-                        </control>"""
-
-    # Accent focus halo, drawn FIRST so the artwork painted over it covers the
-    # inward half and only the outward fade shows -- same asset construction
-    # and same z-order as poster_visual(), episode_card() and discover_card().
-    # This tile was the last card in the family with no glow at all, so a
-    # focused collection read flatter than a focused anything-else.
-    #
-    # The cell HAS the room, but not where the halo needs it. Panel 6210's
-    # itemwidth/itemheight are COLLECTION_CELL_W/H, i.e. tile plus gap, and
-    # the tile drew at the cell's own (0,0) -- so all the slack was on the
-    # right and bottom and a bleed of -GLOW_PAD would have been clipped away
-    # on the top and left, Kodi clipping each item strictly to its cell. The
-    # content group is therefore offset by GLOW_PAD (the borrowed-slack trick
-    # poster_visual() and person_card() both use) and the panel is pulled back
-    # by the same amount in main.xml.tpl, so every tile lands on the pixel it
-    # landed on before and the halo has somewhere to go.
-    glow = f"""
-                        <control type="image">
-                            <visible>Control.HasFocus({list_id})</visible>
                             <posx>-{GLOW_PAD}</posx>
                             <posy>-{GLOW_PAD}</posy>
                             <width>{W + 2 * GLOW_PAD}</width>
                             <height>{H + 2 * GLOW_PAD}</height>
                             <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
                             <texture>collection-glow.png</texture>
-                            <!-- Centre in the PARENT's coordinates, so it is
-                                 the tile's centre and not this control's own:
-                                 it starts at -GLOW_PAD, so its true centre is
-                                 -GLOW_PAD + (W + 2*GLOW_PAD)/2 = W/2. Using
-                                 its own half-width would zoom the halo about
-                                 a point GLOW_PAD down and right of the tile
-                                 it wraps. -->
-                            <animation effect="zoom" start="100" end="104.5" center="{W // 2},{H // 2}" time="140" tween="cubic" easing="out">Focus</animation>
                         </control>"""
-
-    # Written as a 9-patch, but NOT shipped as one: build.py collects every
-    # `border=` texture with a known draw size and gen_exact_assets.py emits
-    # exact-rounded-14-outline-448x252.png at 2x, which the renderer
-    # substitutes here. So this rim is already exact-size and crisp on the 4K
-    # box like the poster/episode/person ones, without a hand-made twin of
-    # its own -- the generic mechanism reaches it. Worth stating, because it
-    # LOOKS like the one card border in the family still sharing 9-patch art.
-    rim = f"""
+            rim = f"""
                         <control type="image">
+                            <visible>{gate}</visible>
                             <width>{W}</width>
                             <height>{H}</height>
                             <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <texture border="{T.COLLECTION_RADIUS}">rounded-14-outline.png</texture>
-                            <visible>Control.HasFocus({list_id})</visible>{ZOOM}
+                            <texture>collection-border.png</texture>
                         </control>"""
+            zoom = (f"\n                        <animation effect=\"zoom\" start=\"100\" end=\"104\" "
+                    f"center=\"{x + cx},{P + cy}\" time=\"140\" tween=\"cubic\" easing=\"out\" "
+                    f"condition=\"{gate}\">Conditional</animation>")
+        quads = "".join(
+            _img(f"$INFO[{prop('_m' + str(n + 1))}]", f"{no_art} + {m1}", w=QW, h=QH,
+                 x=(n % 2) * QW, y=(n // 2) * QH, mask=f"collection-quad-{q}.png", top=True)
+            for n, q in enumerate(("tl", "tr", "bl", "br")))
+        card = f"""
+                    <control type="group">
+                        <visible>{has}</visible>
+                        <posx>{x}</posx>
+                        <posy>{P}</posy>{zoom}{glow}{_img("white-square.png", "true", diffuse=T.COLLECTION_PLATE)}
+                        <control type="label">
+                            <visible>{no_art} + String.IsEmpty({prop('_m1')}) + String.IsEmpty({prop('_poster')})</visible>
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ICON_56}</font>
+                            <textcolor>0x47FFFFFF</textcolor>
+                            <label>&#x{icon_glyphs.FILM:04X};</label>
+                        </control>{_img(f"$INFO[{prop('_poster')}]", cropped)}{quads}{_img(f"$INFO[{prop('_art')}]", art)}
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>0x1FFFFFFF</colordiffuse>
+                            <texture>collection-hairline.png</texture>
+                        </control>{rim}
+                    </control>"""
+        return card + _caption(i, x, has, focused)
 
-    item = f"""                <itemlayout width="{CELL_W}" height="{CELL_H}">
-                    <control type="group">
-                        <posx>{GLOW_PAD}</posx>
-                        <posy>{GLOW_PAD}</posy>{_art("")}{_caption(False)}
-                    </control>
-                </itemlayout>"""
-    focused = f"""                <focusedlayout width="{CELL_W}" height="{CELL_H}">
-                    <control type="group">
-                        <posx>{GLOW_PAD}</posx>
-                        <posy>{GLOW_PAD}</posy>{glow}{_art(ZOOM)}{rim}{_caption(True)}
-                    </control>
-                </focusedlayout>"""
-    return item, focused
+    def _caption(i: int, x: int, has: str, focused: bool) -> str:
+        """Name and count under the card; a long name marquees on focus only."""
+        top = P + H + T.COLLECTION_CAPTION_Y
+
+        def _title(gate: str, scroll: bool) -> str:
+            marquee = ("""
+                        <scroll>true</scroll>
+                        <scrollsuffix>\u2003\u2003\u2003</scrollsuffix>""" if scroll else "")
+            return f"""
+                    <control type="label">
+                        <visible>{gate}</visible>
+                        <posx>{x}</posx>
+                        <posy>{top}</posy>
+                        <width>{W}</width>
+                        <height>{T.CAPTION_TITLE_H}</height>
+                        <font>{T.FONT_CARD_TITLE}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>{marquee}
+                        <label>$INFO[ListItem.Property(c{i})]</label>
+                    </control>"""
+        title = (_title(f"{has} + {_focus(i)}", True)
+                 + _title(f"{has} + ![{_focus(i)}]", False)) if focused else _title(has, False)
+        return title + f"""
+                    <control type="label">
+                        <visible>{has}</visible>
+                        <posx>{x}</posx>
+                        <posy>{top + T.COLLECTION_META_DY}</posy>
+                        <width>{W}</width>
+                        <height>26</height>
+                        <font>{T.FONT_BROWSE_CAPTION}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(c{i}_meta)]</label>
+                    </control>"""
+
+    size = f'width="{T.COLLECTION_LIST_W}" height="{T.COLLECTION_PITCH_Y}"'
+    tiles = lambda focused: "".join(_tile(i, focused) for i in range(T.COLLECTION_COLS))  # noqa: E731
+    return (f"                <itemlayout {size}>{tiles(False)}\n                </itemlayout>",
+            f"                <focusedlayout {size}>{tiles(True)}\n                </focusedlayout>")
 
 
 # ======================================================================
