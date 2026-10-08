@@ -97,42 +97,6 @@ check("every offered builtin has a label",
 
 
 
-# --- the editor's columns must be wired in the order they are DRAWN -------
-# Left/Right walk a list of column indices. Getting that list in id order
-# rather than screen order sent Left from the switch to the up arrow, two
-# columns past the remove button -- and a press there MOVES the row, so the
-# mis-wire acted rather than merely misfocused.
-#
-# Checked against the rendered XML, not against a copy of the wiring logic:
-# the question is where the buttons actually are.
-import xml.etree.ElementTree as ET                              # noqa: E402
-
-XML = (pathlib.Path(__file__).resolve().parents[1] / "plugin.video.tofa"
-       / "resources" / "skins" / "Main" / "1080i" / "script-tofa-main.xml")
-tree = ET.parse(XML)
-posx = {}
-for control in tree.iter("control"):
-    cid = control.get("id")
-    x = control.find("posx")
-    if cid and x is not None and x.text and x.text.strip().lstrip("-").isdigit():
-        posx[int(cid)] = int(x.text.strip())
-
-SLOT = 0
-ids = home_rows.HOME_ROW_EDIT_IDS[SLOT]
-check("every column of a row exists in the rendered XML",
-      all(i in posx for i in ids),
-      str([i for i in ids if i not in posx]))
-if all(i in posx for i in ids):
-    by_x = sorted(range(4), key=lambda c: posx[ids[c]])
-    expected = [home_rows.EDIT_UP, home_rows.EDIT_DOWN,
-                home_rows.EDIT_REMOVE, home_rows.EDIT_TOGGLE]
-    check("the columns are drawn up, down, remove, switch -- left to right",
-          by_x == expected,
-          "drawn %s, wiring assumes %s" % (by_x, expected))
-    check("...which is NOT the order their ids run in",
-          by_x != [0, 1, 2, 3],
-          "if these ever agree, delete this test rather than the ordering")
-
 print()
 failed = [n for n, ok in RESULTS if not ok]
 print(f"{len(RESULTS) - len(failed)}/{len(RESULTS)} passed")

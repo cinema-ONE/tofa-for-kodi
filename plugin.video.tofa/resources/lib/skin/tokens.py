@@ -924,43 +924,13 @@ SETTINGS_MEDIACARDS_THIRD_Y = (
 )
 SETTINGS_MEDIACARDS_GROUP_H = SETTINGS_MEDIACARDS_THIRD_Y + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
 
-# Home-screen editor: the spotlight toggle, then the row list.
-# The list shows a FIXED number of rows and scrolls internally past that. It
-# has to: an account may send up to MAX_HOME_ROWS (9), and a grouplist child
-# taller than the viewport strands focus with nothing able to scroll to it
-# (project_kodi_grouplist_scroll_limit). Capping the child and letting the
-# list scroll itself is that memory's own prescribed fix.
-SETTINGS_HOMEROW_H = 64
-#: The explanatory line under the home-row editor. Tertiary text, so it sits
-#: quieter than a row; tall enough to clear the metadata font's descenders
-#: plus the gap the reference leaves before MEDIA CARDS.
-SETTINGS_HOMEROWS_NOTE_H = 56
-# The row list is its OWN grouplist child, and sized at runtime to however
-# many rows the account actually has (windows/main.py:_settings_size_home_rows).
-#
-# Its own child on purpose. While the whole HOME SCREEN group was one child,
-# the eyebrow, the spotlight toggle and the two "add" rows ate 322 of the 687
-# viewport and left room for five rows -- so an eight-row account had three
-# hidden behind an internal scroll for no reason but layout. Split out, the
-# list gets the whole viewport and every allowed row count fits.
-#
-# The cap is still real and still load-bearing: a grouplist child TALLER than
-# the viewport strands focus, because the list has no overflow of its own to
-# scroll and the grouplist thinks its focused child is already at offset 0
-# (project_kodi_grouplist_scroll_limit). Past the cap the list keeps its
-# internal scroll, which is that memory's own prescribed fallback.
-SETTINGS_HOMEROWS_MAX_VISIBLE = SETTINGS_GROUPLIST_H // SETTINGS_HOMEROW_H
-# Declared at the MAXIMUM, then shrunk at runtime to the real row count.
-# That direction matters: Kodi allocates a list's item slots from the height
-# it is declared with at load, so a list declared short and grown later gets
-# the layout space but not the extra slots -- measured, it kept drawing five
-# rows inside a 512px box. Declared tall and shrunk, every slot exists.
-SETTINGS_HOMEROWS_H = SETTINGS_HOMEROWS_MAX_VISIBLE * SETTINGS_HOMEROW_H
-# The "Add a row" action sits under the list, as it does in the app. It was
-# two tiles (Discover, genre) until the reference apps settled on one control
-# holding three groups; SETTINGS_HOMEADD_SECOND_Y and _GROUP_H went with the
-# second tile.
-SETTINGS_HOMEADD_H = 84
+# Home's row editor (app 2.0): one card per row on the row pitch, the first
+# under its eyebrow; ADD A ROW's lead tops the last row's gap up to a group gap.
+SETTINGS_HOMEROW_PITCH = SETTINGS_ACTION_ROW_H + SETTINGS_STACK_ROW_GAP
+SETTINGS_HOMEROW_FIRST_H = SETTINGS_SECTION_BAND + SETTINGS_HOMEROW_PITCH
+SETTINGS_HOMEADD_Y = SETTINGS_GROUP_GAP - SETTINGS_STACK_ROW_GAP
+SETTINGS_HOMEADD_GROUP_H = (SETTINGS_HOMEADD_Y + 2 * SETTINGS_ACTION_ROW_H
+                            + SETTINGS_STACK_ROW_GAP + SETTINGS_GROUP_TRAIL)
 # The spotlight toggle keeps the eyebrow, since it labels the section.
 SETTINGS_HOMESCREEN_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
 

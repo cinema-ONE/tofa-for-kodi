@@ -267,15 +267,9 @@ def render_main() -> str:
     settings_episodes_item, settings_episodes_focused = fragments.settings_toggle_row(8310)
     settings_spoilers_item, settings_spoilers_focused = fragments.settings_toggle_row(8315)
     settings_spotlight_item, settings_spotlight_focused = fragments.settings_toggle_row(8320)
-    settings_homerow_item, settings_homerow_focused = fragments.settings_home_row(8330)
-    # One editor row per slot, each a DIRECT child of the appearance
-    # grouplist so the grouplist chains them for up/down and scrolls the
-    # focused one into view. Slots past the account's row count hide
-    # themselves on an empty title property, which also takes them out of
-    # that chain.
     settings_homerow_editors = "".join(
-        fragments.settings_home_row_editor(i) for i in range(home_rows.MAX_HOME_ROWS))
-    settings_add_row_item, settings_add_row_focused = fragments.settings_add_row(8340)
+        fragments.settings_home_row_editor(i, gid, lid) for i, (gid, lid) in enumerate(
+            zip(home_rows.HOME_ROW_EDIT_GROUP_IDS, home_rows.HOME_ROW_EDIT_IDS)))
     # Value rows that open a picker: same shape as an action row, with the
     # current choice where the glyph would be.
     settings_region_item, settings_region_focused = fragments.settings_choice_row(
@@ -464,12 +458,18 @@ def render_main() -> str:
         settings_alwayssubs_focused=settings_alwayssubs_focused,
         settings_spotlight_item=settings_spotlight_item,
         settings_spotlight_focused=settings_spotlight_focused,
-        settings_add_row_item=settings_add_row_item,
-        settings_add_row_focused=settings_add_row_focused,
+        settings_homeadd_eyebrow=fragments.settings_group_eyebrow(
+            posy=T.SETTINGS_HOMEADD_Y, label="ADD A ROW",
+            indent="                        "),
+        settings_homeadd_discover=fragments.settings_choice_list(
+            8340, value_property="settings_homeadd_none",
+            posy=T.SETTINGS_HOMEADD_Y, onup=8340, ondown=8345),
+        settings_homeadd_genre=fragments.settings_choice_list(
+            8345, value_property="settings_homeadd_none",
+            posy=T.SETTINGS_HOMEADD_Y + T.SETTINGS_HOMEROW_PITCH,
+            onup=8340, ondown=8345),
         **settings_seg_groups,
         settings_homerow_editors=settings_homerow_editors,
-        settings_homerow_item=settings_homerow_item,
-        settings_homerow_focused=settings_homerow_focused,
         settings_episodes_item=settings_episodes_item,
         settings_episodes_focused=settings_episodes_focused,
         settings_spoilers_item=settings_spoilers_item,
