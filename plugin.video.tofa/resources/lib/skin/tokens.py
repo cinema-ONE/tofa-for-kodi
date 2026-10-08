@@ -86,6 +86,13 @@ NAV_GEAR_X, NAV_GEAR_Y, NAV_GEAR_SIZE = 1701, 48, 36
 #: The underline under the gear and the avatar is a fixed 32px.
 NAV_ICON_UNDERLINE_W = 32
 
+#: Past a page's first row the bar fades out and the fox shrinks to 38x46,
+#: keeping its top-left corner (app 2.0.0; main._sync_nav_collapse).
+NAV_COLLAPSED = "!String.IsEmpty(Window.Property(nav_collapsed))"
+NAV_MARK_COLLAPSED_ZOOM = 69
+NAV_COLLAPSE_FADE = ('<animation effect="fade" start="100" end="0" time="200" tween="cubic" '
+                     f'easing="out" condition="{NAV_COLLAPSED}">Conditional</animation>')
+
 #: Profile avatar, top right: a 52px circle centred at (1798, 66). It takes
 #: focus in 2.0.0, and Select opens the profile picker.
 NAV_AVATAR_SIZE = 52

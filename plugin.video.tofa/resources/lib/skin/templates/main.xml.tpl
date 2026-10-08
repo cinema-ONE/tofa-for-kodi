@@ -2489,6 +2489,7 @@
             <width>{NAV_AVATAR_SHADOW}</width>
             <height>{NAV_AVATAR_SHADOW}</height>
             <texture>avatar-shadow.png</texture>
+            {NAV_COLLAPSE_FADE}
         </control>
         <!-- An uploaded photo FILLS the ring (object-cover in the web app);
              a preset sits at 92% inside it (object-contain). -->
@@ -2500,6 +2501,7 @@
             <height>{NAV_AVATAR_ART}</height>
             <aspectratio scalediffuse="false">scale</aspectratio>
             <texture diffuse="circle.png">$INFO[Window.Property(nav_avatar_photo)]</texture>
+            {NAV_COLLAPSE_FADE}
         </control>
         <control type="image">
             <visible>String.IsEmpty(Window.Property(nav_avatar_photo)) + !String.IsEmpty(Window.Property(nav_avatar))</visible>
@@ -2509,6 +2511,7 @@
             <height>{NAV_AVATAR_ART}</height>
             <aspectratio scalediffuse="false">scale</aspectratio>
             <texture diffuse="circle.png">$INFO[Window.Property(nav_avatar)]</texture>
+            {NAV_COLLAPSE_FADE}
         </control>
         <control type="image">
             <visible>!String.IsEmpty(Window.Property(nav_avatar)) | !String.IsEmpty(Window.Property(nav_avatar_photo)) | !String.IsEmpty(Window.Property(nav_avatar_initial))</visible>
@@ -2519,6 +2522,7 @@
             <colordiffuse>{BORDER}</colordiffuse>
             <texture>circle-outline.png</texture>
             <visible>!Control.HasFocus({NAV_AVATAR_ID})</visible>
+            {NAV_COLLAPSE_FADE}
         </control>
         <control type="image">
             <posx>{NAV_AVATAR_X}</posx>
@@ -2528,6 +2532,7 @@
             <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
             <texture>circle-outline.png</texture>
             <visible>Control.HasFocus({NAV_AVATAR_ID})</visible>
+            {NAV_COLLAPSE_FADE}
         </control>
         <!-- The monogram, when there is no art to draw: a photo profile
              (this control deliberately never pays for an image token), a
@@ -2541,6 +2546,7 @@
             <width>{NAV_AVATAR_SIZE}</width>
             <height>{NAV_AVATAR_SIZE}</height>
             <texture>$INFO[Window.Property(nav_avatar_monogram)]</texture>
+            {NAV_COLLAPSE_FADE}
         </control>
         <control type="label">
             <visible>String.IsEmpty(Window.Property(nav_avatar)) + String.IsEmpty(Window.Property(nav_avatar_photo)) + !String.IsEmpty(Window.Property(nav_avatar_initial))</visible>
@@ -2553,6 +2559,7 @@
             <font>tofa_font_caption</font>
             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
             <label>$INFO[Window.Property(nav_avatar_initial)]</label>
+            {NAV_COLLAPSE_FADE}
         </control>
 {nav_avatar_button}
 
