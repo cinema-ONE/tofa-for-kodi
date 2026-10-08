@@ -529,17 +529,18 @@ def render_detail() -> str:
     cast_cards = fragments.person_card(
         6200, cell_width=T.DETAIL_P2_CAST_CELL, cell_height=260,
         photo_size=T.DETAIL_P2_CAST_PHOTO)
+    compact = fragments.POSTER_COMPACT
     similar_cards = fragments.poster_card(
-        6300, has_progress=False, caption_field="caption_meta")
+        6300, has_progress=False, caption_field="caption_meta", size=compact)
     discover_cards = fragments.poster_card(
-        6310, has_progress=False, caption_field="caption_meta",
-        extra_item_xml=fragments.watchlist_badge_item(),
-        extra_focused_xml=fragments.watchlist_badge_focused(),
+        6310, has_progress=False, caption_field="caption_meta", size=compact,
+        extra_item_xml=fragments.watchlist_badge_item(compact),
+        extra_focused_xml=fragments.watchlist_badge_focused(compact),
     )
     collection_cards = fragments.poster_card(
-        6320, has_progress=False, caption_field="caption_meta",
-        extra_item_xml=fragments.watchlist_badge_item(),
-        extra_focused_xml=fragments.watchlist_badge_focused(),
+        6320, has_progress=False, caption_field="caption_meta", size=compact,
+        extra_item_xml=fragments.watchlist_badge_item(compact),
+        extra_focused_xml=fragments.watchlist_badge_focused(compact),
     )
     page2 = fragments.detail_page2(
         cast_cards=cast_cards, collection_cards=collection_cards,
