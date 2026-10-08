@@ -28,9 +28,8 @@ check("the styles are the app's four, in its order",
       [label for _v, label in so.NEXT_UP_STYLES] == ["Compact", "Minimal", "Lower third", "Full"])
 check("every style has a layout",
       set(PlayerWindow._NEXTUP_GEOMETRY) == {v for v, _l in so.NEXT_UP_STYLES})
-check("the Settings row has one segment per style",
-      len(next(s for k, _g, s, _p in so.SEGMENTED_GROUPS if k == "nextupstyle"))
-      == len(so.NEXT_UP_STYLES))
+check("Settings has a Next Up style row",
+      any(k == "nextupstyle" for k, _l, _p in so.CHOICE_ROWS))
 
 print()
 failed = [n for n, ok in RESULTS if not ok]

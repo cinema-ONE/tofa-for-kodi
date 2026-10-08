@@ -280,32 +280,29 @@ def render_main() -> str:
     # current choice where the glyph would be.
     settings_region_item, settings_region_focused = fragments.settings_choice_row(
         8360, value_property="settings_region")
-    # One segmented row per segment type, wider pills than the media-cards
-    # one because "Do nothing" is nearly the default pill's whole width.
-    # The eight rows whose options are individually focusable pills. One
-    # fragment, one id map (settings_options.SEGMENTED_GROUPS), so a new
-    # segmented setting is a table entry rather than another hand-built row.
+    # The rows picked in the right-column picker, one list each. Up/Down
+    # within a group is XML; hops between groups are wired in main.py.
+    _chain = [k for k, _l, _p in settings_options.CHOICE_ROWS if k != "rating"]
+    _ids = {k: lid for k, lid, _p in settings_options.CHOICE_ROWS}
+    _skip = [k for k, _l, _h in settings_options.SEGMENT_ROWS]
     settings_seg_groups = {}
-    for _key, _gid, _sids, _prop in settings_options.SEGMENTED_GROUPS:
+    for _key, _lid, _prop in settings_options.CHOICE_ROWS:
         _name = {"rating": "settings_rating_group",
                  "quality": "settings_quality_group",
                  "nextup": "settings_nextup_group",
                  "nextupstyle": "settings_nextupstyle_group"}.get(
                      _key, "settings_seg_{0}_group".format(_key))
-        _w = (T.SETTINGS_NEXTUP_PILL_W if _key == "nextup"
-              else T.SETTINGS_SEGMENT_PILL_W)
-        # Each row keeps the posy its list carried: these sit in a plain
-        # group, where children do NOT stack themselves, and dropping the
-        # posy piled all five skip rows on one another.
-        _skip = [k for k, _l, _h in settings_options.SEGMENT_ROWS]
-        if _key in _skip and _skip.index(_key):
-            _y = T.SETTINGS_SKIP_ROW_Y[_skip.index(_key)]
-        elif _key == "nextupstyle":
-            _y = T.settings_stack_row_y(1)
+        if _key == "rating":
+            _y, _up, _down = T.SETTINGS_SECTION_BAND, 8200, 8310
         else:
-            _y = T.SETTINGS_SECTION_BAND
-        settings_seg_groups[_name] = fragments.settings_segmented_group(
-            _gid, _sids, prop=_prop, seg_width=_w, posy=_y)
+            _at = _chain.index(_key)
+            _up = _ids[_chain[_at - 1]] if _at else 8000
+            _down = _ids[_chain[_at + 1]] if _at + 1 < len(_chain) else _lid
+            _y = (T.SETTINGS_SKIP_ROW_Y[_skip.index(_key)] if _key in _skip
+                  else T.settings_stack_row_y(1) if _key == "nextupstyle"
+                  else T.SETTINGS_SECTION_BAND)
+        settings_seg_groups[_name] = fragments.settings_choice_list(
+            _lid, value_property=_prop + "_value", posy=_y, onup=_up, ondown=_down)
 
     settings_audiolang_item, settings_audiolang_focused = fragments.settings_choice_row(
         8510, value_property="settings_audio_lang")
@@ -354,6 +351,7 @@ def render_main() -> str:
         toast=fragments.toast(),
         hero_scroll_when=hero_scroll_when,
         settings_info_panel=fragments.settings_info_panel(),
+        settings_picker_panel=fragments.settings_picker_panel(),
         settings_tab_strip=fragments.settings_tab_strip(
             list_id=8000, onup=3000, ondown=8110),
         settings_action_item=settings_action_item,

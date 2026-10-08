@@ -84,16 +84,9 @@ SCAFFOLD_MESSAGE_NATIVE = SCAFFOLD_MESSAGE
 # fragment baked once into static XML cannot vary by which page is showing).
 RIGHT_TARGETS: dict[str, int] = {
     "account": 8110,
-    # 8470 (Streaming quality), not 8460 (Next episode) and not 8410
-    # (Intro): entering a page lands on its FIRST row, and QUALITY is now
-    # the group above NEXT EPISODE. This entry has been wrong once per new
-    # top group -- left stale, the new row can only be reached by pressing
-    # Up from the top of the page, which reads as the row not being there.
-    # 8911 is Streaming quality's FIRST PILL. Was 8470, the list that row
-    # used to be; the segmented rows became groups of focusable pills and a
-    # stale id here means Right does nothing at all, which is how this was
-    # found. The comment above has now been earned twice.
-    "playback": 8911,
+    # Streaming quality, the page's FIRST row: a stale id here means Down
+    # from the tab does nothing (tests/test_settings_nav_targets.py).
+    "playback": 8910,
     "audio": 8510,
     "appearance": 8200,
     "home": 8320,

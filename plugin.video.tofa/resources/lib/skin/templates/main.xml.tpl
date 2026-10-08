@@ -2411,6 +2411,9 @@
                 <visible>String.IsEqual(Window.Property(settings_page),account) + String.IsEmpty(Window.Property(settings_info))</visible>
 {settings_qr_rail}
             </control>
+
+            <!-- The choice picker, over the right column (main.py). -->
+{settings_picker_panel}
         </control>
 
         <!-- Shared chrome, rendered last so it paints on top of whichever

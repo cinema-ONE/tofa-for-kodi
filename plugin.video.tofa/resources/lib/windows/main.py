@@ -548,6 +548,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     #: The CONNECTION toggle ("Direct connections only"), Settings > Account.
     SETTINGS_DIRECT_ONLY_ID = 8130
+    #: The right-column choice picker: its list, panel fill and rim.
+    SETTINGS_PICKER_ID = 8990
+    SETTINGS_PICKER_FILL_ID = 8992
+    SETTINGS_PICKER_RIM_ID = 8993
     SETTINGS_SIGN_OUT_ID = 8120
     SETTINGS_FOX_ID = 8200
     SETTINGS_APPEARANCE_LIST_ID = 8290   # the scrolling grouplist
@@ -722,6 +726,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_languages: list | None = None  # /media/facets languages, see _settings_language_facet()
         self._settings_metadata_options: dict | None = None  # see _settings_metadata()
         self._settings_last_control: dict[str, int] = {}  # page key -> control left last
+        self._settings_picker: dict | None = None    # the open picker, if any
         self._settings_identity: dict | None = None  # cloud GET /v1/me, see _settings_account_identity()
         self._browse_shuffle_seed: int | None = None  # for Sort="random"'s stable pagination, see _browse_sort_clicked()
         # Browse grid paging. The server caps per_page at 200 however much is
@@ -962,6 +967,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_ARTBUDGET_ID, 1)
         self.settings_artclear_list = kodigui.ManagedControlList(
             self, self.SETTINGS_ARTCLEAR_ID, 1)
+        self.settings_choice_lists = {
+            key: kodigui.ManagedControlList(self, lid, 1)
+            for key, lid, _p in settings_options.CHOICE_ROWS}
+        self.settings_picker_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_PICKER_ID, T.SETTINGS_PICKER_MAX_ROWS)
         self.grid_list = kodigui.ManagedControlList(self, self.GRID_ID, 25)
         # 7.5's index is landscape, so it needs its own panel: a Kodi panel
         # has a single itemwidth/itemheight and cannot switch shape.
@@ -1288,8 +1298,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_spoilers_clicked()
         elif controlID == self.SETTINGS_SPOTLIGHT_ID:
             self._settings_spotlight_clicked()
-        elif controlID in settings_options.SEGMENTED_BY_ID:
-            self._settings_segmented_pressed(controlID)
+        elif controlID in settings_options.CHOICE_BY_ID:
+            self._settings_choice_clicked(settings_options.CHOICE_BY_ID[controlID])
+        elif controlID == self.SETTINGS_PICKER_ID:
+            self._settings_picker_clicked()
         elif (home_rows.HOME_ROW_EDIT_GROUP_IDS[0]
               <= controlID <= home_rows.HOME_ROW_EDIT_IDS[-1][-1]):
             self._settings_home_row_pressed(controlID)
@@ -1401,10 +1413,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # 6: re-entering a Settings page returns to the control left last.
         if (self.getProperty("active_section") == "settings"
                 and controlID not in (self.NAV_LIST_ID, self.NAV_AVATAR_ID,
-                                      self.SETTINGS_NAV_ID)):
+                                      self.SETTINGS_NAV_ID, self.SETTINGS_PICKER_ID)):
             page = self.getProperty("settings_page")
             if page:
                 self._settings_last_control[page] = controlID
+        if self._settings_picker and controlID != self.SETTINGS_PICKER_ID:
+            # Focus went elsewhere (a held Back, say): the picker goes too.
+            self._settings_picker = None
+            self.setProperty("settings_picker", "")
         if self.getProperty("active_section") == "settings":
             self._settings_sync_info(controlID)
 
@@ -1535,6 +1551,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # what the viewer means before leaving Browse.
             self._browse_close_collection()
             return
+
+        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self.getFocusId() == self.SETTINGS_PICKER_ID):
+            self._settings_picker_close()
+            return
+
+        if self.getFocusId() == self.SETTINGS_PICKER_ID:
+            self._settings_picker_sync()
 
         if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
                 and self.getProperty("active_section") == "settings"
@@ -5619,7 +5643,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_fill_device()
         self._settings_wire_account_nav()
         self._settings_wire_appearance_nav()
-        self._settings_wire_segmented()
+        self._settings_wire_choices()
 
         _t0 = time.monotonic()
         client = self._get_client()
@@ -6166,9 +6190,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     }
 
     def _settings_info_key(self, control_id: int) -> str:
-        found = settings_options.SEGMENTED_BY_ID.get(control_id)
-        if found:
-            return found[0]
+        if control_id == self.SETTINGS_PICKER_ID and self._settings_picker:
+            return self._settings_picker["key"]
+        if control_id in settings_options.CHOICE_BY_ID:
+            return settings_options.CHOICE_BY_ID[control_id]
         if self._settings_home_row_button(control_id)[0] is not None:
             return "home_rows"
         return self.SETTINGS_INFO_KEYS.get(control_id, "")
@@ -6179,12 +6204,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             item = lst.getListItem(0) if lst is not None else None
             return "On" if item is not None and item.getProperty("checked") else "Off"
         prop = self.getProperty
-        segments = {k: p for k, _g, _s, p in settings_options.SEGMENTED_GROUPS}
-        if key in segments:
-            for i in range(4):
-                if prop("{0}_seg{1}_on".format(segments[key], i)):
-                    return prop("{0}_seg{1}".format(segments[key], i))
-            return ""
+        choices = {k: p for k, _l, p in settings_options.CHOICE_ROWS}
+        if key in choices:
+            return prop(choices[key] + "_value")
         values = {
             "switch_profile": lambda: prop("settings_profile_name"),
             "switch_server": lambda: prop("settings_server"),
@@ -6233,6 +6255,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                                  self._settings_value(vkey) if vkey else "")
             return
         value = self._settings_value(key)
+        self.setProperty("settings_info_now", "")
         self.setProperty("settings_info", "1")
         self.setProperty("settings_info_title", info.title)
         self.setProperty("settings_info_value", value)
@@ -6250,6 +6273,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("settings_info_opt{0}_desc".format(i + 1), desc)
             self.setProperty("settings_info_opt{0}_on".format(i + 1),
                              "1" if label and label == value else "")
+            self.setProperty("settings_info_opt{0}_dim".format(i + 1), "")
+        if control_id == self.SETTINGS_PICKER_ID:
+            self._settings_picker_sync()
 
     def _settings_fox_name(self) -> str:
         """"Indigo Fox" for the live accent, or "" when it is not one of the
@@ -6289,14 +6315,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ("Critics", {"show_card_ratings": True, "preferred_card_rating": "rt"}),
         ("Off", {"show_card_ratings": False}),
     )
-
-    #: Title and one-line summary per segmented row, in the app's wording.
-    SEGMENTED_TEXT = {
-        "rating":  ("Rating badge", "Which score appears on posters"),
-        "quality": ("Streaming quality", "Auto adapts to your connection"),
-        "nextup":  ("Play the next episode", "What happens as an episode ends"),
-        "nextupstyle": ("Next Up style", "How the next episode appears"),
-    }
 
     def _settings_segmented_options(self, key: str):
         """(label, value) for one segmented row, in display order.
@@ -6347,34 +6365,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 settings_options.SEGMENT_ACTION_DEFAULT)
 
     def _settings_fill_segmented(self):
-        """Window properties for all eight segmented rows.
-
-        Window rather than ListItem properties because these rows are groups
-        of real buttons now, not one-item lists -- see
-        fragments.settings_segmented_group.
-        """
-        hints = dict(self.SEGMENTED_TEXT)
-        for key, label, hint in settings_options.SEGMENT_ROWS:
-            hints[key] = (label, hint)
-        for key, _gid, _sids, prop in settings_options.SEGMENTED_GROUPS:
-            title, summary = hints.get(key, (key.title(), ""))
-            self.setProperty(prop + "_title", title)
-            self.setProperty(prop + "_summary", summary)
+        """Title and current value for every picker row (CHOICE_ROWS)."""
+        for key, _lid, prop in settings_options.CHOICE_ROWS:
+            lst = self.settings_choice_lists[key]
+            if not lst.size():
+                lst.addItems([kodigui.ManagedListItem(
+                    label=settings_info.ROWS[key].title)])
+            options = self._settings_segmented_options(key)
             active = self._settings_segmented_active(key)
-            for idx, (seg_label, _value) in enumerate(
-                    self._settings_segmented_options(key)):
-                self.setProperty("{0}_seg{1}".format(prop, idx), seg_label)
-                self.setProperty("{0}_seg{1}_on".format(prop, idx),
-                                 "1" if idx == active else "")
+            self.setProperty(prop + "_value",
+                             options[active][0] if 0 <= active < len(options) else "")
 
-    def _settings_segmented_pressed(self, control_id: int):
-        """Pick the option that was pressed. No cycling: each option is its
-        own control now, so the viewer chooses directly, which is what the
-        reference app does and what makes a three-option row usable."""
-        found = settings_options.SEGMENTED_BY_ID.get(control_id)
-        if not found:
-            return
-        key, index = found
+    def _settings_choice_clicked(self, key: str):
+        self._settings_choose(
+            key, settings_info.ROWS[key].title,
+            [{"label": label} for label, _v in self._settings_segmented_options(key)],
+            self._settings_segmented_active(key),
+            lambda index: self._settings_choice_pick(key, index))
+
+    def _settings_choice_pick(self, key: str, index: int):
+        """Write the option picked for one CHOICE_ROWS row."""
         options = self._settings_segmented_options(key)
         if not (0 <= index < len(options)):
             return
@@ -6393,65 +6403,93 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_write({"playback": {"segment_actions": actions}})
         self._settings_fill_segmented()
 
-    def _settings_wire_segmented(self):
-        """Left/Right between a row's options, Left off the first one back to
-        the sidebar. Python, not XML: these buttons are grandchildren of a
-        grouplist, whose AddControl overrides its children's up/down and
-        leaves grandchildren resolving to nothing."""
-        try:
-            nav = self.getControl(self.SETTINGS_NAV_ID)
-        except Exception:                                       # noqa: BLE001
+    # --- The right-column picker (app 2.0) -------------------------------
+
+    def _settings_choose(self, key: str, title: str, rows: list, selected: int,
+                         pick) -> None:
+        """Open the picker over the right column; `pick(index)` runs on Select.
+
+        `rows` are {"label", "detail"?}; `key` names the row for the left
+        column, which follows the focused option until the picker closes."""
+        items = []
+        for i, row in enumerate(rows):
+            li = kodigui.ManagedListItem(label=row["label"])
+            li.setProperty("detail", row.get("detail") or "")
+            li.setProperty("current", "1" if i == selected else "")
+            items.append(li)
+        self.settings_picker_list.reset()
+        self.settings_picker_list.addItems(items)
+        shown = min(len(rows), T.SETTINGS_PICKER_MAX_ROWS)
+        height = (T.SETTINGS_PICKER_LIST_Y + shown * T.SETTINGS_PICKER_PITCH
+                  - (T.SETTINGS_PICKER_PITCH - T.SETTINGS_PICKER_ROW_H)
+                  + T.SETTINGS_PICKER_FOOT)
+        for cid in (self.SETTINGS_PICKER_FILL_ID, self.SETTINGS_PICKER_RIM_ID):
+            self.getControl(cid).setHeight(height)
+        self._settings_picker = {
+            "key": key, "origin": self.getFocusId(), "pick": pick,
+            "current": selected, "labels": [r["label"] for r in rows]}
+        self.setProperty("settings_picker_title", title)
+        self.setProperty("settings_picker", "1")
+        self.setFocusId(self.SETTINGS_PICKER_ID)
+        self.settings_picker_list.selectItem(max(selected, 0))
+        self._settings_sync_info(self.SETTINGS_PICKER_ID)
+
+    def _settings_picker_close(self) -> dict | None:
+        """Hide the picker and put focus back on its row."""
+        picker, self._settings_picker = self._settings_picker, None
+        self.setProperty("settings_picker", "")
+        if picker:
+            self.setFocusId(picker["origin"])
+        return picker
+
+    def _settings_picker_clicked(self):
+        index = self.settings_picker_list.getSelectedPosition()
+        picker = self._settings_picker_close()
+        if picker and index is not None and index >= 0:
+            picker["pick"](index)
+
+    def _settings_picker_sync(self):
+        """The left column names the focused option, and the current one
+        beside it when they differ ("Minimal  Now Compact")."""
+        picker = self._settings_picker
+        if not picker:
             return
-        rows: dict = {}
-        for _key, _gid, sids, _prop in settings_options.SEGMENTED_GROUPS:
-            try:
-                btns = [self.getControl(i) for i in sids]
-            except Exception:                                   # noqa: BLE001
-                continue
-            for i, btn in enumerate(btns):
-                btn.controlLeft(btns[i - 1] if i else btn)
-                if i < len(btns) - 1:
-                    btn.controlRight(btns[i + 1])
-            rows[_key] = btns
+        labels = picker["labels"]
+        pos = self.settings_picker_list.getSelectedPosition()
+        focused = labels[pos] if pos is not None and 0 <= pos < len(labels) else ""
+        current = labels[picker["current"]] if 0 <= picker["current"] < len(labels) else ""
+        self.setProperty("settings_info_value", focused)
+        self.setProperty("settings_info_now",
+                         "Now " + current if current and focused != current else "")
+        # While picking, the left column's choices light only the focused one.
+        for i in range(settings_info.MAX_OPTIONS):
+            label = self.getProperty("settings_info_opt{0}".format(i + 1))
+            self.setProperty("settings_info_opt{0}_dim".format(i + 1),
+                             "1" if label and label != focused else "")
 
-        # UP/DOWN as well as left/right. The pills are grandchildren of the
-        # appearance/playback grouplist, so their vertical navigation
-        # resolves to nothing and Kodi wraps them internally -- Down simply
-        # did nothing. Same trap the home-row editor hit.
-        #
-        # Keep the column where the next row is wide enough, clamped
-        # otherwise, so moving down a page of pills does not always dump
-        # focus on the first one.
-        def _join(above, below):
-            if not (above and below):
-                return
-            for i, btn in enumerate(above):
-                btn.controlDown(below[min(i, len(below) - 1)])
-            for i, btn in enumerate(below):
-                btn.controlUp(above[min(i, len(above) - 1)])
-
-        order = [k for k, _g, _s, _p in settings_options.SEGMENTED_GROUPS]
-        playback_chain = [k for k in order if k not in ("rating",)]
-        for a, b in zip(playback_chain, playback_chain[1:]):
-            _join(rows.get(a), rows.get(b))
-
-        for btn in rows.get(playback_chain[0], []):
-            btn.controlUp(nav)
-        # The rating row sits between the fox grid and "Episodes remaining"
-        # on Appearance, not in the playback chain.
+    def _settings_wire_choices(self):
+        """Up/Down between groups for the picker rows. They are grandchildren
+        of a grouplist, so a hop across groups only holds from Python."""
+        ids = {k: lid for k, lid, _p in settings_options.CHOICE_ROWS}
         try:
-            foxes = self.getControl(self.SETTINGS_FOX_ID)
-            add_row = self.getControl(self.SETTINGS_ADD_ROW_ID)
-            episodes = self.getControl(self.SETTINGS_EPISODES_ID)
+            get = self.getControl
+            quality, nextup = get(ids["quality"]), get(ids["nextup"])
+            style, intro = get(ids["nextupstyle"]), get(ids["intro"])
+            quality.controlUp(get(self.SETTINGS_NAV_ID))
+            quality.controlDown(nextup)
+            nextup.controlUp(quality)
+            style.controlDown(intro)
+            intro.controlUp(style)
+            foxes, rating = get(self.SETTINGS_FOX_ID), get(ids["rating"])
+            episodes = get(self.SETTINGS_EPISODES_ID)
+            foxes.controlDown(rating)
+            rating.controlUp(foxes)
+            rating.controlDown(episodes)
+            episodes.controlUp(rating)
+            add_row = get(self.SETTINGS_ADD_ROW_ID)
+            add_row.controlDown(add_row)
         except Exception:                                       # noqa: BLE001
-            return
-        add_row.controlDown(add_row)
-        for btn in rows.get("rating", []):
-            btn.controlUp(foxes)
-            btn.controlDown(episodes)
-        if rows.get("rating"):
-            foxes.controlDown(rows["rating"][0])
-            episodes.controlUp(rows["rating"][0])
+            log.warning("settings: could not wire the picker rows")
 
     def _settings_rating_index(self, prefs: dict) -> int:
         if not prefs.get("show_card_ratings", True):
@@ -6621,9 +6659,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # spotlight <-> first editor row and last editor row <-> the
             # add tile are joined by _settings_wire_home_rows, which is the
             # only place that knows how many rows the account actually has.
-            # add row <-> rating pills <-> episodes is joined by
-            # _settings_wire_segmented, which is the only place that knows
-            # which pills a segmented row has.
+            # foxes <-> rating <-> episodes is joined by _settings_wire_choices.
             spoilers = self.getControl(self.SETTINGS_SPOILERS_ID)
             region = self.getControl(self.SETTINGS_REGION_ID)
             episodes.controlDown(spoilers)
@@ -7151,7 +7187,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         is always a first audio preference, and an empty list would mean the
         file's own track order decides, which is the behaviour this whole
         setting exists to override."""
-        from . import playoptions
         current = list(self._settings_playback().get(pref_key) or [])
         audio = pref_key.startswith("preferred_audio")
         audio_primary = audio and slot == 0
@@ -7163,7 +7198,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         offset = len(rows)
         rows += [{"label": name, "detail": code.upper()}
                  for code, name in options]
-        selected = 0
+        selected = -1 if audio_primary else 0
         if len(current) > slot:
             # langcodes.same, not ==: a preference written by the web app can
             # be the other spelling of the language this row offers, and an
@@ -7173,12 +7208,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 if langcodes.same(code, current[slot]):
                     selected = idx + offset
                     break
-        index = playoptions.show_choice(
-            title=("Audio" if audio else "Subtitles"),
-            subtitle=("Primary language" if slot == 0 else "Secondary language"),
-            rows=rows, selected_idx=selected)
-        if index is None:
-            return
+        key = ("audio" if audio else "sub") + ("_lang2" if slot else "_lang")
+        self._settings_choose(
+            key, settings_info.ROWS[key].title, rows, selected,
+            lambda index: self._settings_language_pick(
+                pref_key, slot, current, options, offset, index))
+
+    def _settings_language_pick(self, pref_key: str, slot: int, current: list,
+                                options: list, offset: int, index: int):
+        """Write one language slot picked in _settings_language_clicked."""
         chosen = None if index < offset else options[index - offset][0]
         slots = [current[i] if len(current) > i else None for i in range(2)]
         slots[slot] = chosen
@@ -7271,18 +7309,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_region", settings_options.region_name(code) or "—")
 
     def _settings_region_clicked(self):
-        from . import playoptions
         code = self._ensure_preferences().get("region") or ""
         options = self._settings_region_list()
         selected = next((i for i, (c, _n) in enumerate(options) if c == code), 0)
-        index = playoptions.show_choice(
-            title="Availability region", subtitle="",
-            rows=[{"label": name, "detail": c} for c, name in options],
-            selected_idx=selected)
-        if index is None:
-            return
-        self._settings_write({"region": options[index][0]})
-        self._settings_fill_region()
+
+        def _pick(index):
+            self._settings_write({"region": options[index][0]})
+            self._settings_fill_region()
+        self._settings_choose(
+            "region", settings_info.ROWS["region"].title,
+            [{"label": name, "detail": c} for c, name in options], selected, _pick)
 
     # --- Privacy & About, This Device -----------------------------------
 
@@ -7421,19 +7457,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                      if value == current), "%d MB" % current)
 
     def _settings_artbudget_clicked(self):
-        from . import playoptions
         current = artcache.budget_bytes() // (1024 * 1024)
         selected = next((i for i, (mb, _n) in enumerate(settings_options.ARTCACHE_BUDGETS)
                          if mb == current), 0)
-        index = playoptions.show_choice(
-            title="Artwork storage limit",
-            subtitle="Artwork over this is removed oldest first, and downloads "
-                     "again when you next see it.",
-            rows=[{"label": name, "detail": ""}
-                  for _mb, name in settings_options.ARTCACHE_BUDGETS],
-            selected_idx=selected)
-        if index is None:
-            return
+        self._settings_choose(
+            "art_budget", settings_info.ROWS["art_budget"].title,
+            [{"label": name} for _mb, name in settings_options.ARTCACHE_BUDGETS],
+            selected, self._settings_artbudget_pick)
+
+    def _settings_artbudget_pick(self, index: int):
         # A Kodi setting, not a server preference: it describes THIS device's
         # disk, so it has no business on the account.
         chosen = settings_options.ARTCACHE_BUDGETS[index][0]
