@@ -31,7 +31,8 @@ mode_of = P._stats_mode_from_notification
 # --- the documented shape, exactly as Kodi delivers it -------------------
 check("an object payload yields its mode",
       mode_of('{"mode":"panel"}') == playerstats.PANEL, repr(mode_of('{"mode":"panel"}')))
-check("pill", mode_of('{"mode":"pill"}') == playerstats.PILL)
+check("pill is gone with the pill itself, so it changes nothing",
+      mode_of('{"mode":"pill"}') is None)
 check("cycle is passed through as its own word",
       mode_of('{"mode":"cycle"}') == P.STATS_CYCLE)
 

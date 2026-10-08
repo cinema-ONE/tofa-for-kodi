@@ -306,20 +306,6 @@ _SCRUB_READOUT_GAP = 10
 # Matched with fullmatch, so "Chapter 3" and "3. The Bridge" keep their names.
 _UNNAMED_CHAPTER_TITLE = re.compile(r"\d{1,2}:\d{2}:\d{2}([.,]\d+)?|\d{1,2}")
 
-# Stats pill geometry. The capsule hugs its text, so Python sizes it: the
-# font is monospace, which turns "how wide is this string" into a
-# multiplication instead of textmetrics.py's per-character table. 9.6px is
-# Roboto Mono's own 0.6em advance at size 16, read out of the TTF.
-_STATS_CHAR_W = 9.6
-# Side padding has to CLEAR the capsule's own corner, not just separate the
-# text from its edge: at 38px tall the cap radius is 19, so anything less
-# than that puts the first character inside the curve and reads as touching
-# the border.
-_STATS_PAD_X = 30
-_STATS_MIN_W = 200
-_STATS_MAX_W = 1500
-_STATS_CENTRE_X = 960
-
 # Attached fonts are fetched whole at subtitle load; a release carrying
 # dozens of them should not stall it.
 FONT_BUDGET_BYTES = 32 * 1024 * 1024
@@ -741,9 +727,6 @@ class PlayerWindow(kodigui.ControlledDialog):
     NEXT_UP_DISMISS_ID = 9702
     NEXT_UP_RING_ID = 9703
     STATS_ROWS_ID = 9620
-    STATS_PILL_BG_ID = 9601
-    STATS_PILL_OUTLINE_ID = 9602
-    STATS_PILL_LABEL_ID = 9603
 
     EPISODES_ID = 9134
     ADJUST_ID = 9135
@@ -6055,11 +6038,8 @@ class PlayerWindow(kodigui.ControlledDialog):
     # ------------------------------------------------------------------
 
     def set_stats_mode(self, mode: str):
-        """off -> pill -> panel, the three states 8.11 defines.
-
-        The utility button's "on" tint follows either readout being up, so
-        the button reads as engaged in both -- it is one control with three
-        positions, not two independent toggles."""
+        """off or panel: the stats button toggles the one panel (app 2.0
+        dropped the pill)."""
         self._stats_mode = mode
         self.setProperty("player_stats", mode)
         self.setProperty(f"player_util_{self.STATS_ID}", "on" if mode else "")
@@ -6205,38 +6185,9 @@ class PlayerWindow(kodigui.ControlledDialog):
     def _refresh_stats(self):
         position = f"{_format_time(self._position_ms())} / {_format_time(self._duration_ms)}"
         self._fill_stats_panel(position)
-        props = playerstats.build(self._nego, self.selection, position)
-        props["stats_heading"] = "PLAYBACK STATS"
-        # No verdict word. The reference app puts one top-right, but ours
-        # could only ever restate the delivery decision -- Kodi reports no
-        # drop or jitter counters, so it never described playback health --
-        # and the Method row now says the same thing in the same words, with
-        # the decision mode beside it. Two labels for one fact.
-        for key, value in props.items():
-            self.setProperty(key, value)
-        if self._stats_mode == playerstats.PILL:
-            self._size_stats_pill(props.get("stats_pill", ""))
-
-    def _size_stats_pill(self, text: str):
-        """Fit the capsule to its own text, centred on x=960.
-
-        Kodi strips [COLOR] markup before drawing, so the markup must come
-        out before counting characters or every tinted run would widen the
-        pill by the length of its own tag."""
-        plain = re.sub(r"\[/?COLOR[^\]]*\]", "", text)
-        width = int(round(len(plain) * _STATS_CHAR_W)) + 2 * _STATS_PAD_X
-        width = max(_STATS_MIN_W, min(width, _STATS_MAX_W))
-        left = _STATS_CENTRE_X - width // 2
-        try:
-            for control_id in (self.STATS_PILL_BG_ID, self.STATS_PILL_OUTLINE_ID,
-                               self.STATS_PILL_LABEL_ID):
-                control = self.getControl(control_id)
-                control.setWidth(width)
-                control.setPosition(left, 44)
-        except (RuntimeError, TypeError):
-            # Same reason refresh_progress swallows these: getControl raises
-            # before the XML has loaded and again during teardown.
-            pass
+        # No verdict word: Kodi reports no drop or jitter counters, so it
+        # could only restate the Method row.
+        self.setProperty("stats_heading", "PLAYBACK STATS")
 
     # ------------------------------------------------------------------
     # input
@@ -6286,7 +6237,6 @@ class PlayerWindow(kodigui.ControlledDialog):
     # ACTION_JUMP_SMS<n> through a remote's; the SMS ids are named for the
     # key they sit on (SMS2 is the "2" key), and there is no SMS1.
     _STATS_DIGIT_ACTIONS = {
-        **{aid: playerstats.PILL for aid in _actions("REMOTE_1")},
         **{aid: playerstats.PANEL for aid in _actions("REMOTE_2", "ACTION_JUMP_SMS2")},
         **{aid: playerstats.OFF for aid in _actions("REMOTE_3", "ACTION_JUMP_SMS3")},
     }
