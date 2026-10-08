@@ -353,6 +353,7 @@ def render_main() -> str:
     return _load("main.xml.tpl").format(
         toast=fragments.toast(),
         hero_scroll_when=hero_scroll_when,
+        settings_info_panel=fragments.settings_info_panel(),
         settings_tab_strip=fragments.settings_tab_strip(
             list_id=8000, onup=3000, ondown=8110),
         settings_action_item=settings_action_item,

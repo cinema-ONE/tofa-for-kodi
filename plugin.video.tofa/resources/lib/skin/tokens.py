@@ -714,7 +714,7 @@ SETTINGS_INFO_W = 700
 SETTINGS_TITLE_Y = 254
 SETTINGS_SUBTITLE_Y = 336
 #: Account's identity card, top of the left column.
-SETTINGS_PROFILE_Y = 250
+SETTINGS_PROFILE_Y = 236
 SETTINGS_PROFILE_W = SETTINGS_INFO_W
 SETTINGS_PROFILE_H = 98
 SETTINGS_RAIL_X = SETTINGS_LEFT
@@ -725,6 +725,17 @@ SETTINGS_TAB_CENTRES = (148, 355, 619, 851, 1014, 1196)
 SETTINGS_TAB_INK_W = (97, 194, 192, 138, 67, 179)
 #: First row's top; its group eyebrow inks at 255.
 SETTINGS_CONTENT_Y = 285
+#: The left column's page summary: eyebrow ink 364, value ink 389, 84 apart.
+SETTINGS_SUM_Y = 360
+SETTINGS_SUM_PITCH = 84
+#: ...and the focused row's: title ink 341, value 415, body 465 (30 apart),
+#: a note 75 below the body, and choices 82 apart.
+SETTINGS_INFO_TITLE_Y = 326
+SETTINGS_INFO_VALUE_Y = 409
+SETTINGS_INFO_BODY_Y = 459
+SETTINGS_INFO_NOTE_GAP = 45
+SETTINGS_INFO_OPTS_GAP = 60
+SETTINGS_INFO_OPT_PITCH = 82
 
 # Rows. A two-line action row (a title over an explanatory line, e.g. Switch
 # Profile, Sign Out) is 109; a single-line value row (label left, value right,
@@ -1083,7 +1094,7 @@ SETTINGS_RAIL_PANEL_H = 430
 SETTINGS_RAIL_RADIUS = 24
 SETTINGS_QR = 292
 #: The QR panel, in the left column under the page title.
-SETTINGS_RAIL_Y = 470
+SETTINGS_RAIL_Y = 590
 SETTINGS_QR_Y = SETTINGS_RAIL_Y + 25
 SETTINGS_QR_CAPTION_Y = SETTINGS_RAIL_Y + 335
 

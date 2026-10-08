@@ -23,7 +23,8 @@ from . import (cardoptions, cards, focusmemory, kodigui, navbar, profile_select,
 from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http, langcodes, log,
                 textmetrics,
                 playbackprefs, prefetch, progress, regional, search_history,
-                serverversion, settings_options, settings_pages, signin)
+                serverversion, settings_info, settings_options, settings_pages,
+                signin)
 from .. import avatar_presets
 from .. import monogram
 # Aliased: `prefs` is the name every settings method already uses for the
@@ -882,6 +883,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("on_accent_color", theme.on_accent_text())
         self.setProperty("text_primary", theme.TEXT_PRIMARY)
         self.setProperty("text_secondary", theme.TEXT_SECONDARY)
+        self.setProperty("text_strong", theme.TEXT_STRONG)
         self.setProperty("text_tertiary", theme.TEXT_TERTIARY)
         self.setProperty("logo_file", theme.default_logo())
         # Kodi can reuse a window ID slot across different window
@@ -1249,6 +1251,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # ------------------------------------------------------------------
 
     def onClick(self, controlID):
+        self._on_click(controlID)
+        # A Settings value may have changed: refresh what the left column says.
+        if self.getProperty("active_section") == "settings":
+            try:
+                self._settings_sync_info(self.getFocusId())
+            except RuntimeError:
+                pass
+
+    def _on_click(self, controlID):
         # Where to put the viewer back if this click opens a window over us.
         self.remember_focus(controlID)
         if controlID == self.NAV_LIST_ID:
@@ -1394,6 +1405,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             page = self.getProperty("settings_page")
             if page:
                 self._settings_last_control[page] = controlID
+        if self.getProperty("active_section") == "settings":
+            self._settings_sync_info(controlID)
 
         # Browse: coming back UP out of the grid should return to the pill
         # you left FROM, not always to Sort. The template can carry only one
@@ -5543,6 +5556,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_subtitle", page.subtitle)
         for item in self.settings_nav_list:
             item.setProperty("is_current", "1" if item.dataSource is page else "")
+        self._settings_sync_info(0)
         target = self._settings_entry_target(page.key) or self.SETTINGS_NAV_ID
         try:
             self.getControl(self.SETTINGS_NAV_ID).controlDown(self.getControl(target))
@@ -5643,6 +5657,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         profile = self._settings_active_profile()
         self.settings_switch_profile_list.getListItem(0).setProperty(
             "summary", (profile.name if profile else "") or "")
+        self.setProperty("settings_profile_name", (profile.name if profile else "") or "")
         self.setProperty("settings_avatar_photo",
                          self._settings_account_avatar()
                          or self._settings_avatar_photo(profile))
@@ -6138,6 +6153,104 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("on_accent_color", theme.on_accent_text())
         self.setProperty("logo_file", theme.default_logo())
 
+    # --- the left column's info panel (app 2.0) -----------------------
+    #: Row controls that are not segmented pills, by info key.
+    SETTINGS_INFO_KEYS = {
+        8110: "switch_profile", 8115: "switch_server", 8120: "sign_out",
+        8130: "direct_only", 8710: "setup_device",
+        8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
+        8550: "sub_lang2", 8530: "always_subs",
+        8200: "fox", 8310: "episodes_remaining", 8315: "hide_spoilers",
+        8360: "region", 8320: "spotlight", 8340: "add_row",
+        8620: "licences", 8720: "art_budget", 8730: "art_clear",
+    }
+
+    def _settings_info_key(self, control_id: int) -> str:
+        found = settings_options.SEGMENTED_BY_ID.get(control_id)
+        if found:
+            return found[0]
+        if self._settings_home_row_button(control_id)[0] is not None:
+            return "home_rows"
+        return self.SETTINGS_INFO_KEYS.get(control_id, "")
+
+    def _settings_value(self, key: str) -> str:
+        """A row's current value in words, read live; "" when it has none."""
+        def checked(lst):
+            item = lst.getListItem(0) if lst is not None else None
+            return "On" if item is not None and item.getProperty("checked") else "Off"
+        prop = self.getProperty
+        segments = {k: p for k, _g, _s, p in settings_options.SEGMENTED_GROUPS}
+        if key in segments:
+            for i in range(4):
+                if prop("{0}_seg{1}_on".format(segments[key], i)):
+                    return prop("{0}_seg{1}".format(segments[key], i))
+            return ""
+        values = {
+            "switch_profile": lambda: prop("settings_profile_name"),
+            "switch_server": lambda: prop("settings_server"),
+            "server": lambda: prop("settings_server"),
+            "direct_only": lambda: checked(self.settings_direct_list),
+            "connection": lambda: ("Direct only" if auth.direct_only()
+                                   else "Direct, relay as backup"),
+            "audio_lang": lambda: prop("settings_audio_lang"),
+            "audio_lang2": lambda: prop("settings_audio_lang2"),
+            "sub_lang": lambda: prop("settings_sub_lang"),
+            "sub_lang2": lambda: prop("settings_sub_lang2"),
+            "audio_pair": lambda: self._settings_pair("settings_audio_lang"),
+            "sub_pair": lambda: self._settings_pair("settings_sub_lang"),
+            "always_subs": lambda: checked(self.settings_alwayssubs_list),
+            "fox": lambda: self._settings_fox_name() or "Custom",
+            "episodes_remaining": lambda: checked(self.settings_episodes_list),
+            "hide_spoilers": lambda: checked(self.settings_spoilers_list),
+            "region": lambda: prop("settings_region"),
+            "spotlight": lambda: checked(self.settings_spotlight_list),
+            "home_rows": lambda: prop("settings_home_rows_count"),
+            "art_budget": lambda: prop("settings_art_budget"),
+            "version": lambda: prop("settings_version"),
+        }
+        fn = values.get(key)
+        return fn() if fn else ""
+
+    def _settings_pair(self, prop: str) -> str:
+        first, second = self.getProperty(prop), self.getProperty(prop + "2")
+        if first and second and second not in ("None", "—") and second != first:
+            return "{0}, then {1}".format(first, second)
+        return first
+
+    def _settings_sync_info(self, control_id: int = 0):
+        """Fill the left column for the focused row, or the page summary
+        when the tabs have focus."""
+        key = self._settings_info_key(control_id)
+        info = settings_info.ROWS.get(key)
+        if info is None:
+            self.setProperty("settings_info", "")
+            page = self.getProperty("settings_page")
+            rows = settings_info.SUMMARIES.get(page, ())
+            for i in range(settings_info.MAX_SUMMARY):
+                eyebrow, vkey = rows[i] if i < len(rows) else ("", "")
+                self.setProperty("settings_sum{0}_key".format(i + 1), eyebrow)
+                self.setProperty("settings_sum{0}_value".format(i + 1),
+                                 self._settings_value(vkey) if vkey else "")
+            return
+        value = self._settings_value(key)
+        self.setProperty("settings_info", "1")
+        self.setProperty("settings_info_title", info.title)
+        self.setProperty("settings_info_value", value)
+        lines = textmetrics.wrap_lines(info.body, T.SETTINGS_INFO_W, 3, 24)
+        for i in range(3):
+            self.setProperty("settings_info_body{0}".format(i + 1),
+                             lines[i] if i < len(lines) else "")
+        note = textmetrics.wrap_lines(info.note, T.SETTINGS_INFO_W, 2, 23)
+        for i in range(2):
+            self.setProperty("settings_info_note{0}".format(i + 1),
+                             note[i] if i < len(note) else "")
+        for i in range(settings_info.MAX_OPTIONS):
+            label, desc = (info.options[i] if i < len(info.options) else ("", ""))
+            self.setProperty("settings_info_opt{0}".format(i + 1), label)
+            self.setProperty("settings_info_opt{0}_desc".format(i + 1), desc)
+            self.setProperty("settings_info_opt{0}_on".format(i + 1),
+                             "1" if label and label == value else "")
+
     def _settings_fox_name(self) -> str:
         """"Indigo Fox" for the live accent, or "" when it is not one of the
         14 presets. Read from the resolved accent rather than from whatever
@@ -6576,6 +6689,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                           row.get("type"), home_rows.row_removable(row)))
 
         self._settings_home_slots = [i for i, _t, _e, _k, _r in shown]
+        on = sum(1 for _i, _t, enabled, _k, _r in shown if enabled)
+        self.setProperty("settings_home_rows_count",
+                         "{0} of {1} shown".format(on, len(shown)) if shown else "")
         # Say so LOUDLY rather than editing a list the viewer cannot see all
         # of. MAX_HOME_ROWS sat at 9 while tofa's own default grew to 10, and
         # the tenth row simply was not there -- no error, no gap, just a

@@ -1648,7 +1648,7 @@
             <control type="group">
                 <posx>{SETTINGS_LEFT}</posx>
                 <posy>{SETTINGS_PROFILE_Y}</posy>
-                <visible>String.IsEqual(Window.Property(settings_page),account)</visible>
+                <visible>String.IsEqual(Window.Property(settings_page),account) + String.IsEmpty(Window.Property(settings_info))</visible>
                 <control type="image">
                     <posx>0</posx>
                     <posy>0</posy>
@@ -1725,22 +1725,12 @@
                 <posy>{SETTINGS_TITLE_Y}</posy>
                 <width>{SETTINGS_INFO_W}</width>
                 <height>80</height>
-                <visible>!String.IsEqual(Window.Property(settings_page),account)</visible>
+                <visible>!String.IsEqual(Window.Property(settings_page),account) + String.IsEmpty(Window.Property(settings_info))</visible>
                 <font>{FONT_HERO_TITLE}</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>$INFO[Window.Property(settings_title)]</label>
             </control>
-            <control type="label">
-                <posx>{SETTINGS_LEFT}</posx>
-                <posy>{SETTINGS_SUBTITLE_Y}</posy>
-                <width>{SETTINGS_INFO_W}</width>
-                <visible>!String.IsEqual(Window.Property(settings_page),account)</visible>
-                <height>34</height>
-                <aligny>center</aligny>
-                <font>{FONT_BODY}</font>
-                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                <label>$INFO[Window.Property(settings_subtitle)]</label>
-            </control>
+{settings_info_panel}
 
             <!-- ================= DETAIL: ACCOUNT ================= -->
             <!-- A grouplist, since 2026-08-13: the app's five sections total
@@ -2408,6 +2398,7 @@
                     </control>
                 </control>
                 <control type="group">
+                <visible>String.IsEmpty(Window.Property(settings_info))</visible>
 {settings_support_rail}
                 </control>
             </control>
@@ -2417,7 +2408,7 @@
 
             <!-- ==================== RIGHT RAIL ==================== -->
             <control type="group">
-                <visible>String.IsEqual(Window.Property(settings_page),account)</visible>
+                <visible>String.IsEqual(Window.Property(settings_page),account) + String.IsEmpty(Window.Property(settings_info))</visible>
 {settings_qr_rail}
             </control>
         </control>
