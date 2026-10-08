@@ -676,6 +676,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_sort_offered: list = []  # the sort menu's rows, as indexes
         self._browse_walls: dict = {}         # library id or kind -> wall posters
         self._browse_wall_shown: list = []    # the posters the wall holds now
+        self._browse_feature: dict | None = None  # Collections' featured one
         # The sort keys THIS server accepts, straight off the facets response
         # (the whole point of the facets route: render what the server
         # offers, never a table baked in here). None
@@ -2846,7 +2847,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             except http.ApiError as exc:
                 kodigui.ERROR("main.py: browse custom collections count failed: {0}".format(exc))
             collections["count"] = regional.number(count)
-            collections["art"] = self._browse_item_art(client, found[0]) if found else ""
+            # One collection with a backdrop is featured behind the tile.
+            featured = [c for c in found if c.get("backdrop_url")]
+            pick = random.choice(featured) if featured else (found[0] if found else None)
+            collections["art"] = self._browse_item_art(client, pick) if pick else ""
+            collections["feature"] = pick
         except http.ApiError as exc:
             kodigui.ERROR("main.py: browse collections count failed: {0}".format(exc))
 
@@ -2865,6 +2870,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _browse_sync_wall(self, src: dict):
         """Behind a library, a tilted wall of its posters; behind Watchlist
         and History, one drifting row of theirs (app 2.0)."""
+        if src.get("kind") == "collections":
+            self._browse_sync_feature()
+            return
         posters = self._browse_walls.get(self._browse_wall_key(src)) or []
         mode = {"library": "tilt", "watchlist": "row", "history": "row"}.get(src.get("kind"), "")
         if not posters or not mode:
@@ -2877,6 +2885,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.setProperty("browse_wall_%d" % n, posters[n % len(posters)])
         self.setProperty("browse_wall", mode)
 
+    def _browse_sync_feature(self):
+        feature = self._browse_feature
+        if not feature:
+            self.setProperty("browse_wall", "")
+            return
+        self.setProperty("browse_feature_title", feature["title"])
+        self.setProperty("browse_feature_line", feature["line"])
+        posters = feature["posters"]
+        for i in range(T.BROWSE_FEATURE_MAX):
+            url, year = posters[i] if i < len(posters) else ("", "")
+            self.setProperty("browse_feature_p%d" % i, url)
+            self.setProperty("browse_feature_y%d" % i, year)
+        self.setProperty("browse_wall", "feature")
+
     @staticmethod
     def _browse_wall_key(src: dict):
         return src.get("id") if src.get("kind") == "library" else src.get("kind")
@@ -2888,6 +2910,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         def run():
             for src in sources:
+                if src.get("kind") == "collections" and src.get("feature"):
+                    try:
+                        self._browse_feature = self._browse_load_feature(client, src["feature"])
+                    except http.ApiError as exc:
+                        kodigui.ERROR("main.py: browse feature failed: {0}".format(exc))
+                    continue
                 key = self._browse_wall_key(src)
                 if src.get("kind") == "library" and key in self._browse_walls:
                     continue
@@ -2909,6 +2937,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self._browse_sync_backdrop()
 
         threading.Thread(target=run, name="tofa-browse-walls", daemon=True).start()
+
+    def _browse_load_feature(self, client: MediaServerClient, pick: dict) -> dict | None:
+        """Name, line and the posters of the films you have, for the
+        collection featured behind the Collections tile."""
+        resp = client.collection(str(pick.get("id"))) or {}
+        films = [m for m in resp.get("items") or [] if m.get("in_library")]
+        if not films:
+            return None
+        artcache.prefetch(client.stage_pairs(films, "poster_path"))
+        years = sorted(m["year"] for m in films if isinstance(m.get("year"), int))
+        line = "{0} film{1}".format(len(films), "" if len(films) == 1 else "s")
+        if years:
+            span = str(years[0]) if years[0] == years[-1] else "{0} to {1}".format(years[0], years[-1])
+            line += u" \u00b7 " + span
+        name = resp.get("name") or pick.get("name") or ""
+        if name.lower().endswith(" collection"):
+            name = name[:-len(" collection")]
+        return {"title": name, "line": line,
+                "posters": [(client.resolve_image_url(m.get("poster_path")) or "",
+                             str(m.get("year") or "")) for m in films]}
 
     def _browse_wall_items(self, client: MediaServerClient, src: dict) -> list:
         kind = src.get("kind")

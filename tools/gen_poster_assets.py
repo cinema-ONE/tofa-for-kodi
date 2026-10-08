@@ -564,6 +564,14 @@ def gen_sort_row_assets() -> None:
         _save(im, name, (SORT_ROW_W, SORT_ROW_H))
 
 
+def gen_feature_poster_mask() -> None:
+    """The featured collection's member posters (140x206, radius 10)."""
+    w, h, r = 140 * S, 206 * S, 10 * S
+    im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    ImageDraw.Draw(im).rounded_rectangle([0, 0, w - 1, h - 1], radius=r, fill="white")
+    _save(im, "browse-feature-mask.png", (140, 206))
+
+
 def gen_card_glow() -> None:
     """Soft accent-tintable focus glow that bleeds *outward* beyond the
     card's own border, matching Apple TV's soft halo (poster+border draw
@@ -688,6 +696,7 @@ def main() -> None:
     gen_avatar_shadow()
     gen_collection_assets()
     gen_sort_row_assets()
+    gen_feature_poster_mask()
 
 
 if __name__ == "__main__":

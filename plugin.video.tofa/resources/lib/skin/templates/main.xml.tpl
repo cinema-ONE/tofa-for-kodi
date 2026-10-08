@@ -365,7 +365,7 @@
                     <posy>0</posy>
                     <width>{SCREEN_W}</width>
                     <height>{BROWSE_BACKDROP_H}</height>
-                    <visible>String.IsEmpty(Window.Property(browse_wall))</visible>
+                    <visible>String.IsEmpty(Window.Property(browse_wall)) | String.IsEqual(Window.Property(browse_wall),feature)</visible>
                     <aspectratio>scale</aspectratio>
                     <fadetime>300</fadetime>
                     <texture background="true">$INFO[Window.Property(browse_backdrop)]</texture>
@@ -376,7 +376,7 @@
                     <posy>0</posy>
                     <width>{SCREEN_W}</width>
                     <height>{BROWSE_BACKDROP_H}</height>
-                    <visible>!String.IsEqual(Window.Property(browse_wall),row)</visible>
+                    <visible>!String.IsEqual(Window.Property(browse_wall),row) + !String.IsEqual(Window.Property(browse_wall),feature)</visible>
                     <colordiffuse>0x8C030B10</colordiffuse>
                     <texture>white-square.png</texture>
                 </control>
@@ -405,6 +405,7 @@
                     <colordiffuse>{SCRIM_TOP}</colordiffuse>
                     <texture>fade-top.png</texture>
                 </control>
+{browse_feature}
                 <control type="panel" id="6020">
                     <posx>{BROWSE_LEFT}</posx>
                     <posy>{BROWSE_TILES_Y}</posy>
