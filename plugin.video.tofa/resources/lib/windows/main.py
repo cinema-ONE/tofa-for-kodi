@@ -6191,7 +6191,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: Rows with a preview card (app 2.0): key -> kind (fragments.settings_preview).
     SETTINGS_PREVIEWS = {"nextup": "play_next", "nextupstyle": "nextup_style",
                          "intro": "skip", "recap": "skip", "preview": "skip",
-                         "outro": "skip", "commercial": "skip"}
+                         "outro": "skip", "commercial": "skip", "fox": "fox",
+                         "home_rows": "home", "spotlight": "home",
+                         "add_discover": "home", "add_genre": "home"}
     #: A skip row's preview: the button's words, the segment, and whether it
     #: sits at the start or the end of the programme.
     SETTINGS_SKIP_PREVIEWS = {
@@ -6199,8 +6201,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         "preview": ("Skip Preview", "Preview", "end"),
         "outro": ("Skip Credits", "Credits", "end"), "commercial": ("Skip Ad", "Ad", "start")}
 
-    def _settings_sync_preview(self, key: str, style: str = ""):
-        """Point the left column's preview at `key`'s row, or hide it."""
+    def _settings_sync_preview(self, key: str, style: str = "", fox: str = "",
+                               slot: int = 0):
+        """Point the left column's preview at `key`'s row, or hide it. `style`
+        and `fox` preview a focused choice; `slot` is the Home row in focus."""
         kind = self.SETTINGS_PREVIEWS.get(key, "")
         self.setProperty("settings_preview", kind)
         if not kind:
@@ -6211,11 +6215,50 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if kind == "nextup_style":
             self.setProperty("settings_preview_style",
                              style or settings_options.next_up_style())
+        elif kind == "fox":
+            self._settings_preview_fox(fox or theme.current_accent_hex())
+        elif kind == "home":
+            self._settings_preview_home(slot)
         elif kind == "skip":
             words, segment, at = self.SETTINGS_SKIP_PREVIEWS[key]
             self.setProperty("settings_preview_skip", words)
             self.setProperty("settings_preview_segment", segment)
             self.setProperty("settings_preview_at", at)
+
+    def _settings_preview_fox(self, hex_value: str):
+        """The fox preview in `hex_value`'s colours, logo and name."""
+        hex_value = hex_value.lstrip("#").upper()
+        name, logo = next(((n, l) for n, h, l in theme.PRESETS if h.upper() == hex_value),
+                          ("Custom", theme.default_logo()))
+        self.setProperty("settings_preview_fox", "0xFF" + hex_value)
+        self.setProperty("settings_preview_fox_fill", "0x26" + hex_value)
+        self.setProperty("settings_preview_fox_glow", "0x80" + hex_value)
+        self.setProperty("settings_preview_logo", logo)
+        self.setProperty("settings_preview_fox_name",
+                         name if name == "Custom" else "{0} Fox".format(name))
+
+    def _settings_preview_home(self, slot: int):
+        """The Home preview: row `slot` framed, the next row under it, the
+        spotlight above when it is the first row and switched on."""
+        shown = getattr(self, "_settings_home_shown", [])
+        home = self._settings_home_screen()
+        self.setProperty("settings_preview_hero",
+                         "1" if slot == 0 and home.get("show_hero", True) else "")
+        for prefix, at in (("a", slot), ("b", slot + 1)):
+            title, enabled = (shown[at][1], shown[at][2]) if at < len(shown) else ("", True)
+            posters = self._settings_home_posters(title) if enabled else []
+            self.setProperty("settings_preview_row_" + prefix,
+                             title if enabled or not title else title + u" \u00b7 hidden")
+            for i in range(10):
+                self.setProperty("settings_preview_{0}{1}".format(prefix, i),
+                                 posters[i] if i < len(posters) else "")
+
+    def _settings_home_posters(self, title: str) -> list:
+        """The posters Home is showing in the row called `title`."""
+        for index, list_id in enumerate(self.ROW_LIST_IDS):
+            if title and self.getProperty("row{0}_title".format(index)) == title:
+                return [item.thumbnailImage for item in self.row_lists[list_id].items[:10]]
+        return []
 
     def _settings_fill_preview_samples(self):
         """Sample words for the Next Up preview, set the way the player sets
@@ -6309,7 +6352,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 title = self.getProperty("homerow_{0}_title".format(slot)) or title
                 value = self._settings_home_row_state(slot)
         self.setProperty("settings_info_now", "")
-        self._settings_sync_preview(key)
+        origin = (self._settings_picker or {}).get("origin", control_id)
+        self._settings_sync_preview(
+            key, slot=(home_rows.HOME_ROW_EDIT_IDS.index(origin)
+                       if origin in home_rows.HOME_ROW_EDIT_IDS else 0))
         self.setProperty("settings_info", "1")
         self.setProperty("settings_info_title", title)
         self.setProperty("settings_info_value", value)
@@ -6538,6 +6584,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if picker["key"] == "nextupstyle":
             styles = {label: value for value, label in settings_options.NEXT_UP_STYLES}
             self._settings_sync_preview("nextupstyle", styles.get(focused, ""))
+        elif picker["key"] == "fox":
+            foxes = {"{0} Fox".format(n): h for n, h, _l in theme.PRESETS}
+            self._settings_sync_preview("fox", fox=foxes.get(focused, ""))
         # While picking, the left column's choices light only the focused one.
         for i in range(settings_info.MAX_OPTIONS):
             label = self.getProperty("settings_info_opt{0}".format(i + 1))
