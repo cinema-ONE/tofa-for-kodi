@@ -447,6 +447,7 @@ def render_main() -> str:
         collection_item=collection_item,
         collection_focused=collection_focused,
         custom_item=custom_item,
+        browse_sort_panel=fragments.browse_sort_panel(6230),
         custom_focused=custom_focused,
         **T.template_kwargs(),
         logo_block=fragments.logo_block(),

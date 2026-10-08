@@ -4524,6 +4524,148 @@ def _action_pill_label(label_x: int, label_w: int, height: int,
                             </control>"""
 
 
+def browse_sort_panel(list_id: int) -> str:
+    """Browse's sort menu (app 2.0): a panel over the dimmed view, the current
+    sort ticked with its direction, and how to reverse it at the foot."""
+    w, rw, rh = T.BROWSE_SORT_W, T.BROWSE_SORT_ROW_W, T.BROWSE_SORT_ROW_H
+    current = "String.IsEqual(ListItem.Property(current),1)"
+
+    def _row(focused: bool) -> str:
+        colour = ("$INFO[Window.Property(accent_color)]" if focused
+                  else "$INFO[Window.Property(text_primary)]")
+        gate = f"Control.HasFocus({list_id})"
+        fill = (f"""
+                        <control type="image">
+                            <visible>{gate}</visible>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
+                            <texture>browse-sort-row.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{gate}</visible>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>browse-sort-row-focus.png</texture>
+                        </control>""" if focused else "")
+        plain = f"!{gate} + " if focused else ""
+        arrow = lambda d, g: f"""
+                        <control type="label">
+                            <visible>{current} + String.IsEqual(ListItem.Property(dir),{d})</visible>
+                            <posx>{rw - 76}</posx>
+                            <width>30</width>
+                            <height>{rh}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ICON_24}</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>&#x{g:04X};</label>
+                        </control>"""  # noqa: E731
+        return f"""
+                        <control type="image">
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{T.SETTINGS_PICKER_ROW}</colordiffuse>
+                            <texture>browse-sort-row.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{plain}{current}</visible>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{T.SETTINGS_PICKER_CURRENT}</colordiffuse>
+                            <texture>browse-sort-row.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{plain}{current}</visible>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{T.SETTINGS_PICKER_CURRENT_RIM}</colordiffuse>
+                            <texture>browse-sort-row-rim.png</texture>
+                        </control>{fill}
+                        <control type="label">
+                            <posx>20</posx>
+                            <width>{rw - 120}</width>
+                            <height>{rh}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_CARD_TITLE}</font>
+                            <textcolor>{colour}</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                        </control>{arrow("up", icon_glyphs.ARROW_UP)}{arrow("down", icon_glyphs.ARROW_DOWN)}
+                        <control type="label">
+                            <visible>{current}</visible>
+                            <posx>{rw - 44}</posx>
+                            <width>30</width>
+                            <height>{rh}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ICON_24}</font>
+                            <textcolor>{colour}</textcolor>
+                            <label>&#x{icon_glyphs.CHECK:04X};</label>
+                        </control>"""
+
+    pitch = T.BROWSE_SORT_PITCH
+    return f"""
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(browse_sort_open))</visible>
+                <control type="image">
+                    <width>{T.SCREEN_W}</width>
+                    <height>{T.SCREEN_H}</height>
+                    <colordiffuse>{T.BROWSE_SORT_DIM}</colordiffuse>
+                    <texture>white-square.png</texture>
+                </control>
+                <control type="group">
+                    <posx>{T.BROWSE_SORT_X}</posx>
+                    <posy>{T.BROWSE_SORT_Y}</posy>
+                    <control type="image">
+                        <width>{w}</width>
+                        <height>{T.BROWSE_SORT_H}</height>
+                        <colordiffuse>{T.SETTINGS_PICKER_FILL}</colordiffuse>
+                        <texture border="20">rounded-20.png</texture>
+                    </control>
+                    <control type="image">
+                        <width>{w}</width>
+                        <height>{T.BROWSE_SORT_H}</height>
+                        <colordiffuse>{T.SETTINGS_PICKER_RIM}</colordiffuse>
+                        <texture border="20">rounded-20-outline.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>36</posx>
+                        <posy>30</posy>
+                        <width>{w - 72}</width>
+                        <height>44</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_SETTINGS_PICKER}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>Sort</label>
+                    </control>
+                    <control type="list" id="{list_id}">
+                        <posx>{T.BROWSE_SORT_PAD}</posx>
+                        <posy>{T.BROWSE_SORT_LIST_Y}</posy>
+                        <width>{rw}</width>
+                        <height>{8 * pitch}</height>
+                        <orientation>vertical</orientation>
+                        <itemheight>{pitch}</itemheight>
+                        <scrolltime>{T.SCROLLTIME}</scrolltime>
+                        <itemlayout width="{rw}" height="{pitch}">{_row(False)}
+                        </itemlayout>
+                        <focusedlayout width="{rw}" height="{pitch}">{_row(True)}
+                        </focusedlayout>
+                    </control>
+                    <control type="label">
+                        <posx>36</posx>
+                        <posy>{T.BROWSE_SORT_HINT_Y}</posy>
+                        <width>{w - 72}</width>
+                        <height>30</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_BROWSE_CAPTION}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>Select the current sort again to reverse it.</label>
+                    </control>
+                </control>
+            </control>"""
+
+
 def collection_row(list_id: int) -> tuple[str, str]:
     """One row of the collections view: up to three 16:9 cards (app 2.0).
 
