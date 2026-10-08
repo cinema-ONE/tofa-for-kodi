@@ -2931,6 +2931,152 @@ def settings_info_panel() -> str:
         T.SETTINGS_PREVIEW_VALUE_Y, T.SETTINGS_PREVIEW_BODY_Y)
 
 
+def _settings_preview_fox() -> str:
+    """Fox accent's preview: the focused fox's logo and name over its glow,
+    and a little of the app drawn in its colour (tabs, Play, progress, a switch)."""
+    fox = "$INFO[Window.Property(settings_preview_fox)]"
+    white = "$INFO[Window.Property(text_primary)]"
+    grey = "$INFO[Window.Property(text_secondary)]"
+
+    def img(x, y, w, h, colour, texture, border=""):
+        b = f' border="{border}"' if border else ""
+        return f"""
+                    <control type="image">
+                        <posx>{x}</posx><posy>{y}</posy><width>{w}</width><height>{h}</height>
+                        <colordiffuse>{colour}</colordiffuse>
+                        <texture{b}>{texture}</texture>
+                    </control>"""
+
+    def text(x, y, w, h, font, colour, label, align="left"):
+        return f"""
+                    <control type="label">
+                        <posx>{x}</posx><posy>{y}</posy><width>{w}</width><height>{h}</height>
+                        <align>{align}</align><aligny>center</aligny>
+                        <font>{font}</font><textcolor>{colour}</textcolor>
+                        <label>{label}</label>
+                    </control>"""
+
+    return (img(0, 0, T.SETTINGS_PREVIEW_W, T.SETTINGS_PREVIEW_H,
+                "$INFO[Window.Property(settings_preview_fox_glow)]", "settings-preview-glow.png")
+            + f"""
+                    <control type="image">
+                        <posx>95</posx><posy>76</posy><width>130</width><height>152</height>
+                        <aspectratio>keep</aspectratio>
+                        <texture>$INFO[Window.Property(settings_preview_logo)]</texture>
+                    </control>"""
+            + text(40, 248, 240, 32, T.FONT_POSTER_TITLE, white,
+                   "$INFO[Window.Property(settings_preview_fox_name)]", "center")
+            + text(316, 74, 80, 28, T.FONT_ACCOUNT, white, "Home")
+            + text(381, 74, 100, 28, T.FONT_ACCOUNT, grey, "Browse")
+            + img(338, 104, 6, 6, fox, "circle.png")
+            + img(316, 121, 106, 40, "$INFO[Window.Property(settings_preview_fox_fill)]",
+                  "capsule-h40.png", "20")
+            + img(316, 121, 106, 40, fox, "capsule-h40-outline.png", "20")
+            + text(334, 121, 24, 40, T.FONT_ICON_19, fox, f"&#x{icon_glyphs.PLAY:04X};")
+            + text(360, 121, 60, 40, T.FONT_ACCOUNT, fox, "Play")
+            + text(316, 178, 100, 22, T.FONT_EYEBROW, fox, "S2 E4")
+            + img(316, 204, 190, 5, "0x33FFFFFF", "white-square.png")
+            + img(316, 204, 118, 5, fox, "white-square.png")
+            + img(316, 224, 64, 38, fox, "capsule-h38.png", "19")
+            + img(345, 227, 32, 32, "white", "circle.png"))
+
+
+def _settings_preview_home() -> str:
+    """The Home tab's preview: a small Home, the focused row framed in the
+    accent with the row after it, under the spotlight when it is the first."""
+    accent = "$INFO[Window.Property(accent_color)]"
+    white = "$INFO[Window.Property(text_primary)]"
+    grey = "$INFO[Window.Property(text_secondary)]"
+    hero = "!String.IsEmpty(Window.Property(settings_preview_hero))"
+
+    def text(x, y, w, h, font, colour, label, vis=""):
+        v = f"<visible>{vis}</visible>" if vis else ""
+        return f"""
+                    <control type="label">{v}
+                        <posx>{x}</posx><posy>{y}</posy><width>{w}</width><height>{h}</height>
+                        <aligny>center</aligny>
+                        <font>{font}</font><textcolor>{colour}</textcolor>
+                        <label>{label}</label>
+                    </control>"""
+
+    def posters(prefix, y, h):
+        out = ""
+        for i in range(10):
+            out += f"""
+                    <control type="image">
+                        <posx>{24 + 52 * i}</posx><posy>{y}</posy><width>46</width><height>{h}</height>
+                        <colordiffuse>0xFF1C262D</colordiffuse>
+                        <texture>white-square.png</texture>
+                    </control>
+                    <control type="image">
+                        <posx>{24 + 52 * i}</posx><posy>{y}</posy><width>46</width><height>{h}</height>
+                        <aspectratio aligny="top">scale</aspectratio>
+                        <texture>$INFO[Window.Property(settings_preview_{prefix}{i})]</texture>
+                    </control>"""
+        return out
+
+    def rows(top, vis):
+        below = top + 118
+        return f"""
+                <control type="group">
+                    <visible>{vis}</visible>
+                    <control type="image">
+                        <posx>18</posx><posy>{top}</posy><width>525</width><height>100</height>
+                        <colordiffuse>{accent}</colordiffuse>
+                        <texture border="14">rounded-14-outline.png</texture>
+                    </control>""" + text(
+            24, top + 3, 500, 24, T.FONT_EYEBROW, accent,
+            "$INFO[Window.Property(settings_preview_row_a)]") + posters(
+            "a", top + 27, 68) + text(
+            24, below + 3, 500, 24, T.FONT_EYEBROW, grey,
+            "$INFO[Window.Property(settings_preview_row_b)]") + posters(
+            "b", below + 27, min(68, T.SETTINGS_PREVIEW_H - below - 27)) + """
+                </control>"""
+
+    tabs = """
+                    <control type="grouplist">
+                        <posx>58</posx><posy>12</posy><width>500</width><height>26</height>
+                        <orientation>horizontal</orientation>
+                        <itemgap>16</itemgap>
+                        <usecontrolcoords>true</usecontrolcoords>""" + "".join(f"""
+                        <control type="label">
+                            <width>auto</width><height>26</height><aligny>center</aligny>
+                            <font>{T.FONT_ACCOUNT}</font>
+                            <textcolor>{white if n == "Home" else grey}</textcolor>
+                            <label>{n}</label>
+                        </control>""" for n in ("Home", "Browse", "Discover", "Search")) + """
+                    </control>"""
+    return f"""
+                    <control type="image">
+                        <posx>20</posx><posy>12</posy><width>24</width><height>28</height>
+                        <aspectratio>keep</aspectratio>
+                        <texture>$INFO[Window.Property(logo_file)]</texture>
+                    </control>{tabs}
+                    <control type="image">
+                        <posx>72</posx><posy>38</posy><width>5</width><height>5</height>
+                        <colordiffuse>{accent}</colordiffuse>
+                        <texture>circle.png</texture>
+                    </control>
+                    <control type="group">
+                        <visible>{hero}</visible>
+                        <control type="image">
+                            <posx>18</posx><posy>50</posy><width>572</width><height>96</height>
+                            <aspectratio>scale</aspectratio>
+                            <texture diffuse="nextup-mask-352x198.png">$INFO[Window.Property(settings_preview_art)]</texture>
+                        </control>
+                        <control type="image">
+                            <posx>18</posx><posy>50</posy><width>300</width><height>96</height>
+                            <colordiffuse>0x99000000</colordiffuse>
+                            <texture>fade-left.png</texture>
+                        </control>""" + text(30, 76, 300, 26, T.FONT_ACCOUNT, white, "Featured tonight") + f"""
+                        <control type="image">
+                            <posx>30</posx><posy>107</posy><width>50</width><height>28</height>
+                            <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                            <texture border="14">rounded-14.png</texture>
+                        </control>""" + text(40, 107, 40, 28, T.FONT_MICRO, accent, "Play") + """
+                    </control>""" + rows(159, hero) + rows(50, "!" + hero)
+
+
 def _nextup_overlays_for_preview() -> str:
     """The player's four Next Up styles, lifted from its static XML for the
     Settings preview: ids dropped, the style read from settings_preview_style,
@@ -3078,13 +3224,14 @@ def settings_preview() -> str:
                     <texture diffuse="{mask}">white-square.png</texture>
                 </control>
                 <control type="image">
+                    <visible>!{kind("fox")} + !{kind("home")}</visible>
                     <width>{w}</width>
                     <height>{h}</height>
                     <aspectratio>scale</aspectratio>
                     <texture diffuse="{mask}">$INFO[Window.Property(settings_preview_art)]</texture>
                 </control>
                 <control type="group">
-                    <visible>!{kind("nextup_style")}</visible>
+                    <visible>{kind("play_next")} | {kind("skip")}</visible>
                     <control type="image">
                         <posy>{h - 140}</posy>
                         <width>{w}</width>
@@ -3098,6 +3245,12 @@ def settings_preview() -> str:
                 </control>
                 <control type="group">
                     <visible>{kind("skip")}</visible>{skip}
+                </control>
+                <control type="group">
+                    <visible>{kind("fox")}</visible>{_settings_preview_fox()}
+                </control>
+                <control type="group">
+                    <visible>{kind("home")}</visible>{_settings_preview_home()}
                 </control>
                 <control type="image">
                     <width>{w}</width>

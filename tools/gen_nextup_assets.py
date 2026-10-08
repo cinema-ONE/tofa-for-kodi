@@ -272,6 +272,30 @@ def gen_preview_mask() -> None:
     print("saved {0} (r{1})".format(name, r))
 
 
+def gen_preview_glow() -> None:
+    """The fox preview's glow: a soft disc behind the logo, cut to the
+    preview card's rounded shape, tinted with the fox's colour at runtime."""
+    w, h, r = 608, 342, 20
+    cx, cy, radius = 160, 152, 300
+    size = (w * S, h * S)
+    card = Image.new("L", size, 0)
+    ImageDraw.Draw(card).rounded_rectangle(
+        [0, 0, size[0] - 1, size[1] - 1], radius=r * S, fill=255)
+    card = card.resize((w * ASSET_SCALE, h * ASSET_SCALE), Image.LANCZOS)
+    glow = Image.new("L", card.size, 0)
+    px = glow.load()
+    k = ASSET_SCALE
+    for y in range(card.size[1]):
+        for x in range(card.size[0]):
+            d = ((x / k - cx) ** 2 + (y / k - cy) ** 2) ** 0.5 / radius
+            px[x, y] = int(round(255 * max(0.0, 1.0 - d) ** 2))
+    alpha = Image.composite(glow, Image.new("L", card.size, 0), card)
+    out = Image.new("RGBA", card.size, (255, 255, 255, 0))
+    out.putalpha(alpha)
+    out.save(os.path.join(_MEDIA_DIR, "settings-preview-glow.png"))
+    print("saved settings-preview-glow.png")
+
+
 def gen_lower_scrim() -> None:
     """A vertical ramp, eased so the band has no visible top edge; tinted
     down at runtime like the rail's scrim."""
@@ -286,6 +310,7 @@ def gen_lower_scrim() -> None:
 
 def main() -> None:
     gen_preview_mask()
+    gen_preview_glow()
     gen_countdown_ring()
     gen_still_mask()
     gen_still_outline()
