@@ -961,6 +961,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         #: The rail still's image PATH (not URL). Kept so the URL can be
         #: re-minted at reveal -- see _refresh_nextup_still.
         self._nextup_still_path = ""
+        #: (episodes in the season, the one playing) for the season bar.
+        self._nextup_bar: Optional[tuple] = None
         # The episode BEFORE this one, for the transport capsule's previous
         # button. Not part of 8.3's rail, which only ever looks forward.
         self._prev_episode: Optional[tuple] = None
@@ -1479,7 +1481,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._next_up = nxt
         self._prev_episode = prv
         if nxt:
-            self._stage_next_up(media, nxt[0], nxt[1])
+            self._stage_next_up(media, nxt[0], nxt[1], current=order[here])
         self._apply_transport_mode(episode=True)
 
     @staticmethod
@@ -3256,7 +3258,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         # would have to know when this one had run.
         self._layout_utility_capsule()
 
-    def _stage_next_up(self, media: dict, season: dict, ep: dict):
+    def _stage_next_up(self, media: dict, season: dict, ep: dict,
+                       current: Optional[tuple] = None):
         """Fill the rail's labels and art once, up front -- it has to appear
         instantly 30s from the end, not go fetch a still at that moment.
 
@@ -3276,6 +3279,83 @@ class PlayerWindow(kodigui.ControlledDialog):
             "nextup_title",
             ep.get("title") or "Episode {0}".format(ep.get("episode_number") or "?"))
         self.setProperty("nextup_still", self._resolve_still(self._nextup_still_path))
+        self._stage_next_up_details(season, ep, current)
+
+    def _stage_next_up_details(self, season: dict, ep: dict,
+                               current: Optional[tuple]):
+        """The styles' extra lines: runtime, place in the season, and the
+        season bar marking the episode that is playing (app 2.0)."""
+        files = [f for f in (ep.get("files") or []) if f.get("available")]
+        ms = (files[0].get("duration_ms") if files else None) or 0
+        minutes = int(round(ms / 60000.0)) if ms else int(ep.get("runtime_minutes") or 0)
+        runtime = "{0} min".format(minutes) if minutes else ""
+        s_no, e_no = season.get("season_number") or 0, ep.get("episode_number") or 0
+        count = len(season.get("episodes") or [])
+        number = self.getProperty("nextup_number")
+        self.setProperty("nextup_runtime", runtime)
+        self.setProperty("nextup_meta", u" \u00b7 ".join(
+            p for p in (runtime, "{0} of {1}".format(e_no, count) if count else "") if p))
+        self.setProperty("nextup_eyebrow_short", u" \u00b7 ".join(
+            p for p in ("NEXT", number, runtime) if p).upper())
+        self.setProperty("nextup_season_line", "SEASON {0} · EPISODE {1}".format(s_no, e_no))
+        here_season, here_ep = current if current else (None, None)
+        on = here_ep.get("episode_number") if here_ep and here_season is season else None
+        self._nextup_bar = (count, on) if on and 1 < count <= self._NEXTUP_SEGMENTS else None
+        self.setProperty("nextup_place",
+                         "Episode {0} of {1} this season".format(on, count) if on else "")
+
+    #: The season bar's pool of segments (ids 9710..9739).
+    _NEXTUP_SEGMENTS = 30
+    #: Per style: Play Next and close rects, ring (centre x, y, size), and the
+    #: season bar (x, y, width), measured off the app 2.0's captures.
+    _NEXTUP_GEOMETRY = {
+        "compact": ((1221, 933, 517, 64), (1752, 933, 64, 64), (1695, 965, 44), None),
+        "minimal": ((1536, 937, 204, 72), (1756, 937, 72, 72), None, None),
+        "lower": ((1450, 945, 303, 72), (1768, 945, 72, 72), (1707, 981, 48),
+                  (468, 1011, 562)),
+        "full": ((1204, 950, 582, 76), (1801, 956, 64, 64), (1736, 988, 52),
+                 (1206, 645, 660)),
+    }
+
+    def _place_next_up(self, style: str):
+        """Move the shared buttons, ring and season bar to `style`'s spots."""
+        play, close, ring, bar = self._NEXTUP_GEOMETRY[style]
+        try:
+            for cid, (x, y, w, h) in ((self.NEXT_UP_PLAY_ID, play),
+                                      (self.NEXT_UP_DISMISS_ID, close)):
+                ctrl = self.getControl(cid)
+                ctrl.setPosition(x, y)
+                ctrl.setWidth(w)
+                ctrl.setHeight(h)
+            if ring:
+                cx, cy, d = ring
+                for cid in (self.NEXT_UP_RING_ID, 9704, 9705):
+                    ctrl = self.getControl(cid)
+                    ctrl.setPosition(cx - d // 2, cy - d // 2)
+                    ctrl.setWidth(d)
+                    ctrl.setHeight(d)
+            self._place_next_up_bar(bar)
+        except (RuntimeError, TypeError) as exc:
+            log.warning(f"player: could not place Next Up: {exc!r}")
+
+    def _place_next_up_bar(self, bar):
+        shown = bar is not None and getattr(self, "_nextup_bar", None) is not None
+        self.setProperty("nextup_segments", "1" if shown else "")
+        if not shown:
+            return
+        (x0, y, total), (count, on) = bar, self._nextup_bar
+        gap = 6
+        width = (total - gap * (count - 1)) / float(count)
+        for i in range(self._NEXTUP_SEGMENTS):
+            ctrl = self.getControl(9710 + i)
+            ctrl.setVisible(i < count)
+            if i >= count:
+                continue
+            ctrl.setPosition(int(round(x0 + i * (width + gap))), y)
+            ctrl.setWidth(max(1, int(round(width))))
+            self.setProperty("nextup_seg{0}".format(i),
+                             self.getProperty("accent_color") if i + 1 == on
+                             else "0x4DFFFFFF")
 
     def _resolve_still(self, path: str) -> str:
         if not (path and self.client):
@@ -3338,6 +3418,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         needing a second XML layout."""
         if self._next_up is None or self._next_up_open:
             return
+        style = settings_options.next_up_style()
+        self.setProperty("nextup_style", style)
+        self._place_next_up(style)
         mode = self._auto_play_next_mode()
         now = time.monotonic()
         self._next_up_open = True
@@ -3370,6 +3453,17 @@ class PlayerWindow(kodigui.ControlledDialog):
         # The rail takes the d-pad, so the chrome's auto-hide must stop
         # fighting it -- same reason a modal picker suspends it.
         self.hide_chrome()
+
+    def _shrink_minimal_countdown(self, remaining: float):
+        """Minimal's Play Next counts down as a wash that shrinks."""
+        if self.getProperty("nextup_style") != "minimal":
+            return
+        (x, y, w, h), *_rest = self._NEXTUP_GEOMETRY["minimal"]
+        width = max(h, int(round(w * remaining / NEXT_UP_COUNTDOWN_S)))
+        try:
+            self.getControl(9706).setWidth(width)
+        except RuntimeError:
+            pass
 
     def _auto_play_next_mode(self) -> str:
         """`playback.auto_play_next`, defaulting the way the contract says.
@@ -5384,6 +5478,7 @@ class PlayerWindow(kodigui.ControlledDialog):
                     self.play_next_up()
                     return
                 self.setProperty("nextup_seconds", str(int(remaining) + 1))
+                self._shrink_minimal_countdown(remaining)
                 step = int(round(NEXT_UP_RING_STEPS * remaining / NEXT_UP_COUNTDOWN_S))
                 self.setProperty(
                     "nextup_ring",

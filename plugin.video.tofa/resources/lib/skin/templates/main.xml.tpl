@@ -2183,6 +2183,7 @@
                         <height>{SETTINGS_NEXTUP_GROUP_H}</height>
 {settings_nextup_eyebrow}
 {settings_nextup_group}
+{settings_nextupstyle_group}
                     </control>
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>

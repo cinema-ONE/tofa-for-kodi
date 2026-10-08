@@ -234,6 +234,39 @@ def gen_scrim() -> None:
     print("saved nextup-scrim.png ({0}x16, ramp {1})".format(SCRIM_W, SCRIM_RAMP))
 
 
+#: The Next Up styles' stills (app 2.0), each with its own corner radius:
+#: Compact, Minimal and Lower third. Full keeps the rail's 672x378 mask.
+STYLE_STILLS = ((224, 126, 10), (128, 72, 10), (352, 198, 14))
+#: Lower third's bottom band: transparent at the top, black at the foot.
+LOWER_SCRIM_H = 480
+
+
+def gen_style_still_masks() -> None:
+    for w, h, r in STYLE_STILLS:
+        size = (w * S, h * S)
+        im = Image.new("L", size, 0)
+        ImageDraw.Draw(im).rounded_rectangle(
+            [0, 0, size[0] - 1, size[1] - 1], radius=r * S, fill=255)
+        im = im.resize((w * ASSET_SCALE, h * ASSET_SCALE), Image.LANCZOS)
+        out = Image.new("RGBA", im.size, (255, 255, 255, 0))
+        out.putalpha(im)
+        name = "nextup-mask-{0}x{1}.png".format(w, h)
+        out.save(os.path.join(_MEDIA_DIR, name))
+        print("saved {0} (r{1})".format(name, r))
+
+
+def gen_lower_scrim() -> None:
+    """A vertical ramp, eased so the band has no visible top edge; tinted
+    down at runtime like the rail's scrim."""
+    h = LOWER_SCRIM_H
+    im = Image.new("RGBA", (4, h), (255, 255, 255, 0))
+    for y in range(h):
+        t = y / (h - 1)
+        im.paste((255, 255, 255, int(round(255 * t * t * (3 - 2 * t)))), (0, y, 4, y + 1))
+    im.save(os.path.join(_MEDIA_DIR, "nextup-lower-scrim.png"))
+    print("saved nextup-lower-scrim.png (4x{0})".format(h))
+
+
 def main() -> None:
     gen_countdown_ring()
     gen_still_mask()
@@ -242,6 +275,8 @@ def main() -> None:
     gen_drawer_progress_strips()
     gen_tile_grid_mask()
     gen_scrim()
+    gen_style_still_masks()
+    gen_lower_scrim()
 
 
 if __name__ == "__main__":
