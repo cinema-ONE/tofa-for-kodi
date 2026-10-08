@@ -59,6 +59,7 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("SETTINGS", "Settings tab"),
     ]),
     ("Detail season sidebar + episode card", "resources/lib/windows/detail.py – season marks, not-in-library pill", [
+        ("EYE_OFF", "Episode card hidden to avoid spoilers (app 2.0)"),
         ("CIRCLE_PLUS", "A season with nothing in the library -- the sidebar's trailing mark"),
         ("CIRCLE_ALERT", "A season whose recorded files are all missing from disk"),
         ("DOT", "The SELECTED season, in place of its status"),
@@ -91,6 +92,7 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("BOOKMARK", "Watchlist row"),
         ("ROTATE_CCW_CLOCK", "History row"),
         ("LAYERS", "Collections row"),
+        ("DICE_5", "Surprise me tile on the Browse landing (app 2.0)"),
         ("SHUFFLE", "Surprise Me row \u2014 and the Browse Sort pill whenever Shuffle\n            is the sort, which is the one sort with no direction to point.\n            Same mark for the same idea, not a collision"),
         ("CLAPPERBOARD", "Movie library row; also the in-cinemas card chip"),
         ("TV", "TV show library row"),

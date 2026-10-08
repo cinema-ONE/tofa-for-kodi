@@ -105,6 +105,9 @@ ROWS: dict[str, Info] = {
     "episodes_remaining": Info(
         "Episodes remaining",
         "Shows how many episodes you have left on a show's poster."),
+    "watched_marks": Info(
+        "Watched marks",
+        "A tick on posters and episodes you have finished."),
     "hide_spoilers": Info(
         "Hide episode spoilers",
         "Hides the stills and synopses of episodes you have not seen yet."),

@@ -61,7 +61,40 @@ def apply_poster(mli, item: dict, poster_url: str, *, label: str | None = None,
     mli.setArt({"thumb": poster_url, "poster": poster_url})
     mli.setProperty("rating", theme.card_rating_text(item, prefs))
     badges.apply(mli, item, (prefs or {}).get("show_format_badges", True))
+    apply_watch_marks(mli, item, prefs)
     return mli
+
+
+def episodes_left_text(count, prefs: dict | None) -> str:
+    """A show's episodes left as its chip reads ("6", "99+"), or ""."""
+    if not isinstance(count, int) or count <= 0:
+        return ""
+    if not (prefs or {}).get("show_unwatched_count", True):
+        return ""
+    return "99+" if count > 99 else str(count)
+
+
+def apply_episodes_left(mli, count, prefs: dict | None) -> None:
+    left = episodes_left_text(count, prefs)
+    mli.setProperty("episodes_left", left)
+    mli.setProperty("episodes_left_wide", "1" if len(left) > 2 else "")
+
+
+def apply_watch_marks(mli, item: dict, prefs: dict | None) -> None:
+    """The top-right corner of an owned card (app 2.0): a show's episodes
+    left, or a tick once a title is finished, each behind its own switch."""
+    prefs = prefs or {}
+    left, done = "", False
+    if item.get("in_library") is not False:
+        count = item.get("unwatched_episode_count")
+        if (item.get("media_type") or item.get("type")) == "tv" and isinstance(count, int):
+            left = episodes_left_text(count, prefs)
+            done = count == 0
+        else:
+            done = item.get("watched") is True
+    mli.setProperty("episodes_left", left)
+    mli.setProperty("episodes_left_wide", "1" if len(left) > 2 else "")
+    mli.setProperty("finished", "1" if done and prefs.get("show_watched_checkmark", True) else "")
 
 
 def poster_item(item: dict, poster_url: str, *, label: str | None = None,

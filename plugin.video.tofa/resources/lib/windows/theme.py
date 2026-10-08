@@ -34,22 +34,20 @@ def card_rating_text(item: dict, prefs: dict | None = None) -> str:
     the badge. Honours show_card_ratings (the picker's "Off") and
     preferred_card_rating.
 
-    No imdb_rating/vote_average fallback: 11 bans rating-source marks, and a
-    bare 0-10 number in the same badge that elsewhere means a 0-100 tofa
-    score is worse than the ban -- "7.4" and "74" are indistinguishable at
-    3m. A title with no tofa score simply has no badge, which the badge's
-    own visible gate already handles."""
+    Without a tofa score it falls back to TMDB's (then IMDb's) 0-10 rating
+    times ten, as the app 2.0 does (Adrian, 2026-10-08)."""
     prefs = prefs or {}
     if not prefs.get("show_card_ratings", True):
         return ""
     primary, fallback = CARD_RATING_FIELDS.get(
         prefs.get("preferred_card_rating"), CARD_RATING_FIELDS[CARD_RATING_DEFAULT]
     )
-    for field in (primary, fallback):
+    for field, scale in ((primary, 1), (fallback, 1), ("vote_average", 10),
+                         ("imdb_rating", 10)):
         value = item.get(field)
-        if value is not None:
+        if value:
             try:
-                return str(int(round(float(value))))
+                return str(int(round(float(value) * scale)))
             except (TypeError, ValueError):
                 pass
     return ""

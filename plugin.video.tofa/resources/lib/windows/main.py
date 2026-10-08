@@ -119,45 +119,17 @@ def _library_count(lib: dict) -> str:
 
 
 def _history_latest_per_title(items: list) -> list:
-    """One card per title, keeping its most recent watch.
-
-    /watch/history is a SESSION log: every play is its own row, so watching
-    the same film three times returns three entries with distinct ids and
-    started_at. Rendering it raw fills the grid with one poster repeated --
-    which is what shipped, and what Adrian caught.
-
-    The real app collapses them: 5 Hokum sessions on the server, one card on
-    screen (captured 2026-07-31, Browse > History sorted "Last Watched").
-
-    Nothing is dropped that the screen was showing: every duplicate carries
-    the same title, poster and media_id, and the entry kept is the newest,
-    so the caption's watched-date stays the one a viewer would expect.
-    Episodes key on their own id, so two episodes of one show stay two
-    cards -- they are different things watched, not the same thing twice.
-
-    Order is preserved rather than re-sorted: the server already returns
-    newest-first, and re-sorting here would silently override whatever
-    ordering it applied."""
+    """One card per show or film, keeping its most recent watch, as the app
+    2.0 does. /watch/history logs every play, newest first."""
     seen = set()
     out = []
     for it in items:
-        key = it.get("episode_id") or it.get("media_id") or it.get("id")
+        key = it.get("media_id") or it.get("id")
         if key in seen:
             continue
         seen.add(key)
         out.append(it)
     return out
-
-
-def _format_history_date(started_at: str) -> str:
-    """"Jul 28" from an ISO-8601 UTC timestamp, or "28. Jul" where the region
-    puts the day first.
-
-    Still avoids strftime's `%-d` (a glibc extension Android's bionic libc
-    does not have); regional.day_and_month builds the string itself, so the
-    flag never comes up, and the month name comes from Kodi's own localized
-    strings rather than the C library's."""
-    return regional.day_and_month(started_at)
 
 
 # Unrecognized ListType keys fall back to a title-cased version of the key
@@ -549,6 +521,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_RATING_ID = 8300
     SETTINGS_EPISODES_ID = 8310
     SETTINGS_SPOILERS_ID = 8315
+    SETTINGS_WATCHED_ID = 8312
     SETTINGS_SPOTLIGHT_ID = 8320
     #: ADD A ROW: "Add a Discover row", "Add a genre row" (app 2.0).
     SETTINGS_ADD_ROW_ID = 8340
@@ -632,6 +605,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # instead of a fixed control id, since CW's slot varies by
         # account/order.
         self._cw_list_id: int | None = None
+        self._history_counts: dict = {}       # media id -> episodes left
+        self._history_details: dict = {}      # media id -> its MediaDetail
         #: Row slots that came back non-empty on the last Home load, in slot
         #: order. Kept because Continue Watching can appear or empty out on
         #: a refresh, and the vertical nav chain has to be re-pointed around
@@ -928,6 +903,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_EPISODES_ID, 1)
         self.settings_spoilers_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SPOILERS_ID, 1)
+        self.settings_watched_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_WATCHED_ID, 1)
         self.settings_spotlight_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SPOTLIGHT_ID, 1)
         self.settings_homerow_lists = [
@@ -1279,6 +1256,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_episodes_clicked()
         elif controlID == self.SETTINGS_SPOILERS_ID:
             self._settings_spoilers_clicked()
+        elif controlID == self.SETTINGS_WATCHED_ID:
+            self._settings_watched_clicked()
         elif controlID == self.SETTINGS_SPOTLIGHT_ID:
             self._settings_spotlight_clicked()
         elif controlID in settings_options.CHOICE_BY_ID:
@@ -1887,6 +1866,38 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # After the rows and never waited on: the request can take ~2s, and
         # every key onAction handles would wait behind it.
         self._start_capabilities(client)
+        self._home_fill_show_counts(client)
+
+    def _show_counts(self, client: MediaServerClient) -> dict:
+        """Episodes left per show you have started, in one call: Continue
+        Watching and History items do not carry the count themselves."""
+        try:
+            resp = client._get("/api/v1/media", params={
+                "media_type": "tv", "watched": "in_progress", "per_page": 500}) or {}
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: show counts failed: {0}".format(exc))
+            return {}
+        return {it.get("id"): it.get("unwatched_episode_count")
+                for it in resp.get("items") or [] if it.get("id")}
+
+    def _home_fill_show_counts(self, client: MediaServerClient):
+        """Put episodes left on Continue Watching's show cards, off the UI
+        thread; only the cards that need one are written."""
+        mlist = self.row_lists.get(self._cw_list_id) if self._cw_list_id else None
+        if mlist is None or not len(mlist):
+            return
+        prefs = self._ensure_preferences()
+
+        def run():
+            counts = self._show_counts(client)
+            for mli in list(mlist.items):
+                item = mli.dataSource or {}
+                count = counts.get(item.get("media_id") or item.get("id"))
+                if item.get("media_type") == "tv" and count:
+                    item["_episodes_left"] = count      # for Settings' preview
+                    cards.apply_episodes_left(mli, count, prefs)
+
+        threading.Thread(target=run, name="tofa-show-counts", daemon=True).start()
 
     #: The ONE art field a Home card draws -- see
     #: _home_build_row_managed_item, which resolves `poster_path` and nothing
@@ -3102,6 +3113,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         arrow = {chr(icon_glyphs.ARROW_DOWN): u"\u2193", chr(icon_glyphs.ARROW_UP): u"\u2191"}.get(
             self._browse_sort_glyph(), u"\u2195")
         sort_label = u"{0}  {1}".format(arrow, self.BROWSE_SORT_OPTIONS[self._browse_sort_idx][0])
+        if self._sources and self._browse_active_source().get("kind") == "history":
+            # History is the server's play log, newest first, whatever the chip.
+            sort_label = u"\u2193  Last Watched"
         unwatched = self._browse_unwatched_idx()
         filter_label = self._browse_filter_label(skip_unwatched=True)
         words = [(self.SORT_ID, sort_label), (self.UNWATCHED_ID, "Unwatched"),
@@ -3850,32 +3864,48 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def _browse_load_history_grid(self, client: MediaServerClient):
         try:
-            resp = client.watch_history(limit=100) or {}
+            resp = client.watch_history(limit=200) or {}
         except http.ApiError as exc:
             kodigui.ERROR("main.py: browse watch_history failed: {0}".format(exc))
             resp = {}
         history = _history_latest_per_title(resp.get("items") or [])
         artcache.prefetch(client.stage_pairs(history, "poster_path"))
+        self._history_counts = (self._show_counts(client)
+                                if any(it.get("media_type") == "tv" for it in history) else {})
+        self._history_details = self._media_details(client, [it.get("media_id") for it in history])
         managed = [self._browse_build_history_item(client, it) for it in history]
         if managed:
             self.grid_list.addItems(managed)
             self.grid_list.selectItem(0)
 
+    def _media_details(self, client: MediaServerClient, ids: list) -> dict:
+        """Ratings and dates for up to a few hundred titles, 50 per call."""
+        ids = [i for i in dict.fromkeys(ids) if i]
+        out: dict = {}
+        for n in range(0, len(ids), 50):
+            try:
+                resp = client._post("/api/v1/media/batch", json_body={"ids": ids[n:n + 50]})
+            except http.ApiError as exc:
+                kodigui.ERROR("main.py: media batch failed: {0}".format(exc))
+                break
+            for it in resp if isinstance(resp, list) else []:
+                out[it.get("id")] = it
+        return out
+
     def _browse_build_history_item(self, client: MediaServerClient, item: dict) -> kodigui.ManagedListItem:
-        title = item.get("title") or ""
-        if item.get("episode_title"):
-            title = u"{0} - {1}".format(title, item["episode_title"])
+        """A History card as the app shows it: the show or film, its year and
+        rating, and a show's episodes left."""
+        detail = self._history_details.get(item.get("media_id")) or {}
         poster = client.resolve_image_url(item.get("poster_path")) or ""
-        mli = kodigui.ManagedListItem(label=title, thumbnailImage=poster, data_source=item)
+        mli = kodigui.ManagedListItem(label=item.get("title") or "", thumbnailImage=poster,
+                                      data_source=item)
         mli.setArt({"poster": poster})
-
+        prefs = self._ensure_preferences()
+        mli.setProperty("rating", theme.card_rating_text(detail, prefs))
+        if item.get("media_type") == "tv":
+            cards.apply_episodes_left(mli, self._history_counts.get(item.get("media_id")), prefs)
         self._apply_card_bar(mli, item)
-
-        # A history entry has no year/genre -- caption is when it was
-        # watched instead (e.g. "Jul 28"), the one piece of context a
-        # session log actually adds over the plain title.
-        mli.setProperty("caption_meta", _format_history_date(item.get("started_at") or ""))
-
+        mli.setProperty("caption_meta", _item_year(detail))
         media_id = item.get("media_id")
         mli.setProperty("media_id", str(media_id) if media_id else "")
         return mli
@@ -4394,6 +4424,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         Only what this server honours is offered, so no option can quietly
         do nothing; `_browse_sort_offered` maps a row back to its index."""
+        if self._browse_active_source().get("kind") == "history":
+            return          # the play log has one order; nothing to offer
         offered = self._browse_offered_sorts()
         self._browse_sort_offered = offered
         items = []
@@ -6273,7 +6305,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         8130: "direct_only", 8710: "setup_device",
         8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
         8550: "sub_lang2", 8530: "always_subs",
-        8205: "fox", 8310: "episodes_remaining", 8315: "hide_spoilers",
+        8205: "fox", 8310: "episodes_remaining", 8312: "watched_marks", 8315: "hide_spoilers",
         8360: "region", 8320: "spotlight", 8340: "add_discover", 8345: "add_genre",
         8620: "licences", 8720: "art_budget", 8730: "art_clear",
     }
@@ -6283,6 +6315,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                          "intro": "skip", "recap": "skip", "preview": "skip",
                          "outro": "skip", "commercial": "skip", "fox": "fox",
                          "home_rows": "home", "spotlight": "home",
+                         "rating": "cards", "episodes_remaining": "cards",
+                         "watched_marks": "cards",
                          "add_discover": "home", "add_genre": "home"}
     #: A skip row's preview: the button's words, the segment, and whether it
     #: sits at the start or the end of the programme.
@@ -6309,6 +6343,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_preview_fox(fox or theme.current_accent_hex())
         elif kind == "home":
             self._settings_preview_home(slot)
+        elif kind == "cards":
+            self._settings_preview_cards(style)
         elif kind == "skip":
             words, segment, at = self.SETTINGS_SKIP_PREVIEWS[key]
             self.setProperty("settings_preview_skip", words)
@@ -6342,6 +6378,33 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             for i in range(10):
                 self.setProperty("settings_preview_{0}{1}".format(prefix, i),
                                  posters[i] if i < len(posters) else "")
+
+    def _settings_preview_cards(self, rating_choice: str = ""):
+        """Three Continue Watching cards for the media-card rows' preview, the
+        rating as `rating_choice` ("Audience", "Critics", "Off") would show it."""
+        prefs = dict(self._ensure_preferences())
+        prefs.update(dict(self.SETTINGS_RATING_SEGMENTS).get(rating_choice, {}))
+        list_id = self._cw_list_id or (self.ROW_LIST_IDS[0] if self.ROW_LIST_IDS else None)
+        mlist = self.row_lists.get(list_id) if list_id else None
+        items = list(mlist.items[:3]) if mlist else []
+        for i in range(3):
+            mli = items[i] if i < len(items) else None
+            item = (mli.dataSource if mli else None) or {}
+            code = ""
+            if item.get("season_number") is not None and item.get("episode_number") is not None:
+                code = theme.accent_in_accent(episodes.number_label(
+                    item["season_number"], item["episode_number"]))
+            title = item.get("title") or (mli.getLabel() if mli else "")
+            values = {
+                "poster": mli.thumbnailImage if mli else "",
+                "rating": theme.card_rating_text(item, prefs) if mli else "",
+                "left": cards.episodes_left_text(
+                    item.get("unwatched_episode_count", item.get("_episodes_left")), prefs),
+                "top": code or title,
+                "bottom": title if code else _item_year(item),
+            }
+            for key, value in values.items():
+                self.setProperty("settings_preview_c{0}_{1}".format(i, key), value or "")
 
     def _settings_home_posters(self, title: str) -> list:
         """The posters Home is showing in the row called `title`."""
@@ -6398,6 +6461,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "fox": lambda: self._settings_fox_name() or "Custom",
             "episodes_remaining": lambda: checked(self.settings_episodes_list),
             "hide_spoilers": lambda: checked(self.settings_spoilers_list),
+            "watched_marks": lambda: checked(self.settings_watched_list),
             "region": lambda: prop("settings_region"),
             "spotlight": lambda: checked(self.settings_spotlight_list),
             "home_rows": lambda: prop("settings_home_rows_count"),
@@ -6671,7 +6735,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_info_value", focused)
         self.setProperty("settings_info_now",
                          "Now " + current if current and focused != current else "")
-        if picker["key"] == "nextupstyle":
+        if picker["key"] == "rating":
+            self._settings_sync_preview("rating", focused)
+        elif picker["key"] == "nextupstyle":
             styles = {label: value for value, label in settings_options.NEXT_UP_STYLES}
             self._settings_sync_preview("nextupstyle", styles.get(focused, ""))
         elif picker["key"] == "fox":
@@ -6741,10 +6807,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_spoilers_list.reset()
         self.settings_spoilers_list.addItems([spoilers])
 
+        watched = kodigui.ManagedListItem(label="Watched marks")
+        watched.setProperty("checked", "1" if prefs.get("show_watched_checkmark", True) else "")
+        self.settings_watched_list.reset()
+        self.settings_watched_list.addItems([watched])
+
     def _settings_episodes_clicked(self):
         prefs = self._ensure_preferences()
         now = bool(prefs.get("show_unwatched_count", True))
         self._settings_write({"show_unwatched_count": not now})
+
+    def _settings_watched_clicked(self):
+        prefs = self._ensure_preferences()
+        now = bool(prefs.get("show_watched_checkmark", True))
+        self._settings_write({"show_watched_checkmark": not now})
 
     def _settings_spoilers_clicked(self):
         """Written as the STRING "true"/"false", which is what the dotted
@@ -6878,9 +6954,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # only place that knows how many rows the account actually has.
             # foxes <-> rating <-> episodes is joined by _settings_wire_choices.
             spoilers = self.getControl(self.SETTINGS_SPOILERS_ID)
+            watched = self.getControl(self.SETTINGS_WATCHED_ID)
             region = self.getControl(self.SETTINGS_REGION_ID)
-            episodes.controlDown(spoilers)
-            spoilers.controlUp(episodes)
+            episodes.controlDown(watched)
+            watched.controlUp(episodes)
+            watched.controlDown(spoilers)
+            spoilers.controlUp(watched)
             spoilers.controlDown(region)
             region.controlUp(spoilers)
         except Exception:
