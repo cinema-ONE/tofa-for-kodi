@@ -1946,12 +1946,29 @@
 
 {settings_episodes_focused}
                         </control>
-                        <control type="list" id="8315">
+                        <control type="list" id="8312">
                             <posx>0</posx>
                             <posy>{SETTINGS_MEDIACARDS_THIRD_Y}</posy>
                             <width>{SETTINGS_DETAIL_W_WIDE}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
                             <onup>8310</onup>
+                            <ondown>8315</ondown>
+                            <onleft>8312</onleft>
+                            <onright>8312</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_watched_item}
+
+{settings_watched_focused}
+                        </control>
+                        <control type="list" id="8315">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_MEDIACARDS_FOURTH_Y}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onup>8312</onup>
                             <onleft>8315</onleft>
                             <onright>8315</onright>
                             <orientation>vertical</orientation>

@@ -233,6 +233,53 @@ def rating_badge(zoom_anim: str = "", extra_visible: str = "") -> str:
                     </control>"""
 
 
+def watch_marks_badge(card_w: int, zoom_anim: str = "") -> str:
+    """Top-right of an owned card (app 2.0): episodes left as a dark pill, or
+    a tick in a dark circle once finished. cards.apply_watch_marks fills them."""
+    y, h = 8, 28
+
+    def _chip(gate: str, w: int, text: str, font: str) -> str:
+        x = card_w - CHIP_INSET - w
+        return f"""
+                    <control type="group">
+                        <visible>{gate}</visible>
+                        <control type="image">
+                            <posx>{x}</posx>
+                            <posy>{y}</posy>
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <colordiffuse>{T.BADGE_SCRIM}</colordiffuse>
+                            <texture border="14">capsule-h28.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>{x}</posx>
+                            <posy>{y}</posy>
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <colordiffuse>{T.BORDER}</colordiffuse>
+                            <texture border="14">capsule-h28-outline.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{x}</posx>
+                            <posy>{y}</posy>
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{font}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>{text}</label>
+                        </control>{zoom_anim}
+                    </control>"""
+    left = "!String.IsEmpty(ListItem.Property(episodes_left))"
+    wide = "!String.IsEmpty(ListItem.Property(episodes_left_wide))"
+    count = "$INFO[ListItem.Property(episodes_left)]"
+    return (_chip(f"{left} + !{wide}", 34, count, "tofa_font_micro")
+            + _chip(f"{left} + {wide}", 44, count, "tofa_font_micro")
+            + _chip("String.IsEqual(ListItem.Property(finished),1)", h,
+                    f"&#x{icon_glyphs.CHECK:04X};", T.FONT_ICON_19))
+
+
 # Corner chips (rating badge, watchlist/plus chip) sit 8px in from the
 # poster's edge and are 28 square. The x was hand-written as 212 back when
 # POSTER_W was 248, and silently went 4px out of register the moment the
@@ -652,7 +699,7 @@ def poster_visual(
                             <aspectratio scalediffuse="false" aligny="top">scale</aspectratio>
                             <texture diffuse="{size.mask}">$INFO[ListItem.Art(poster)]</texture>
                         </control>
-{rating_badge()}
+{rating_badge()}{watch_marks_badge(size.w)}
 {format_badges()}{progress_block}
 {extra_item_xml}                    </control>"""
 
@@ -721,7 +768,7 @@ def poster_visual(
                             <texture>{size.border}</texture>
                             <animation effect="zoom" start="100" end="104.5" center="{size.w // 2},{size.h // 2}" time="140" tween="cubic" easing="out">Focus</animation>
                         </control>
-{rating_badge(zoom_anim, extra_visible=_focus_gate)}
+{rating_badge(zoom_anim, extra_visible=_focus_gate)}{watch_marks_badge(size.w, zoom_anim)}
 {format_badges(zoom_anim)}{progress_block_focused}
 {extra_focused_xml}                    </control>"""
 
@@ -1567,7 +1614,7 @@ def episode_card(list_id: int) -> tuple[str, str]:
     # CHIP_INSET. That relationship is now computed. It was previously true
     # only by coincidence of two hand-picked numbers, so any change to either
     # height would have quietly broken it.
-    _WATCHED_SIZE = CHIP_SIZE
+    _WATCHED_SIZE = 34                  # the app's tick circle
     _BADGE_H, _BADGE_W = 24, 118
     _BADGE_X = CHIP_INSET
     _WATCHED_Y = CHIP_INSET
@@ -1683,39 +1730,82 @@ def episode_card(list_id: int) -> tuple[str, str]:
                             <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                             <label>$INFO[ListItem.Property(nil_badge)]</label>{anim}
                         </control>
-                        <control type="label">
+                        <control type="image">
                             <visible>!String.IsEmpty(ListItem.Property(spoiler))</visible>
                             <width>{EPISODE_THUMB_W}</width>
                             <height>{EPISODE_THUMB_H}</height>
+                            <colordiffuse>{T.EPISODE_HIDDEN_TILE}</colordiffuse>
+                            <texture diffuse="episode-mask.png">white-square.png</texture>{anim}
+                        </control>
+                        <control type="label">
+                            <visible>!String.IsEmpty(ListItem.Property(spoiler))</visible>
+                            <posy>{EPISODE_THUMB_H // 2 - 46}</posy>
+                            <width>{EPISODE_THUMB_W}</width>
+                            <height>44</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                            <font>{T.FONT_ICON_36}</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>&#x{icon_glyphs.EYE_OFF:04X};</label>{anim}
+                        </control>
+                        <control type="label">
+                            <visible>!String.IsEmpty(ListItem.Property(spoiler))</visible>
+                            <posy>{EPISODE_THUMB_H // 2 + 4}</posy>
+                            <width>{EPISODE_THUMB_W}</width>
+                            <height>30</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_CARD_TITLE}</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                             <label>Details hidden</label>{anim}
                         </control>"""
 
     def _watched_badge(anim: str) -> str:
-        return f"""
-                        <control type="image">
-                            <visible>String.IsEqual(ListItem.Property(watched),1)</visible>
+        # App 2.0: a white tick in a dark circle with a faint ring, unless the
+        # profile turned watched marks off (the window sets watched_marks_off).
+        # The tick is drawn twice, 1px apart: Lucide's stroke is the thinner.
+        gate = ("String.IsEqual(ListItem.Property(watched),1) + "
+                "String.IsEmpty(Window.Property(watched_marks_off))")
+        box = f"""
                             <posx>{_WATCHED_X}</posx>
                             <posy>{_WATCHED_Y}</posy>
                             <width>{_WATCHED_SIZE}</width>
-                            <height>{_WATCHED_SIZE}</height>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <height>{_WATCHED_SIZE}</height>"""
+        return f"""
+                        <control type="image">
+                            <visible>{gate}</visible>{box}
+                            <colordiffuse>{T.BADGE_SCRIM}</colordiffuse>
                             <texture>circle.png</texture>{anim}
                         </control>
+                        <control type="image">
+                            <visible>{gate}</visible>{box}
+                            <colordiffuse>{T.BORDER}</colordiffuse>
+                            <texture border="17">capsule-h34-outline.png</texture>{anim}
+                        </control>
+
                         <control type="label">
-                            <visible>String.IsEqual(ListItem.Property(watched),1)</visible>
-                            <posx>{_WATCHED_X}</posx>
+                            <visible>{gate}</visible>
+                            <posx>{_WATCHED_X + 0}</posx>
                             <posy>{_WATCHED_Y}</posy>
                             <width>{_WATCHED_SIZE}</width>
                             <height>{_WATCHED_SIZE}</height>
                             <align>center</align>
                             <aligny>center</aligny>
-                            <font>tofa_font_icons_19</font>
-                            <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                            <label>&#xE06C;</label>{anim}
+                            <font>{T.FONT_ICON_24}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>&#x{icon_glyphs.CHECK:04X};</label>{anim}
+                        </control>
+                        <control type="label">
+                            <visible>{gate}</visible>
+                            <posx>{_WATCHED_X + 1}</posx>
+                            <posy>{_WATCHED_Y}</posy>
+                            <width>{_WATCHED_SIZE}</width>
+                            <height>{_WATCHED_SIZE}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ICON_24}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>&#x{icon_glyphs.CHECK:04X};</label>{anim}
                         </control>"""
 
     item = f"""                <itemlayout width="{EPISODE_CELL_W}" height="{EPISODE_CELL_H}">
@@ -2794,6 +2884,63 @@ def _nextup_overlays_for_preview() -> str:
     return body + extra
 
 
+def _settings_preview_cards() -> str:
+    """The media-card rows' preview (app 2.0): three of your Continue
+    Watching posters wearing the rating and episodes-left chips."""
+    out = ""
+    for i in range(3):
+        p = "Window.Property(settings_preview_c{0}_{1})".format
+        x, y, w, h = 38 + 185 * i, 26, 160, 240
+
+        def chip(cx, key, wide=False):
+            cw = 34 if wide else 30
+            return f"""
+                    <control type="group">
+                        <visible>!String.IsEmpty({p(i, key)})</visible>
+                        <control type="image">
+                            <posx>{cx(cw)}</posx><posy>{y + 7}</posy><width>{cw}</width><height>20</height>
+                            <colordiffuse>{T.BADGE_SCRIM}</colordiffuse>
+                            <texture border="10">capsule-h20.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{cx(cw)}</posx><posy>{y + 7}</posy><width>{cw}</width><height>20</height>
+                            <align>center</align><aligny>center</aligny>
+                            <font>{T.FONT_MICRO}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[{p(i, key)}]</label>
+                        </control>
+                    </control>"""
+        out += f"""
+                    <control type="image">
+                        <visible>!String.IsEmpty({p(i, "poster")})</visible>
+                        <posx>{x}</posx><posy>{y}</posy><width>{w}</width><height>{h}</height>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
+                        <texture diffuse="poster-mask.png">$INFO[{p(i, "poster")}]</texture>
+                    </control>""" + chip(lambda cw: x + 7, "rating") + chip(
+            lambda cw: x + w - 7 - cw, "left", wide=True) + f"""
+                    <control type="label">
+                        <posx>{x + 2}</posx><posy>{y + h + 10}</posy><width>{w}</width><height>20</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_MICRO}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[{p(i, "top")}]</label>
+                    </control>
+                    <control type="label">
+                        <posx>{x + 2}</posx><posy>{y + h + 30}</posy><width>{w}</width><height>20</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_MICRO}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[{p(i, "bottom")}]</label>
+                    </control>"""
+    return f"""
+                    <control type="image">
+                        <width>{T.SETTINGS_PREVIEW_W}</width>
+                        <height>{T.SETTINGS_PREVIEW_H}</height>
+                        <colordiffuse>0x99030B10</colordiffuse>
+                        <texture diffuse="settings-preview-mask-{T.SETTINGS_PREVIEW_W}x{T.SETTINGS_PREVIEW_H}.png">white-square.png</texture>
+                    </control>{out}"""
+
+
 def settings_preview() -> str:
     """The left column's preview card (app 2.0): a backdrop from the library
     with our own player drawn over it -- Next Up in the focused style, or a
@@ -2915,6 +3062,9 @@ def settings_preview() -> str:
                 </control>
                 <control type="group">
                     <visible>{kind("fox")}</visible>{_settings_preview_fox()}
+                </control>
+                <control type="group">
+                    <visible>{kind("cards")}</visible>{_settings_preview_cards()}
                 </control>
                 <control type="group">
                     <visible>{kind("home")}</visible>{_settings_preview_home()}

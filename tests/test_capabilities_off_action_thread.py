@@ -85,6 +85,9 @@ class FakeMain:
     _home_discovery_shelves = MainWindow._home_discovery_shelves
     _ensure_capabilities = MainWindow._ensure_capabilities
     _start_capabilities = MainWindow._start_capabilities
+
+    def _home_fill_show_counts(self, client):
+        pass                # its own thread; not what this test measures
     _fetch_capabilities = MainWindow._fetch_capabilities
     _has_capability = MainWindow._has_capability
 

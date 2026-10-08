@@ -52,6 +52,8 @@ GALLERY_VERTICAL_END = 0xE4D2
 SHUFFLE = 0xE15E
 # Browse's Surprise me (app 2.0): one die, as the app draws it.
 DICE_5 = 0xE28B
+# An episode card whose details are hidden to avoid spoilers (app 2.0).
+EYE_OFF = 0xE0BB
 CLAPPERBOARD = 0xE29B
 TV = 0xE195
 VIDEO = 0xE1A5

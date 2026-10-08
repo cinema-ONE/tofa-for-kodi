@@ -228,6 +228,7 @@ def render_main() -> str:
 
     settings_episodes_item, settings_episodes_focused = fragments.settings_toggle_row(8310)
     settings_spoilers_item, settings_spoilers_focused = fragments.settings_toggle_row(8315)
+    settings_watched_item, settings_watched_focused = fragments.settings_toggle_row(8312)
     settings_spotlight_item, settings_spotlight_focused = fragments.settings_toggle_row(8320)
     settings_homerow_editors = "".join(
         fragments.settings_home_row_editor(i, gid, lid) for i, (gid, lid) in enumerate(
@@ -436,6 +437,8 @@ def render_main() -> str:
         settings_episodes_item=settings_episodes_item,
         settings_episodes_focused=settings_episodes_focused,
         settings_spoilers_item=settings_spoilers_item,
+        settings_watched_item=settings_watched_item,
+        settings_watched_focused=settings_watched_focused,
         settings_spoilers_focused=settings_spoilers_focused,
         settings_page_scaffolds="\n".join(scaffolds),
         settings_qr_rail=fragments.settings_qr_rail(

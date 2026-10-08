@@ -1706,16 +1706,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # out of it.
         blur_spoilers = prefs.as_bool(
             self._ensure_preferences(), "layout.spoilerBlurEpisodes", True)
+        self.setProperty("watched_marks_off", "" if self._ensure_preferences().get(
+            "show_watched_checkmark", True) else "1")
         first_unwatched = next(
             (e.get("episode_number") for e in episodes
              if not (progress_map.get((ep_file_map.get(e.get("id")) or {}).get("id"), {}) or {}).get("completed")),
             None,
         ) if blur_spoilers else None
-        # The episode Resume points at stays visible even past a skipped
-        # one, as in the app: it is the one about to play.
-        if (first_unwatched is not None and season_number == self._next_up_season
-                and self._next_up_episode_number is not None):
-            first_unwatched = max(first_unwatched, self._next_up_episode_number)
 
         # Episodes that have not aired yet carry no still -- TMDB has nothing
         # to show for an episode nobody has seen -- and a grid of empty plates
@@ -1758,9 +1755,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if missing:
                 still = series_backdrop or still
 
+            # As the app: past the first episode you have not seen, hide each
+            # one you have neither finished nor started (even the next up).
+            prog = progress_map.get(f.get("id")) if f else None
+            seen = any(progress.position_of(prog))
             spoiler = (
-                not missing and first_unwatched is not None and num is not None
-                and num > first_unwatched
+                not missing and not seen and first_unwatched is not None
+                and num is not None and num > first_unwatched
             )
             if spoiler:
                 still = ""
@@ -1783,7 +1784,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 mli.setProperty("has_thumb", "")
             mli.setProperty("spoiler", "1" if spoiler else "")
 
-            prog = progress_map.get(f.get("id")) if f else None
             if prog and prog.get("completed"):
                 watched += 1
             self._apply_episode_progress(mli, ep, f, prog)
@@ -2605,7 +2605,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "Episode {0}".format(e) if e is not None else "",
             aired, _runtime_str(_episode_runtime_minutes(ep, f))))
         self.setProperty("ep_title", episodes_fmt.title_or_number(ep) or "")
-        lines = [] if spoiler else textmetrics.wrap_lines(
+        lines = ["Details hidden to avoid spoilers."] if spoiler else textmetrics.wrap_lines(
             (ep.get("overview") or "").strip(), T.DETAIL_EP_SYNOPSIS_W, 3,
             T.DETAIL_EP_SYNOPSIS_SIZE)
         for i in range(3):

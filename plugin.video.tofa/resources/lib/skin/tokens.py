@@ -1007,7 +1007,7 @@ SETTINGS_ACCOUNT_TAIL_GROUP_H = (
     + SETTINGS_GROUP_TRAIL)
 # THEME: the Fox accent row alone.
 SETTINGS_THEME_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
-# Media cards: three rows, each its own one-item list. Same in-group spacing
+# Media cards: four rows, each its own one-item list. Same in-group spacing
 # as any other stacked pair, named separately only for its call sites.
 SETTINGS_MEDIACARDS_ROW_GAP = SETTINGS_STACK_ROW_GAP
 SETTINGS_MEDIACARDS_SECOND_Y = (
@@ -1016,7 +1016,10 @@ SETTINGS_MEDIACARDS_SECOND_Y = (
 SETTINGS_MEDIACARDS_THIRD_Y = (
     SETTINGS_MEDIACARDS_SECOND_Y + SETTINGS_ACTION_ROW_H + SETTINGS_MEDIACARDS_ROW_GAP
 )
-SETTINGS_MEDIACARDS_GROUP_H = SETTINGS_MEDIACARDS_THIRD_Y + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
+SETTINGS_MEDIACARDS_FOURTH_Y = (
+    SETTINGS_MEDIACARDS_THIRD_Y + SETTINGS_ACTION_ROW_H + SETTINGS_MEDIACARDS_ROW_GAP
+)
+SETTINGS_MEDIACARDS_GROUP_H = SETTINGS_MEDIACARDS_FOURTH_Y + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
 
 # Home's row editor (app 2.0): one card per row on the row pitch, the first
 # under its eyebrow; ADD A ROW's lead tops the last row's gap up to a group gap.
@@ -1240,6 +1243,7 @@ ON_LIGHT_TEXT = "0xFF04211E"
 #: Was 0xFF10171C, which is the same red and green but markedly less blue
 #: (B 28 against 43) -- close enough to look deliberate and still be wrong.
 SURFACE_PLACEHOLDER = "0xFF11182B"
+EPISODE_HIDDEN_TILE = "0xFF192427"  # an episode hidden to avoid spoilers (app 2.0)
 
 # ------------------------------------------------------------------- type --
 # Roles, not sizes. Nothing outside this module should name a tofa_font_*
