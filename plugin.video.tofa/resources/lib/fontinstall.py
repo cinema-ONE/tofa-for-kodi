@@ -80,7 +80,7 @@ from . import addonref, log
 #: <import> and resource.font.tofa's own id.
 FONT_ADDON_ID = "resource.font.tofa"
 
-FONT_SET_VERSION = 25
+FONT_SET_VERSION = 26
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
 # All lazy, see addonref.py -- this module's import-time Addon lookup is the
@@ -137,6 +137,9 @@ FONTS: dict[str, tuple[str, int, str]] = {
     "tofa_font_hero_title": ("inter_tight_bold.ttf", 61, "Regular"),
     "tofa_font_section_title": ("inter_tight_semibold.ttf", 39, "Regular"),
     "tofa_font_row_title": ("inter_tight_semibold.ttf", 26, "Regular"),
+    # The top bar's text tabs (app 2.0.0): cap height 24px on the capture,
+    # which is 33 through the 0.7275 cap ratio. "Home" then inks 89px, as there.
+    "tofa_font_nav_tab": ("inter_tight_semibold.ttf", 33, "Regular"),
     "tofa_font_micro": ("inter_tight_regular.ttf", 16, "Regular"),
     # eyebrow: section labels -- design spec calls for letterspacing, which
     # Kodi has no control for, so only size/weight are replicated. metadata:

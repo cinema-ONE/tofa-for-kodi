@@ -21,187 +21,156 @@ from . import tokens as T
 
 
 def logo_block() -> str:
-    """Fox icon + "tofa" wordmark, top-left (70x70, tofa_font_row_title),
-    used by every screen that has this block. Sign-in's icon-only variant
-    (no wordmark, its own size/position) is deliberately separate and not
-    part of this fragment.
-
-    posx 150, not the page margin itself: the logo artwork carries ~6px of
-    transparent padding, so the glyph's ink lands on Home's 156 the same way
-    the hero title below it does. Measured, both in our render and in
-    internal-docs/atv-reference/home-full.png."""
-    return """        <control type="image">
-            <posx>150</posx>
-            <posy>45</posy>
-            <width>70</width>
-            <height>70</height>
+    """The fox mark, top-left: app 2.0.0 dropped the "tofa" wordmark beside
+    it. Inked 55x66 at (93, 35) on the capture; tofa-logo*.png has no
+    transparent margin, so the control is the ink box."""
+    return f"""        <control type="image">
+            <posx>{T.NAV_MARK_X}</posx>
+            <posy>{T.NAV_MARK_Y}</posy>
+            <width>{T.NAV_MARK_W}</width>
+            <height>{T.NAV_MARK_H}</height>
             <aspectratio>keep</aspectratio>
             <texture>$INFO[Window.Property(logo_file)]</texture>
-        </control>
-        <control type="label">
-            <posx>228</posx>
-            <posy>45</posy>
-            <width>200</width>
-            <height>70</height>
-            <aligny>center</aligny>
-            <font>tofa_font_row_title</font>
-            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-            <label>tofa</label>
         </control>"""
 
 
-def nav_bar(
-    *,
-    ondown_target: int,
-    list_id: int = 3000,
-    group_id: int = 2000,
-    group_posx: int = 440,
-    group_posy: int = 46,
-) -> str:
-    """The top nav pill cluster: background panel + the 5-tab list. Same
-    markup on every screen that has one; the only thing that legitimately
-    varies per screen is `ondown_target` (where focus lands moving off the
-    nav into that screen's own content).
+# The tab list spans the bar in five equal slots, and each slot's drawing is
+# shifted to its tab's measured spot: Kodi lists only know one item width.
+_NAV_LIST_Y = 30
+_NAV_SLOT = 360
+_NAV_FOCUSED = "Control.HasFocus({list_id}) | !String.IsEmpty(Window.Property(nav_closing))"
+_NAV_RESTING = "!Control.HasFocus({list_id}) + String.IsEmpty(Window.Property(nav_closing))"
 
-    group_posx=440, not the true screen-centered value (445): shifted 5px
-    left so the nav panel's left edge lines up with Browse's Sort pill and
-    poster grid (both posx=440)."""
+
+def _nav_mark(x: int, w: int, y: int, h: int, texture: str, visible: str) -> str:
+    """One accent mark (underline or dot) inside a tab's slot."""
+    return f"""
+                        <control type="image">
+                            <posx>{x}</posx>
+                            <posy>{y - _NAV_LIST_Y}</posy>
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture{texture}</texture>
+                            <visible>{visible}</visible>
+                        </control>"""
+
+
+def _nav_slot(idx: int, *, focused: bool, list_id: int) -> str:
+    """Everything tab `idx` draws, in item-relative coordinates.
+
+    The focused layout is the SELECTED tab: underline while the bar has
+    focus, a dot once focus has gone down into the page. Other tabs rest in
+    half-white, except the current one, which stays white."""
+    off = idx * _NAV_SLOT
+    gate = f"String.IsEqual(ListItem.Property(nav_idx),{idx})"
+    on = _NAV_FOCUSED.format(list_id=list_id)
+    rest = _NAV_RESTING.format(list_id=list_id)
+    current = "!String.IsEmpty(ListItem.Property(is_current))"
+    if idx < len(T.NAV_TAB_INK):
+        x, w = T.NAV_TAB_INK[idx][0] - off, T.NAV_TAB_INK[idx][1]
+        centre = x + w // 2
+        label_x = x - T.NAV_TAB_LSB[idx]
+        white = "$INFO[Window.Property(text_primary)]"
+        if focused:
+            colours = ((white, ""),)
+        else:
+            colours = ((white, f"\n                            <visible>{current}</visible>"),
+                       (T.NAV_TAB_REST, "\n                            <visible>"
+                        "String.IsEmpty(ListItem.Property(is_current))</visible>"))
+        body = "".join(f"""
+                        <control type="label">
+                            <posx>{label_x}</posx>
+                            <posy>{T.NAV_TAB_LABEL_Y - _NAV_LIST_Y}</posy>
+                            <width>{w + 20}</width>
+                            <height>{T.NAV_TAB_LABEL_H}</height>
+                            <font>tofa_font_nav_tab</font>
+                            <textcolor>{colour}</textcolor>
+                            <label>$INFO[ListItem.Label]</label>{vis}
+                        </control>""" for colour, vis in colours)
+        line_x, line_w = x - 1, w + 2
+    else:
+        # Settings, as a gear rather than a word.
+        x = T.NAV_GEAR_X - off
+        centre = x + T.NAV_GEAR_SIZE // 2
+        body = f"""
+                        <control type="label">
+                            <posx>{x}</posx>
+                            <posy>{T.NAV_GEAR_Y - _NAV_LIST_Y}</posy>
+                            <width>{T.NAV_GEAR_SIZE}</width>
+                            <height>{T.NAV_GEAR_SIZE}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_icons_36</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Property(icon_glyph)]</label>
+                        </control>"""
+        line_w = T.NAV_ICON_UNDERLINE_W
+        line_x = centre - line_w // 2
+    dot_x = centre - T.NAV_DOT_SIZE // 2
+    if focused:
+        marks = (_nav_mark(line_x, line_w, T.NAV_UNDERLINE_Y, T.NAV_UNDERLINE_H,
+                           f' border="{T.NAV_UNDERLINE_H // 2}">capsule-h{T.NAV_UNDERLINE_H}.png', on)
+                 + _nav_mark(dot_x, T.NAV_DOT_SIZE, T.NAV_DOT_Y, T.NAV_DOT_SIZE, ">circle.png", rest))
+    else:
+        marks = _nav_mark(dot_x, T.NAV_DOT_SIZE, T.NAV_DOT_Y, T.NAV_DOT_SIZE, ">circle.png",
+                          f"{rest} + {current}")
+    return f"""
+                    <control type="group">
+                        <visible>{gate}</visible>{body}{marks}
+                    </control>"""
+
+
+def nav_bar(*, ondown_target: int, list_id: int = 3000, group_id: int = 2000,
+            avatar_id: int = 3001) -> str:
+    """The top bar's tabs and gear: one horizontal list, so Left/Right, focus
+    memory and the section switch all keep working off a single control.
+    Right from the gear goes to the avatar, which the template draws."""
+    slots = len(T.NAV_TAB_INK) + 1
+    item = "".join(_nav_slot(i, focused=False, list_id=list_id) for i in range(slots))
+    sel = "".join(_nav_slot(i, focused=True, list_id=list_id) for i in range(slots))
     return f"""        <control type="group" id="{group_id}">
-            <posx>{group_posx}</posx>
-            <posy>{group_posy}</posy>
-            <control type="image">
-                <width>1030</width>
-                <height>68</height>
-                <colordiffuse>{T.SURFACE_REST}</colordiffuse>
-                <texture border="34">capsule-h68.png</texture>
-            </control>
-            <control type="image">
-                <width>1030</width>
-                <height>68</height>
-                <colordiffuse>{T.SURFACE_RAISED}</colordiffuse>
-                <texture border="34">capsule-h68-outline.png</texture>
-            </control>
-
             <control type="list" id="{list_id}">
-                <posx>4</posx>
-                <posy>2</posy>
-                <width>1022</width>
-                <height>64</height>
+                <posx>0</posx>
+                <posy>{_NAV_LIST_Y}</posy>
+                <width>{_NAV_SLOT * slots}</width>
+                <height>80</height>
                 <orientation>horizontal</orientation>
-                <itemwidth>204</itemwidth>
-                <itemheight>64</itemheight>
                 <onleft>{list_id}</onleft>
-                <onright>{list_id}</onright>
+                <onright>{avatar_id}</onright>
                 <ondown>{ondown_target}</ondown>
-                <itemlayout width="204" height="64">
-                    <!-- Box must be >= the font's point size, or Kodi
-                         renders a degenerate dot instead of the glyph. -->
-                    <control type="label">
-                        <posx>27</posx>
-                        <posy>11</posy>
-                        <width>42</width>
-                        <height>42</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_36</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Property(icon_glyph)]</label>
-                    </control>
-                    <control type="label">
-                        <posx>74</posx>
-                        <width>120</width>
-                        <height>64</height>
-                        <align>left</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                    </control>
+                <itemlayout width="{_NAV_SLOT}" height="80">{item}
                 </itemlayout>
-                <!-- Kodi keeps rendering the list's SELECTED item via
-                     focusedlayout even after the list loses window focus,
-                     so itemlayout above never actually applies to the
-                     current tab; the focused/blurred distinction lives
-                     here instead, split on Control.HasFocus(list_id). -->
-                <focusedlayout width="204" height="64">
-                    <!-- Full-size pill: nav bar has literal focus. Also
-                         shown via Window.Property(nav_closing) while this
-                         window is closing after a tab switch (set by
-                         windows/*.py's _open_nav_target() before opening
-                         the target window), so the tab doesn't visibly
-                         shrink to the small pill on the way out. -->
-                    <control type="image">
-                        <posy>2</posy>
-                        <width>204</width>
-                        <height>60</height>
-                        <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                        <texture border="30">capsule-h60.png</texture>
-                        <visible>Control.HasFocus({list_id}) | !String.IsEmpty(Window.Property(nav_closing))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>27</posx>
-                        <posy>11</posy>
-                        <width>42</width>
-                        <height>42</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_36</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Property(icon_glyph)]</label>
-                        <visible>Control.HasFocus({list_id}) | !String.IsEmpty(Window.Property(nav_closing))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>74</posx>
-                        <width>120</width>
-                        <height>64</height>
-                        <align>left</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>Control.HasFocus({list_id}) | !String.IsEmpty(Window.Property(nav_closing))</visible>
-                    </control>
-
-                    <!-- Smaller pill: tab still selected but nav bar no
-                         longer has literal focus. Insets 8px evenly on all
-                         sides from the full pill's bounds; a fixed-size
-                         asset (nav-pill-small.png, 188x44) rather than a
-                         percentage scale of capsule-pill.png, to keep the
-                         margin even on all four sides. -->
-                    <control type="image">
-                        <posx>8</posx>
-                        <posy>10</posy>
-                        <width>188</width>
-                        <height>44</height>
-                        <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                        <texture>nav-pill-small.png</texture>
-                        <visible>!Control.HasFocus({list_id}) + String.IsEmpty(Window.Property(nav_closing))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>35</posx>
-                        <posy>11</posy>
-                        <width>42</width>
-                        <height>42</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_36</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Property(icon_glyph)]</label>
-                        <visible>!Control.HasFocus({list_id}) + String.IsEmpty(Window.Property(nav_closing))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>82</posx>
-                        <width>104</width>
-                        <height>64</height>
-                        <align>left</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!Control.HasFocus({list_id}) + String.IsEmpty(Window.Property(nav_closing))</visible>
-                    </control>
+                <focusedlayout width="{_NAV_SLOT}" height="80">{sel}
                 </focusedlayout>
             </control>
+        </control>"""
+
+
+def nav_avatar_button(*, ondown_target: int, list_id: int = 3000) -> str:
+    """The avatar's focus target and its underline; the template draws the
+    art and ring underneath. Left goes back to the gear."""
+    return f"""        <control type="image">
+            <posx>{T.NAV_AVATAR_UNDERLINE_X}</posx>
+            <posy>{T.NAV_UNDERLINE_Y}</posy>
+            <width>{T.NAV_ICON_UNDERLINE_W}</width>
+            <height>{T.NAV_UNDERLINE_H}</height>
+            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+            <texture border="{T.NAV_UNDERLINE_H // 2}">capsule-h{T.NAV_UNDERLINE_H}.png</texture>
+            <visible>Control.HasFocus({T.NAV_AVATAR_ID})</visible>
+        </control>
+        <control type="button" id="{T.NAV_AVATAR_ID}">
+            <posx>{T.NAV_AVATAR_X}</posx>
+            <posy>{T.NAV_AVATAR_Y}</posy>
+            <width>{T.NAV_AVATAR_SIZE}</width>
+            <height>{T.NAV_AVATAR_SIZE}</height>
+            <texturefocus>transparent-6px.png</texturefocus>
+            <texturenofocus>transparent-6px.png</texturenofocus>
+            <label></label>
+            <onleft>{list_id}</onleft>
+            <onright>{T.NAV_AVATAR_ID}</onright>
+            <onup>{T.NAV_AVATAR_ID}</onup>
+            <ondown>{ondown_target}</ondown>
         </control>"""
 
 

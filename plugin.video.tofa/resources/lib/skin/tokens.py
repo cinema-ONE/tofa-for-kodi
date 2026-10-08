@@ -55,34 +55,48 @@ CONTENT_WIDTH = SCREEN_W - DISCOVER_LEFT
 # Top scrim behind the nav bar.
 SCRIM_H = 140
 
-#: Profile avatar in the top-right of the nav row. Measured off the Apple TV
-#: app: a 64px circle centred at (1748, 80), which is the nav bar's own
-#: vertical centre. Visual only -- see the template's own note.
-NAV_AVATAR_SIZE = 64
-NAV_AVATAR_X = 1748 - NAV_AVATAR_SIZE // 2
-NAV_AVATAR_Y = 80 - NAV_AVATAR_SIZE // 2
-#: The art sits at 92% of the ring -- BOTH a preset and an uploaded photo.
-#: The web app fills the circle with a photo (object-cover) and insets only
-#: presets, but at 64px over a hero that read as touching the border, and
-#: Adrian asked for it "down a notch". One number for both also means the
-#: marker does not resize when a profile switches between the two.
-#:
-#: Historical note on where 92% came from. Both
-#: numbers are the web app's, read out of its avatar renderer rather than
-#: guessed: presets get `width/height: 92%` with `object-fit: contain`, a
-#: photo gets `h-full w-full object-cover`.
-#:
-#: It was 44-in-64 before, fitted to the old Fluent Emoji presets, which
-#: floated in their own canvas at ~88% ink. The 0.9.29 presets are busts
-#: that bleed to the canvas edge (measured: 100% vertically), so at 44 they
-#: floated in the middle of the ring with a gap all round -- and at the full
-#: 64 they touched it, which Adrian spotted against the web UI: "the profile
-#: pictures are slightly smaller than the circle. Ours touch the border."
-#:
-#: NOTE there is still no Apple TV reference for this
-#: (feedback_apple_tv_source_of_truth) -- tofa's TV clients have not shipped
-#: the new avatars. The web app is the only extant rendering.
-NAV_AVATAR_ART = round(NAV_AVATAR_SIZE * 0.92)
+# ----------------------------------------------------------------- top bar --
+# App 2.0.0's top bar, measured off atv-reference/home-full.png and the
+# 2026-10-08 settings captures: fox mark, four text tabs, gear, avatar.
+
+#: The fox alone (no wordmark), inked 55x66 at (93, 35).
+NAV_MARK_X, NAV_MARK_Y, NAV_MARK_W, NAV_MARK_H = 93, 35, 55, 66
+
+#: Each tab's ink box (left edge, width) as Kodi draws tofa_font_nav_tab.
+#: The left edges are the capture's; our face inks a little wider than the
+#: app's, so the gaps between labels come out 55-57px.
+NAV_TAB_INK = ((188, 85), (334, 109), (501, 130), (688, 102))
+#: How far right of its posx Kodi starts each label's ink, measured.
+NAV_TAB_LSB = (2, 2, 2, 1)
+#: Cap top 52 and baseline 76 on the capture; measured in our render.
+NAV_TAB_LABEL_Y = 39
+NAV_TAB_LABEL_H = 40
+#: Focused tab: a 4px accent capsule under the text, 1px wider each side.
+NAV_UNDERLINE_Y = 97
+NAV_UNDERLINE_H = 4
+#: Current tab while focus is elsewhere: a 6px accent dot centred under it.
+NAV_DOT_Y = 98
+NAV_DOT_SIZE = 6
+#: Tabs that are neither: white at about half strength (core 134 on ~10).
+NAV_TAB_REST = "0x80FFFFFF"
+
+#: Settings is a gear, not a tab: Lucide at 36 inks 30x34, centred on the
+#: app's (1719, 66).
+NAV_GEAR_X, NAV_GEAR_Y, NAV_GEAR_SIZE = 1701, 48, 36
+#: The underline under the gear and the avatar is a fixed 32px.
+NAV_ICON_UNDERLINE_W = 32
+
+#: Profile avatar, top right: a 52px circle centred at (1798, 66). It takes
+#: focus in 2.0.0, and Select opens the profile picker.
+NAV_AVATAR_SIZE = 52
+NAV_AVATAR_X = 1772
+NAV_AVATAR_Y = 40
+NAV_AVATAR_ID = 3001
+NAV_AVATAR_UNDERLINE_X = NAV_AVATAR_X + (NAV_AVATAR_SIZE - NAV_ICON_UNDERLINE_W) // 2
+#: Art at 34 of the 52px ring, for a preset AND a photo, so switching between
+#: them never resizes the marker. App 2.0.0, the first TV client with the new
+#: avatars, inks the robot preset 33px tall there; no photo captured yet.
+NAV_AVATAR_ART = 34
 NAV_AVATAR_ART_X = NAV_AVATAR_X + (NAV_AVATAR_SIZE - NAV_AVATAR_ART) // 2
 NAV_AVATAR_ART_Y = NAV_AVATAR_Y + (NAV_AVATAR_SIZE - NAV_AVATAR_ART) // 2
 #: Soft drop shadow behind the avatar, so it separates from whatever the Home
