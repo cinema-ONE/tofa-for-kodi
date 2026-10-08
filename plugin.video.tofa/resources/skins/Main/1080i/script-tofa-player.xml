@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- COPIED from resources/lib/skin/static/script-tofa-player.xml and processed.
-     hash=8dbcaeeb1af4. DO NOT HAND-EDIT: edit the file under static/,
+     hash=41d7773e62e2. DO NOT HAND-EDIT: edit the file under static/,
      which keeps every comment; this copy has them stripped and its
      capsules and rounded rects swapped for resolution-free art. -->
 <window type="dialog">
@@ -639,6 +639,7 @@
                 <width>44</width>
                 <height>88</height>
                 <colordiffuse>0x14FFFFFF</colordiffuse>   
+                <visible>String.IsEmpty(Window.Property(transport_wide))</visible>
                 <texture>pill-cap-left.png</texture>
             </control>
             <control type="image">
@@ -647,6 +648,7 @@
                 <width>140</width>
                 <height>88</height>
                 <colordiffuse>0x14FFFFFF</colordiffuse>   
+                <visible>String.IsEmpty(Window.Property(transport_wide))</visible>
                 <texture>pill-mid.png</texture>
             </control>
             <control type="image">
@@ -655,6 +657,7 @@
                 <width>44</width>
                 <height>88</height>
                 <colordiffuse>0x14FFFFFF</colordiffuse>   
+                <visible>String.IsEmpty(Window.Property(transport_wide))</visible>
                 <texture>pill-cap-right.png</texture>
             </control>
             <control type="image">
@@ -663,8 +666,56 @@
                 <width>228</width>
                 <height>88</height>
                 <colordiffuse>0x1FFFFFFF</colordiffuse>   
+                <visible>String.IsEmpty(Window.Property(transport_wide))</visible>
                 <texture>pill-outline-228x88.png</texture>
             </control>
+            <control type="image">
+                <posx>20</posx>
+                <posy>972</posy>
+                <width>44</width>
+                <height>88</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>64</posx>
+                <posy>972</posy>
+                <width>220</width>
+                <height>88</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>284</posx>
+                <posy>972</posy>
+                <width>44</width>
+                <height>88</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>20</posx>
+                <posy>972</posy>
+                <width>308</width>
+                <height>88</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>   
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+                <texture>pill-outline-308x88.png</texture>
+            </control>
+            <control type="image">
+                <posx>105</posx>
+                <posy>1000</posy>
+                <width>2</width>
+                <height>32</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+            </control>
+            <control type="group">
+                <animation effect="slide" end="80,0" time="0" condition="!String.IsEmpty(Window.Property(transport_wide))">Conditional</animation>
             <control type="image">
                 <posx>40</posx>
                 <posy>990</posy>
@@ -908,6 +959,7 @@
                 <onleft>9121</onleft>
                 <onright>9130</onright>
             </control>
+            </control>
             <control type="image" id="9145">
                 <posx>1598</posx>
                 <posy>980</posy>
@@ -960,7 +1012,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <label>&#xE3A4;</label>
+                <label>&#xE575;</label>
                 <visible>!Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
             </control>
             <control type="label" id="9154">
@@ -972,7 +1024,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                <label>&#xE3A4;</label>
+                <label>&#xE575;</label>
                 <visible>Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
             </control>
             <control type="label" id="9155">
@@ -984,7 +1036,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                <label>&#xE3A4;</label>
+                <label>&#xE575;</label>
                 <visible>String.IsEqual(Window.Property(player_util_9130),on)</visible>
             </control>
             <control type="button" id="9130">
@@ -1325,7 +1377,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <label>&#xE1B1;</label>
+                <label>&#xE4E1;</label>
                 <visible>!Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
             </control>
             <control type="label" id="9140">
@@ -1337,7 +1389,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                <label>&#xE1B1;</label>
+                <label>&#xE4E1;</label>
                 <visible>Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
             </control>
             <control type="label" id="9141">
@@ -1349,7 +1401,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                <label>&#xE1B1;</label>
+                <label>&#xE4E1;</label>
                 <visible>String.IsEqual(Window.Property(player_util_9135),on)</visible>
             </control>
             <control type="button" id="9135">

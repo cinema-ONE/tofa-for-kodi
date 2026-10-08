@@ -109,11 +109,12 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
     ]),
     ("Detail page 2", "resources/lib/skin/templates/detail.xml.tpl", [
         ("CHEVRON_DOWN", "Scroll-down-for-page-2 hint, its one remaining use: here it means a DIRECTION, not a dropdown"),
+        ("CHEVRON_UP", "Page 2's \u201cback to the overview\u201d hint at the top"),
     ]),
     ("Player transport &amp; drawer", "resources/skins/Main/1080i/script-tofa-player.xml", [
         ("SKIP_BACK", "Transport capsule, previous EPISODE (a movie shows -10s instead)"),
         ("SKIP_FORWARD", "Transport capsule, next EPISODE (a movie shows +10s instead)"),
-        ("LIST", "Utility capsule, opens 8.10's episode drawer (TV only)"),
+        ("LIST", "Transport capsule's first button, episodes only (app 2.0); opens the episodes"),
         ("CIRCLE_PLAY", "8.10 drawer, “this one is playing” badge on an episode row's still"),
     ]),
     ("PickerDialog rows", "resources/lib/windows/picker.py", [
@@ -143,14 +144,14 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("ROTATE_CCW", "-10s button and the back quick-seek toast; the “10” is a\n"
                        "            separate label centred in the arc (SF gobackward.10)"),
         ("ROTATE_CW", "+10s button and the forward quick-seek toast (SF goforward.10)"),
-        ("CAPTIONS", "Subtitles button, utility capsule slot 1 (SF captions.bubble)"),
+        ("CAPTIONS", "Settings' Audio & Subtitles mark; the player moved to MESSAGE_SQUARE_TEXT"),
+        ("MESSAGE_SQUARE_TEXT", "Subtitles button and panel (SF captions.bubble, app 2.0)"),
         ("VOLUME_2", "Audio button, utility capsule slot 2 (SF speaker.wave.2.fill)"),
         ("GLASSES", "3D button, straight after Audio — stereoscopic files only —\n"
                     "            and the header of the panel it opens, which is the same\n"
                     "            panel a 3D film raises when it starts"),
         ("ACTIVITY", "Stats overlay toggle, utility capsule slot 4 (SF waveform.path.ecg)"),
-        ("WRENCH", "Adjust panel: audio sync and subtitle sync. 3D was a third row\n"
-                   "            here until it became its own button — see GLASSES"),
+        ("GAUGE", "Playback button and panel: speed, audio sync, subtitle sync (app 2.0)"),
         ("CHEVRONS_RIGHT", "8.5's skip-segment pill; deliberately NOT skip-forward, which\n"
                            "            already means “next episode” on the transport"),
     ]),

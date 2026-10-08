@@ -88,6 +88,7 @@ from .. import (api, artcache, asstime, auth, episodes, http, langcodes, log,
                 settings_options, stereoscopic, textmetrics, tracks)
 from ..api import MediaServerClient
 from ..profile import DEFAULT_AUDIO_CODECS, CapabilityProfile
+from ..skin import icon_glyphs
 
 # Window(10000) property guarding against a second PlayerWindow opening --
 # open() blocks, so a second call can only come from a stray double-press
@@ -1940,6 +1941,14 @@ class PlayerWindow(kodigui.ControlledDialog):
             "value": self._audio_sync_label,
             "nudge": self._nudge_audio_sync,
         })
+        # Speed first, as the app's Playback panel has it -- when Kodi can.
+        if playbacksync.speed_available():
+            rows.insert(0, {
+                "label": "Speed",
+                "value": lambda: playbacksync.format_speed(playbacksync.speed()),
+                "nudge": lambda forward: playbacksync.nudge_speed(
+                    playbacksync.speed(), forward),
+            })
         # 3D used to be a third row here, and is now its own button in the
         # utility capsule -- see open_stereo_panel(). It was a STEPPER, and
         # a stepper applies as it steps: every press was a live mode change,
@@ -1968,10 +1977,8 @@ class PlayerWindow(kodigui.ControlledDialog):
     def open_adjust_panel(self):
         steppers = self._adjust_rows()
         self._open_panel(
-            title="Adjust",
-            # wrench: see icon_glyphs.WRENCH. It was `timer` while every row
-            # shifted something in TIME; the 3D row ended that.
-            glyph="\uE1B1",
+            title="Playback",
+            glyph=chr(icon_glyphs.GAUGE),
             rows=[(row["label"], False, None, row["value"]())
                   for row in steppers],
             selected=0,
@@ -3098,8 +3105,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         # is present exactly when there is a question worth re-asking.
         if xbmc.getCondVisibility("VideoPlayer.IsStereoscopic"):
             buttons.append(self.STEREO_ID)
-        if self.getProperty("player_is_episode"):
-            buttons.append(self.EPISODES_ID)
+        # Episodes leads the transport capsule instead (_layout_transport).
         buttons.append(self.QUALITY_ID)
         # Unconditional, unlike its neighbours: audio sync always has
         # something to correct, because there is always audio. The panel
@@ -3116,6 +3122,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         follow the VISIBLE order -- with Subtitles absent, Audio's left
         neighbour is the transport, not a hidden control the focus engine
         would refuse to leave."""
+        self._layout_transport()
         buttons = self._visible_utility_buttons()
         width = self._UTIL_PAD * 2 + self._UTIL_BTN + self._UTIL_PITCH * (len(buttons) - 1)
         left = self._UTIL_RIGHT - width
@@ -3127,6 +3134,8 @@ class PlayerWindow(kodigui.ControlledDialog):
             ctrl.setPosition(left, self._UTIL_BG_Y)
             ctrl.setWidth(width)
         for slot, button_id in enumerate(self.UTILITY_IDS):
+            if button_id == self.EPISODES_ID:
+                continue
             shown = button_id in buttons
             x = (left + self._UTIL_PAD + self._UTIL_PITCH * buttons.index(button_id)
                  if shown else 0)
@@ -3173,10 +3182,37 @@ class PlayerWindow(kodigui.ControlledDialog):
             focused = self.getFocusId()
         except RuntimeError:
             return
-        if focused in self.UTILITY_IDS and focused not in buttons:
+        if (focused in self.UTILITY_IDS and focused not in buttons
+                and focused != self.EPISODES_ID):
             log.debug(f"player: capsule hid focused button {focused}, "
                       "moving focus to play/pause")
             self.setFocusId(self.PLAYPAUSE_ID)
+
+    def _layout_transport(self):
+        """An episode's transport capsule leads with Episodes and a divider
+        (app 2.0); the XML widens it and slides the rest on transport_wide."""
+        episode = bool(self.getProperty("player_is_episode"))
+        self.setProperty("transport_wide", "1" if episode else "")
+        base = self.UTILITY_VISUAL_BASE[self.EPISODES_ID]
+        for cid in [base + i for i in range(6)] + [self.EPISODES_ID]:
+            try:
+                ctrl = self.getControl(cid)
+            except RuntimeError:
+                continue
+            ctrl.setVisible(episode)
+            ctrl.setPosition(self._TRANSPORT_LEAD_X, self._UTIL_Y)
+        try:
+            back = self.getControl(self.BACK10_ID)
+            lead = self.getControl(self.EPISODES_ID)
+        except RuntimeError:
+            return
+        lead.controlLeft(lead)
+        lead.controlRight(back)
+        back.controlLeft(lead if episode else back)
+
+    #: Where Episodes sits in the transport capsule: where -10s/previous
+    #: sat before the transport slid right by 80.
+    _TRANSPORT_LEAD_X = 40
 
     def _apply_transport_mode(self, *, episode: bool):
         """Swap the transport's outer pair between seek and episode.
@@ -5717,7 +5753,7 @@ class PlayerWindow(kodigui.ControlledDialog):
 
         self._open_panel(
             title="Subtitles" if subtitles else "Audio",
-            glyph="\uE3A4" if subtitles else "\uE1AB",
+            glyph=chr(icon_glyphs.MESSAGE_SQUARE_TEXT) if subtitles else "\uE1AB",
             rows=rows,
             selected=max(0, selected),
             apply=apply,
