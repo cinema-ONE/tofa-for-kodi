@@ -789,6 +789,9 @@
             </control>
 
             <!-- ======================= transport capsule ================ -->
+            <!-- An episode leads with its Episodes button and a divider (app
+                 2.0): the capsule widens by 80 and the transport slides
+                 right by the same; player.py sets transport_wide. -->
             <control type="image">
                 <posx>20</posx>
                 <posy>972</posy>
@@ -796,6 +799,7 @@
                 <height>88</height>
                 <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST -->
                 <texture border="44">capsule-h88.png</texture>
+                <visible>String.IsEmpty(Window.Property(transport_wide))</visible>
             </control>
             <control type="image">
                 <posx>20</posx>
@@ -804,7 +808,37 @@
                 <height>88</height>
                 <colordiffuse>0x1FFFFFFF</colordiffuse>   <!-- SURFACE_RAISED -->
                 <texture border="44">capsule-h88-outline.png</texture>
+                <visible>String.IsEmpty(Window.Property(transport_wide))</visible>
             </control>
+            <control type="image">
+                <posx>20</posx>
+                <posy>972</posy>
+                <width>308</width>
+                <height>88</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST -->
+                <texture border="44">capsule-h88.png</texture>
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+            </control>
+            <control type="image">
+                <posx>20</posx>
+                <posy>972</posy>
+                <width>308</width>
+                <height>88</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>   <!-- SURFACE_RAISED -->
+                <texture border="44">capsule-h88-outline.png</texture>
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+            </control>
+            <control type="image">
+                <posx>105</posx>
+                <posy>1000</posy>
+                <width>2</width>
+                <height>32</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+                <visible>!String.IsEmpty(Window.Property(transport_wide))</visible>
+            </control>
+            <control type="group">
+                <animation effect="slide" end="80,0" time="0" condition="!String.IsEmpty(Window.Property(transport_wide))">Conditional</animation>
 
             <!-- -10s. The glyph is a bare circular arrow; the "10" is its
                  own label centred in the arc, which is how SF's
@@ -1059,6 +1093,7 @@
                 <onleft>9121</onleft>
                 <onright>9130</onright>
             </control>
+            </control>
 
             <!-- ======================== utility capsule ================= -->
             <!-- Content-dependent, NOT a fixed four: the reference app shows
@@ -1126,7 +1161,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <label>&#xE3A4;</label>
+                <label>&#xE575;</label>
                 <visible>!Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
             </control>
             <control type="label" id="9154">
@@ -1138,7 +1173,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                <label>&#xE3A4;</label>
+                <label>&#xE575;</label>
                 <visible>Control.HasFocus(9130) + !String.IsEqual(Window.Property(player_util_9130),on)</visible>
             </control>
             <control type="label" id="9155">
@@ -1150,7 +1185,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                <label>&#xE3A4;</label>
+                <label>&#xE575;</label>
                 <visible>String.IsEqual(Window.Property(player_util_9130),on)</visible>
             </control>
             <control type="button" id="9130">
@@ -1506,7 +1541,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <label>&#xE1B1;</label>
+                <label>&#xE4E1;</label>
                 <visible>!Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
             </control>
             <control type="label" id="9140">
@@ -1518,7 +1553,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                <label>&#xE1B1;</label>
+                <label>&#xE4E1;</label>
                 <visible>Control.HasFocus(9135) + !String.IsEqual(Window.Property(player_util_9135),on)</visible>
             </control>
             <control type="label" id="9141">
@@ -1530,7 +1565,7 @@
                 <aligny>center</aligny>
                 <font>tofa_font_icons_26</font>
                 <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                <label>&#xE1B1;</label>
+                <label>&#xE4E1;</label>
                 <visible>String.IsEqual(Window.Property(player_util_9135),on)</visible>
             </control>
             <control type="button" id="9135">

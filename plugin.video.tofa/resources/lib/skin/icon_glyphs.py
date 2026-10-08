@@ -151,25 +151,11 @@ VOLUME_2 = 0xE1AB
 # trace SF calls waveform.path.ecg -- 11 names MonitorHeart as Material's
 # nearest, which is a heart in a box; activity is the closer mark.
 ACTIVITY = 0xE038
-# The Adjust panel's own mark. It WAS `timer`, which was honest while the
-# panel held only audio sync and subtitle sync -- both of which shift
-# something in time. Adding the 3D mode row broke that, exactly as the note
-# there predicted, so the mark now says "adjust", not "time".
-#
-# NOT sliders of any kind: SLIDERS_HORIZONTAL is the Quality button two slots
-# away, and sliders-vertical / settings-2 are the same mark rotated, which is
-# the mistake LIST_FILTER exists to undo. NOT a gauge either -- that reads as
-# measurement and would collide with ACTIVITY on the Stats button beside it.
-#
-# A wrench is a simple silhouette at 26px (unlike monitor-cog, whose gear
-# mushes) and says "something here is off and can be corrected", which is
-# what every row in the panel does. Verified present in the shipped subset.
-#
-# The 3D row left again on 2026-08-15 -- it is its own button now, see
-# GLASSES -- so `timer` would be honest here once more. The mark stays a
-# wrench anyway: it is not wrong for a panel of corrections, and swapping a
-# familiar button's face back and forth costs more than it settles.
-WRENCH = 0xE1B1
+# The player's Playback button (speed and sync): Lucide circle-gauge, as the
+# app 2.0 draws it.
+GAUGE = 0xE4E1
+# The player's Subtitles button: a speech bubble with lines, as the app 2.0.
+MESSAGE_SQUARE_TEXT = 0xE575
 # 3D. Its own button in the utility capsule since 2026-08-15, and the header
 # of the panel that button opens -- the same panel the start of a 3D film
 # raises. That panel used to borrow LAYERS, which is what Collections means

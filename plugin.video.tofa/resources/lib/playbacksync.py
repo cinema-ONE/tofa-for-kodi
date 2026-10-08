@@ -149,6 +149,49 @@ def nudge_audio(current: Optional[float], forward: bool) -> Optional[float]:
 
 
 # ----------------------------------------------------------------------
+# Speed -- Kodi's tempo, which keeps voices at their pitch
+# ----------------------------------------------------------------------
+
+#: Kodi's own tempo steps and range (0.75 < tempo < 1.55, step 0.1); it
+#: only allows tempo while "Sync playback to display" is on.
+SPEEDS = (0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5)
+
+
+def speed_available() -> bool:
+    return bool(xbmc.getCondVisibility("Player.TempoEnabled"))
+
+
+def speed() -> Optional[float]:
+    """The tempo Kodi is playing at, or None if it will not say."""
+    try:
+        return round(float(xbmc.getInfoLabel("Player.PlaySpeed")), 2)
+    except ValueError:
+        return None
+
+
+def format_speed(value: Optional[float]) -> str:
+    """"1×", "1.2×", or an em dash when unknown."""
+    if value is None:
+        return u"\u2014"
+    return u"{0:g}\u00d7".format(value)
+
+
+def nudge_speed(current: Optional[float], forward: bool) -> Optional[float]:
+    """One press to the next of SPEEDS. Kodi refuses while paused."""
+    base = 1.0 if current is None else current
+    later = [s for s in SPEEDS if (s > base + 0.01 if forward else s < base - 0.01)]
+    if not later:
+        return base
+    value = later[0] if forward else later[-1]
+    player_id = _video_player_id()
+    if player_id is None or _rpc("Player.SetTempo",
+                                 {"playerid": player_id, "tempo": value}) is None:
+        return None
+    log.debug(f"playbacksync: speed -> {value}")
+    return value
+
+
+# ----------------------------------------------------------------------
 # Subtitles -- stepping only, so the value is ours to remember
 # ----------------------------------------------------------------------
 
