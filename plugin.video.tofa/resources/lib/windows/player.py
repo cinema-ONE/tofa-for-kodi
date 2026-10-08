@@ -196,6 +196,8 @@ _GLYPH_NEXT_EPISODE = "\uE160"   # skip-forward
 #: Skills" (verified at 2x). Internal consistency was preferred over matching
 #: the app here -- see DIVERGENCES.md.
 _META_SEP = u" • "
+#: The pause screen's synopsis column (app 2.0, measured).
+_PAUSE_SYNOPSIS_W = 1040
 
 
 _TRANSPORT_DISABLED = "0x59FFFFFF"
@@ -1296,6 +1298,10 @@ class PlayerWindow(kodigui.ControlledDialog):
             if show:
                 self.setProperty("player_title", show)
             subtitle = f"{number}{_META_SEP}{ep_title}" if ep_title else number
+            # The pause screen splits them (app 2.0): "2017 · S5 E3", then
+            # the episode's own title on a line of its own.
+            pause_meta = u" \u00b7 ".join(p for p in (str(year), number) if p)
+            pause_heading = ep_title
             # 8.8's pause card describes THIS episode, not the series. The
             # same divergence Detail's hero now carries -- see
             # detail.py:_apply_episode_synopsis for why, and note our only
@@ -1309,9 +1315,19 @@ class PlayerWindow(kodigui.ControlledDialog):
             kind = "Show" if media.get("media_type") == "tv" else "Movie"
             subtitle = f"{kind}{_META_SEP}{year}" if year else kind
             episode_overview = ""
+            pause_meta = u" \u00b7 ".join(p for p in (
+                str(year), media.get("content_rating") or "") if p)
+            pause_heading = ""
         self.setProperty("player_subtitle", subtitle)
-        self.setProperty(
-            "player_synopsis", episode_overview or media.get("overview") or "")
+        synopsis = episode_overview or media.get("overview") or ""
+        self.setProperty("player_synopsis", synopsis)
+        self.setProperty("pause_meta", pause_meta)
+        self.setProperty("pause_heading", pause_heading)
+        # Three lines, wrapped here so the third can end in an ellipsis.
+        lines = textmetrics.wrap_lines(synopsis, _PAUSE_SYNOPSIS_W, 3, 30)
+        for i in range(3):
+            self.setProperty("pause_synopsis_{0}".format(i + 1),
+                             lines[i] if i < len(lines) else "")
         self.setProperty(
             "player_logo", self.client.resolve_image_url(media.get("logo_path")) or "")
         # 8.6's initial load is a full-screen black field carrying the

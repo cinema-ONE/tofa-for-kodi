@@ -2101,83 +2101,80 @@
                 <textcolor>$INFO[Window.Property(text_strong)]</textcolor>
                 <label>$INFO[Window.Property(player_time_left)]</label>
             </control>
+            <!-- App 2.0, measured off 2026-10-08-player-pause-screen.png: ink
+                 caps at 471 / 602 / 706 / 765 / 837, synopsis lines 38 apart. -->
             <control type="label">
-                <posx>80</posx>
-                <posy>556</posy>
-                <width>1000</width>
+                <posx>72</posx>
+                <posy>461</posy>
+                <width>1100</width>
                 <height>30</height>
-                <font>tofa_font_eyebrow</font>
-                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
+                <font>tofa_font_caption</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                 <label>$INFO[Window.Property(player_watching_label)]</label>
             </control>
             <control type="image">
-                <posx>80</posx>
-                <posy>596</posy>
+                <posx>72</posx>
+                <posy>510</posy>
                 <width>560</width>
-                <height>190</height>
+                <height>160</height>
                 <aspectratio align="left" aligny="bottom">keep</aspectratio>
                 <texture>$INFO[Window.Property(player_logo)]</texture>
                 <visible>!String.IsEmpty(Window.Property(player_logo))</visible>
             </control>
             <control type="label">
-                <posx>80</posx>
-                <posy>680</posy>
+                <posx>72</posx>
+                <posy>573</posy>
                 <width>1100</width>
                 <height>100</height>
-                <font>tofa_font_player_title</font>
+                <font>tofa_font_hero</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>$INFO[Window.Property(player_title)]</label>
                 <visible>String.IsEmpty(Window.Property(player_logo))</visible>
             </control>
             <control type="label">
-                <posx>80</posx>
-                <posy>790</posy>
+                <posx>72</posx>
+                <posy>695</posy>
                 <width>1100</width>
                 <height>40</height>
                 <font>tofa_font_player_subtitle</font>
-                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                <label>$INFO[Window.Property(player_subtitle)]</label>
+                <textcolor>$INFO[Window.Property(text_strong)]</textcolor>
+                <label>$INFO[Window.Property(pause_meta)]</label>
             </control>
-            <!-- 116, not the 111 that is exactly three lines: the box has to
-                 outlast the LAST line's descender, and at 111 it did not.
-                 Kodi lays this font out at 37/line, so 111 ends at
-                 834+111=945 and the third baseline's descent ends at
-                 937+8=945, so there is no headroom at all. Lines 1 and 2 are fine
-                 either way, because their descenders bleed into the next
-                 line's cell and are still inside the box; only the last line
-                 meets the edge. Measured: tofa_font_player_subtitle is Inter
-                 Tight Regular 30, cell 38 (ascent 30 + descent 8), and
-                 p/g/y/j all reach baseline+7. Flat-bottomed p survived;
-                 round-bottomed g/y/j lost their antialiased last row and
-                 read as sheared off. 116 still shows three lines (a fourth
-                 needs 148) and leaves four rows of headroom. Nothing sits
-                 below this control in the card, so the extra height is
-                 free. -->
-            <control type="textbox">
-                <posx>80</posx>
-                <posy>834</posy>
-                <width>1030</width>
-                <height>116</height>
+            <control type="label">
+                <posx>72</posx>
+                <posy>747</posy>
+                <width>1100</width>
+                <height>60</height>
+                <font>tofa_font_player_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(pause_heading)]</label>
+            </control>
+            <control type="label">
+                <posx>72</posx>
+                <posy>826</posy>
+                <width>1060</width>
+                <height>38</height>
                 <font>tofa_font_player_subtitle</font>
-                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                <label>$INFO[Window.Property(player_synopsis)]</label>
-                <!-- Marquee the rest, on the same 2000/4000/6000 as Home's
-                     hero and Detail's synopsis. The shipped Apple TV app
-                     truncates here with an ellipsis instead, but scrolling
-                     rather than truncating is an accepted divergence across
-                     this client, and the house rule that bounds it (only the
-                     focused item marquees) is satisfied trivially here: the
-                     card is a passive takeover carrying exactly one text
-                     block, so nothing else on screen competes with it.
-
-                     Gated on the card's own visibility rather than left
-                     unconditional. Kodi takes a condition here, not just a
-                     boolean, and this card is raised 5s after the chrome
-                     hides and can then sit untouched for a long time; a
-                     synopsis crawling inside a hidden group is motion nobody
-                     can even see. Same reasoning as main.xml.tpl's
-                     hero_scroll_when. -->
-                <autoscroll delay="2000" time="4000" repeat="6000">String.IsEqual(Window.Property(player_pause_card),1)</autoscroll>
+                <textcolor>$INFO[Window.Property(text_strong)]</textcolor>
+                <label>$INFO[Window.Property(pause_synopsis_1)]</label>
+            </control>
+            <control type="label">
+                <posx>72</posx>
+                <posy>864</posy>
+                <width>1060</width>
+                <height>38</height>
+                <font>tofa_font_player_subtitle</font>
+                <textcolor>$INFO[Window.Property(text_strong)]</textcolor>
+                <label>$INFO[Window.Property(pause_synopsis_2)]</label>
+            </control>
+            <control type="label">
+                <posx>72</posx>
+                <posy>902</posy>
+                <width>1060</width>
+                <height>38</height>
+                <font>tofa_font_player_subtitle</font>
+                <textcolor>$INFO[Window.Property(text_strong)]</textcolor>
+                <label>$INFO[Window.Property(pause_synopsis_3)]</label>
             </control>
         </control>
 
