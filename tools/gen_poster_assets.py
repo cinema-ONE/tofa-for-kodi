@@ -546,6 +546,24 @@ def gen_collection_assets() -> None:
           (COLLECTION_W + GLOW_PAD * 2, COLLECTION_H + GLOW_PAD * 2))
 
 
+# Browse's sort menu rows (app 2.0): 572x56, radius 12.
+SORT_ROW_W, SORT_ROW_H, SORT_ROW_RADIUS = 572, 56, 12
+
+
+def gen_sort_row_assets() -> None:
+    """A sort option's fill, its 1px rim and its 2px focus rim."""
+    w, h, r = SORT_ROW_W * S, SORT_ROW_H * S, SORT_ROW_RADIUS * S
+    for name, stroke in (("browse-sort-row.png", 0), ("browse-sort-row-rim.png", 1),
+                         ("browse-sort-row-focus.png", BORDER_STROKE)):
+        im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+        if stroke:
+            ImageDraw.Draw(im).rounded_rectangle(
+                [0, 0, w - 1, h - 1], radius=r, outline="white", width=stroke * S)
+        else:
+            ImageDraw.Draw(im).rounded_rectangle([0, 0, w - 1, h - 1], radius=r, fill="white")
+        _save(im, name, (SORT_ROW_W, SORT_ROW_H))
+
+
 def gen_card_glow() -> None:
     """Soft accent-tintable focus glow that bleeds *outward* beyond the
     card's own border, matching Apple TV's soft halo (poster+border draw
@@ -669,6 +687,7 @@ def main() -> None:
     gen_browse_tile_assets()
     gen_avatar_shadow()
     gen_collection_assets()
+    gen_sort_row_assets()
 
 
 if __name__ == "__main__":

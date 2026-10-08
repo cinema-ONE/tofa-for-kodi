@@ -572,6 +572,17 @@ BROWSE_CHIP_DIVIDER_Y = (BROWSE_CHIP_H - BROWSE_DIVIDER_H) // 2
 BROWSE_CHIPS_W = SCREEN_W - BROWSE_LEFT
 # The rule between Filter and the genres: 1px drawn centred in its own slot.
 BROWSE_CHIP_DIVIDER_W = 13
+# The sort menu (app 2.0): a panel over the dimmed view, a title, then one
+# 56-tall option per 64, 23 in from the panel's sides, and a hint at its foot.
+BROWSE_SORT_X, BROWSE_SORT_Y = 651, 160
+BROWSE_SORT_W, BROWSE_SORT_H = 618, 760
+BROWSE_SORT_PAD = 23
+BROWSE_SORT_LIST_Y = 93
+BROWSE_SORT_PITCH = 64
+BROWSE_SORT_ROW_W = BROWSE_SORT_W - 2 * BROWSE_SORT_PAD
+BROWSE_SORT_ROW_H = 56
+BROWSE_SORT_HINT_Y = 708
+BROWSE_SORT_DIM = "0xAA030B10"
 
 # ------------------------------------------------ Browse's A-Z rail (right) --
 # "All", A..Z, then "#", down the right margin. Measured off the Android TV

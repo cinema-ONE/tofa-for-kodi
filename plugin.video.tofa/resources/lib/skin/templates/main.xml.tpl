@@ -633,6 +633,7 @@
 {alpha_item}
 {alpha_focused}
             </control>
+{browse_sort_panel}
             </control>
         </control>
         <!-- ============================================================

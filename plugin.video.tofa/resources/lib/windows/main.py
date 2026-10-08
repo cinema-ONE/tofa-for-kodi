@@ -387,6 +387,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     GRID_ID = 6200
     ALPHA_RAIL_ID = 6220
     SORT_ID = 6110
+    SORT_PANEL_ID = 6230      # the sort menu's options
     UNWATCHED_ID = 6115
     FILTER_ID = 6120
     # 6130 was Quality, now an axis of the Filter dialog. The id is reused
@@ -416,11 +417,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     BROWSE_SORT_OPTIONS = (
         ("Date Added", "added_at", "desc"),
         ("Title", "title", "asc"),
-        ("Release Date", "release_date", "desc"),
+        ("Year", "release_date", "desc"),
         ("Rating", "rating", "desc"),
         ("Runtime", "runtime", "asc"),
         ("Last Watched", "last_watched", "desc"),
-        ("Play Count", "play_count", "desc"),
+        ("Times Watched", "play_count", "desc"),
         ("Shuffle", "random", None),
     )
     # (label, year_from, year_to) for the Filter dialog's Year axis --
@@ -672,6 +673,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._custom_items: list = []
         self._active_genre = self.ALL_GENRES
         self._browse_sort_idx = 0           # index into BROWSE_SORT_OPTIONS
+        self._browse_sort_offered: list = []  # the sort menu's rows, as indexes
         # The sort keys THIS server accepts, straight off the facets response
         # (the whole point of the facets route: render what the server
         # offers, never a table baked in here). None
@@ -960,6 +962,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.collection_list = kodigui.ManagedControlList(self, self.COLLECTION_GRID_ID, 4)
         self.custom_collection_list = kodigui.ManagedControlList(
             self, self.CUSTOM_COLLECTION_ID, 4)
+        self.sort_panel_list = kodigui.ManagedControlList(self, self.SORT_PANEL_ID, 8)
         # Sort/Filter/Quality/Genre are single always-present rows (not a
         # real choice list -- clicking any of them opens a picker dialog),
         # so they're built with one static item each, right here, rather
@@ -1304,6 +1307,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_alpha_clicked()
         elif controlID == self.SORT_ID:
             self._browse_sort_clicked()
+        elif controlID == self.SORT_PANEL_ID:
+            self._browse_sort_picked()
         elif controlID == self.UNWATCHED_ID:
             self._browse_unwatched_clicked()
         elif controlID == self.FILTER_ID:
@@ -1498,6 +1503,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # mid-stream and letting the next repeat through to the exit.
             kodigui.note_back_close()
             self.setFocusId(self.NAV_LIST_ID)
+            return
+
+        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self._browse_sort_close()):
             return
 
         if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
@@ -2883,6 +2892,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Back from a view to the landing, onto the tile it came from."""
         if not self.getProperty("browse_view"):
             return False
+        self.setProperty("browse_sort_open", "")
         self.setProperty("browse_view", "")
         self.setProperty("nav_hidden", "")
         for pos, item in enumerate(self.tiles_list or []):
@@ -2944,7 +2954,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.setProperty("browse_chip_{0}_label".format(cid), label)
                 chip = self.getControl(cid)
                 chip.setVisible(bool(label))
-                if label:
+                if label and cid == self.SORT_ID:
+                    # The arrow and its two spaces draw 31 wide, not the
+                    # 24 our metrics give, so a short name got cut.
+                    chip.setWidth(self._browse_chip_width(label[3:]) + 31)
+                elif label:
                     chip.setWidth(self._browse_chip_width(label))
         except RuntimeError:
             return
@@ -4217,61 +4231,63 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.open_detail(media_id=media_id)
 
     def _browse_sort_clicked(self):
-        from .picker import PickerDialog
-        # Only what this server honours, so the picker cannot offer a sort
-        # that would quietly do nothing. `offered` maps ROW POSITION back to
-        # the BROWSE_SORT_OPTIONS index -- picked_idx is a position in the
-        # rows we passed, and treating it as an index into the full table is
-        # exactly how a filtered list picks the wrong sort.
+        """Open the sort menu over the view (app 2.0), on the current sort.
+
+        Only what this server honours is offered, so no option can quietly
+        do nothing; `_browse_sort_offered` maps a row back to its index."""
         offered = self._browse_offered_sorts()
-        rows = []
+        self._browse_sort_offered = offered
+        items = []
         for i in offered:
             label, _value, order = self.BROWSE_SORT_OPTIONS[i]
             active = i == self._browse_sort_idx
             if active and order and self._browse_sort_reversed:
                 order = "asc" if order == "desc" else "desc"
-            rows.append((label, active, order))
-        current_pos = (offered.index(self._browse_sort_idx)
-                       if self._browse_sort_idx in offered else 0)
-        dialog = PickerDialog.open(
-            heading="Sort",
-            hint="Select the current sort again to reverse it.",
-            rows=rows,
-            selected_idx=current_pos,
-        )
-        if not dialog or dialog.canceled:
+            mli = kodigui.ManagedListItem(label)
+            mli.setProperty("current", "1" if active else "")
+            mli.setProperty("dir", {"asc": "up", "desc": "down"}.get(order or "", ""))
+            items.append(mli)
+        self.sort_panel_list.reset()
+        self.sort_panel_list.addItems(items)
+        self.setProperty("browse_sort_open", "1")
+        self.sort_panel_list.selectItem(
+            offered.index(self._browse_sort_idx) if self._browse_sort_idx in offered else 0)
+        self.setFocusId(self.SORT_PANEL_ID)
+
+    def _browse_sort_close(self) -> bool:
+        """Close the sort menu onto the Sort chip. True when it was open."""
+        if not self.getProperty("browse_sort_open"):
+            return False
+        self.setProperty("browse_sort_open", "")
+        self.setFocusId(self.SORT_ID)
+        return True
+
+    def _browse_sort_picked(self):
+        """A new sort applies; the current one again reverses it."""
+        pos = self.sort_panel_list.getSelectedPosition()
+        offered = self._browse_sort_offered
+        self._browse_sort_close()
+        if pos < 0 or pos >= len(offered):
             return
-        if dialog.reselected:
-            # Shuffle has no meaningful direction -- nothing to flip.
-            if self.BROWSE_SORT_OPTIONS[self._browse_sort_idx][2] is None:
+        choice = offered[pos]
+        if choice == self._browse_sort_idx:
+            # Shuffle has no direction to flip.
+            if self.BROWSE_SORT_OPTIONS[choice][2] is None:
                 return
             self._browse_sort_reversed = not self._browse_sort_reversed
             self._browse_sort_user_picked = True
-            # The label is unchanged here -- same sort, other way round -- so
-            # the arrow is the ONLY thing that can report a reverse toggle.
+            # Same label, other way round: the chip's arrow reports it.
             self._browse_sync_chips()
-        elif dialog.picked_idx is not None:
-            # Back through `offered`: picked_idx is a position in the rows
-            # shown, not an index into BROWSE_SORT_OPTIONS.
-            if dialog.picked_idx < 0 or dialog.picked_idx >= len(offered):
-                return
-            choice = offered[dialog.picked_idx]
+        else:
             self._browse_sort_idx = choice
             self._browse_sort_reversed = False
             # From here the server's default_sort must never move it again.
             self._browse_sort_user_picked = True
-            # Fresh seed only on a transition INTO "random" -- reselecting
-            # Shuffle while already on it takes the `reselected` branch
-            # above instead. _browse_load_grid() reuses this seed for
-            # stable pagination for as long as Shuffle stays selected.
+            # A fresh seed only on the way INTO Shuffle; _browse_load_grid()
+            # keeps it for stable paging while Shuffle stays.
             if self.BROWSE_SORT_OPTIONS[choice][1] == "random":
                 self._browse_shuffle_seed = None
-            # ListItem properties, not Window ones -- see onFirstInit's
-            # comment on the Sort item's construction. One writer, shared
-            # with the server-default path, so the two cannot drift.
             self._browse_sync_sort_pill()
-        else:
-            return
         self._browse_load_grid()
 
     def _browse_filter_clicked(self):
