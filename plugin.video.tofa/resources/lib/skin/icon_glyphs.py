@@ -102,6 +102,7 @@ CHEVRON_RIGHT = 0xE06F
 # Browse's "back to the collection list" pill: a DIRECTION, like
 # CHEVRON_DOWN's scroll hint, not a dropdown affordance.
 CHEVRON_LEFT = 0xE06E
+CHEVRON_UP = 0xE070
 MINUS_CIRCLE = 0xE07E
 CIRCLE_X = 0xE084
 CHECK = 0xE06C

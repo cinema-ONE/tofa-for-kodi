@@ -703,3 +703,19 @@ def hero_title_wrap(text: str, column_px: int) -> tuple[str, int]:
             return line + "[CR]" + rest, 2
         line = candidate
     return text, 1
+
+
+def wrap_lines(text: str, max_px: int, lines: int, font_size: int = SIZE) -> list:
+    """Greedy word wrap of `text` into at most `lines` lines of `max_px`,
+    in FONT's face at `font_size`. The last line keeps the rest, for Kodi
+    to truncate; a 3% margin keeps the others clear of Kodi's own."""
+    budget = max_px * 0.97 * SIZE / font_size
+    words, out = (text or "").split(), []
+    while words and len(out) < lines - 1:
+        line = words.pop(0)
+        while words and text_width(line + " " + words[0]) <= budget:
+            line += " " + words.pop(0)
+        out.append(line)
+    if words:
+        out.append(" ".join(words))
+    return out

@@ -383,7 +383,7 @@ SEARCH_SHELVES_H = SCREEN_H - SEARCH_SHELVES_ABS_Y
 SEARCH_COLUMN_X = 666
 # The grouplist inside it is pulled 20 left so a card's focus glow is not
 # clipped, so the shelves themselves begin here. Both the clip and the lists
-# inside it run to the screen edge, same reasoning as DETAIL_SHELF_W.
+# inside it run to the screen edge, same reasoning as HOME_ROWS_W.
 SEARCH_SHELF_X = SEARCH_COLUMN_X - 20
 SEARCH_SHELF_W = ROW_BLEED_RIGHT - SEARCH_SHELF_X
 #: The shelves' grouplist clips at the screen edge, its lists bleed one HPAD
@@ -454,11 +454,7 @@ SEARCH_SECTION_BAND = 65
 # a 181px photo on a 256 pitch; ours were 130 on 170, ~28% under both. The
 # photo size picks the person-border/glow asset pair, so it must be one of
 # gen_poster_assets.py's PERSON_PHOTOS.
-#
-# Detail's Cast & Crew stays at CAST_PHOTO (190) on a 290 pitch: the two are
-# genuinely different sizes in the app, not one card at one size, and Detail
-# already matched. The cell height keeps the same 22px of slack under the
-# role line that CAST_TILE gives its own.
+
 SEARCH_ACTOR_PHOTO = 180
 SEARCH_ACTOR_CELL_W = 256
 SEARCH_ACTOR_CELL_H = 280
@@ -583,7 +579,7 @@ ALPHA_RAIL_Y = 301
 #: take the pad with it.
 ALPHA_ITEM_TRAIL = ALPHA_PITCH - ALPHA_PILL_H
 #: Runs to the screen edge, like every other scrolling region here
-#: (SEARCH_SHELVES_H, DETAIL_SHELF_H, PERSON_GRID_H,
+#: (SEARCH_SHELVES_H, PERSON_GRID_H,
 #: SETTINGS_GROUPLIST_H all end at SCREEN_H).
 #:
 #: It used to be a whole number of pitches -- 11 x 68 = 748 -- which left 31
@@ -655,35 +651,6 @@ GRID_GAP = 17                                 # the default for a poster grid
 GRID_GAP_BROWSE = 32                          # Browse's measured exception
 GRID_CELL_H = CELL_H + GRID_GAP               # 489, app measures 489 (person)
 BROWSE_CELL_H = CELL_H + GRID_GAP_BROWSE      # 504, app measures 505
-# Detail's More Like This: two stacked shelves from x=100, mirroring that
-# inset on the right (1920 - 100 - 100), and a viewport running from the
-# header rule to the bottom of the screen. Two rows exceed it, so the
-# grouplist scrolls between them exactly as the app's does.
-# Runs to the screen's right edge, not to a mirrored 100px margin: a row
-# that stops short leaves a dead band and clips its rightmost card on an
-# invisible line instead of on the screen. Widening does NOT move a focused
-# card -- Kodi refuses to clamp a horizontal list's scroll to the viewport's
-# far edge, measured before and after on a 25-item row (the focused last
-# card stayed at 1813 either way).
-# The shelves' grouplist, so it clips at the screen edge; the lists inside it
-# get row_bleed_width(100) from screens.py and still bleed. See
-# ROWS_CLIP_RIGHT.
-DETAIL_SHELF_X = 100 - HPAD                 # see HOME_ROWS_X
-DETAIL_SHELF_W = ROWS_CLIP_RIGHT - DETAIL_SHELF_X
-DETAIL_SHELF_H = SCREEN_H - 150
-
-# Cast & Crew tiles (Detail page 2). Square cells, not posters: 1740 of panel
-# width / CAST_TILE = exactly CAST_COLS columns with nothing left over, and
-# the app's own photo rows sit at 236 and 525 in
-# internal-docs/atv-reference/detail-cast-crew.png -- pitch 289, so 290.
-#
-# These are shared with windows/detail.py, which sizes each panel at runtime
-# from its own row count. Changing the tile here therefore moves both the XML
-# and that calculation together.
-CAST_TILE = 290
-CAST_PHOTO = 190
-CAST_COLS = 6
-CAST_PANEL_W = CAST_COLS * CAST_TILE
 
 # 2's status triad, semantic ONLY: red belongs to status and destructive
 # actions and nowhere else.
@@ -695,14 +662,6 @@ STATUS_RED = "0xFFF87171"
 # Top of 9.7's empty scaffold (fragments.py:empty_state()). Measured off the
 # real Apple TV app: its icon slot centres on 521, and the slot is 64 tall.
 EMPTY_STATE_Y = 521 - 32
-
-# The scrolling viewport the two panels are stacked inside (grouplist 6250).
-CAST_VIEWPORT_H = 930
-# A panel taller than the viewport can never be scrolled by the grouplist
-# (see detail.py:_size_person_panels), so a section is only allowed to grow
-# to whole rows that fit. 3 * 290 = 870 of 930.
-CAST_MAX_ROWS = CAST_VIEWPORT_H // CAST_TILE
-CAST_PANEL_H_MAX = CAST_MAX_ROWS * CAST_TILE   # the XML's pre-data placeholder
 
 # ------------------------------------------------- person / filmography --
 # 7.4. All measured off internal-docs/atv-reference/person-filmography.png
@@ -914,7 +873,7 @@ SETTINGS_SECTION_BAND = SETTINGS_SECTION_LEAD + SETTINGS_GROUP_EYEBROW_BAND
 SETTINGS_GROUPLIST_Y = (SETTINGS_CONTENT_Y - SETTINGS_GROUP_EYEBROW_BAND
                         + (SETTINGS_GROUP_TRAIL - SETTINGS_GROUPLIST_GAP))
 # Runs to the screen edge, like every other scrolling region here
-# (SEARCH_SHELVES_H, DETAIL_SHELF_H, PERSON_GRID_H all end
+# (SEARCH_SHELVES_H, PERSON_GRID_H all end
 # at SCREEN_H). This one used to stop 24px short on the reasoning that a card
 # flush with the edge reads as clipped -- but a region that stops short reads
 # as the content ENDING, which is worse and was the whole point of 72294b7.
@@ -1312,26 +1271,61 @@ FONT_ICON_80 = "tofa_font_icons_80"
 # $INFO[Window.Property(text_primary)] etc, never as a literal.
 
 
-# ---------------------------------------------------- episode grid (7.1) --
-# Cell pitch, and the grid viewport built from it. Both the fragment that
-# draws a cell and the template that sizes the panel read these, because
-# they used to be typed separately (350/320 in each) and the panel's height
-# was a third number again.
-#
-# 284 is the real Apple TV app's measured row pitch, and it is 36 less than
-# the 320 we had: a cell's content ends 260 in (10 pad + 186 still + 12 +
-# caption + title), so 320 left 60px of dead air under every row and only
-# 2.5 rows fitted the viewport. At 284 the gap is 24 and THREE rows fit.
-#
-# The viewport is an exact multiple of the pitch on purpose. Kodi scrolls a
-# panel by whole rows, so a viewport that is 2.5 rows tall can never come to
-# rest against the last one -- which is what left ~200px of empty grid below
-# the final row of a 39-episode season.
-EPISODE_CELL_W = 350
-EPISODE_CELL_H = 284
-EPISODE_GRID_ROWS = 3
-EPISODE_GRID_W = 1460
-EPISODE_GRID_H = EPISODE_CELL_H * EPISODE_GRID_ROWS
+# ------------------------------------------------- title page 2 (app 2.0) --
+# One scrolling page under the hero. A focused section's header ink sits at
+# y 568: screen-tall blocks make Kodi's "show it in full" land it there.
+DETAIL_P2_LEFT = 96
+DETAIL_P2_HEADER_Y = 560
+#: The first section's header, when it is not the episode block (ink 127).
+DETAIL_P2_FIRST_Y = 119
+#: Header label top to the next header, per section kind.
+DETAIL_P2_CAST_H = 330
+DETAIL_P2_ROW_H = 548
+DETAIL_P2_ABOUT_H = 460
+#: The episode block runs from the page top to the next header's label.
+DETAIL_P2_EPISODES_H = 1081
+#: Uniform grouplist gap: a 1080 block plus two gaps is the smallest section.
+DETAIL_P2_GAP = -(SCREEN_H - DETAIL_P2_CAST_H) // 2
+#: Header to its row, label top to the list's top (art at ink + 43).
+DETAIL_P2_ROW_LIST_Y = 41
+DETAIL_P2_CAST_LIST_Y = 43
+DETAIL_P2_CAST_CELL = 214
+DETAIL_P2_CAST_PHOTO = 160
+#: The About card, under its header: synopsis left, facts right.
+DETAIL_P2_ABOUT_Y = 53
+DETAIL_P2_ABOUT_W = 1727
+DETAIL_P2_ABOUT_H_CARD = 290
+DETAIL_P2_ABOUT_PAD = 38
+DETAIL_P2_FACT_EYEBROW_X = 1002
+DETAIL_P2_FACT_VALUE_X = 1127
+DETAIL_P2_FACT_PITCH = 41
+# About's text: first line centred 48 into the card, 39 apart; a tagline
+# pushes the synopsis down 49 (app 2.0.0, both captures).
+DETAIL_P2_ABOUT_LINE1_Y = 48 - 41 // 2
+DETAIL_P2_ABOUT_PITCH = 39
+DETAIL_P2_ABOUT_TAGLINE_DROP = 49
+#: Unfocused sections draw at this opacity.
+DETAIL_P2_DIM = 40
+
+# The episode block (a show's first section), absolute on the page.
+DETAIL_EP_SHOW_TITLE_Y = 48
+DETAIL_EP_META_Y = 286
+DETAIL_EP_TITLE_Y = 318
+DETAIL_EP_SYNOPSIS_Y = 401
+DETAIL_EP_SYNOPSIS_W = 900
+DETAIL_EP_SYNOPSIS_PITCH = 43
+# Page 2's body text: Inter Tight at 26 wraps where the app's 30pt SF does.
+DETAIL_EP_SYNOPSIS_SIZE = 26
+FONT_EP_SYNOPSIS = FONT_SIDEBAR
+DETAIL_EP_BADGE_Y = 540
+DETAIL_EP_PILLS_Y = 597
+DETAIL_EP_PILL_H = 58
+DETAIL_EP_PILL_W = 150
+DETAIL_EP_PILL_GAP = 12
+DETAIL_EP_ROW_Y = 678
+#: Episode cells: a 400x225 still, 28px apart, captions under it.
+EPISODE_CELL_W = 428
+EPISODE_CELL_H = 320
 
 
 # ------------------------------------------------- startup splash (cold) --

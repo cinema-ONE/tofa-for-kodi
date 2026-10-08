@@ -269,6 +269,20 @@ def day_and_month(value) -> str:
     return f"{parsed.day}. {month}" if day_first else f"{month} {parsed.day}"
 
 
+def day_month_year(value, short: bool = True) -> str:
+    """"4 Oct 2017" (or "4 October 2017"), month first where the region
+    puts it first. The app's shape; the year is always there."""
+    parsed = _as_date(value)
+    if not parsed:
+        return ""
+    fmt = _date_format(long=False)
+    day_first = fmt.find("D") < fmt.find("M") if "D" in fmt and "M" in fmt else False
+    month = _month(parsed.month, short=short)
+    if day_first:
+        return f"{parsed.day} {month} {parsed.year}"
+    return f"{month} {parsed.day}, {parsed.year}"
+
+
 def _as_date(value):
     import datetime
     if isinstance(value, datetime.datetime):

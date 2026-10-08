@@ -522,68 +522,29 @@ def render_detail() -> str:
     """The movie/show Detail screen (see windows/detail.py:DetailWindow).
     A separate xbmcgui.WindowXML, not part of the merged MainWindow;
     pushed open on top of whatever screen is current, same as the Player
-    window. Cast and Crew are two separate wrapping grids stacked in one
-    grouplist, so person_card() is called twice. CAST_TILE/CAST_PHOTO give
-    CAST_COLS columns across the panel, matching the real app; each panel's
-    HEIGHT is set at runtime from its item count (see
-    windows/detail.py:_size_person_panels), so the number in the template is
-    only a pre-data placeholder."""
-    # 6200/6210/6300 = windows/detail.py:DetailWindow.CAST_LIST/CREW_LIST/
-    # SIMILAR_LIST -- not imported from there (screens.py stays
-    # independent of window classes); kept in sync by hand like every
-    # other hardcoded id in this file.
-    cast_item, cast_focused = fragments.person_card(
-        6200, cell_height=T.CAST_TILE, photo_size=T.CAST_PHOTO)
-    crew_item, crew_focused = fragments.person_card(
-        6210, cell_height=T.CAST_TILE, photo_size=T.CAST_PHOTO)
-    # More Like This is TWO labelled shelves, not one grid: captured off the
-    # real Apple TV app (internal-docs/atv-reference/detail-more-like-this.png,
-    # 2026-08-01). "More Like This" holds what the library already has;
-    # "More to Discover" holds the requestable ones and puts the `plus`
-    # not-in-library chip on every card, exactly as Discover's own rows do.
-    # So the category axis IS the owned/requestable split the API returns --
-    # an earlier note in this repo guessed it wasn't and told the next reader
-    # not to assume it; the capture settles it.
-    similar_item, similar_focused = fragments.poster_card(
+    window. Page 2 is fragments.detail_page2(); detail.py sizes its blocks
+    at runtime (_p2_layout)."""
+    # 6200/6300/6310/6320/6410 = windows/detail.py's CAST_LIST, SIMILAR_LIST,
+    # DISCOVER_LIST, COLLECTION_LIST and EPISODE_ROW, kept in sync by hand.
+    cast_cards = fragments.person_card(
+        6200, cell_width=T.DETAIL_P2_CAST_CELL, cell_height=260,
+        photo_size=T.DETAIL_P2_CAST_PHOTO)
+    similar_cards = fragments.poster_card(
         6300, has_progress=False, caption_field="caption_meta")
-    discover_item, discover_focused = fragments.poster_card(
+    discover_cards = fragments.poster_card(
         6310, has_progress=False, caption_field="caption_meta",
         extra_item_xml=fragments.watchlist_badge_item(),
         extra_focused_xml=fragments.watchlist_badge_focused(),
     )
-    # Standard shelf metrics, unchanged: they already reproduce the app's row
-    # pitch here (ours 560, measured 556 art-top to art-top).
-    # 7.5.2's collection shelf, the pane's FIRST: the same 2:3 poster and
-    # not-in-library badge as More to Discover.
-    collection_item, collection_focused = fragments.poster_card(
+    collection_cards = fragments.poster_card(
         6320, has_progress=False, caption_field="caption_meta",
         extra_item_xml=fragments.watchlist_badge_item(),
         extra_focused_xml=fragments.watchlist_badge_focused(),
     )
-    similar_rows = "\n\n".join((
-        fragments.poster_row(
-            group_id=6321, list_id=6320, title_property="collection_row_title",
-            onup=6130, ondown=6300,
-            item_xml=collection_item, focused_xml=collection_focused,
-            list_width=T.row_bleed_width(100),
-            indent="                        ",
-        ),
-        fragments.poster_row(
-            group_id=6301, list_id=6300, title_property="similar_row_title",
-            onup=6130, ondown=6310,
-            item_xml=similar_item, focused_xml=similar_focused,
-            list_width=T.row_bleed_width(100),
-            indent="                        ",
-        ),
-        fragments.poster_row(
-            group_id=6311, list_id=6310, title_property="discover_row_title",
-            onup=6300, ondown=6310,
-            item_xml=discover_item, focused_xml=discover_focused,
-            list_width=T.row_bleed_width(100),
-            indent="                        ",
-        ),
-    ))
-    episode_item, episode_focused = fragments.episode_card(6410)
+    page2 = fragments.detail_page2(
+        cast_cards=cast_cards, collection_cards=collection_cards,
+        similar_cards=similar_cards, discover_cards=discover_cards,
+        episode_cards=fragments.episode_card(6410))
     # 9.7's scaffold on the two tabs that can come up empty. An empty tab is
     # NOT hidden: the real Apple TV app keeps it and answers it with this, as
     # captured on Besenbinden (2026-08-01), which has neither cast nor similar
@@ -636,32 +597,6 @@ def render_detail() -> str:
                                 <label>Retry</label>
                             </control>""".format(T.FONT_BUTTON),
     )
-
-    cast_empty = fragments.empty_state(
-        visible="String.IsEmpty(Window.Property(has_cast_content))",
-        glyph="&#x{0:X};".format(icon_glyphs.USERS),
-        title="No cast information",
-        message="We don't have credits for this title yet.",
-    )
-    # The error flavour 9.7 defines separately -- not reaching the server is
-    # not the same answer as having nothing, even though our first pass
-    # rendered one sentence for both. No Apple TV capture of this one exists,
-    # so only the wording is ours; the layout is the shared scaffold.
-    similar_empty = fragments.empty_state(
-        visible="String.IsEqual(Window.Property(similar_state),empty)",
-        glyph="&#x{0:X};".format(icon_glyphs.GALLERY_VERTICAL_END),
-        title="Nothing similar yet",
-        message="We couldn't find related titles for this one.",
-    ) + "\n" + fragments.empty_state(
-        visible="String.IsEqual(Window.Property(similar_state),error)",
-        glyph="&#x{0:X};".format(icon_glyphs.GALLERY_VERTICAL_END),
-        title="Couldn't load related titles",
-        message="Something went wrong reaching the server. Try again later.",
-    )
-    # Season sidebar (id 6400) stays hand-typed in detail.xml.tpl, not
-    # fragments.py:sidebar_row(): its itemlayout has real structural
-    # asymmetries (single always-on fill, no active/inactive count-label
-    # split) that sidebar_row() doesn't support.
 
     # Primary CTA pill is NOT fragments.py:glass_pill() (see that
     # function's docstring); it stays hand-typed in the template.
@@ -785,15 +720,7 @@ def render_detail() -> str:
         retry_pill=retry_pill,
         RETRY_PILL_ID=RETRY_PILL_ID,
         **T.template_kwargs(),
-        cast_item=cast_item,
-        cast_focused=cast_focused,
-        crew_item=crew_item,
-        crew_focused=crew_focused,
-        similar_rows=similar_rows,
-        similar_empty=similar_empty,
-        cast_empty=cast_empty,
-        episode_item=episode_item,
-        episode_focused=episode_focused,
+        page2=page2,
         rewatch_pill=rewatch_pill,
         options_pill=options_pill,
         watchlist_pill=watchlist_pill,

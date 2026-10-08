@@ -54,12 +54,12 @@ FILE = {"id": "f5", "duration_ms": 42 * 60_000}
 item = FakeItem()
 wrote = win._apply_episode_progress(item, EP, FILE, {"pct": 0.5})
 check("first paint reports a write", wrote is True)
-# Two, not three: `watched` computes to "" on an unwatched episode and
+# Three, not four: `watched` computes to "" on an unwatched episode and
 # getProperty answers "" for a key that was never set, so the gate correctly
 # skips it. An unset property and an empty one are the same thing to every
 # <visible> condition in the XML -- so this is a saving, not a gap.
 check("first paint writes only the non-empty properties",
-      item.writes == 2, str(item.writes))
+      item.writes == 3, str(item.writes))
 check("capsule is set mid-episode",
       item.getProperty("progress_fill").startswith("episode-progress/"),
       item.getProperty("progress_fill"))
@@ -79,13 +79,13 @@ check("unchanged row writes nothing", item.writes == before,
 before = item.writes
 wrote = win._apply_episode_progress(item, EP, FILE, {"pct": 0.75})
 check("changed progress reports a write", wrote is True)
-check("changed progress writes fill AND caption",
-      item.writes - before == 2, f"{item.writes - before} writes")
+check("changed progress writes fill, time left AND caption",
+      item.writes - before == 3, f"{item.writes - before} writes")
 check("the capsule moved to the new step",
       item.getProperty("progress_fill") == "episode-progress/76.png",
       item.getProperty("progress_fill"))
 check("the caption carries the new time left",     # 42 * 0.25 = 10.5 -> 10
-      "10m left" in item.getProperty("caption"), item.getProperty("caption"))
+      "10 min left" in item.getProperty("caption"), item.getProperty("caption"))
 
 # Completing it clears the capsule and sets the tick: all three move.
 before = item.writes
