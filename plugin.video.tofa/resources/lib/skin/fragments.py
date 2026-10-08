@@ -31,6 +31,7 @@ def logo_block() -> str:
             <height>{T.NAV_MARK_H}</height>
             <aspectratio>keep</aspectratio>
             <texture>$INFO[Window.Property(logo_file)]</texture>
+            <animation effect="zoom" end="{T.NAV_MARK_COLLAPSED_ZOOM}" center="{T.NAV_MARK_X},{T.NAV_MARK_Y}" time="200" tween="cubic" easing="out" condition="{T.NAV_COLLAPSED}">Conditional</animation>
         </control>"""
 
 
@@ -130,6 +131,7 @@ def nav_bar(*, ondown_target: int, list_id: int = 3000, group_id: int = 2000,
     item = "".join(_nav_slot(i, focused=False, list_id=list_id) for i in range(slots))
     sel = "".join(_nav_slot(i, focused=True, list_id=list_id) for i in range(slots))
     return f"""        <control type="group" id="{group_id}">
+            {T.NAV_COLLAPSE_FADE}
             <control type="list" id="{list_id}">
                 <posx>0</posx>
                 <posy>{_NAV_LIST_Y}</posy>
@@ -158,6 +160,7 @@ def nav_avatar_button(*, ondown_target: int, list_id: int = 3000) -> str:
             <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
             <texture border="{T.NAV_UNDERLINE_H // 2}">capsule-h{T.NAV_UNDERLINE_H}.png</texture>
             <visible>Control.HasFocus({T.NAV_AVATAR_ID})</visible>
+            {T.NAV_COLLAPSE_FADE}
         </control>
         <control type="button" id="{T.NAV_AVATAR_ID}">
             <posx>{T.NAV_AVATAR_X}</posx>

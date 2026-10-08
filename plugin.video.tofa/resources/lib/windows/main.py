@@ -1355,7 +1355,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # skin/fragments.py:discover_card, measured on the cinema box before it
     # shipped, and it is the half that looks right.
 
+    def _sync_nav_collapse(self, control_id) -> None:
+        """App 2.0.0 fades the tabs, gear and avatar and shrinks the fox once
+        focus goes past a page's first row. Settings and Browse keep the bar."""
+        rows = {"home": self.ROW_LIST_IDS,
+                "discover": self.DISCOVER_ROW_LIST_IDS,
+                "search": self.SEARCH_RESULT_LIST_IDS}.get(self.getProperty("active_section"), ())
+        self.setProperty("nav_collapsed", "1" if control_id in rows[1:] else "")
+
     def onFocus(self, controlID):
+        self._sync_nav_collapse(controlID)
         # Track the whole input pane, not just the query edit control:
         # typing via the on-screen keyboard sets the edit control's text
         # directly without ever focusing it, so "left 6701" alone would
