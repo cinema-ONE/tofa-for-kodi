@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Shared top-nav tab list, used by every *_window's NAV_LIST_ID control
-(3000) -- Home, Browse, Discover, Search all show the same 5 tabs and
-differ only in which one is "current". Pairs with the nav_bar() fragment in
-resources/lib/skin/fragments.py (a plain-Python fragment, not a Kodi
-<include> -- Python WindowXML never loads skin includes/constants at all): that fragment's itemlayout expects each
-tab's ListItem to carry an icon art and, on the current tab, an is_current
-property, so the active tab's pill persists even without literal Kodi
-focus.
+"""The top bar's list (NAV_LIST_ID, 3000): four text tabs and the Settings
+gear, one ListItem each. Pairs with fragments.nav_bar(), whose layouts key
+off each item's nav_idx and is_current properties, so the current tab keeps
+its dot even after focus has gone down into the page.
 """
 from __future__ import annotations
 
@@ -38,6 +34,8 @@ def build_nav(window, nav_list_id: int, current_target: str) -> None:
     for idx, (label, target, glyph) in enumerate(NAV_TABS):
         li = xbmcgui.ListItem(label=label)
         li.setProperty("icon_glyph", chr(glyph))
+        # Each slot draws at its own measured spot (fragments._nav_slot).
+        li.setProperty("nav_idx", str(idx))
         if target == current_target:
             li.setProperty("is_current", "1")
             current_index = idx

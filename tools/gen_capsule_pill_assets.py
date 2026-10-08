@@ -166,6 +166,7 @@ def verify(height: int) -> None:
 # Heights that have a dedicated capsule. Add one entry per new pill height,
 # then point the caller at capsule-h<N>.png with border=N//2.
 _HEIGHTS = (
+    4,    # top bar's focus underline (app 2.0.0, measured 4px)
     11,   # player scrubber track (§8.2's 11pt pill, measured 11px on tvOS)
     20,   # player scrubber groove behind the track
     24,   # episode card's unaired badge (§7.1's capsule; the real app's
@@ -187,10 +188,10 @@ _HEIGHTS = (
     52,   # player transport buttons (drawn 52x52 = a true circle)
     54,   # Discover tab pills
     58,   # Browse's Sort/Filter/Quality/Genre pills
-    60,   # nav bar's focused tab pill
+    60,   # player's skip pill (8.5)
     64,   # Detail's action row; picker's buttons
     66,   # sign-in's link pill
-    68,   # nav bar panel; player's prominent play/pause ring (68x68 circle)
+    68,   # player's prominent play/pause ring (68x68 circle)
     72,   # player's bottom-right utility pill (52 button + 2x10 padding)
     76,   # sign-in / profile buttons
     78,   # Detail's action row (matches the reference app)

@@ -489,6 +489,8 @@ def render_main() -> str:
         **T.template_kwargs(),
         logo_block=fragments.logo_block(),
         nav_bar=fragments.nav_bar(ondown_target=home_rows.HOME_ROW_LIST_IDS[0]),
+        nav_avatar_button=fragments.nav_avatar_button(
+            ondown_target=home_rows.HOME_ROW_LIST_IDS[0]),
         search_actor_item=search_actor_item,
         search_actor_focused=search_actor_focused,
         grid_item=grid_item,

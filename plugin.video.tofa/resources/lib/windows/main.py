@@ -357,6 +357,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     height = 1080
 
     NAV_LIST_ID = 3000
+    #: The profile avatar, right of the gear (skin.tokens.NAV_AVATAR_ID).
+    NAV_AVATAR_ID = 3001
 
     # nav target string (matches navbar.NAV_TABS' own target values) ->
     # short section name, used for Window.Property(active_section), which
@@ -772,7 +774,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     #: Kodi's own default already lands on the nav bar, so returning to it
     #: is what happens anyway.
-    FOCUS_MEMORY_IGNORE = (NAV_LIST_ID,)
+    FOCUS_MEMORY_IGNORE = (NAV_LIST_ID, NAV_AVATAR_ID)
 
     def open_detail(self, **kwargs):
         """Open a Detail page over this window, remembering where from.
@@ -1220,7 +1222,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         down_id = self._section_down_targets.get(section)
         if down_id:
             try:
-                self.getControl(self.NAV_LIST_ID).controlDown(self.getControl(down_id))
+                down = self.getControl(down_id)
+                self.getControl(self.NAV_LIST_ID).controlDown(down)
+                self.getControl(self.NAV_AVATAR_ID).controlDown(down)
             except Exception:
                 pass
 
@@ -1245,6 +1249,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.remember_focus(controlID)
         if controlID == self.NAV_LIST_ID:
             self._nav_clicked()
+        elif controlID == self.NAV_AVATAR_ID:
+            self._settings_switch_profile()
         elif controlID == self._cw_list_id:
             self._home_cw_clicked()
         elif controlID in self._row_kinds:
@@ -1365,7 +1371,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         # 6: re-entering a Settings page returns to the control left last.
         if (self.getProperty("active_section") == "settings"
-                and controlID not in (self.NAV_LIST_ID, self.SETTINGS_NAV_ID)):
+                and controlID not in (self.NAV_LIST_ID, self.NAV_AVATAR_ID,
+                                      self.SETTINGS_NAV_ID)):
             page = self.getProperty("settings_page")
             if page:
                 self._settings_last_control[page] = controlID
@@ -1499,7 +1506,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
                 and self.getProperty("active_section") == "settings"
-                and self.getFocusId() not in (self.NAV_LIST_ID, self.SETTINGS_NAV_ID)):
+                and self.getFocusId() not in (self.NAV_LIST_ID, self.NAV_AVATAR_ID,
+                                              self.SETTINGS_NAV_ID)):
             # 6: Back leaves a Settings pane for its section in the rail
             # first; the next Back reaches the nav bar.
             self.setFocusId(self.SETTINGS_NAV_ID)
@@ -2984,8 +2992,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._section_down_targets["browse"] = target_id
         if self._current_target == "browse_window":
             try:
-                self.getControl(self.NAV_LIST_ID).controlDown(
-                    self.getControl(target_id))
+                down = self.getControl(target_id)
+                self.getControl(self.NAV_LIST_ID).controlDown(down)
+                self.getControl(self.NAV_AVATAR_ID).controlDown(down)
             except RuntimeError:
                 pass
 

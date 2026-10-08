@@ -2476,14 +2476,8 @@
 
 {nav_bar}
 
-        <!-- Profile avatar, top right. Purely a "who is this" marker, exactly
-             as on Apple TV: NOT focusable and NOT a control, so the nav bar's
-             own Left/Right ring is untouched and nothing can land on it.
-             Switching profiles stays in Settings > Account.
-
-             Measured off internal-docs/atv-reference: a 64px circle whose
-             centre sits at (1748, 80), i.e. on the nav bar's own vertical
-             centre line.
+        <!-- Profile avatar, top right, right of the gear. Focusable since app
+             2.0.0: Select opens the profile picker (main.py onClick).
 
              scalediffuse="false" is load-bearing, not decoration: without it
              Kodi stretches the circular MASK along with the art and the
@@ -2524,6 +2518,16 @@
             <height>{NAV_AVATAR_SIZE}</height>
             <colordiffuse>{BORDER}</colordiffuse>
             <texture>circle-outline.png</texture>
+            <visible>!Control.HasFocus({NAV_AVATAR_ID})</visible>
+        </control>
+        <control type="image">
+            <posx>{NAV_AVATAR_X}</posx>
+            <posy>{NAV_AVATAR_Y}</posy>
+            <width>{NAV_AVATAR_SIZE}</width>
+            <height>{NAV_AVATAR_SIZE}</height>
+            <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
+            <texture>circle-outline.png</texture>
+            <visible>Control.HasFocus({NAV_AVATAR_ID})</visible>
         </control>
         <!-- The monogram, when there is no art to draw: a photo profile
              (this control deliberately never pays for an image token), a
@@ -2550,6 +2554,7 @@
             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
             <label>$INFO[Window.Property(nav_avatar_initial)]</label>
         </control>
+{nav_avatar_button}
 
         <!-- Covers this window while a profile switch tears it down.
              LAST in the file, so it is over everything.
