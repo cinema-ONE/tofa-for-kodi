@@ -38,6 +38,9 @@ ZOOM_MIN = 0.70
 VIS_X, VIS_Y = 960 / ZOOM_MIN, 540 / ZOOM_MIN
 SKINS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                      "plugin.video.tofa", "resources", "skins", "Main", "1080i")
+#: Browse's poster wall and row (script-tofa-main.xml): posters DRIFT through
+#: the frame, so some wait outside it by design; nothing there is parked.
+DRIFTING = {"6030", "6031"}
 #: Controls whose children are positioned relative to them.
 CONTAINERS = {"group", "grouplist", "panel", "list", "fixedlist", "wraplist",
               "scrollbar", "togglebutton"}
@@ -111,6 +114,8 @@ def paints(control):
 
 
 def walk(control, ox, oy, out):
+    if control.get("id") in DRIFTING:
+        return
     x, y = num(control, "posx"), num(control, "posy")
     if x is None or y is None:
         return

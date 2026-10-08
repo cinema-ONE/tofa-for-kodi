@@ -674,6 +674,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._active_genre = self.ALL_GENRES
         self._browse_sort_idx = 0           # index into BROWSE_SORT_OPTIONS
         self._browse_sort_offered: list = []  # the sort menu's rows, as indexes
+        self._browse_walls: dict = {}         # library id or kind -> wall posters
+        self._browse_wall_shown: list = []    # the posters the wall holds now
         # The sort keys THIS server accepts, straight off the facets response
         # (the whole point of the facets route: render what the server
         # offers, never a table baked in here). None
@@ -2766,6 +2768,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.tiles_list.selectItem(order.index(self._active_source_idx)
                                    if self._active_source_idx in order else 0)
         self._browse_sync_backdrop()
+        if client:
+            self._browse_start_walls(client)
 
     #: The count's noun on a library tile, by media type.
     _TILE_NOUN = {"movie": "titles", "tv": "shows"}
@@ -2847,6 +2851,77 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             art = (self._sources[idx].get("art") if idx is not None
                    else "") or ""
         self.setProperty("browse_backdrop", art)
+        src = self._sources[item.dataSource] if item is not None and item.dataSource is not None else {}
+        self._browse_sync_wall(src)
+
+    def _browse_sync_wall(self, src: dict):
+        """Behind a library, a tilted wall of its posters; behind Watchlist
+        and History, one drifting row of theirs (app 2.0)."""
+        posters = self._browse_walls.get(self._browse_wall_key(src)) or []
+        mode = {"library": "tilt", "watchlist": "row", "history": "row"}.get(src.get("kind"), "")
+        if not posters or not mode:
+            self.setProperty("browse_wall", "")
+            return
+        # Forty writes: only when the wall itself changes, not on every move.
+        if self._browse_wall_shown != posters:
+            self._browse_wall_shown = posters
+            for n in range(T.BROWSE_WALL_POOL):
+                self.setProperty("browse_wall_%d" % n, posters[n % len(posters)])
+        self.setProperty("browse_wall", mode)
+
+    @staticmethod
+    def _browse_wall_key(src: dict):
+        return src.get("id") if src.get("kind") == "library" else src.get("kind")
+
+    def _browse_start_walls(self, client: MediaServerClient):
+        """Fetch every tile's wall posters off the UI thread; a library's are
+        kept for the session, Watchlist's and History's refetched."""
+        sources = [dict(src) for src in self._sources]
+
+        def run():
+            for src in sources:
+                key = self._browse_wall_key(src)
+                if src.get("kind") == "library" and key in self._browse_walls:
+                    continue
+                try:
+                    items = self._browse_wall_items(client, src)
+                except http.ApiError as exc:
+                    kodigui.ERROR("main.py: browse wall failed: {0}".format(exc))
+                    continue
+                # One poster each: History lists a series once per episode.
+                seen: set = set()
+                items = [it for it in items if it.get("poster_path")
+                         and not (it["poster_path"] in seen or seen.add(it["poster_path"]))]
+                if not items:
+                    continue
+                artcache.prefetch(client.stage_pairs(items, "poster_path"))
+                urls = [client.resolve_image_url(it.get("poster_path")) for it in items]
+                self._browse_walls[key] = [u for u in urls if u]
+            if self.getProperty("active_section") == "browse":
+                self._browse_sync_backdrop()
+
+        threading.Thread(target=run, name="tofa-browse-walls", daemon=True).start()
+
+    def _browse_wall_items(self, client: MediaServerClient, src: dict) -> list:
+        kind = src.get("kind")
+        if kind == "library":
+            params = {"library_id": src.get("id"), "per_page": T.BROWSE_WALL_POOL,
+                      "sort": "random"}
+            if src.get("media_type"):
+                params["media_type"] = src["media_type"]
+            items = (client._get("/api/v1/media", params=params) or {}).get("items") or []
+            # A library of clips has few posters at random; its newest has more.
+            if len({it.get("poster_path") for it in items if it.get("poster_path")}) < 8:
+                params.update(sort="added_at", order="desc")
+                items += (client._get("/api/v1/media", params=params) or {}).get("items") or []
+            return items
+        if kind == "watchlist":
+            items = client.watchlist() or []
+            return items if isinstance(items, list) else (items.get("items") or [])
+        if kind == "history":
+            resp = client.watch_history(limit=100) or {}
+            return _history_latest_per_title(resp.get("items") or [])
+        return []
 
     def _browse_tile_clicked(self):
         """Open the focused tile: its view, or Surprise me's title."""

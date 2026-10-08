@@ -365,25 +365,37 @@
                     <posy>0</posy>
                     <width>{SCREEN_W}</width>
                     <height>{BROWSE_BACKDROP_H}</height>
+                    <visible>String.IsEmpty(Window.Property(browse_wall))</visible>
                     <aspectratio>scale</aspectratio>
                     <fadetime>300</fadetime>
                     <texture background="true">$INFO[Window.Property(browse_backdrop)]</texture>
                 </control>
+{browse_wall}
                 <control type="image">
                     <posx>0</posx>
                     <posy>0</posy>
                     <width>{SCREEN_W}</width>
                     <height>{BROWSE_BACKDROP_H}</height>
+                    <visible>!String.IsEqual(Window.Property(browse_wall),row)</visible>
                     <colordiffuse>0x8C030B10</colordiffuse>
                     <texture>white-square.png</texture>
                 </control>
                 <control type="image">
                     <posx>0</posx>
+                    <visible>!String.IsEqual(Window.Property(browse_wall),row)</visible>
                     <posy>{BROWSE_BACKDROP_FADE_Y}</posy>
                     <width>{SCREEN_W}</width>
                     <height>{BROWSE_BACKDROP_FADE_H}</height>
                     <colordiffuse>{CANVAS}</colordiffuse>
                     <texture>fade-bottom.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>{BROWSE_BACKDROP_H}</posy>
+                    <width>{SCREEN_W}</width>
+                    <height>{BROWSE_BELOW_BACKDROP_H}</height>
+                    <colordiffuse>{CANVAS}</colordiffuse>
+                    <texture>white-square.png</texture>
                 </control>
                 <control type="image">
                     <posx>0</posx>

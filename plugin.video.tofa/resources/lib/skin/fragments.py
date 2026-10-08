@@ -2072,7 +2072,7 @@ def browse_tile(list_id: int) -> tuple[str, str]:
                     <control type="image">
                         <width>{W}</width>
                         <height>{H}</height>
-                        <aspectratio>scale</aspectratio>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
                         <texture diffuse="browse-tile-mask.png">$INFO[ListItem.Art(thumb)]</texture>
                     </control>
                     <control type="image">
@@ -2718,7 +2718,7 @@ def _settings_preview_home() -> str:
                         <visible>{hero}</visible>
                         <control type="image">
                             <posx>18</posx><posy>50</posy><width>572</width><height>96</height>
-                            <aspectratio>scale</aspectratio>
+                            <aspectratio scalediffuse="false">scale</aspectratio>
                             <texture diffuse="nextup-mask-352x198.png">$INFO[Window.Property(settings_preview_art)]</texture>
                         </control>
                         <control type="image">
@@ -2835,7 +2835,7 @@ def settings_preview() -> str:
                     <control type="image">
                         <posx>306</posx><posy>206</posy>
                         <width>110</width><height>62</height>
-                        <aspectratio>scale</aspectratio>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
                         <texture diffuse="nextup-mask-128x72.png">$INFO[Window.Property(settings_preview_art)]</texture>
                     </control>"""
         + label(429, 208, 150, 28, T.FONT_ACCOUNT, white, "Episode 5")
@@ -2884,7 +2884,7 @@ def settings_preview() -> str:
                     <visible>!{kind("fox")} + !{kind("home")}</visible>
                     <width>{w}</width>
                     <height>{h}</height>
-                    <aspectratio>scale</aspectratio>
+                    <aspectratio scalediffuse="false">scale</aspectratio>
                     <texture diffuse="{mask}">$INFO[Window.Property(settings_preview_art)]</texture>
                 </control>
                 <control type="group">
@@ -4522,6 +4522,59 @@ def _action_pill_label(label_x: int, label_w: int, height: int,
                                 <posx>{label_x}</posx>{body}
                                 <label>{label_xml_label}</label>
                             </control>"""
+
+
+def browse_wall() -> str:
+    """The landing's poster wall (app 2.0): BROWSE_WALL_ROWS rows of the focused
+    library's posters, tilted back and turned, alternate rows drifting
+    opposite ways. Each row draws its period twice so the loop is seamless."""
+    w, h = T.BROWSE_WALL_POSTER_W, T.BROWSE_WALL_POSTER_H
+    px, py = T.BROWSE_WALL_PITCH_X, T.BROWSE_WALL_PITCH_Y
+    period = T.BROWSE_WALL_COLS * px
+    rows = []
+    for r in range(T.BROWSE_WALL_ROWS):
+        start, end = (0, -period) if r % 2 == 0 else (-period, 0)
+        posters = "".join(f"""
+                        <control type="image">
+                            <posx>{c * px}</posx>
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <aspectratio scalediffuse="false">scale</aspectratio>
+                            <texture diffuse="poster-mask.png" background="true">$INFO[Window.Property(browse_wall_{(r * 7 + c % T.BROWSE_WALL_COLS) % T.BROWSE_WALL_POOL})]</texture>
+                        </control>""" for c in range(2 * T.BROWSE_WALL_COLS))
+        rows.append(f"""
+                    <control type="group">
+                        <posx>{T.BROWSE_WALL_X - (r % 2) * px // 2}</posx>
+                        <posy>{T.BROWSE_WALL_Y + r * py}</posy>
+                        <animation effect="slide" start="{start},0" end="{end},0" time="{T.BROWSE_WALL_PERIOD_MS}" loop="true" condition="true">Conditional</animation>{posters}
+                    </control>""")
+    return f"""
+                <control type="group" id="6030">
+                    <visible>String.IsEqual(Window.Property(browse_wall),tilt)</visible>
+                    <animation effect="rotate" end="{T.BROWSE_WALL_TURN}" center="{T.BROWSE_WALL_CX},{T.BROWSE_WALL_CY}" time="0" condition="true">Conditional</animation>
+                    <animation effect="rotatey" end="{T.BROWSE_WALL_SWING}" center="{T.BROWSE_WALL_CX},0" time="0" condition="true">Conditional</animation>
+                    <animation effect="rotatex" end="{T.BROWSE_WALL_TILT}" center="{T.BROWSE_WALL_CY},0" time="0" condition="true">Conditional</animation>{"".join(rows)}
+                </control>"""
+
+
+def browse_poster_row() -> str:
+    """Watchlist's and History's backdrop (app 2.0): one upright row of their
+    posters drifting left, its period drawn twice so the loop is seamless."""
+    w, h, px = T.BROWSE_ROW_POSTER_W, T.BROWSE_ROW_POSTER_H, T.BROWSE_ROW_PITCH
+    posters = "".join(f"""
+                    <control type="image">
+                        <posx>{c * px}</posx>
+                        <width>{w}</width>
+                        <height>{h}</height>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
+                        <texture diffuse="poster-mask.png" background="true">$INFO[Window.Property(browse_wall_{c % T.BROWSE_ROW_COLS})]</texture>
+                    </control>""" for c in range(2 * T.BROWSE_ROW_COLS))
+    return f"""
+                <control type="group" id="6031">
+                    <visible>String.IsEqual(Window.Property(browse_wall),row)</visible>
+                    <posy>{T.BROWSE_ROW_Y}</posy>
+                    <animation effect="slide" start="0,0" end="-{T.BROWSE_ROW_COLS * px},0" time="{T.BROWSE_ROW_PERIOD_MS}" loop="true" condition="true">Conditional</animation>{posters}
+                </control>"""
 
 
 def browse_sort_panel(list_id: int) -> str:
