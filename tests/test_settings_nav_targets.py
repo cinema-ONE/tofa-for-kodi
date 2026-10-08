@@ -1,6 +1,6 @@
 """Every id the settings pane navigates to must exist in the rendered XML.
 
-RIGHT_TARGETS maps a sidebar page to the control Right lands on. Its own
+RIGHT_TARGETS maps a Settings tab to the control Down lands on. Its own
 comment says it "has been wrong once per new top group" -- and it went wrong
 a second time when the segmented rows stopped being lists: "playback" still
 pointed at 8470, the deleted Streaming quality list, so Right did nothing at
@@ -57,6 +57,13 @@ check("playback's target is one of Streaming quality's pills",
       settings_pages.RIGHT_TARGETS["playback"] in
       dict((k, s) for k, _g, s, _p in settings_options.SEGMENTED_GROUPS)["quality"],
       "entering the page should land on its FIRST row")
+
+check("the tabs are the app's six, in its order",
+      [p.label for p in settings_pages.PAGES] == [
+          "Account", "Playback & Video", "Audio & Subtitles", "Appearance",
+          "Home", "Privacy & About"])
+check("every tab has an entry target",
+      all(p.key in settings_pages.RIGHT_TARGETS for p in settings_pages.PAGES))
 
 print()
 failed = [n for n, ok in RESULTS if not ok]

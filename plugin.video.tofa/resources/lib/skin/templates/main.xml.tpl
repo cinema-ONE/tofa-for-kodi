@@ -1640,16 +1640,19 @@
                 <texture>white-square.png</texture>
             </control>
 
-            <!-- ===================== SIDEBAR ===================== -->
-            <!-- Account card. A display, never focusable: the row that
-                 opens account settings is Account in the list below. -->
+            <!-- ===================== TABS ======================== -->
+{settings_tab_strip}
+
+            <!-- ============= DETAIL: shared heading ============= -->
+            <!-- Account's left column: who is signed in (app 2.0). -->
             <control type="group">
                 <posx>{SETTINGS_LEFT}</posx>
                 <posy>{SETTINGS_PROFILE_Y}</posy>
+                <visible>String.IsEqual(Window.Property(settings_page),account)</visible>
                 <control type="image">
                     <posx>0</posx>
                     <posy>0</posy>
-                    <width>{SETTINGS_SIDEBAR_W}</width>
+                    <width>{SETTINGS_PROFILE_W}</width>
                     <height>{SETTINGS_PROFILE_H}</height>
                     <colordiffuse>{PANEL_WASH}</colordiffuse>
                     <texture border="20">rounded-20.png</texture>
@@ -1719,59 +1722,19 @@
 
             <control type="label">
                 <posx>{SETTINGS_LEFT}</posx>
-                <posy>{SETTINGS_EYEBROW_Y}</posy>
-                <width>{SETTINGS_SIDEBAR_W}</width>
-                <height>28</height>
-                <aligny>center</aligny>
-                <font>{FONT_EYEBROW}</font>
-                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                <label>SETTINGS</label>
-            </control>
-
-            <control type="list" id="8000">
-                <posx>{SETTINGS_LEFT}</posx>
-                <posy>{SETTINGS_NAV_Y}</posy>
-                <width>{SETTINGS_SIDEBAR_W}</width>
-                <height>{SETTINGS_NAV_LIST_H}</height>
-                <onup>3000</onup>
-                <ondown>8000</ondown>
-                <onleft>8000</onleft>
-                <onright>8110</onright>
-                <orientation>vertical</orientation>
-                <itemheight>{SETTINGS_NAV_PITCH}</itemheight>
-                <scrolltime>{SCROLLTIME}</scrolltime>
-
-{settings_nav_item}
-
-{settings_nav_focused}
-            </control>
-
-            <control type="label">
-                <posx>{SETTINGS_LEFT}</posx>
-                <posy>{SETTINGS_RAIL_FOOTER_Y}</posy>
-                <width>{SETTINGS_SIDEBAR_W}</width>
-                <height>24</height>
-                <aligny>center</aligny>
-                <font>{FONT_MICRO}</font>
-                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                <label>$INFO[Window.Property(settings_rail_footer)]</label>
-            </control>
-
-            <!-- ============= DETAIL: shared heading ============= -->
-            <control type="label">
-                <posx>{SETTINGS_DETAIL_X}</posx>
                 <posy>{SETTINGS_TITLE_Y}</posy>
-                <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                <height>66</height>
-                <aligny>center</aligny>
-                <font>{FONT_HEADING}</font>
+                <width>{SETTINGS_INFO_W}</width>
+                <height>80</height>
+                <visible>!String.IsEqual(Window.Property(settings_page),account)</visible>
+                <font>{FONT_HERO_TITLE}</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>$INFO[Window.Property(settings_title)]</label>
             </control>
             <control type="label">
-                <posx>{SETTINGS_DETAIL_X}</posx>
+                <posx>{SETTINGS_LEFT}</posx>
                 <posy>{SETTINGS_SUBTITLE_Y}</posy>
-                <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                <width>{SETTINGS_INFO_W}</width>
+                <visible>!String.IsEqual(Window.Property(settings_page),account)</visible>
                 <height>34</height>
                 <aligny>center</aligny>
                 <font>{FONT_BODY}</font>
@@ -1804,9 +1767,9 @@
                     <posy>{SETTINGS_GROUPLIST_Y}</posy>
                     <width>{SETTINGS_DETAIL_W}</width>
                     <height>{SETTINGS_GROUPLIST_H}</height>
-                    <onup>3000</onup>
+                    <onup>8000</onup>
                     <ondown>8190</ondown>
-                    <onleft>8000</onleft>
+                    <onleft>8190</onleft>
                     <onright>8190</onright>
                     <orientation>vertical</orientation>
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
@@ -1824,7 +1787,7 @@
                             <posy>{SETTINGS_SECTION_BAND}</posy>
                             <width>{SETTINGS_DETAIL_W}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8000</onleft>
+                            <onleft>8110</onleft>
                             <onright>8110</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -1845,7 +1808,7 @@
                             <posy>0</posy>
                             <width>{SETTINGS_DETAIL_W}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8000</onleft>
+                            <onleft>8115</onleft>
                             <onright>8115</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -1867,7 +1830,7 @@
                             <posy>{SETTINGS_SECTION_BAND}</posy>
                             <width>{SETTINGS_DETAIL_W}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8000</onleft>
+                            <onleft>8120</onleft>
                             <onright>8120</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -1895,7 +1858,7 @@
                             <posy>{SETTINGS_ACCOUNT_CONNECTION_ROW_Y}</posy>
                             <width>{SETTINGS_DETAIL_W}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8000</onleft>
+                            <onleft>8130</onleft>
                             <onright>8130</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -1910,6 +1873,30 @@
                              body swaps direct/relay in _settings_fill_connection. -->
 {settings_connection_note}
                     </control>
+
+                    <!-- THIS DEVICE, folded in from its old tab -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_DEVICE_GROUP_H}</height>
+{settings_device_eyebrow}
+                        <control type="list" id="8710">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8710</onleft>
+                            <onright>8710</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_fonts_item}
+
+{settings_fonts_focused}
+                        </control>
+{settings_deviceid_row}
+                    </control>
+
                 </control>
             </control>
 
@@ -1938,9 +1925,9 @@
                     <posy>{SETTINGS_GROUPLIST_Y}</posy>
                     <width>{SETTINGS_DETAIL_W_WIDE}</width>
                     <height>{SETTINGS_GROUPLIST_H}</height>
-                    <onup>3000</onup>
+                    <onup>8000</onup>
                     <ondown>8290</ondown>
-                    <onleft>8000</onleft>
+                    <onleft>8290</onleft>
                     <onright>8290</onright>
                     <orientation>vertical</orientation>
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
@@ -1978,8 +1965,8 @@
                                  vertical panel instead: Up cycled row 1 ->
                                  2 -> 3 -> 1 forever and the fox grid could
                                  never be left upward at all. -->
-                            <onup>3000</onup>
-                            <onleft>8000</onleft>
+                            <onup>8000</onup>
+                            <onleft>8200</onleft>
                             <onright>8200</onright>
                             <orientation>vertical</orientation>
                             <itemwidth>{SETTINGS_FOX_CELL_W}</itemwidth>
@@ -1991,6 +1978,88 @@
 {settings_fox_focused}
                         </control>
                     </control>
+
+                    <!-- MEDIA CARDS -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_MEDIACARDS_GROUP_H}</height>
+{settings_mediacards_eyebrow}
+{settings_rating_group}
+                        <control type="list" id="8310">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_MEDIACARDS_SECOND_Y}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onup>8300</onup>
+                            <onleft>8310</onleft>
+                            <onright>8310</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_episodes_item}
+
+{settings_episodes_focused}
+                        </control>
+                        <control type="list" id="8315">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_MEDIACARDS_THIRD_Y}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onup>8310</onup>
+                            <onleft>8315</onleft>
+                            <onright>8315</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_spoilers_item}
+
+{settings_spoilers_focused}
+                        </control>
+                    </control>
+
+                    <!-- REGION -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_REGION_GROUP_H}</height>
+{settings_region_eyebrow}
+                        <control type="list" id="8360">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8360</onleft>
+                            <onright>8360</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_region_item}
+
+{settings_region_focused}
+                        </control>
+                    </control>
+                </control>
+            </control>
+
+            <!-- ================== DETAIL: HOME ================== -->
+            <!-- Its own tab since app 2.0: the spotlight switch, the row
+                 editor and "Add a row", moved here from Appearance. -->
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(settings_page),home)</visible>
+                <control type="grouplist" id="8390">
+                    <posx>{SETTINGS_DETAIL_X}</posx>
+                    <posy>{SETTINGS_GROUPLIST_Y}</posy>
+                    <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                    <height>{SETTINGS_GROUPLIST_H}</height>
+                    <onup>8000</onup>
+                    <ondown>8390</ondown>
+                    <onleft>8390</onleft>
+                    <onright>8390</onright>
+                    <orientation>vertical</orientation>
+                    <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
+                    <scrolltime>{SCROLLTIME}</scrolltime>
 
                     <!-- HOME SCREEN: three children, not one.
                          The row list gets a child of its own so it can be
@@ -2006,7 +2075,7 @@
                             <posy>{SETTINGS_SECTION_BAND}</posy>
                             <width>{SETTINGS_DETAIL_W_WIDE}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8000</onleft>
+                            <onleft>8320</onleft>
                             <onright>8320</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2051,7 +2120,7 @@
                             <posy>0</posy>
                             <width>{SETTINGS_DETAIL_W_WIDE}</width>
                             <height>{SETTINGS_HOMEADD_H}</height>
-                            <onleft>8000</onleft>
+                            <onleft>8340</onleft>
                             <onright>8340</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_HOMEADD_H}</itemheight>
@@ -2092,67 +2161,6 @@
                         </control>
                     </control>
 
-                    <!-- MEDIA CARDS -->
-                    <control type="group">
-                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_MEDIACARDS_GROUP_H}</height>
-{settings_mediacards_eyebrow}
-{settings_rating_group}
-                        <control type="list" id="8310">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_MEDIACARDS_SECOND_Y}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8300</onup>
-                            <onleft>8000</onleft>
-                            <onright>8310</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_episodes_item}
-
-{settings_episodes_focused}
-                        </control>
-                        <control type="list" id="8315">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_MEDIACARDS_THIRD_Y}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8310</onup>
-                            <onleft>8000</onleft>
-                            <onright>8315</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_spoilers_item}
-
-{settings_spoilers_focused}
-                        </control>
-                    </control>
-
-                    <!-- REGION -->
-                    <control type="group">
-                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_REGION_GROUP_H}</height>
-{settings_region_eyebrow}
-                        <control type="list" id="8360">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8000</onleft>
-                            <onright>8360</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_region_item}
-
-{settings_region_focused}
-                        </control>
-                    </control>
                 </control>
             </control>
 
@@ -2164,9 +2172,9 @@
                     <posy>{SETTINGS_GROUPLIST_Y}</posy>
                     <width>{SETTINGS_DETAIL_W_WIDE}</width>
                     <height>{SETTINGS_GROUPLIST_H}</height>
-                    <onup>3000</onup>
+                    <onup>8000</onup>
                     <ondown>8490</ondown>
-                    <onleft>8000</onleft>
+                    <onleft>8490</onleft>
                     <onright>8490</onright>
                     <orientation>vertical</orientation>
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
@@ -2206,9 +2214,9 @@
                     <posy>{SETTINGS_GROUPLIST_Y}</posy>
                     <width>{SETTINGS_DETAIL_W_WIDE}</width>
                     <height>{SETTINGS_GROUPLIST_H}</height>
-                    <onup>3000</onup>
+                    <onup>8000</onup>
                     <ondown>8590</ondown>
-                    <onleft>8000</onleft>
+                    <onleft>8590</onleft>
                     <onright>8590</onright>
                     <orientation>vertical</orientation>
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
@@ -2223,9 +2231,9 @@
                             <posy>{SETTINGS_SECTION_BAND}</posy>
                             <width>{SETTINGS_DETAIL_W_WIDE}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>3000</onup>
+                            <onup>8000</onup>
                             <ondown>8540</ondown>
-                            <onleft>8000</onleft>
+                            <onleft>8510</onleft>
                             <onright>8510</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2242,7 +2250,7 @@
                             <height>{SETTINGS_ACTION_ROW_H}</height>
                             <onup>8510</onup>
                             <ondown>8520</ondown>
-                            <onleft>8000</onleft>
+                            <onleft>8540</onleft>
                             <onright>8540</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2264,7 +2272,7 @@
                             <height>{SETTINGS_ACTION_ROW_H}</height>
                             <onup>8540</onup>
                             <ondown>8550</ondown>
-                            <onleft>8000</onleft>
+                            <onleft>8520</onleft>
                             <onright>8520</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2281,7 +2289,7 @@
                             <height>{SETTINGS_ACTION_ROW_H}</height>
                             <onup>8520</onup>
                             <ondown>8530</ondown>
-                            <onleft>8000</onleft>
+                            <onleft>8550</onleft>
                             <onright>8550</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2298,7 +2306,7 @@
                             <height>{SETTINGS_ACTION_ROW_H}</height>
                             <onup>8550</onup>
                             <ondown>8530</ondown>
-                            <onleft>8000</onleft>
+                            <onleft>8530</onleft>
                             <onright>8530</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2320,9 +2328,9 @@
                     <posy>{SETTINGS_GROUPLIST_Y}</posy>
                     <width>{SETTINGS_DETAIL_W}</width>
                     <height>{SETTINGS_GROUPLIST_H}</height>
-                    <onup>3000</onup>
+                    <onup>8000</onup>
                     <ondown>8690</ondown>
-                    <onleft>8000</onleft>
+                    <onleft>8690</onleft>
                     <onright>8690</onright>
                     <orientation>vertical</orientation>
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
@@ -2346,8 +2354,8 @@
                             <posy>{SETTINGS_ABOUT_ROW1_Y}</posy>
                             <width>{SETTINGS_DETAIL_W}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>3000</onup>
-                            <onleft>8000</onleft>
+                            <onup>8000</onup>
+                            <onleft>8620</onleft>
                             <onright>8620</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2358,52 +2366,8 @@
 {settings_licences_focused}
                         </control>
                     </control>
-                </control>
-                <control type="group">
-{settings_support_rail}
-                </control>
-            </control>
 
-            <!-- ================ DETAIL: THIS DEVICE ================ -->
-            <control type="group">
-                <visible>String.IsEqual(Window.Property(settings_page),device)</visible>
-                <control type="grouplist" id="8790">
-                    <posx>{SETTINGS_DETAIL_X}</posx>
-                    <posy>{SETTINGS_GROUPLIST_Y}</posy>
-                    <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                    <height>{SETTINGS_GROUPLIST_H}</height>
-                    <onup>3000</onup>
-                    <ondown>8790</ondown>
-                    <onleft>8000</onleft>
-                    <onright>8790</onright>
-                    <orientation>vertical</orientation>
-                    <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
-                    <scrolltime>{SCROLLTIME}</scrolltime>
-
-                    <control type="group">
-                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_DEVICE_GROUP_H}</height>
-{settings_device_eyebrow}
-                        <control type="list" id="8710">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>3000</onup>
-                            <ondown>8720</ondown>
-                            <onleft>8000</onleft>
-                            <onright>8710</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_fonts_item}
-
-{settings_fonts_focused}
-                        </control>
-{settings_deviceid_row}
-                    </control>
-
+                    <!-- ARTWORK CACHE, folded in from This Device -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
                         <height>{SETTINGS_ARTCACHE_GROUP_H}</height>
@@ -2413,9 +2377,8 @@
                             <posy>{SETTINGS_SECTION_BAND}</posy>
                             <width>{SETTINGS_DETAIL_W_WIDE}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onup>8710</onup>
                             <ondown>8730</ondown>
-                            <onleft>8000</onleft>
+                            <onleft>8720</onleft>
                             <onright>8720</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2432,7 +2395,7 @@
                             <height>{SETTINGS_ACTION_ROW_H}</height>
                             <onup>8720</onup>
                             <ondown>8730</ondown>
-                            <onleft>8000</onleft>
+                            <onleft>8730</onleft>
                             <onright>8730</onright>
                             <orientation>vertical</orientation>
                             <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
@@ -2443,6 +2406,9 @@
 {settings_artclear_focused}
                         </control>
                     </control>
+                </control>
+                <control type="group">
+{settings_support_rail}
                 </control>
             </control>
 

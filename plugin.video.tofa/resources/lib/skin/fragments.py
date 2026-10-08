@@ -2714,26 +2714,23 @@ def poster_row(
 {indent}</control>"""
 
 
-def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
-    """Discover's sub-tabs as one list of text tabs, same grammar as the top
-    bar: half-white at rest, white when current, an underline on the focused
-    tab and a dot under the current one once focus has left the strip."""
-    focused = f"Control.HasFocus({list_id})"
+def _text_tab_slot(idx: int, selected: bool, focused: str, slot_w: int,
+                   centres: tuple, widths: tuple) -> str:
+    """One text tab in a strip list, drawn at its measured centre: half-white
+    at rest, white when current, an underline on focus, a dot once left."""
     current = "!String.IsEmpty(ListItem.Property(is_current))"
     white = "$INFO[Window.Property(text_primary)]"
-
-    def slot(idx: int, selected: bool) -> str:
-        off = idx * T.DISCOVER_SUBTAB_SLOT
-        w = T.DISCOVER_SUBTAB_INK_W[idx]
-        centre = T.DISCOVER_SUBTAB_CENTRES[idx] - off
-        x = centre - w // 2
-        y = T.DISCOVER_SUBTAB_LABEL_Y
-        if selected:
-            colours = ((white, ""),)
-        else:
-            colours = ((white, f"<visible>{current}</visible>"),
-                       (T.NAV_TAB_REST, "<visible>String.IsEmpty(ListItem.Property(is_current))</visible>"))
-        labels = "".join(f"""
+    off = idx * slot_w
+    w = widths[idx]
+    centre = centres[idx] - off
+    x = centre - w // 2
+    y = T.DISCOVER_SUBTAB_LABEL_Y
+    if selected:
+        colours = ((white, ""),)
+    else:
+        colours = ((white, f"<visible>{current}</visible>"),
+                   (T.NAV_TAB_REST, "<visible>String.IsEmpty(ListItem.Property(is_current))</visible>"))
+    labels = "".join(f"""
                         <control type="label">
                             <posx>{x}</posx>
                             <posy>{y}</posy>
@@ -2743,18 +2740,67 @@ def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
                             <textcolor>{colour}</textcolor>
                             <label>$INFO[ListItem.Label]</label>{vis}
                         </control>""" for colour, vis in colours)
-        marks = _nav_mark(centre - T.NAV_DOT_SIZE // 2, T.NAV_DOT_SIZE,
-                          T.DISCOVER_SUBTAB_DOT_Y + _NAV_LIST_Y, T.NAV_DOT_SIZE,
-                          ">circle.png", f"!{focused} + {current}")
-        if selected:
-            marks += _nav_mark(x - 1, w + 2, T.DISCOVER_SUBTAB_UNDERLINE_Y + _NAV_LIST_Y,
-                               T.NAV_UNDERLINE_H,
-                               f' border="{T.NAV_UNDERLINE_H // 2}">capsule-h{T.NAV_UNDERLINE_H}.png',
-                               focused)
-        return f"""
+    marks = _nav_mark(centre - T.NAV_DOT_SIZE // 2, T.NAV_DOT_SIZE,
+                      T.DISCOVER_SUBTAB_DOT_Y + _NAV_LIST_Y, T.NAV_DOT_SIZE,
+                      ">circle.png", f"!{focused} + {current}")
+    if selected:
+        marks += _nav_mark(x - 1, w + 2, T.DISCOVER_SUBTAB_UNDERLINE_Y + _NAV_LIST_Y,
+                           T.NAV_UNDERLINE_H,
+                           f' border="{T.NAV_UNDERLINE_H // 2}">capsule-h{T.NAV_UNDERLINE_H}.png',
+                           focused)
+    return f"""
                     <control type="group">
                         <visible>String.IsEqual(ListItem.Property(tab_idx),{idx})</visible>{labels}{marks}
                     </control>"""
+
+
+def settings_tab_strip(*, list_id: int, onup: int, ondown: int) -> str:
+    """Settings' six pages as text tabs under the top bar (app 2.0), the
+    same grammar as Discover's, with a divider under them."""
+    focused = f"Control.HasFocus({list_id})"
+    n = len(T.SETTINGS_TAB_CENTRES)
+    slot_w = T.SETTINGS_TAB_SLOT
+    item = "".join(_text_tab_slot(i, False, focused, slot_w, T.SETTINGS_TAB_CENTRES,
+                                  T.SETTINGS_TAB_INK_W) for i in range(n))
+    sel = "".join(_text_tab_slot(i, True, focused, slot_w, T.SETTINGS_TAB_CENTRES,
+                                 T.SETTINGS_TAB_INK_W) for i in range(n))
+    h = T.DISCOVER_DIVIDER_Y
+    return f"""            <control type="list" id="{list_id}">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>{slot_w * n}</width>
+                <height>{h}</height>
+                <orientation>horizontal</orientation>
+                <itemwidth>{slot_w}</itemwidth>
+                <itemheight>{h}</itemheight>
+                <onup>{onup}</onup>
+                <ondown>{ondown}</ondown>
+                <onleft>{list_id}</onleft>
+                <onright>{list_id}</onright>
+                <itemlayout width="{slot_w}" height="{h}">{item}
+                </itemlayout>
+                <focusedlayout width="{slot_w}" height="{h}">{sel}
+                </focusedlayout>
+            </control>
+            <control type="image">
+                <posx>{T.SETTINGS_LEFT}</posx>
+                <posy>{h}</posy>
+                <width>{T.DISCOVER_DIVIDER_W}</width>
+                <height>1</height>
+                <colordiffuse>{T.DISCOVER_DIVIDER}</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>"""
+
+
+def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
+    """Discover's sub-tabs as one list of text tabs, same grammar as the top
+    bar: half-white at rest, white when current, an underline on the focused
+    tab and a dot under the current one once focus has left the strip."""
+    focused = f"Control.HasFocus({list_id})"
+
+    def slot(idx: int, selected: bool) -> str:
+        return _text_tab_slot(idx, selected, focused, T.DISCOVER_SUBTAB_SLOT,
+                              T.DISCOVER_SUBTAB_CENTRES, T.DISCOVER_SUBTAB_INK_W)
 
     def filters_slot(selected: bool) -> str:
         """Icon, label and count badge, right-aligned; white only on focus."""
@@ -4546,171 +4592,6 @@ def collection_card(list_id: int) -> tuple[str, str]:
 # with its own spec here and the app wins (feedback_apple_tv_source_of_truth).
 
 
-def settings_nav_row(list_id: int) -> tuple[str, str]:
-    """Sidebar row for the Settings section: icon, title, current-value
-    subtitle, trailing chevron.
-
-    Deliberately NOT a variant of sidebar_row() above, for the same reason
-    Detail's season sidebar is not one: that fragment is a 300x60 single-line
-    row whose active state is a raised wash plus a 3px accent bar, and this is
-    a two-line row whose active state is a solid accent fill. Sharing them
-    would mean threading a second state machine through one function rather
-    than reusing anything.
-
-    The resting fill is flat SURFACE_FAINT -- the same value Browse's sidebar
-    uses, chosen so the two rails match. The real Apple TV row fades from +23
-    over the page background at its top to +2 at its bottom, and this shipped
-    that way first, from a generated gradient texture; it was the only
-    gradient surface in the skin and was dropped by explicit request
-    2026-08-03. A deliberate divergence.
-
-    Active vs focused: Kodi draws focusedlayout for a list's SELECTED item
-    even when the list has no keyboard focus, which is exactly the behaviour
-    wanted here -- the row for the page being shown stays accent-filled while
-    the user is off editing in the detail pane. The extra brightening and halo
-    that mark real focus are gated on `Control.HasFocus(list_id)` on top of
-    that, matching the app (its resting-active fill measures 3FBBB7 against
-    58C6BF when the sidebar itself holds focus).
-
-    Those focus-only layers are a brightening wash and a 2px rim. The rim is
-    NEUTRAL white, not 5's accent -- see FOCUS_RIM_NEUTRAL: an accent rim on a
-    row already filled with the accent cannot be seen, and 9.2 sets the
-    precedent for going white in exactly that situation."""
-    W = T.SETTINGS_SIDEBAR_W
-    H = T.SETTINGS_NAV_ROW_H
-    PITCH = T.SETTINGS_NAV_PITCH
-    ICON_CX = 36            # icon box centre, measured 192 against a row at 156
-    # Further from the icon than the app's 58, by request 2026-08-03 -- the
-    # glyph and the title read as one clump at the measured gap. Same
-    # deliberate-divergence note as the row height in tokens.py.
-    TEXT_X = 78
-    CHEVRON_X = W - 52
-    # Only 6px of clearance before the chevron, not 12: pushing TEXT_X out
-    # to 78 cost the label 20px and started ellipsising the longer subtitles.
-    TEXT_W = CHEVRON_X - TEXT_X - 6
-    # The two lines sit as a centred pair with a 36px gap between their
-    # centres, up from the 29 the app uses -- see the row-height note in
-    # tokens.py for why this screen is deliberately roomier than the capture.
-    TITLE_Y = H // 2 - 34
-    SUB_Y = H // 2 + 2
-
-    def _labels(title_color: str, sub_color: str, chevron_color: str,
-                marquee: bool | None = None) -> str:
-        """`marquee=None` emits a still row (the itemlayout). True/False emit
-        the focused layout's complementary pair: both text lines scroll, but
-        only while the list really holds focus.
-
-        Both lines, not just the title: they share one column, and it is the
-        SUBTITLE that overflows in practice (an account row shows an email).
-        Drawn as two gated copies rather than one conditional control because
-        Kodi's <scroll> is a plain boolean, and focusedlayout renders for the
-        active row even when the cursor is elsewhere -- so an ungated marquee
-        would scroll the current page's row forever in the background."""
-        # EM SPACES (U+2003), not ASCII: Kodi's parser discards a text node
-        # that is only ASCII whitespace, so a plain-space suffix arrives
-        # EMPTY and the wrap reads as one run-on string. This shipped wrong.
-        scroll = ("""
-                            <scroll>true</scroll>
-                            <scrollsuffix>   </scrollsuffix>""" if marquee else "")
-        gate = "" if marquee is None else f"""
-                        <visible>{"" if marquee else "!"}Control.HasFocus({list_id})</visible>"""
-        return f"""
-                    <control type="label">{gate}
-                        <posx>{ICON_CX - 18}</posx>
-                        <posy>{H // 2 - 18}</posy>
-                        <width>36</width>
-                        <height>36</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_ICON_26}</font>
-                        <textcolor>{title_color}</textcolor>
-                        <label>$INFO[ListItem.Property(icon_glyph)]</label>
-                    </control>
-                    <control type="label">{gate}
-                        <posx>{TEXT_X}</posx>
-                        <posy>{TITLE_Y}</posy>
-                        <width>{TEXT_W}</width>
-                        <height>34</height>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_ROW_TITLE}</font>
-                        <textcolor>{title_color}</textcolor>
-                        <label>$INFO[ListItem.Label]</label>{scroll}
-                    </control>
-                    <control type="label">{gate}
-                        <posx>{TEXT_X}</posx>
-                        <posy>{SUB_Y}</posy>
-                        <width>{TEXT_W}</width>
-                        <height>28</height>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_METADATA}</font>
-                        <textcolor>{sub_color}</textcolor>
-                        <label>$INFO[ListItem.Property(summary)]</label>{scroll}
-                    </control>
-                    <control type="label">{gate}
-                        <posx>{CHEVRON_X}</posx>
-                        <posy>{H // 2 - 14}</posy>
-                        <width>28</width>
-                        <height>28</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_ICON_19}</font>
-                        <textcolor>{chevron_color}</textcolor>
-                        <label>&#x{icon_glyphs.CHEVRON_RIGHT:04X};</label>
-                    </control>"""
-
-    item = f"""                <itemlayout width="{W}" height="{PITCH}">
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{W}</width>
-                        <height>{H}</height>
-                        <colordiffuse>{T.SURFACE_FAINT}</colordiffuse>
-                        <texture border="14">rounded-14.png</texture>
-                    </control>{_labels(
-                        "$INFO[Window.Property(text_primary)]",
-                        "$INFO[Window.Property(text_secondary)]",
-                        "$INFO[Window.Property(text_tertiary)]")}
-                </itemlayout>"""
-
-    focused = f"""                <focusedlayout width="{W}" height="{PITCH}">
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{W}</width>
-                        <height>{H}</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="14">rounded-14.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{W}</width>
-                        <height>{H}</height>
-                        <colordiffuse>{T.SURFACE_RAISED}</colordiffuse>
-                        <texture border="14">rounded-14.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{W}</width>
-                        <height>{H}</height>
-                        <colordiffuse>{T.FOCUS_RIM_NEUTRAL}</colordiffuse>
-                        <texture border="14">rounded-14-outline.png</texture>
-                    </control>{_labels(
-                        "$INFO[Window.Property(on_accent_color)]",
-                        "$INFO[Window.Property(on_accent_color)]",
-                        "$INFO[Window.Property(on_accent_color)]",
-                        marquee=False)}{_labels(
-                        "$INFO[Window.Property(on_accent_color)]",
-                        "$INFO[Window.Property(on_accent_color)]",
-                        "$INFO[Window.Property(on_accent_color)]",
-                        marquee=True)}
-                </focusedlayout>"""
-    return item, focused
-
-
 def settings_action_row(list_id: int, width: int = T.SETTINGS_DETAIL_W) -> tuple[str, str]:
     """A focusable detail-pane row: title over an explanatory line, with a
     trailing glyph. Switch Profile and Sign Out are both this shape.
@@ -5008,7 +4889,7 @@ def settings_qr_rail(*, eyebrow: str, texture: str, caption_property: str,
     qr_x = (T.SETTINGS_RAIL_W - T.SETTINGS_QR) // 2
     return f"""{indent}<control type="label">
 {indent}    <posx>{T.SETTINGS_RAIL_X}</posx>
-{indent}    <posy>{T.SETTINGS_CONTENT_Y - T.SETTINGS_GROUP_EYEBROW_RISE - 12}</posy>
+{indent}    <posy>{T.SETTINGS_RAIL_Y - T.SETTINGS_GROUP_EYEBROW_RISE - 12}</posy>
 {indent}    <width>{T.SETTINGS_RAIL_W}</width>
 {indent}    <height>28</height>
 {indent}    <aligny>center</aligny>
@@ -5018,7 +4899,7 @@ def settings_qr_rail(*, eyebrow: str, texture: str, caption_property: str,
 {indent}</control>
 {indent}<control type="group">
 {indent}    <posx>{T.SETTINGS_RAIL_X}</posx>
-{indent}    <posy>{T.SETTINGS_CONTENT_Y}</posy>
+{indent}    <posy>{T.SETTINGS_RAIL_Y}</posy>
 {indent}    <control type="image">
 {indent}        <posx>0</posx>
 {indent}        <posy>0</posy>
@@ -5029,14 +4910,14 @@ def settings_qr_rail(*, eyebrow: str, texture: str, caption_property: str,
 {indent}    </control>
 {indent}    <control type="image">
 {indent}        <posx>{qr_x}</posx>
-{indent}        <posy>{T.SETTINGS_QR_Y - T.SETTINGS_CONTENT_Y}</posy>
+{indent}        <posy>{T.SETTINGS_QR_Y - T.SETTINGS_RAIL_Y}</posy>
 {indent}        <width>{T.SETTINGS_QR}</width>
 {indent}        <height>{T.SETTINGS_QR}</height>
 {indent}        <texture>{texture}</texture>
 {indent}    </control>
 {indent}    <control type="textbox">
 {indent}        <posx>22</posx>
-{indent}        <posy>{T.SETTINGS_QR_CAPTION_Y - T.SETTINGS_CONTENT_Y}</posy>
+{indent}        <posy>{T.SETTINGS_QR_CAPTION_Y - T.SETTINGS_RAIL_Y}</posy>
 {indent}        <width>{T.SETTINGS_RAIL_W - 44}</width>
 {indent}        <height>94</height>
 {indent}        <align>center</align>
