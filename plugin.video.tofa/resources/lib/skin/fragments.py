@@ -2754,6 +2754,132 @@ def _text_tab_slot(idx: int, selected: bool, focused: str, slot_w: int,
                     </control>"""
 
 
+def settings_info_panel() -> str:
+    """Settings' left column (app 2.0): a summary of the page while the tabs
+    have focus, and the focused row's title, value, text and choices."""
+    x, w = T.SETTINGS_LEFT, T.SETTINGS_INFO_W
+    row = "!String.IsEmpty(Window.Property(settings_info))"
+    white = "$INFO[Window.Property(text_primary)]"
+    strong = "$INFO[Window.Property(text_strong)]"
+    grey = "$INFO[Window.Property(text_secondary)]"
+    accent = "$INFO[Window.Property(accent_color)]"
+
+    def label(y, h, font, colour, text, vis="", lx=0, lw=w):
+        v = f"\n                    <visible>{vis}</visible>" if vis else ""
+        return f"""
+                <control type="label">
+                    <posx>{lx}</posx>
+                    <posy>{y}</posy>
+                    <width>{lw}</width>
+                    <height>{h}</height>
+                    <font>{font}</font>
+                    <textcolor>{colour}</textcolor>
+                    <label>{text}</label>{v}
+                </control>"""
+
+    def prop_set(name):
+        return f"!String.IsEmpty(Window.Property({name}))"
+
+    summary = ""
+    for i in range(4):
+        y = T.SETTINGS_SUM_Y + i * T.SETTINGS_SUM_PITCH
+        gate = prop_set(f"settings_sum{i + 1}_key")
+        summary += f"""
+                <control type="image">
+                    <posy>{y - 18}</posy>
+                    <width>{w}</width>
+                    <height>1</height>
+                    <colordiffuse>{T.DISCOVER_DIVIDER}</colordiffuse>
+                    <texture>white-square.png</texture>
+                    <visible>{gate}</visible>
+                </control>""" + label(
+            y, 20, T.FONT_EYEBROW, grey,
+            f"$INFO[Window.Property(settings_sum{i + 1}_key)]", gate) + label(
+            y + 23, 34, T.FONT_ROW_TITLE, white,
+            f"$INFO[Window.Property(settings_sum{i + 1}_value)]", gate)
+
+    # The row state stacks in a grouplist, so a short body or no note
+    # closes up and the choices follow straight after.
+    stack = "".join(label(0, 30, T.FONT_BODY, strong,
+                          f"$INFO[Window.Property(settings_info_body{n})]",
+                          prop_set(f"settings_info_body{n}")) for n in (1, 2, 3))
+    stack += f"""
+                    <control type="group">
+                        <height>{T.SETTINGS_INFO_NOTE_GAP}</height>
+                        <visible>{prop_set("settings_info_note1")}</visible>
+                    </control>"""
+    stack += "".join(label(0, 27, T.FONT_METADATA, grey,
+                           f"$INFO[Window.Property(settings_info_note{n})]",
+                           prop_set(f"settings_info_note{n}")) for n in (1, 2))
+    stack += f"""
+                    <control type="group">
+                        <height>{T.SETTINGS_INFO_OPTS_GAP}</height>
+                        <visible>{prop_set("settings_info_opt1")}</visible>
+                    </control>"""
+    for n in range(1, 5):
+        on = prop_set(f"settings_info_opt{n}_on")
+        stack += f"""
+                    <control type="group">
+                        <height>{T.SETTINGS_INFO_OPT_PITCH}</height>
+                        <visible>{prop_set(f"settings_info_opt{n}")}</visible>
+                        <control type="image">
+                            <posx>1</posx>
+                            <posy>9</posy>
+                            <width>12</width>
+                            <height>12</height>
+                            <colordiffuse>{accent}</colordiffuse>
+                            <texture>circle.png</texture>
+                            <visible>{on}</visible>
+                        </control>
+                        <control type="image">
+                            <posx>1</posx>
+                            <posy>9</posy>
+                            <width>12</width>
+                            <height>12</height>
+                            <colordiffuse>{grey}</colordiffuse>
+                            <texture>circle-outline.png</texture>
+                            <visible>!{on}</visible>
+                        </control>""" + label(
+            0, 30, T.FONT_POSTER_TITLE, white,
+            f"$INFO[Window.Property(settings_info_opt{n})]", lx=30, lw=w - 30) + label(
+            32, 28, T.FONT_METADATA, grey,
+            f"$INFO[Window.Property(settings_info_opt{n}_desc)]", lx=30, lw=w - 30) + """
+                    </control>"""
+
+    return f"""
+            <control type="group">
+                <posx>{x}</posx>
+                <posy>0</posy>
+                <visible>!{row}</visible>{summary}
+            </control>
+            <control type="group">
+                <posx>{x}</posx>
+                <posy>0</posy>
+                <visible>{row}</visible>""" + label(
+        T.SETTINGS_INFO_TITLE_Y, 80, T.FONT_HERO_TITLE, white,
+        "$INFO[Window.Property(settings_info_title)]") + f"""
+                <control type="image">
+                    <posx>1</posx>
+                    <posy>{T.SETTINGS_INFO_VALUE_Y + 12}</posy>
+                    <width>10</width>
+                    <height>10</height>
+                    <colordiffuse>{accent}</colordiffuse>
+                    <texture>circle.png</texture>
+                    <visible>{prop_set("settings_info_value")}</visible>
+                </control>""" + label(
+        T.SETTINGS_INFO_VALUE_Y, 34, T.FONT_ROW_TITLE, white,
+        "$INFO[Window.Property(settings_info_value)]", lx=24) + f"""
+                <control type="grouplist">
+                    <posy>{T.SETTINGS_INFO_BODY_Y}</posy>
+                    <width>{w}</width>
+                    <height>{T.SCREEN_H - T.SETTINGS_INFO_BODY_Y}</height>
+                    <orientation>vertical</orientation>
+                    <itemgap>0</itemgap>
+                    <usecontrolcoords>true</usecontrolcoords>{stack}
+                </control>
+            </control>"""
+
+
 def settings_tab_strip(*, list_id: int, onup: int, ondown: int) -> str:
     """Settings' six pages as text tabs under the top bar (app 2.0), the
     same grammar as Discover's, with a divider under them."""

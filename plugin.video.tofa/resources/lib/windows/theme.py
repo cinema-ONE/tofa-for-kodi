@@ -60,7 +60,7 @@ def card_rating_text(item: dict, prefs: dict | None = None) -> str:
 # Window.Property (text_primary/text_secondary/text_tertiary, set in every
 # window's own onFirstInit) rather than a raw hex literal.
 TEXT_PRIMARY = "white"          # titles, names, section headers -- measured ~90-99%
-TEXT_STRONG = "0xD4FFFFFF"      # see below -- 83%, ONE user: the pause card's "N min left"
+TEXT_STRONG = "0xD4FFFFFF"      # see below -- 83%: the pause card, Settings' info text
 TEXT_SECONDARY = "0x9EFFFFFF"   # roles, meta, body, captions -- measured ~53-60%, matches spec's 62%
 TEXT_TERTIARY = "0x6BFFFFFF"    # eyebrows, "no art" placeholder glyphs -- measured ~42-49%, matches spec's 42%
 
