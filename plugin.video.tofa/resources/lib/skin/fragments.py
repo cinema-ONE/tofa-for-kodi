@@ -1161,9 +1161,9 @@ def top_result_card(list_id: int) -> tuple[str, str]:
 def person_card(
     list_id: int,
     *,
-    cell_width: int = T.CAST_TILE,
-    cell_height: int = T.CAST_TILE,
-    photo_size: int = T.CAST_PHOTO,
+    cell_width: int,
+    cell_height: int,
+    photo_size: int,
     placeholder_mode: str = "initials",
     subtitle_property: str = "role",
 ) -> tuple[str, str]:
@@ -1448,12 +1448,10 @@ EPISODE_CELL_W, EPISODE_CELL_H = T.EPISODE_CELL_W, T.EPISODE_CELL_H
 # 320, not 270: row-to-row gap widened to match Browse's own poster grid
 # (~124px between poster rows on the real Apple TV app); ~134px art-to-art
 # here once _EP_PAD is factored in.
-EPISODE_THUMB_W, EPISODE_THUMB_H = 330, 186
-# HPAD/TOP_PAD/glow bleed all share one value here (unlike poster_visual's
-# HPAD=20 vs GLOW_PAD=10): the cell only has exactly 20px of horizontal
-# slack (350-330), none to spare beyond exactly what the glow needs not to
-# clip. See tools/gen_episode_assets.py.
-_EP_PAD = 10
+EPISODE_THUMB_W, EPISODE_THUMB_H = 400, 225
+# The 28px gap between stills is split either side of each, room for the
+# 10px glow (tools/gen_episode_assets.py).
+_EP_PAD = 14
 
 
 def episode_card(list_id: int) -> tuple[str, str]:
@@ -2953,6 +2951,354 @@ def discover_filters_popover(list_id: int) -> str:
                     </focusedlayout>
                 </control>
             </control>"""
+
+
+# Title page 2's sections, in page order: (key, block id, visibility).
+DETAIL_P2_SECTIONS = (
+    ("episodes", 5410, "!String.IsEmpty(Window.Property(p2_has_episodes))"),
+    ("collection", 5420, "!String.IsEmpty(Window.Property(collection_row_title))"),
+    ("cast", 5430, "!String.IsEmpty(Window.Property(has_cast_content))"),
+    ("similar", 5440, "!String.IsEmpty(Window.Property(similar_row_title))"),
+    ("discover", 5450, "!String.IsEmpty(Window.Property(discover_row_title))"),
+    ("about", 5460, ""),
+)
+DETAIL_P2_GROUPLIST = 5400
+DETAIL_ABOUT_BUTTON = 5465
+
+
+def _p2_header(text: str) -> str:
+    return f"""
+                        <control type="label">
+                            <posx>{T.DETAIL_P2_LEFT - 1}</posx>
+                            <width>1200</width>
+                            <height>40</height>
+                            <font>{T.FONT_BUTTON}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>{text}</label>
+                        </control>"""
+
+
+def _p2_block(key: str, block_id: int, visible: str, content: str) -> str:
+    """One screen-tall block plus its spacer; Python sets the heights and the
+    content's y once it knows which section comes first (detail._p2_layout)."""
+    gate = f"\n                <visible>{visible}</visible>" if visible else ""
+    # The episode block is always first and fills the screen from the top.
+    y = 0 if key == "episodes" else T.DETAIL_P2_HEADER_Y
+    return f"""
+                <control type="group" id="{block_id}">
+                    <height>{T.SCREEN_H}</height>{gate}
+                    <control type="group" id="{block_id + 1}">
+                        <posy>{y}</posy>
+                        <animation effect="fade" start="100" end="{T.DETAIL_P2_DIM}" time="150" condition="!ControlGroup({block_id}).HasFocus()">Conditional</animation>{content}
+                    </control>
+                </control>
+                <control type="group" id="{block_id + 2}">
+                    <height>0</height>{gate}
+                </control>"""
+
+
+def _p2_row(list_id: int, title_property: str, item_xml: str, focused_xml: str) -> str:
+    return _p2_header(f"$INFO[Window.Property({title_property})]") + f"""
+                        <control type="list" id="{list_id}">
+                            <posx>{T.DETAIL_P2_LEFT - T.HPAD}</posx>
+                            <posy>{T.DETAIL_P2_ROW_LIST_Y}</posy>
+                            <width>{T.row_bleed_width(T.DETAIL_P2_LEFT)}</width>
+                            <height>{T.CELL_H}</height>
+                            <orientation>horizontal</orientation>
+                            <itemwidth>{T.CELL_W}</itemwidth>
+                            <itemheight>{T.CELL_H}</itemheight>
+                            <scrolltime>{T.SCROLLTIME}</scrolltime>
+{item_xml}
+{focused_xml}
+                        </control>"""
+
+
+def _season_pill(focused: bool, list_id: int) -> str:
+    """A season pill: glass at rest, brighter with a rim when it is the
+    season shown, an accent rim and label while the pills hold focus."""
+    w, h = T.DETAIL_EP_PILL_W, T.DETAIL_EP_PILL_H
+    active = "String.IsEqual(ListItem.Property(active),1)"
+    focus = f"Control.HasFocus({list_id})" if focused else "false"
+    def img(tex: str, colour: str, vis: str) -> str:
+        return f"""
+                                <control type="image">
+                                    <width>{w}</width>
+                                    <height>{h}</height>
+                                    <colordiffuse>{colour}</colordiffuse>
+                                    <texture border="{h // 2}">{tex}</texture>
+                                    <visible>{vis}</visible>
+                                </control>"""
+    def label(colour: str, vis: str) -> str:
+        return f"""
+                                <control type="label">
+                                    <width>{w}</width>
+                                    <height>{h}</height>
+                                    <align>center</align>
+                                    <aligny>center</aligny>
+                                    <font>{T.FONT_CAPTION}</font>
+                                    <textcolor>{colour}</textcolor>
+                                    <label>$INFO[ListItem.Label]</label>
+                                    <visible>{vis}</visible>
+                                </control>"""
+    body = (img(f"capsule-h{h}.png", T.SURFACE_FAINT, f"!{active}")
+            + img(f"capsule-h{h}.png", T.SURFACE_RAISED, active)
+            + img(f"capsule-h{h}-outline.png", "0x66FFFFFF", f"{active} + !{focus}")
+            + img(f"capsule-h{h}-outline.png", "$INFO[Window.Property(accent_color)]", focus)
+            + label("$INFO[Window.Property(accent_color)]", focus)
+            + label("$INFO[Window.Property(text_primary)]",
+                    f"!{focus} + String.IsEmpty(ListItem.Property(dim))")
+            + label("$INFO[Window.Property(text_tertiary)]",
+                    f"!{focus} + !String.IsEmpty(ListItem.Property(dim))"))
+    tag = "focusedlayout" if focused else "itemlayout"
+    cell = w + T.DETAIL_EP_PILL_GAP
+    return f"""                        <{tag} width="{cell}" height="{h}">{body}
+                        </{tag}>"""
+
+
+def _hint(y: int, glyph: int, label_y: int, text: str, visible: str) -> str:
+    """The centred scroll hint: a chevron and a spaced eyebrow."""
+    return f"""
+            <control type="group">
+                <visible>{visible}</visible>
+                <control type="label">
+                    <posx>{T.SCREEN_W // 2 - 20}</posx>
+                    <posy>{y}</posy>
+                    <width>40</width>
+                    <height>24</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>tofa_font_icons_24</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>{chr(glyph)}</label>
+                </control>
+                <control type="label">
+                    <posx>{T.SCREEN_W // 2 - 300}</posx>
+                    <posy>{label_y}</posy>
+                    <width>600</width>
+                    <height>22</height>
+                    <align>center</align>
+                    <font>{T.FONT_EYEBROW}</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>{text}</label>
+                </control>
+            </control>"""
+
+
+def detail_page2(*, cast_cards, collection_cards, similar_cards, discover_cards,
+                 episode_cards) -> str:
+    """Title page 2 as one scrolling page (app 2.0.0): the episode block or
+    collection, Cast & Crew, More Like This, More to Discover and About."""
+    left = T.DETAIL_P2_LEFT
+    # Three lines wrapped in Python (detail._sync_episode_block): Kodi has no
+    # per-control line spacing, and the app's is 43px.
+    synopsis = "".join(f"""
+                        <control type="label">
+                            <posx>{left}</posx>
+                            <posy>{T.DETAIL_EP_SYNOPSIS_Y + i * T.DETAIL_EP_SYNOPSIS_PITCH}</posy>
+                            <width>{T.DETAIL_EP_SYNOPSIS_W}</width>
+                            <height>{T.DETAIL_EP_SYNOPSIS_PITCH}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_EP_SYNOPSIS}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(ep_synopsis_{i + 1})]</label>
+                        </control>""" for i in range(3))
+    episodes = f"""
+                        <control type="label">
+                            <posx>{left - 1}</posx>
+                            <posy>{T.DETAIL_EP_SHOW_TITLE_Y}</posy>
+                            <width>1300</width>
+                            <height>56</height>
+                            <font>tofa_font_player_title</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(p2_title)]</label>
+                        </control>
+                        <control type="label">
+                            <posx>{left}</posx>
+                            <posy>{T.DETAIL_EP_META_Y}</posy>
+                            <width>1300</width>
+                            <height>32</height>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[Window.Property(ep_meta)]</label>
+                        </control>
+                        <control type="label">
+                            <posx>{left - 2}</posx>
+                            <posy>{T.DETAIL_EP_TITLE_Y}</posy>
+                            <width>1600</width>
+                            <height>80</height>
+                            <font>{T.FONT_HERO_TITLE}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(ep_title)]</label>
+                        </control>
+{synopsis}
+                        <control type="image">
+                            <posx>{left}</posx>
+                            <posy>{T.DETAIL_EP_BADGE_Y}</posy>
+                            <width>89</width>
+                            <height>34</height>
+                            <colordiffuse>{T.FORMAT_PLATE_FILL}</colordiffuse>
+                            <texture border="4">white-square-rounded.png</texture>
+                            <visible>!String.IsEmpty(Window.Property(ep_badge))</visible>
+                        </control>
+                        <control type="label">
+                            <posx>{left}</posx>
+                            <posy>{T.DETAIL_EP_BADGE_Y}</posy>
+                            <width>89</width>
+                            <height>34</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property(ep_badge)]</label>
+                        </control>
+                        <control type="label">
+                            <posx>{left + 107}</posx>
+                            <posy>{T.DETAIL_EP_BADGE_Y}</posy>
+                            <width>1000</width>
+                            <height>34</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_METADATA}</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[Window.Property(ep_hint)]</label>
+                        </control>
+                        <control type="list" id="6400">
+                            <posx>{left}</posx>
+                            <posy>{T.DETAIL_EP_PILLS_Y}</posy>
+                            <width>{T.SCREEN_W - left}</width>
+                            <height>{T.DETAIL_EP_PILL_H}</height>
+                            <orientation>horizontal</orientation>
+                            <scrolltime>{T.SCROLLTIME}</scrolltime>
+{_season_pill(False, 6400)}
+{_season_pill(True, 6400)}
+                        </control>
+                        <control type="list" id="6410">
+                            <posx>{left - _EP_PAD}</posx>
+                            <posy>{T.DETAIL_EP_ROW_Y - _EP_PAD}</posy>
+                            <width>{T.SCREEN_W - left + _EP_PAD + EPISODE_CELL_W}</width>
+                            <height>{EPISODE_CELL_H}</height>
+                            <orientation>horizontal</orientation>
+                            <scrolltime>{T.SCROLLTIME}</scrolltime>
+{episode_cards[0]}
+{episode_cards[1]}
+                        </control>"""
+    cast = _p2_header("Cast &amp; Crew") + f"""
+                        <control type="list" id="6200">
+                            <posx>{left - (T.DETAIL_P2_CAST_CELL - T.DETAIL_P2_CAST_PHOTO) // 2}</posx>
+                            <posy>{T.DETAIL_P2_CAST_LIST_Y}</posy>
+                            <width>{T.SCREEN_W}</width>
+                            <height>260</height>
+                            <orientation>horizontal</orientation>
+                            <scrolltime>{T.SCROLLTIME}</scrolltime>
+{cast_cards[0]}
+{cast_cards[1]}
+                        </control>"""
+    pad = T.DETAIL_P2_ABOUT_PAD
+    facts = "".join(f"""
+                            <control type="label">
+                                <posx>{T.DETAIL_P2_FACT_EYEBROW_X}</posx>
+                                <posy>{T.DETAIL_P2_ABOUT_LINE1_Y + i * T.DETAIL_P2_FACT_PITCH}</posy>
+                                <width>{T.DETAIL_P2_FACT_VALUE_X - T.DETAIL_P2_FACT_EYEBROW_X - 10}</width>
+                                <height>{T.DETAIL_P2_FACT_PITCH}</height>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_METADATA}</font>
+                                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                                <label>$INFO[Window.Property(fact_{i + 1}_eyebrow)]</label>
+                            </control>
+                            <control type="label">
+                                <posx>{T.DETAIL_P2_FACT_VALUE_X}</posx>
+                                <posy>{T.DETAIL_P2_ABOUT_LINE1_Y + i * T.DETAIL_P2_FACT_PITCH}</posy>
+                                <width>{T.DETAIL_P2_ABOUT_W - T.DETAIL_P2_FACT_VALUE_X - pad}</width>
+                                <height>{T.DETAIL_P2_FACT_PITCH}</height>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_METADATA}</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <label>$INFO[Window.Property(fact_{i + 1}_value)]</label>
+                            </control>""" for i in range(6))
+    # Tagline, then the synopsis wrapped in Python (detail._render_page2),
+    # dropped a line and a bit when there is a tagline, as in the app.
+    text_w = T.DETAIL_P2_FACT_EYEBROW_X - pad - 60
+    lines = "".join(f"""
+                                <control type="label">
+                                    <posy>{i * T.DETAIL_P2_ABOUT_PITCH}</posy>
+                                    <width>{text_w}</width>
+                                    <height>{T.DETAIL_P2_ABOUT_PITCH}</height>
+                                    <aligny>center</aligny>
+                                    <font>{T.FONT_EP_SYNOPSIS}</font>
+                                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                    <label>$INFO[Window.Property(about_line_{i + 1})]</label>
+                                </control>""" for i in range(6))
+    about_text = f"""
+                            <control type="label">
+                                <posx>{pad}</posx>
+                                <posy>{T.DETAIL_P2_ABOUT_LINE1_Y}</posy>
+                                <width>{text_w}</width>
+                                <height>{T.DETAIL_P2_ABOUT_PITCH}</height>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_ROW_TITLE}</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <label>[I]$INFO[Window.Property(about_tagline)][/I]</label>
+                            </control>
+                            <control type="group">
+                                <posx>{pad}</posx>
+                                <posy>{T.DETAIL_P2_ABOUT_LINE1_Y}</posy>
+                                <animation effect="slide" end="0,{T.DETAIL_P2_ABOUT_TAGLINE_DROP}" time="0" condition="!String.IsEmpty(Window.Property(about_tagline))">Conditional</animation>{lines}
+                            </control>"""
+    about = _p2_header("About") + f"""
+                        <control type="group">
+                            <posx>{left}</posx>
+                            <posy>{T.DETAIL_P2_ABOUT_Y}</posy>
+                            <control type="image">
+                                <width>{T.DETAIL_P2_ABOUT_W}</width>
+                                <height>{T.DETAIL_P2_ABOUT_H_CARD}</height>
+                                <colordiffuse>0x0DFFFFFF</colordiffuse>
+                                <texture border="20">rounded-20.png</texture>
+                            </control>
+                            <control type="image">
+                                <width>{T.DETAIL_P2_ABOUT_W}</width>
+                                <height>{T.DETAIL_P2_ABOUT_H_CARD}</height>
+                                <colordiffuse>0x1AFFFFFF</colordiffuse>
+                                <texture border="20">rounded-20-outline.png</texture>
+                                <visible>!Control.HasFocus({DETAIL_ABOUT_BUTTON})</visible>
+                            </control>
+                            <control type="image">
+                                <width>{T.DETAIL_P2_ABOUT_W}</width>
+                                <height>{T.DETAIL_P2_ABOUT_H_CARD}</height>
+                                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                                <texture border="20">rounded-20-outline.png</texture>
+                                <visible>Control.HasFocus({DETAIL_ABOUT_BUTTON})</visible>
+                            </control>
+{about_text}{facts}
+                            <control type="button" id="{DETAIL_ABOUT_BUTTON}">
+                                <width>{T.DETAIL_P2_ABOUT_W}</width>
+                                <height>{T.DETAIL_P2_ABOUT_H_CARD}</height>
+                                <texturefocus>transparent-6px.png</texturefocus>
+                                <texturenofocus>transparent-6px.png</texturenofocus>
+                                <label></label>
+                            </control>
+                        </control>"""
+    contents = {
+        "episodes": episodes,
+        "collection": _p2_row(6320, "collection_row_title", *collection_cards),
+        "cast": cast,
+        "similar": _p2_row(6300, "similar_row_title", *similar_cards),
+        "discover": _p2_row(6310, "discover_row_title", *discover_cards),
+        "about": about,
+    }
+    blocks = "".join(_p2_block(key, bid, vis, contents[key])
+                     for key, bid, vis in DETAIL_P2_SECTIONS)
+    top = _hint(26, icon_glyphs.CHEVRON_UP, 52, "OVERVIEW",
+                "!String.IsEmpty(Window.Property(p2_at_top))")
+    bottom = _hint(1036, icon_glyphs.CHEVRON_DOWN, 1014, "$INFO[Window.Property(p2_next_hint)]",
+                   "!String.IsEmpty(Window.Property(p2_next_hint))")
+    return f"""            <control type="grouplist" id="{DETAIL_P2_GROUPLIST}">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>{T.SCREEN_W}</width>
+                <height>{T.SCREEN_H}</height>
+                <orientation>vertical</orientation>
+                <itemgap>{T.DETAIL_P2_GAP}</itemgap>
+                <scrolltime>{T.SCROLLTIME}</scrolltime>{blocks}
+            </control>{top}{bottom}"""
 
 
 def discover_row_block(index: int, row_xml: str, header_xml: str = "") -> str:

@@ -255,8 +255,8 @@ def gen_badge_outline() -> None:
 # fragments.py:person_card()'s callers by hand -- this tool is dev-only and
 # deliberately imports nothing from the add-on.
 #
-#   190  tokens.CAST_PHOTO -- Detail's Cast & Crew grids
-#   130  Search's Actors row (screens.py, photo_size=130)
+#   160  Detail's Cast & Crew row (tokens.DETAIL_P2_CAST_PHOTO)
+#   180  Search's Actors shelf
 #
 # Two sizes and therefore two sets of files, named for the size like
 # capsule-h<N>.png, because that is the whole point of an exact-size asset:
@@ -270,7 +270,7 @@ def gen_badge_outline() -> None:
 #   180  Search's Actors shelf (7.3 asks for round 180pt headshots; the live
 #        app measures 181 on a 256 pitch). It was 130 -- nobody's number,
 #        ~28% under both the spec and the app.
-PERSON_PHOTOS = (190, 180)
+PERSON_PHOTOS = (180, 160)
 #: 9.2's profile portrait.
 PROFILE_PHOTO = 220
 #: 9.2's lock chip, measured at 75 on the Apple TV app.

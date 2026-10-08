@@ -63,6 +63,12 @@ class Control:
     def __init__(self, cid):
         self.cid, self.up, self.down = cid, None, None
 
+    def setHeight(self, _h):
+        pass
+
+    def setPosition(self, _x, _y):
+        pass
+
     def controlUp(self, other):
         self.up = other.cid
 
@@ -74,10 +80,14 @@ class Fake:
     _render_collection_strip = DetailWindow._render_collection_strip
     _similar_card = DetailWindow._similar_card
     _wire_more_shelves = DetailWindow._wire_more_shelves
+    _p2_shown = DetailWindow._p2_shown
+    _p2_layout = DetailWindow._p2_layout
+    _p2_wire = DetailWindow._p2_wire
     _similar_clicked = DetailWindow._similar_clicked
-    TAB_MORE = DetailWindow.TAB_MORE
-    COLLECTION_LIST, SIMILAR_LIST, DISCOVER_LIST = (
-        DetailWindow.COLLECTION_LIST, DetailWindow.SIMILAR_LIST, DetailWindow.DISCOVER_LIST)
+    P2_SECTIONS = DetailWindow.P2_SECTIONS
+    COLLECTION_LIST, SIMILAR_LIST, DISCOVER_LIST, ABOUT_BUTTON = (
+        DetailWindow.COLLECTION_LIST, DetailWindow.SIMILAR_LIST,
+        DetailWindow.DISCOVER_LIST, DetailWindow.ABOUT_BUTTON)
     MORE_SHELF_IDS = DetailWindow.MORE_SHELF_IDS
 
     def __init__(self, collection_id=645):
@@ -87,6 +97,9 @@ class Fake:
 
     def setProperty(self, k, v):
         self.props[k] = v
+
+    def getProperty(self, k):
+        return self.props.get(k, "")
 
     def getControl(self, cid):
         return self.controls.setdefault(cid, Control(cid))
@@ -121,14 +134,18 @@ def run():
           failed._render_collection_strip(Client(fail=True), HERE) is False
           and failed.props.get("collection_row_title") == "")
 
+    win.props["discover_row_title"] = "More to Discover"
     win._wire_more_shelves((True, False, True))
-    tab = win.controls[win.TAB_MORE]
     strip, disc = win.controls[win.COLLECTION_LIST], win.controls[win.DISCOVER_LIST]
-    check("Down from the tab lands on the strip", tab.down == win.COLLECTION_LIST, repr(tab.down))
-    check("the strip goes up to the tab and down to the next shown shelf",
-          strip.up == win.TAB_MORE and strip.down == win.DISCOVER_LIST, repr((strip.up, strip.down)))
-    check("the last shelf goes up to the strip and stops at the bottom",
-          disc.up == win.COLLECTION_LIST and disc.down == win.DISCOVER_LIST, repr((disc.up, disc.down)))
+    about = win.controls[win.ABOUT_BUTTON]
+    check("the strip heads the page: Up is left to onAction, Down skips the hidden shelves",
+          strip.up == win.COLLECTION_LIST and strip.down == win.DISCOVER_LIST, repr((strip.up, strip.down)))
+    check("the next shown shelf goes up to the strip and down to About",
+          disc.up == win.COLLECTION_LIST and disc.down == win.ABOUT_BUTTON, repr((disc.up, disc.down)))
+    check("About stops at the bottom", about.down == win.ABOUT_BUTTON, repr(about.down))
+    check("the hero's hint names what the page holds",
+          win.props.get("detail_tabs_hint") == "COLLECTION  ·  MORE  ·  ABOUT",
+          repr(win.props.get("detail_tabs_hint")))
 
     opened = []
     DetailWindow.open = classmethod(lambda cls, **kw: opened.append(kw))

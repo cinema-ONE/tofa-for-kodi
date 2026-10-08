@@ -34,7 +34,7 @@ _MEDIA_DIR = os.path.join(
     "resources", "skins", "Main", "media",
 )
 
-THUMB_W, THUMB_H = 330, 186  # 16:9 episode still
+THUMB_W, THUMB_H = 400, 225  # 16:9 episode still, app 2.0.0's title page
 CORNER_RADIUS = 16  # comparable to poster-mask.png's own 16px
 BORDER_STROKE = 2  # same as poster-border.png
 

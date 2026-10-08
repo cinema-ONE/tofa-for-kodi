@@ -6,12 +6,10 @@ _get_client/theme.default_accent patterns, ManagedControlList for the cast
 grid, pre-rendered progress-strip for the Resume pill's underline.
 
 The screen is two overlaid pages in one window XML. Page 1 is the hero;
-page 2 is the tabbed cast/about view. onAction owns the vertical flip:
-pressing Down on an action pill sets Window.Property(detailpage) to "page2"
-and explicitly focuses a page-2 control (Kodi won't navigate focus into a
-hidden group on its own). The two page groups toggle visibility on that
-property via String.IsEqual (not the Kodi-v18-only StringCompare), with a
-short fade/slide-in.
+page 2 is one scrolling page of sections (episodes or collection, cast,
+shelves, About). onAction owns the vertical flip: Down on an action pill
+sets Window.Property(detailpage) to "page2" and focuses a page-2 control
+(Kodi won't navigate focus into a hidden group on its own).
 """
 from __future__ import annotations
 
@@ -54,6 +52,11 @@ def _playable_file_ids(seasons: list) -> list:
 
 def _dot_join(*parts) -> str:
     return u" • ".join(p for p in parts if p)
+
+
+def _mid_join(*parts) -> str:
+    """Page 2's separator, a middle dot as the app draws it."""
+    return u" · ".join(p for p in parts if p)
 
 
 def _year_from(item: dict) -> str:
@@ -212,32 +215,27 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     PILL_VERSION = 5240
     PILL_CANCEL_REQUEST = 5250
     PILL_RETRY = 5260
-    TAB_EPISODES = 6100
-    TAB_CAST = 6110
-    TAB_ABOUT = 6120
-    TAB_MORE = 6130
-    TAB_BY_NAME = {
-        "episodes": TAB_EPISODES, "cast": TAB_CAST,
-        "about": TAB_ABOUT, "more": TAB_MORE,
-    }
-    TAB_HINTS = {
-        "episodes": "EPISODES", "cast": "CAST",
-        "about": "ABOUT", "more": "MORE",
-    }
     CAST_LIST = 6200
-    CREW_LIST = 6210
     SIMILAR_LIST = 6300
     DISCOVER_LIST = 6310
     COLLECTION_LIST = 6320
     SEASON_SIDEBAR_LIST = 6400
     EPISODE_GRID_PANEL = 6410
-    TAB_IDS = (TAB_EPISODES, TAB_CAST, TAB_ABOUT, TAB_MORE)
-    #: Everything on page 2 that is NOT the tab bar -- i.e. the controls
-    #: BELOW it. Arriving at a tab from one of these is an Up press that
-    #: Kodi's own nav already served; arriving from a page-1 pill is a
-    #: Down press. onFocus has to tell those apart -- see _tab_just_arrived.
-    PAGE2_BODY_IDS = (CAST_LIST, CREW_LIST, SIMILAR_LIST, DISCOVER_LIST,
-                      COLLECTION_LIST, SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL)
+    ABOUT_BUTTON = 5465
+    #: Page 2's sections top to bottom (fragments.detail_page2): block id,
+    #: the controls that take focus there, header-to-header height, the
+    #: hero's hint word and the bottom hint's name for it.
+    P2_SECTIONS = (
+        ("episodes", 5410, (SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL),
+         T.DETAIL_P2_EPISODES_H, "EPISODES", ""),
+        ("collection", 5420, (COLLECTION_LIST,), T.DETAIL_P2_ROW_H, "COLLECTION", "COLLECTION"),
+        ("cast", 5430, (CAST_LIST,), T.DETAIL_P2_CAST_H, "CAST", "CAST & CREW"),
+        ("similar", 5440, (SIMILAR_LIST,), T.DETAIL_P2_ROW_H, "MORE", "MORE LIKE THIS"),
+        ("discover", 5450, (DISCOVER_LIST,), T.DETAIL_P2_ROW_H, "MORE", "MORE TO DISCOVER"),
+        ("about", 5460, (ABOUT_BUTTON,), T.DETAIL_P2_ABOUT_H, "ABOUT", "ABOUT"),
+    )
+    PAGE2_BODY_IDS = (CAST_LIST, SIMILAR_LIST, DISCOVER_LIST, COLLECTION_LIST,
+                      SEASON_SIDEBAR_LIST, EPISODE_GRID_PANEL, ABOUT_BUTTON)
     #: The More pane's shelves, top to bottom (7.5.2 puts "Part of" first).
     MORE_SHELF_IDS = (COLLECTION_LIST, SIMILAR_LIST, DISCOVER_LIST)
     #: Pauses before asking again while the server answers 503: the related
@@ -273,7 +271,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         #: it does not resolve it a second time.
         self._nextup_episode: dict | None = None
         self.cast_list: kodigui.ManagedControlList | None = None
-        self.crew_list: kodigui.ManagedControlList | None = None
         self.similar_list: kodigui.ManagedControlList | None = None
         self.discover_list: kodigui.ManagedControlList | None = None
         self.collection_list: kodigui.ManagedControlList | None = None
@@ -326,9 +323,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._next_up_year = ""
         self._next_up_runtime = 0
         self._prev_focus_id = 0
-        self._tab_just_arrived = False
-        # The page-2 tabs this media type has, left to right.
-        self._tabs: list[str] = []
+        #: Set when focus reached page 2's first control from below, so the
+        #: Up press that got it there doesn't also leave the page.
+        self._p2_just_arrived = False
         # whoami's preferences blob, fetched at most once (see
         # _ensure_preferences); card ratings honour a per-profile setting.
         self._preferences: dict | None = None
@@ -343,12 +340,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("text_secondary", theme.TEXT_SECONDARY)
         self.setProperty("text_tertiary", theme.TEXT_TERTIARY)
         self.setProperty("detailpage", "page1")
-        self.setProperty("detail_tab", "cast")
-        self.setProperty("detail_tabs_hint", "CAST  ·  ABOUT  ·  MORE")
-        # Both tabs that can come up empty start that way and are switched on
-        # by their own render pass; the tab itself is always offered, only its
-        # content swaps for 9.7's scaffold.
+        self.setProperty("detail_tabs_hint", "CAST  ·  ABOUT")
+        # Sections that can come up empty start hidden; their render pass
+        # switches them on.
         self.setProperty("has_cast_content", "")
+        self.setProperty("p2_has_episodes", "")
         self.setProperty("similar_state", "empty")
         # The conditional action pills stay HIDDEN until _layout_action_row
         # has packed them. Their XML x is the all-pills-visible position, so
@@ -359,7 +355,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # unset.
         self.setProperty("pills_packed", "")
         self.cast_list = kodigui.ManagedControlList(self, self.CAST_LIST, 6)
-        self.crew_list = kodigui.ManagedControlList(self, self.CREW_LIST, 6)
         # Capacity, not the item count: a grid shows far more than the
         # single row's 6 did.
         self.similar_list = kodigui.ManagedControlList(self, self.SIMILAR_LIST, 40)
@@ -628,7 +623,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # is present. Vertical page-1<->page-2 movement is owned by
             # onAction, not nav links.
             self._wire_pill_navigation()
-            self._wire_tab_navigation()
+            self._p2_layout()
 
 
     # ------------------------------------------------------------------
@@ -834,8 +829,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: so the longest row is resolution + DV + base + audio.
     BADGE_CONTROLS = ((5112, 5113), (5114, 5115), (5116, 5117), (5118, 5119),
                       (5120, 5121))
-    ABOUT_BADGE_CONTROLS = ((6610, 6611), (6612, 6613), (6614, 6615),
-                            (6616, 6617), (6618, 6619))
     BADGE_PAD = 13
     BADGE_GAP = 12
 
@@ -848,7 +841,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         setPosition. Silently gives up if the controls aren't up yet; the
         placeholder widths are harmless in that case."""
         self._pack_badge_row(self.BADGE_CONTROLS, badges)
-        self._pack_badge_row(self.ABOUT_BADGE_CONTROLS, badges)
 
     def _pack_badge_row(self, controls, badges: list):
         x = 0
@@ -1048,8 +1040,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Episodes (see _render_episodes()). ---
         if media_type == "tv":
             self.setProperty("is_tv", "1")
-            self.setProperty("detail_tab", "episodes")
-            self.setProperty("detail_tabs_hint", "EPISODES  ·  CAST  ·  ABOUT  ·  MORE")
             self.setProperty("show_rewatch", "")
             seasons = media.get("seasons") or []
             ep, f = self._next_up_episode(client, seasons)
@@ -1263,90 +1253,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # page 2 -- cast + about
     # ------------------------------------------------------------------
 
-    def _size_person_panels(self, cast_count: int, crew_count: int) -> None:
-        """Size each of the Cast/Crew panels to its own row count.
-
-        Both panels live in one grouplist (id 6250) whose whole point is
-        that the region scrolls as a unit. A panel with a *static* height
-        defeats that: a section with fewer rows leaves a hole its
-        neighbours never close, and one with more rows swallows the Down
-        press to scroll inside its own box while everything above it stays
-        pinned. Kodi cannot size a control from its content in XML, but
-        Control.setHeight() exists at runtime -- the same escape hatch
-        plex-for-kodi uses to fit its dropdown to its option count
-        (lib/windows/dropdown.py). A grouplist stacks children by their
-        declared heights, so resizing a panel here also moves the Crew
-        label and panel below it by exactly the right amount, and an empty
-        section collapses to nothing instead of leaving a hole.
-
-        CAST_MAX_ROWS is not a nicety, it is the constraint that makes the
-        whole thing work. Verified live against Hereditary (20 cast, 4
-        rows): a grouplist scrolls to reveal the focused CHILD, and it does
-        that well -- stepping from Cast into Crew slides the last cast row
-        up above the "Crew" label, exactly the one-region scroll we want.
-        But it has no way to scroll for a focus move *inside* a child, so a
-        panel taller than the viewport left row 4 clipped at the bottom
-        edge while focused. Capped to whole rows that fit, an oversized
-        section scrolls internally again (Kodi's own behaviour, focus stays
-        visible) and only the section labels stay pinned while it does.
-        """
-        for control_id, count in (
-            (self.CAST_LIST, cast_count),
-            (self.CREW_LIST, crew_count),
-        ):
-            rows = int(math.ceil(count / float(T.CAST_COLS)))
-            try:
-                self.getControl(control_id).setHeight(
-                    min(rows, T.CAST_MAX_ROWS) * T.CAST_TILE
-                )
-            except Exception:
-                pass
-
-    def _wire_person_panels(self, has_crew: bool) -> None:
-        """Re-assert Up/Down on the two person panels, because the grouplist
-        they live in threw the XML's away.
-
-        Both panels declare `<onup>` in the template and neither worked: Up
-        on a crew member wrapped to the bottom of Crew, Up on the first cast
-        row wrapped to the bottom of Cast, so the whole region was a focus
-        trap with no way back to the tab bar. `CGUIControlGroupList` OVERRIDES
-        its children's up/down navigation when it adds them, chaining them
-        into a list and using the GROUPLIST's own onup/ondown for the two
-        ends. Ours declares neither, so the end children were left with an
-        empty action -- and an empty navigation action is precisely what makes
-        a Kodi container wrap internally rather than navigate away
-        (`wrapAround = !action.HasActionsMeetingCondition()`).
-
-        Setting it here rather than adding onup/ondown to the grouplist in
-        XML: the chain the grouplist builds runs over ALL its children, and
-        two of the four are plain section labels with no id, so half of the
-        generated links point at nothing. Naming the real targets from Python
-        is both shorter and immune to a label being added later.
-
-        Down is set for the same reason, and additionally because Crew hides
-        itself when empty -- Cast must then aim at the tab bar rather than an
-        invisible control.
-        """
-        try:
-            cast_ctrl = self.getControl(self.CAST_LIST)
-            crew_ctrl = self.getControl(self.CREW_LIST)
-            tab = self.getControl(self.TAB_CAST)
-        except Exception:
-            return
-        cast_ctrl.controlUp(tab)
-        cast_ctrl.controlDown(crew_ctrl if has_crew else tab)
-        crew_ctrl.controlUp(cast_ctrl)
-        # Nothing sits below Crew, so Down is a no-op -- aimed at itself, the
-        # same answer every other bottom row in the app gives.
-        #
-        # It used to aim back at the tab bar, on the reasoning that the region
-        # should stay escapable from its last row. Measured, that made Cast &
-        # Crew the one place in the app where Down travels UPWARD: tab -> Cast
-        # -> Crew -> tab -> Cast -> ... a loop with no end, and no way to tell
-        # you had reached the bottom. Up already leaves the region, which is
-        # what "escapable" needed.
-        crew_ctrl.controlDown(crew_ctrl)
-
     def _render_page2(self, client: MediaServerClient, media: dict):
         # Cast & Crew are two separate sections. CastMember uses "role",
         # CrewMember uses "job" -- normalized to one "role" property here
@@ -1375,77 +1281,33 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # is behind the pill pack -- the viewer is looking at the hero.
         artcache.prefetch(client.stage_pairs(list(cast) + list(crew),
                                              "profile_url", include_cdn=True))
+        # One row, cast then crew, as the app shows them.
+        people = ([(m, m.get("role")) for m in cast]
+                  + [(m, m.get("job")) for m in crew])
         self.cast_list.reset()
         cast_managed = [
-            self._person_card_item(m.get("name"), m.get("role"), m.get("profile_url"), client)
-            for m in cast
+            self._person_card_item(m.get("name"), role, m.get("profile_url"), client)
+            for m, role in people
         ]
         if cast_managed:
             self.cast_list.addItems(cast_managed)
-        self.crew_list.reset()
-        crew_managed = [
-            self._person_card_item(m.get("name"), m.get("job"), m.get("profile_url"), client)
-            for m in crew
-        ]
-        if crew_managed:
-            self.crew_list.addItems(crew_managed)
-        self.setProperty("has_crew", "1" if crew_managed else "")
-        self.setProperty("has_cast_content", "1" if (cast_managed or crew_managed) else "")
-        self._size_person_panels(len(cast_managed), len(crew_managed))
-        self._wire_person_panels(bool(crew_managed))
+        self.setProperty("has_cast_content", "1" if cast_managed else "")
 
-        # About reuses the hero's ratings_line/format-badge properties as-is
-        # (already set this render pass) -- just shown at a different position.
-        self.setProperty("about_tagline", media.get("tagline") or "")
-        self.setProperty("about_synopsis", media.get("overview") or "")
+        tagline = (media.get("tagline") or "").strip()
+        self.setProperty("about_tagline", tagline)
+        text_w = T.DETAIL_P2_FACT_EYEBROW_X - T.DETAIL_P2_ABOUT_PAD - 60
+        lines = textmetrics.wrap_lines(
+            (media.get("overview") or "").strip(), text_w, 4 if tagline else 6,
+            T.DETAIL_EP_SYNOPSIS_SIZE)
+        for i in range(6):
+            self.setProperty("about_line_{0}".format(i + 1),
+                             lines[i] if i < len(lines) else "")
+        self.setProperty("p2_title", media.get("title") or "")
         facts = self._about_facts(media, getattr(self, "_aspect_chip", ""))
         for i in range(6):
             eyebrow, value = facts[i] if i < len(facts) else ("", "")
             self.setProperty("fact_{0}_eyebrow".format(i + 1), eyebrow)
             self.setProperty("fact_{0}_value".format(i + 1), value)
-        self._layout_about_column()
-
-    #: About's LEFT column, top to bottom: (name, declared posy, control ids,
-    #: pitch to the next block's top). Same shape as HERO_STACK, opposite
-    #: direction -- page 2 is a top-anchored content pane, so an absent block
-    #: pulls what follows UP rather than pushing what precedes it down.
-    ABOUT_COLUMN = (
-        ("tagline",  168, (6600,), 36),
-        ("synopsis", 204, (6601,), 290),
-        # 59, not 34. The ratings LABEL is 24px tall but its ink sits low in
-        # that box, so a 34px pitch left only SEVEN pixels of air under
-        # "Critics 72 . Audience 75" before the chip pills started -- the
-        # reference leaves 32 (ink ends y479, pill starts y511;
-        # internal-docs/atv-reference/detail-about-dense.png). The hero stack
-        # was never wrong here, which is why this went unnoticed: HERO_STACK
-        # reaches 33px on the same two blocks. Measured, not guessed.
-        ("ratings",  494, (6602,), 59),
-        ("badges",   553, (6603,), 0),
-    )
-
-    def _layout_about_column(self):
-        """Close the gaps in About's left column.
-
-        Every block sat at a fixed posy, so a title with no tagline, no
-        synopsis and no ratings still pushed its format badges 528px down and
-        left an entirely empty column above them, with the facts panel
-        stranded alone on the right. The real Apple TV app packs this column
-        to the TOP: on that same title its one badge sits at y~180, right
-        under the header rule
-        (internal-docs/atv-reference/detail-about-sparse.png).
-        """
-        present = {
-            "tagline": bool(self.getProperty("about_tagline")),
-            "synopsis": bool(self.getProperty("about_synopsis")),
-            "ratings": bool(self.getProperty("hero_ratings_line")),
-            "badges": bool(self.getProperty("badge_1_label")),
-        }
-        shift = 0
-        for name, posy, ids, pitch in self.ABOUT_COLUMN:
-            if not present[name]:
-                shift -= pitch
-                continue
-            self._move_y(ids, posy, shift)
 
     @staticmethod
     def _person_card_item(name, role, profile_url, client: MediaServerClient) -> "kodigui.ManagedListItem":
@@ -1467,31 +1329,37 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         mli.setProperty("role", role or "")
         return mli
 
-    @staticmethod
-    def _about_facts(media: dict, aspect_chip: str = "") -> list:
-        # Fixed positional slots (fact_N_eyebrow/value, N=1..5), filled
-        # left-to-right skipping absent fields -- same convention as
-        # _render_format_badges(); Kodi controls can't size from text length.
+    def _about_facts(self, media: dict, aspect_chip: str = "") -> list:
+        """About's facts as (label, value), in the app's order; the aspect
+        ratio, ours, comes last."""
         facts = []
 
-        def add(eyebrow, value):
+        def add(label, value):
             if value:
-                facts.append((eyebrow, value))
+                facts.append((label, value))
 
-        add("RELEASED", _year_from(media))
-        add("RUNTIME", _runtime_str(media.get("runtime_minutes")))
-        genres = media.get("genres") or []
-        add("GENRES", u", ".join(genres))
-        studios = media.get("studios") or []
-        add("STUDIO(S)", u", ".join(studios[:2]))
-        add("RATED", media.get("content_rating"))
-        # LAST, after the five the reference app shows. The others describe
-        # the work; this one describes its presentation, and appending keeps
-        # the reference's own order untouched rather than pushing STUDIO(S)
-        # and RATED down to make room for it.
+        tv = media.get("media_type") == "tv"
+        add("First aired" if tv else "Released",
+            regional.day_month_year(media.get("release_date"), short=False)
+            or _year_from(media))
+        if tv:
+            seasons = [s for s in media.get("seasons") or []
+                       if s.get("season_number")]
+            eps = [e for s in seasons for e in s.get("episodes") or []]
+            held = [e for e in eps if any(f.get("available") for f in e.get("files") or [])]
+            add("Seasons", _mid_join(
+                str(len(seasons)) if seasons else "",
+                "{0} episodes".format(len(eps)) if eps else "",
+                "{0} in library".format(len(held)) if eps else ""))
+        else:
+            add("Runtime", _runtime_str(media.get("runtime_minutes")))
+        add("Genres", u", ".join(media.get("genres") or []))
+        add("Studios", u", ".join(media.get("studios") or []))
+        add("Rating", _mid_join(media.get("content_rating") or "",
+                                self._ratings_line(media).replace(u" • ", u" · ")))
         if aspect_chip:
             note = fmt_badges.aspect_note(aspect_chip, media.get("media_type") or "")
-            add("ASPECT RATIO", f"{aspect_chip} · {note}" if note else aspect_chip)
+            add("Aspect", f"{aspect_chip} · {note}" if note else aspect_chip)
         return facts
 
     # ------------------------------------------------------------------
@@ -1670,6 +1538,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         answer that had not changed. Omit them and this resolves its own, which
         is what the season-switch and refresh paths want -- they are repainting
         precisely because the answer MAY have changed."""
+        self.setProperty("p2_has_episodes", "1" if seasons else "")
         if not seasons:
             if self.season_list is not None:
                 self.season_list.reset()
@@ -1699,6 +1568,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         managed = []
         active_pos = 0
         active_season = None
+        # Specials last, as the app orders its pills.
+        seasons = sorted(seasons, key=lambda s: not (s.get("season_number") or 0))
         for i, s in enumerate(seasons):
             n = s.get("season_number") or 0
             label = s.get("title") or ("Specials" if n == 0 else "Season {0}".format(n))
@@ -1706,6 +1577,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             is_active = n == active_season_number
             self._apply_season_mark(mli, s, selected=is_active)
             mli.setProperty("active", "1" if is_active else "")
+            # Dimmed, as the app does, when there is nothing in it to play.
+            mli.setProperty("dim", "" if episodes_fmt.season_availability(s)
+                            == episodes_fmt.SEASON_IN_LIBRARY else "1")
             if is_active:
                 active_pos = i
                 active_season = s
@@ -1838,6 +1712,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
              if not (progress_map.get((ep_file_map.get(e.get("id")) or {}).get("id"), {}) or {}).get("completed")),
             None,
         ) if blur_spoilers else None
+        # The episode Resume points at stays visible even past a skipped
+        # one, as in the app: it is the one about to play.
+        if (first_unwatched is not None and season_number == self._next_up_season
+                and self._next_up_episode_number is not None):
+            first_unwatched = max(first_unwatched, self._next_up_episode_number)
 
         # Episodes that have not aired yet carry no still -- TMDB has nothing
         # to show for an episode nobody has seen -- and a grid of empty plates
@@ -2092,19 +1971,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._wire_more_shelves((part_of, bool(owned), bool(requestable)))
 
     def _wire_more_shelves(self, present):
-        """Chain the tab and the shelves that exist, top to bottom. The XML can
-        only name fixed neighbours, and any of the three may be hidden."""
-        shown = [cid for cid, on in zip(self.MORE_SHELF_IDS, present) if on]
-        if not shown:
-            return
-        try:
-            self.getControl(self.TAB_MORE).controlDown(self.getControl(shown[0]))
-            for i, cid in enumerate(shown):
-                control = self.getControl(cid)
-                control.controlUp(self.getControl(shown[i - 1] if i else self.TAB_MORE))
-                control.controlDown(self.getControl(shown[i + 1] if i + 1 < len(shown) else cid))
-        except Exception:
-            pass
+        """A shelf came or went: re-lay the page and its focus chain."""
+        self._p2_layout()
 
     def _render_collection_strip(self, client: MediaServerClient, media_id: str) -> bool:
         """7.5.2's collection shelf, when the title belongs to a collection.
@@ -2542,19 +2410,14 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         except Exception:
             pass
 
-        try:
-            tab = self.getControl(self.TAB_CAST)
-        except Exception:
-            tab = None
-
+        # Up and Down stay put: onAction pages to page 2.
         for i, pid in enumerate(focusable):
             ctrl = controls[pid]
             left = controls[focusable[i - 1]] if i > 0 else ctrl
             right = controls[focusable[i + 1]] if i < len(focusable) - 1 else ctrl
             ctrl.controlLeft(left)
             ctrl.controlRight(right)
-            if tab is not None:
-                ctrl.controlDown(tab)
+            ctrl.controlDown(ctrl)
             ctrl.controlUp(ctrl)
 
     def _primary_is_actionable(self) -> bool:
@@ -2562,39 +2425,80 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         title, or open/retry a request on one the server does not hold."""
         return bool(self.is_playable or self.can_request or self.can_retry_request)
 
-    def _wire_tab_navigation(self):
-        # Same dynamic-list-of-visible-controls technique as
-        # _wire_pill_navigation() -- avoids a static XML <onright> pointing
-        # at an always-invisible-for-movies control. Episodes is leftmost
-        # for TV, so it goes first here too.
-        #
-        # An EMPTY tab is still a tab. A pass that hid Cast & Crew and More
-        # Like This when they had nothing behind them was checked against the
-        # real Apple TV app (Besenbinden, which has neither) and is wrong
-        # there: the app keeps both and answers them with 9.7's scaffold. The
-        # spec agrees as far as it goes -- 7.1 makes exactly one tab
-        # conditional -- the episodes one, dropped for a movie -- and says
-        # nothing about the rest.
-        self._tabs = ["cast", "about", "more"]
-        if self.getProperty("is_tv"):
-            self._tabs.insert(0, "episodes")
-        self.setProperty(
-            "detail_tabs_hint",
-            "  ·  ".join(self.TAB_HINTS[n] for n in self._tabs),
-        )
-        tabs = [self.TAB_BY_NAME[n] for n in self._tabs]
-        controls = {}
-        for tid in tabs:
+    def _p2_shown(self) -> list:
+        """Page 2's sections that are on screen, top to bottom."""
+        keys = {
+            "episodes": bool(self.getProperty("p2_has_episodes")),
+            "collection": bool(self.getProperty("collection_row_title")),
+            "cast": bool(self.getProperty("has_cast_content")),
+            "similar": bool(self.getProperty("similar_row_title")),
+            "discover": bool(self.getProperty("discover_row_title")),
+            "about": True,
+        }
+        return [sec for sec in self.P2_SECTIONS if keys[sec[0]]]
+
+    def _p2_layout(self) -> None:
+        """Size page 2's blocks so every focused section's header lands at
+        DETAIL_P2_HEADER_Y, and the first one sits at the top of the page.
+
+        Each block is screen-tall, so the grouplist scrolls it flush; the
+        spacers after them make the header-to-header pitch each section's own
+        height (fragments._p2_block)."""
+        shown = self._p2_shown()
+        g, base = T.DETAIL_P2_GAP, T.DETAIL_P2_CAST_H
+        for i, (key, block, _ids, height, _hint, _next) in enumerate(shown):
+            if i == 0:
+                y = 0 if key == "episodes" else T.DETAIL_P2_FIRST_Y
+                # Where the next block must start: its header at y + height.
+                need = y + height - T.DETAIL_P2_HEADER_Y - 2 * g
+                block_h, spacer = min(need, T.SCREEN_H), max(0, need - T.SCREEN_H)
+            else:
+                y, block_h, spacer = T.DETAIL_P2_HEADER_Y, T.SCREEN_H, height - base
+            if i == len(shown) - 1:
+                # Kodi scrolls the last child flush to the BOTTOM; this keeps
+                # that the same offset as for every other block.
+                spacer = -g
             try:
-                controls[tid] = self.getControl(tid)
+                self.getControl(block).setHeight(block_h)
+                self.getControl(block + 1).setPosition(0, y)
+                self.getControl(block + 2).setHeight(spacer)
             except Exception:
                 return
-        for i, tid in enumerate(tabs):
-            ctrl = controls[tid]
-            left = controls[tabs[i - 1]] if i > 0 else ctrl
-            right = controls[tabs[i + 1]] if i < len(tabs) - 1 else ctrl
-            ctrl.controlLeft(left)
-            ctrl.controlRight(right)
+        self.setProperty("detail_tabs_hint", "  ·  ".join(
+            dict.fromkeys(sec[4] for sec in shown)))
+        self._p2_wire(shown)
+
+    def _p2_wire(self, shown) -> None:
+        """Chain the shown sections' controls top to bottom. Kodi's grouplist
+        only links its direct children, and these sit a level down."""
+        chain = [cid for sec in shown for cid in sec[2]]
+        try:
+            controls = [self.getControl(cid) for cid in chain]
+        except Exception:
+            return
+        for i, ctrl in enumerate(controls):
+            # The first control's Up is onAction's: it leaves the page.
+            ctrl.controlUp(controls[i - 1] if i else ctrl)
+            ctrl.controlDown(controls[i + 1] if i + 1 < len(controls) else ctrl)
+
+    def _p2_entry(self) -> int:
+        """Where Down from the hero lands: the episode row, else the first
+        section."""
+        shown = self._p2_shown()
+        if shown[0][0] == "episodes":
+            return self.EPISODE_GRID_PANEL
+        return shown[0][2][0]
+
+    def _p2_sync_hints(self, focus: int) -> None:
+        """The "^ OVERVIEW" and "v NEXT" hints, for the section in focus."""
+        shown = self._p2_shown()
+        first = shown[0]
+        at_top = focus in first[2]
+        self.setProperty("p2_at_top", "1" if at_top else "")
+        nxt = ""
+        if at_top and first[0] == "episodes" and len(shown) > 1:
+            nxt = shown[1][5]
+        self.setProperty("p2_next_hint", nxt)
 
     # ------------------------------------------------------------------
     # input
@@ -2609,14 +2513,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # works regardless of on-screen position, so both directions are
         # driven explicitly here.
         #
-        # getFocusId() reflects focus AFTER Kodi's native nav attempt for
-        # this keypress, which makes "just arrived at a tab via successful
-        # native nav" and "was already on the tab, native nav to page 1
-        # failed" indistinguishable by focus id alone -- both read as
-        # focus == the tab. _tab_just_arrived (set in onFocus when the tab
-        # was reached from BELOW, consumed by the first Up press after)
-        # disambiguates: only a second, real "still here" Up press flips
-        # to page 1.
+        # getFocusId() reflects focus AFTER Kodi's native nav for this key,
+        # so "just arrived at page 2's first control from below" and "Up on
+        # it" look alike; _p2_just_arrived (set in onFocus) tells them apart.
         aid = action.getId()
         try:
             focus = self.getFocusId()
@@ -2638,8 +2537,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 and not kodigui.back_is_held_repeat()):
             self.setProperty("detailpage", "page1")
             self.setFocusId(self._page1_focus_id())
-            # Focus is off the grid now, so the season subtitle comes back.
-            self._sync_episode_synopsis()
             return
 
         # 10.2 names the episode grid as required card-options coverage
@@ -2668,16 +2565,13 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.PILL_PRIMARY, self.PILL_REWATCH, self.PILL_OPTIONS,
             self.PILL_WATCHLIST, self.PILL_VERSION, self.PILL_CANCEL_REQUEST,
         ):
-            tab = self.TAB_BY_NAME.get(
-                self.getProperty("detail_tab"), self.TAB_CAST)
             self.setProperty("detailpage", "page2")
-            self.setFocusId(tab)
+            self.setFocusId(self._p2_entry())
             return
-        if aid == xbmcgui.ACTION_MOVE_UP and focus in self.TAB_IDS:
-            if self._tab_just_arrived:
-                # Native nav already landed focus correctly this press;
-                # nothing more to do.
-                self._tab_just_arrived = False
+        if aid == xbmcgui.ACTION_MOVE_UP and focus == self._p2_shown()[0][2][0]:
+            if self._p2_just_arrived:
+                # Native nav already landed focus here this press.
+                self._p2_just_arrived = False
             else:
                 self.setProperty("detailpage", "page1")
                 # NOT always the primary: on an out-of-library page it is
@@ -2687,72 +2581,62 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.setFocusId(self._page1_focus_id())
             return
         kodigui.ControlledWindow.onAction(self, action)
-        # AFTER the base class: Kodi's onFocus does not fire when the
-        # selection moves WITHIN an already-focused container, so the only
-        # way to see the cursor move from E4 to E5 is to let the move happen
-        # and then read where it landed. Same technique as main.py's
-        # _browse_maybe_load_more.
-        self._sync_episode_synopsis()
+        # AFTER the base class: onFocus does not fire for a move WITHIN a
+        # focused list, so read where the cursor landed.
+        if focus == self.EPISODE_GRID_PANEL:
+            self._sync_episode_block()
 
-    def _sync_episode_synopsis(self) -> None:
-        """Describe the episode the cursor is ON, on the season heading's row.
-
-        The reference shows an episode synopsis NOWHERE -- not on the hero,
-        not in this grid (Android 0.1.11, internal-docs/androidtv-reference/
-        tv-page2.png: still, "E1 - 21m", title, and nothing else). So this is
-        a divergence to put to tofa alongside the hero one.
-
-        It costs no layout. The grid is three rows of 284 starting at 230,
-        which is exactly the screen, so a synopsis ABOVE it would clip the
-        third row; instead this rides the line the season subtitle already
-        occupies, and that subtitle steps aside while an episode is focused.
-        The XML picks between them on episode_synopsis being empty.
-
-        Cleared whenever focus is anywhere else, so the subtitle comes back
-        rather than the line going stale on a screen the cursor has left.
-        """
-        try:
-            focused = self.getFocusId()
-        except Exception:                                   # noqa: BLE001
-            focused = 0
-        if focused != self.EPISODE_GRID_PANEL or self.episode_list is None:
-            self.setProperty("episode_synopsis", "")
-            return
-        item = self.episode_list.getSelectedItem()
+    def _sync_episode_block(self) -> None:
+        """Describe the episode under the row's cursor above the pills: meta
+        line, title, synopsis (unless hidden), resolution and what Select
+        does."""
+        item = self.episode_list.getSelectedItem() if self.episode_list else None
         data = (item.dataSource or {}) if item else {}
-        episode = data.get("episode") or {}
-        self.setProperty(
-            "episode_synopsis", (episode.get("overview") or "").strip())
+        ep, f = data.get("episode") or {}, data.get("file")
+        if not ep:
+            for key in ("ep_meta", "ep_title", "ep_synopsis_1", "ep_synopsis_2",
+                        "ep_synopsis_3", "ep_badge", "ep_hint"):
+                self.setProperty(key, "")
+            return
+        spoiler = bool(item.getProperty("spoiler"))
+        aired = regional.day_month_year(ep.get("air_date"))
+        n, e = self.selected_season_number, ep.get("episode_number")
+        self.setProperty("ep_meta", _mid_join(
+            "Season {0}".format(n) if n else ("Specials" if n == 0 else ""),
+            "Episode {0}".format(e) if e is not None else "",
+            aired, _runtime_str(_episode_runtime_minutes(ep, f))))
+        self.setProperty("ep_title", episodes_fmt.title_or_number(ep) or "")
+        lines = [] if spoiler else textmetrics.wrap_lines(
+            (ep.get("overview") or "").strip(), T.DETAIL_EP_SYNOPSIS_W, 3,
+            T.DETAIL_EP_SYNOPSIS_SIZE)
+        for i in range(3):
+            self.setProperty("ep_synopsis_{0}".format(i + 1),
+                             lines[i] if i < len(lines) else "")
+        labels = self._format_badge_labels(f)[:1] if f else []
+        self.setProperty("ep_badge", labels[0] if labels else "")
+        left = item.getProperty("time_left")
+        if not f:
+            hint = ""
+        elif left:
+            hint = _mid_join("Select to resume", left)
+        else:
+            hint = "Select to play"
+        self.setProperty("ep_hint", hint)
 
     def onFocus(self, controlID):
-        # Armed only for an arrival from BELOW -- a page-2 body control.
-        # That is the one case where Kodi's native Up nav has already done
-        # the right thing (cast list -> tab bar) and the tab should hold.
-        #
-        # An arrival from a page-1 pill is the opposite: it was a DOWN
-        # press, so the next Up is the viewer asking to leave page 2, and
-        # arming the flag there swallowed it -- Down then Up needed TWO Ups
-        # to get back to the hero. Reported from the box 2026-09-01.
-        self._tab_just_arrived = (controlID in self.TAB_IDS
-                                  and self._prev_focus_id in self.PAGE2_BODY_IDS)
+        # Armed only for an arrival from BELOW, the one case where Kodi's own
+        # Up nav already did the work; from a pill it was a Down press.
+        self._p2_just_arrived = (controlID == self._p2_shown()[0][2][0]
+                                 and self._prev_focus_id in self.PAGE2_BODY_IDS)
         self._prev_focus_id = controlID
 
-        if controlID in self.TAB_IDS + self.PAGE2_BODY_IDS:
+        if controlID in self.PAGE2_BODY_IDS:
             self.setProperty("detailpage", "page2")
+            self._p2_sync_hints(controlID)
         else:
             self.setProperty("detailpage", "page1")
-
-        if controlID == self.TAB_CAST:
-            self.setProperty("detail_tab", "cast")
-        elif controlID == self.TAB_ABOUT:
-            self.setProperty("detail_tab", "about")
-        elif controlID == self.TAB_MORE:
-            self.setProperty("detail_tab", "more")
-        elif controlID == self.TAB_EPISODES:
-            self.setProperty("detail_tab", "episodes")
-        # Entering or LEAVING the grid is a real onFocus, unlike moving
-        # inside it -- which is why onAction carries the other half.
-        self._sync_episode_synopsis()
+        if controlID == self.EPISODE_GRID_PANEL:
+            self._sync_episode_block()
 
     def onClick(self, controlID):
         self.remember_focus(controlID)
@@ -2779,30 +2663,22 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._toggle_watchlist()
         elif controlID == self.PILL_VERSION:
             self._version_clicked()
-        elif controlID == self.TAB_CAST:
-            self.setProperty("detail_tab", "cast")
-        elif controlID == self.TAB_ABOUT:
-            self.setProperty("detail_tab", "about")
-        elif controlID == self.TAB_MORE:
-            self.setProperty("detail_tab", "more")
-        elif controlID == self.TAB_EPISODES:
-            self.setProperty("detail_tab", "episodes")
         elif controlID in self.MORE_SHELF_IDS:
             self._similar_clicked(controlID)
         elif controlID == self.SEASON_SIDEBAR_LIST:
             self._season_clicked()
         elif controlID == self.EPISODE_GRID_PANEL:
             self._episode_clicked()
-        elif controlID in (self.CAST_LIST, self.CREW_LIST):
-            self._person_clicked(controlID)
+        elif controlID == self.CAST_LIST:
+            self._person_clicked()
 
-    def _person_clicked(self, control_id: int):
-        """7.4's filmography page. Both grids feed the same window; the
-        lookup is on the name string because the API has no person id.
+    def _person_clicked(self):
+        """7.4's filmography page. The lookup is on the name string because
+        the API has no person id.
 
         The client is handed over so the new window doesn't re-run the
         profile gate on an already-signed-in session."""
-        lst = self.cast_list if control_id == self.CAST_LIST else self.crew_list
+        lst = self.cast_list
         if lst is None:
             return
         item = lst.getSelectedItem()
@@ -3454,7 +3330,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         problem the sections have."""
         return {
             self.CAST_LIST: self.cast_list,
-            self.CREW_LIST: self.crew_list,
             self.SIMILAR_LIST: self.similar_list,
             self.DISCOVER_LIST: self.discover_list,
             self.COLLECTION_LIST: self.collection_list,
@@ -3604,21 +3479,20 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if runtime_minutes:
                 remaining = int(round(runtime_minutes * (1.0 - pct)))
                 if remaining > 0:
-                    left_label = "{0}m left".format(remaining)
+                    left_label = "{0} min left".format(remaining)
 
         num = ep.get("episode_number")
         return {
             "watched": "1" if completed else "",
             "progress_fill": fill,
-            # 7.1's meta line: episode, runtime, resolution, time left.
-            # An episode you never had shows its number alone, as the Apple
-            # TV app does: a runtime there is TMDB's, for a file that is not
-            # here, and it made the card look playable.
-            "caption": _dot_join(
-                u"E{0}".format(num) if num is not None else "",
-                "" if _not_in_library(ep, f) else _runtime_str(runtime_minutes),
-                *(self._format_badge_labels(f)[:3] if f else []),
-                left_label,
+            "time_left": left_label,
+            # "Episode 3 . 55 min", or the time left once started. One you
+            # never had shows its number alone: a runtime there is TMDB's,
+            # for a file that is not here, and it looked playable.
+            "caption": _mid_join(
+                u"Episode {0}".format(num) if num is not None else "",
+                left_label or ("" if _not_in_library(ep, f)
+                               else _runtime_str(runtime_minutes)),
             ),
         }
 

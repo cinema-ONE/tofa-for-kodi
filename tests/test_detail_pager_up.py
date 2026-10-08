@@ -1,29 +1,16 @@
 """One Up press leaves page 2, and moving up INSIDE page 2 does not.
 
-Detail is one screen in two halves. Down off an action pill slides page 2
-in; Up off the tab bar slides it away again. Kodi's own focus engine cannot
-serve either direction -- it silently refuses to move focus onto a control
-the pager has parked off-screen -- so detail.py drives both with
+Detail is one screen in two halves. Down off an action pill brings page 2
+in; Up off page 2's first control takes it away again. Kodi's own focus
+engine cannot serve either direction, so detail.py drives both with
 setFocusId() from onAction.
 
-That leaves onAction unable to tell two situations apart, because
-getFocusId() reflects focus AFTER Kodi's native attempt:
-
-  * the cursor was in the cast grid and Up carried it to the tab bar,
-    which is a move that WORKED and should be left alone; and
-  * the cursor was already on the tab bar and Up did nothing, which is the
-    viewer asking to go back up to the hero.
-
-Both read as "focus is a tab". _tab_just_arrived is the tie-breaker, armed
-in onFocus. It used to be armed on ANY arrival at a tab from a non-tab
-control -- which includes the Down press that entered page 2 in the first
-place. So the first Up after entering was swallowed as "you only just got
-here" and the hero took TWO presses to reach. Reported from the box
-2026-09-01.
-
-The rule these pin: arm it only for an arrival from BELOW, i.e. from a
-page-2 body control. An arrival from a page-1 pill was a DOWN press, and
-the Up after it is a real one.
+getFocusId() reflects focus AFTER Kodi's native attempt, so onAction cannot
+tell "Up carried the cursor onto the first control" (leave it) from "Up on
+the first control did nothing" (go back to the hero). _p2_just_arrived,
+armed in onFocus only for an arrival from BELOW, is the tie-breaker. Armed
+on any arrival, it swallowed the first Up after entering, and the hero took
+TWO presses to reach (reported from the box 2026-09-01).
 
 Run:  python3 test_detail_pager_up.py
 """
@@ -64,13 +51,12 @@ class Pager:
     the flag means anything.
     """
 
-    # Every id and the two membership tuples come from the real class, so a
-    # renumbered control cannot leave this passing against stale ids.
+    # Every id and table comes from the real class, so a renumbered control
+    # cannot leave this passing against stale ids.
     for _name in ("PILL_PRIMARY", "PILL_RETRY", "PILL_CANCEL_REQUEST",
-                  "PILL_WATCHLIST", "TAB_CAST", "TAB_ABOUT", "TAB_MORE",
-                  "TAB_EPISODES", "TAB_BY_NAME", "TAB_IDS", "PAGE2_BODY_IDS",
+                  "PILL_WATCHLIST", "PAGE2_BODY_IDS", "P2_SECTIONS",
                   "CAST_LIST", "EPISODE_GRID_PANEL", "SEASON_SIDEBAR_LIST",
-                  "CREW_LIST", "SIMILAR_LIST", "DISCOVER_LIST",
+                  "SIMILAR_LIST", "DISCOVER_LIST", "ABOUT_BUTTON",
                   "PILL_REWATCH", "PILL_OPTIONS", "PILL_VERSION"):
         locals()[_name] = getattr(DetailWindow, _name)
     del _name
@@ -78,12 +64,17 @@ class Pager:
     onFocus = DetailWindow.onFocus
     onAction = DetailWindow.onAction
     _page1_focus_id = DetailWindow._page1_focus_id
+    _p2_shown = DetailWindow._p2_shown
+    _p2_entry = DetailWindow._p2_entry
+    _p2_sync_hints = DetailWindow._p2_sync_hints
     _primary_is_actionable = lambda self: True
 
-    def __init__(self, focus):
-        self.props = {"detailpage": "page1", "detail_tab": "cast"}
+    def __init__(self, focus, show=False):
+        self.props = {"detailpage": "page1", "has_cast_content": "1",
+                      "similar_row_title": "More Like This",
+                      "p2_has_episodes": "1" if show else ""}
         self._prev_focus_id = 0
-        self._tab_just_arrived = False
+        self._p2_just_arrived = False
         self._focus = 0
         self.setFocusId(focus)
 
@@ -94,7 +85,7 @@ class Pager:
     def setFocusId(self, control_id):
         self._focus = control_id
         self.onFocus(control_id)
-    def _sync_episode_synopsis(self): pass
+    def _sync_episode_block(self): pass
     def _open_card_options(self, _cid): return False
     def _open_season_options(self): return False
     def _open_hero_options(self): return False
@@ -103,7 +94,7 @@ class Pager:
     def press(self, aid, native_lands_on=None):
         """One d-pad press. `native_lands_on` is where Kodi's own focus
         engine put the cursor before onAction saw it: a control id when the
-        move succeeded, None when it silently failed (the pager case)."""
+        move succeeded, None when it did not."""
         if native_lands_on is not None:
             self.setFocusId(native_lands_on)
         self.onAction(Action(aid))
@@ -116,66 +107,64 @@ UP, DOWN = xbmcgui.ACTION_MOVE_UP, xbmcgui.ACTION_MOVE_DOWN
 
 # --- the reported bug ---------------------------------------------------
 w = Pager(DetailWindow.PILL_PRIMARY)
-w.press(DOWN)                       # native cannot reach an off-screen tab
+w.press(DOWN)
 check("Down off the primary pill enters page 2", w.page == "page2")
-check("...landing on the remembered tab", w._focus == DetailWindow.TAB_CAST)
+check("...landing on the first section, Cast", w._focus == DetailWindow.CAST_LIST)
 
-w.press(UP)                         # native cannot reach an off-screen pill
+w.press(UP)
 check("ONE Up press comes back to page 1", w.page == "page1",
-      "this took two presses: entering page 2 armed _tab_just_arrived")
+      "entering page 2 must not arm _p2_just_arrived")
 check("...landing on the primary pill", w._focus == DetailWindow.PILL_PRIMARY)
 
-# --- and again, so it is not a one-shot ---------------------------------
 w.press(DOWN)
 w.press(UP)
 check("Down/Up is repeatable, still one press each way", w.page == "page1")
 
 # --- what the flag is actually FOR --------------------------------------
 w = Pager(DetailWindow.PILL_PRIMARY)
-w.press(DOWN)                       # -> tab bar, page 2
-w.press(DOWN, native_lands_on=DetailWindow.CAST_LIST)
-check("Down again drops into the cast grid", w._focus == DetailWindow.CAST_LIST)
+w.press(DOWN)
+w.press(DOWN, native_lands_on=DetailWindow.SIMILAR_LIST)
+check("Down again scrolls to More Like This", w._focus == DetailWindow.SIMILAR_LIST)
 check("...and page 2 stays up", w.page == "page2")
+check("...with no OVERVIEW hint off the top section", w.props.get("p2_at_top") == "")
 
-w.press(UP, native_lands_on=DetailWindow.TAB_CAST)
-check("Up out of the cast grid stops at the tab bar",
-      w.page == "page2" and w._focus == DetailWindow.TAB_CAST,
+w.press(UP, native_lands_on=DetailWindow.CAST_LIST)
+check("Up back to Cast stops there",
+      w.page == "page2" and w._focus == DetailWindow.CAST_LIST,
       "native nav already served this press; page 1 would overshoot")
+check("...and the OVERVIEW hint returns", w.props.get("p2_at_top") == "1")
 
 w.press(UP)
-check("a SECOND Up, still on the tab bar, does leave for page 1",
-      w.page == "page1")
+check("a SECOND Up, still on Cast, does leave for page 1", w.page == "page1")
 
-# --- the same, through the TV route: the episode grid --------------------
-w = Pager(DetailWindow.PILL_PRIMARY)
-w.props["detail_tab"] = "episodes"
+# --- a show: the episode row, the pills above it -------------------------
+w = Pager(DetailWindow.PILL_PRIMARY, show=True)
 w.press(DOWN)
-check("a show lands on the Episodes tab", w._focus == DetailWindow.TAB_EPISODES)
+check("a show lands on the episode row", w._focus == DetailWindow.EPISODE_GRID_PANEL)
+check("...naming the section below it", w.props.get("p2_next_hint") == "CAST & CREW",
+      repr(w.props.get("p2_next_hint")))
+w.press(UP, native_lands_on=DetailWindow.SEASON_SIDEBAR_LIST)
+check("Up from the episodes stops on the season pills", w.page == "page2")
 w.press(UP)
-check("...and one Up leaves it", w.page == "page1")
-
-w.press(DOWN)
-w.press(DOWN, native_lands_on=DetailWindow.EPISODE_GRID_PANEL)
-w.press(UP, native_lands_on=DetailWindow.TAB_EPISODES)
-check("Up out of the episode grid stops at the tab bar", w.page == "page2")
+check("...and the next Up leaves for the hero", w.page == "page1")
 
 # --- every body control counts as "from below" --------------------------
 for body in DetailWindow.PAGE2_BODY_IDS:
+    if body == DetailWindow.CAST_LIST:
+        continue
     w = Pager(DetailWindow.PILL_PRIMARY)
     w.press(DOWN)
     w.press(DOWN, native_lands_on=body)
-    w.press(UP, native_lands_on=DetailWindow.TAB_CAST)
-    check(f"Up from page-2 body control {body} holds at the tab bar",
+    w.press(UP, native_lands_on=DetailWindow.CAST_LIST)
+    check(f"Up from page-2 control {body} holds at the first section",
           w.page == "page2")
 
-# --- moving ALONG the tab bar is not an arrival --------------------------
+# --- Back on page 2 goes to page 1 --------------------------------------
 w = Pager(DetailWindow.PILL_PRIMARY)
 w.press(DOWN)
-w.setFocusId(DetailWindow.TAB_ABOUT)        # Right, native, tab -> tab
-w.press(UP)
-check("Up after moving sideways along the tabs still leaves in one press",
-      w.page == "page1",
-      "a tab-to-tab move is not an arrival from below")
+w.press(xbmcgui.ACTION_NAV_BACK)
+check("Back on page 2 returns to the hero", w.page == "page1"
+      and w._focus == DetailWindow.PILL_PRIMARY)
 
 print()
 failed = [n for n, ok in RESULTS if not ok]
