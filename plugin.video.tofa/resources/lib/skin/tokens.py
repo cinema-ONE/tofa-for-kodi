@@ -563,6 +563,7 @@ BROWSE_TILES_H = SCREEN_H - BROWSE_TILES_Y
 # The backdrop fades into the canvas just above the tiles.
 BROWSE_BACKDROP_FADE_H = 320
 BROWSE_BACKDROP_FADE_Y = BROWSE_BACKDROP_H - BROWSE_BACKDROP_FADE_H
+BROWSE_BELOW_BACKDROP_H = SCREEN_H - BROWSE_BACKDROP_H   # canvas: the wall stops here
 # Title row: the pills' widths as measured; the thin rules between groups.
 BROWSE_FOLDERS_W = 167
 BROWSE_SURPRISE_W = 212
@@ -572,6 +573,25 @@ BROWSE_CHIP_DIVIDER_Y = (BROWSE_CHIP_H - BROWSE_DIVIDER_H) // 2
 BROWSE_CHIPS_W = SCREEN_W - BROWSE_LEFT
 # The rule between Filter and the genres: 1px drawn centred in its own slot.
 BROWSE_CHIP_DIVIDER_W = 13
+# The landing's poster wall (app 2.0): rows of a library's posters on a
+# plane tilted back and turned, alternate rows drifting opposite ways.
+BROWSE_WALL_POOL = 40
+BROWSE_WALL_ROWS = 5
+BROWSE_WALL_COLS = 12                  # per period; each row draws two
+BROWSE_WALL_POSTER_W, BROWSE_WALL_POSTER_H = 166, 249   
+BROWSE_WALL_PITCH_X, BROWSE_WALL_PITCH_Y = 186, 268   
+BROWSE_WALL_X, BROWSE_WALL_Y = -260, -330
+BROWSE_WALL_TILT = 18   # degrees back, about the X axis
+BROWSE_WALL_SWING = 9   # degrees, about the Y axis
+BROWSE_WALL_TURN = 4   # degrees, about the Z axis
+BROWSE_WALL_CX, BROWSE_WALL_CY = 960, 320
+BROWSE_WALL_PERIOD_MS = 120000         # one period, ~18px a second as the app
+# Watchlist and History: one upright row of their posters, drifting left.
+BROWSE_ROW_POSTER_W, BROWSE_ROW_POSTER_H = 247, 370
+BROWSE_ROW_PITCH = 289
+BROWSE_ROW_Y = 177
+BROWSE_ROW_COLS = 8                    # per period; the row draws two
+BROWSE_ROW_PERIOD_MS = 130000
 # The sort menu (app 2.0): a panel over the dimmed view, a title, then one
 # 56-tall option per 64, 23 in from the panel's sides, and a hint at its foot.
 BROWSE_SORT_X, BROWSE_SORT_Y = 651, 160
