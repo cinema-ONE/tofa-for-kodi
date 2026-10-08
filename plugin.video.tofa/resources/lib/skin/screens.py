@@ -102,6 +102,8 @@ def render_main() -> str:
     row_kwargs["discover_rows"] = "\n\n".join(
         fragments.discover_row_block(idx, xml, strip if idx == 0 else "")
         for idx, xml in enumerate(discover_blocks))
+    row_kwargs["discover_filters"] = fragments.discover_filters_popover(
+        home_rows.DISCOVER_FILTER_LIST_ID)
 
     sidebar_item, sidebar_focused = fragments.sidebar_row(6000)
     sidebar_lib_item, sidebar_lib_focused = fragments.sidebar_row(6010)

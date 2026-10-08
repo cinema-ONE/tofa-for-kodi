@@ -997,13 +997,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Focusing a tab switches to it after a short settle, as in app 2.0.0.
         self._discover_tab = home_rows.DISCOVER_DEFAULT_TAB
         self._discover_shelves_by_tab: dict[str, list[dict]] = {}
+        n_tabs = len(home_rows.DISCOVER_TABS)
         self._discover_strip = kodigui.ManagedControlList(
-            self, home_rows.DISCOVER_TAB_STRIP_ID, len(home_rows.DISCOVER_TABS))
+            self, home_rows.DISCOVER_TAB_STRIP_ID, n_tabs + 1)
         self._discover_strip.reset()
         self._discover_strip.addItems([
             kodigui.ManagedListItem(label=label, data_source=key,
                                     properties={"tab_idx": str(idx)})
-            for idx, (key, label) in enumerate(home_rows.DISCOVER_TABS)])
+            for idx, (key, label) in enumerate(home_rows.DISCOVER_TABS)] + [
+            kodigui.ManagedListItem(label="Filters", data_source="__filters__", properties={
+                "tab_idx": str(n_tabs), "badge": "",
+                "icon_glyph": chr(icon_glyphs.SLIDERS_HORIZONTAL)})])
+        # Kept for this window's life, like the app's own popover.
+        self._discover_filters = {key: False for key, _label in home_rows.DISCOVER_FILTERS}
+        self._discover_filter_list = kodigui.ManagedControlList(
+            self, home_rows.DISCOVER_FILTER_LIST_ID, len(home_rows.DISCOVER_FILTERS) + 1)
         self._discover_mark_current_tab()
         self._discover_tab_settle = kodigui.SettleTimer(
             T.FOCUS_SETTLE_MS, "tofa-discover-tab")
@@ -1314,7 +1322,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         elif controlID in self.discover_rows:
             self._discover_card_clicked(controlID)
         elif controlID == home_rows.DISCOVER_TAB_STRIP_ID:
-            self._discover_tab_focused(now=True)
+            if self._discover_strip.getSelectedPos() == len(home_rows.DISCOVER_TABS):
+                self._discover_filters_open()
+            else:
+                self._discover_tab_focused(now=True)
+        elif controlID == home_rows.DISCOVER_FILTER_LIST_ID:
+            self._discover_filter_clicked()
         elif controlID == self.TAB_LIST_ID:
             self._search_tab_clicked()
         elif controlID in (self.KEYBOARD_ID, self.NUMPAD_ID):
@@ -1517,6 +1530,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # 6: Back leaves a Settings pane for its section in the rail
             # first; the next Back reaches the nav bar.
             self.setFocusId(self.SETTINGS_NAV_ID)
+            return
+
+        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self.getFocusId() == home_rows.DISCOVER_FILTER_LIST_ID):
+            self._discover_filters_close()
             return
 
         if action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK) and self.getFocusId() != self.NAV_LIST_ID:
@@ -4413,7 +4431,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         hadn't been taught."""
         if self._has_capability("discovery.page"):
             try:
-                page = client.discovery_page() or {}
+                page = client.discovery_page(self._discover_filters) or {}
                 return [
                     {"title": s.get("title") or _discover_list_title(s.get("key", "")),
                      "kind": s.get("kind"),
@@ -4513,6 +4531,45 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.getControl(home_rows.DISCOVER_TAB_STRIP_ID).controlDown(self.getControl(target))
         except Exception:
             pass
+
+    def _discover_filters_open(self) -> None:
+        self._discover_filters_fill(select=0)
+        self.setProperty("discover_filters_open", "1")
+        self.setFocusId(home_rows.DISCOVER_FILTER_LIST_ID)
+
+    def _discover_filters_close(self) -> None:
+        self.setProperty("discover_filters_open", "")
+        self.setFocusId(home_rows.DISCOVER_TAB_STRIP_ID)
+
+    def _discover_filters_fill(self, select: int | None = None) -> None:
+        """The popover's rows, plus "Reset filters" while any filter is on."""
+        on = sum(1 for v in self._discover_filters.values() if v)
+        items = [kodigui.ManagedListItem(label=label, data_source=key,
+                                         properties={"is_on": "1" if self._discover_filters[key] else ""})
+                 for key, label in home_rows.DISCOVER_FILTERS]
+        if on:
+            items.append(kodigui.ManagedListItem(label="Reset filters", data_source="__reset__",
+                                                 properties={"is_reset": "1"}))
+        pos = select if select is not None else (self._discover_filter_list.getSelectedPos() or 0)
+        self._discover_filter_list.reset()
+        self._discover_filter_list.addItems(items)
+        self._discover_filter_list.setSelectedItemByPos(min(pos, len(items) - 1))
+        self.setProperty("discover_filter_count", str(on) if on else "")
+        self._discover_strip.getListItem(len(home_rows.DISCOVER_TABS)).setProperty(
+            "badge", str(on) if on else "")
+
+    def _discover_filter_clicked(self) -> None:
+        item = self._discover_filter_list.getSelectedItem()
+        if item is None:
+            return
+        select = None
+        if item.dataSource == "__reset__":
+            self._discover_filters = {k: False for k in self._discover_filters}
+            select = 0
+        else:
+            self._discover_filters[item.dataSource] = not self._discover_filters[item.dataSource]
+        self._discover_filters_fill(select)
+        self._discover_load()
 
     def _discover_mark_current_tab(self) -> None:
         for idx, (key, _label) in enumerate(home_rows.DISCOVER_TABS):

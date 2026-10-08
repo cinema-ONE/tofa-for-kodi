@@ -58,7 +58,7 @@ OUTLINE_STROKE = 2
 # tools/gen_capsule_pill_assets.py:_HEIGHTS by hand -- generating all of them
 # rather than only the ones in use today means a new pill height needs no
 # second edit here, and each file is a few hundred bytes.
-_HEIGHTS = (11, 20, 24, 28, 38, 52, 54, 58, 60, 64, 66, 68, 72, 76, 78, 88)
+_HEIGHTS = (11, 20, 24, 28, 30, 38, 52, 54, 58, 60, 64, 66, 68, 72, 76, 78, 88)
 
 _MEDIA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "plugin.video.tofa",
