@@ -736,6 +736,14 @@ SETTINGS_INFO_BODY_Y = 459
 SETTINGS_INFO_NOTE_GAP = 45
 SETTINGS_INFO_OPTS_GAP = 60
 SETTINGS_INFO_OPT_PITCH = 82
+# A row's preview (app 2.0): a 16:9 card at the top of the left column, the
+# words moving below it with a smaller title (cap 27 at y 634).
+SETTINGS_PREVIEW_Y = 252
+SETTINGS_PREVIEW_W = 608
+SETTINGS_PREVIEW_H = 342
+SETTINGS_PREVIEW_TITLE_Y = 620
+SETTINGS_PREVIEW_VALUE_Y = 680
+SETTINGS_PREVIEW_BODY_Y = 730
 # The choice picker (app 2.0): a panel at the top of the right column, a
 # title, then one 79-tall option per 82, 18 in from the panel's sides.
 SETTINGS_PICKER_Y = 253
@@ -1191,6 +1199,7 @@ FONT_SETTINGS_ROW = "tofa_font_settings_row"
 FONT_SETTINGS_VALUE = "tofa_font_settings_value"
 FONT_SETTINGS_OPTION = "tofa_font_settings_option"
 FONT_SETTINGS_PICKER = "tofa_font_settings_picker"
+FONT_SETTINGS_TITLE = "tofa_font_settings_title"
 FONT_BODY = "tofa_font_body"
 FONT_METADATA = "tofa_font_metadata"
 #: Settings' identity card, first line; see fontinstall.FONTS.

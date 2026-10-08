@@ -5648,6 +5648,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_wire_account_nav()
         self._settings_wire_appearance_nav()
         self._settings_wire_choices()
+        self._settings_fill_preview_samples()
 
         _t0 = time.monotonic()
         client = self._get_client()
@@ -6187,6 +6188,48 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         8620: "licences", 8720: "art_budget", 8730: "art_clear",
     }
 
+    #: Rows with a preview card (app 2.0): key -> kind (fragments.settings_preview).
+    SETTINGS_PREVIEWS = {"nextup": "play_next", "nextupstyle": "nextup_style",
+                         "intro": "skip", "recap": "skip", "preview": "skip",
+                         "outro": "skip", "commercial": "skip"}
+    #: A skip row's preview: the button's words, the segment, and whether it
+    #: sits at the start or the end of the programme.
+    SETTINGS_SKIP_PREVIEWS = {
+        "intro": ("Skip Intro", "Intro", "start"), "recap": ("Skip Recap", "Recap", "start"),
+        "preview": ("Skip Preview", "Preview", "end"),
+        "outro": ("Skip Credits", "Credits", "end"), "commercial": ("Skip Ad", "Ad", "start")}
+
+    def _settings_sync_preview(self, key: str, style: str = ""):
+        """Point the left column's preview at `key`'s row, or hide it."""
+        kind = self.SETTINGS_PREVIEWS.get(key, "")
+        self.setProperty("settings_preview", kind)
+        if not kind:
+            return
+        art = self.getProperty("hero_backdrop")
+        self.setProperty("settings_preview_art", art)
+        self.setProperty("nextup_still", art)
+        if kind == "nextup_style":
+            self.setProperty("settings_preview_style",
+                             style or settings_options.next_up_style())
+        elif kind == "skip":
+            words, segment, at = self.SETTINGS_SKIP_PREVIEWS[key]
+            self.setProperty("settings_preview_skip", words)
+            self.setProperty("settings_preview_segment", segment)
+            self.setProperty("settings_preview_at", at)
+
+    def _settings_fill_preview_samples(self):
+        """Sample words for the Next Up preview, set the way the player sets
+        its own (player._stage_next_up_details)."""
+        for prop, value in (
+                ("nextup_number", "S1 E5"), ("nextup_title", "Episode 5"),
+                ("nextup_runtime", "24 min"), ("nextup_meta", u"24 min \u00b7 5 of 10"),
+                ("nextup_eyebrow_short", u"NEXT \u00b7 S1 E5 \u00b7 24 MIN"),
+                ("nextup_season_line", u"SEASON 1 \u00b7 EPISODE 5"),
+                ("nextup_place", "Episode 5 of 10 this season"), ("nextup_seconds", "8"),
+                ("nextup_ring", "nextup-ring/28.png"),
+                ("nextup_ring_track", theme.accent_with_alpha("38"))):
+            self.setProperty(prop, value)
+
     def _settings_info_key(self, control_id: int) -> str:
         if self._settings_picker and control_id == self._settings_picker["list_id"]:
             return self._settings_picker["key"]
@@ -6247,6 +6290,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         info = settings_info.ROWS.get(key)
         if info is None:
             self.setProperty("settings_info", "")
+            self.setProperty("settings_preview", "")
             page = self.getProperty("settings_page")
             rows = settings_info.SUMMARIES.get(page, ())
             for i in range(settings_info.MAX_SUMMARY):
@@ -6265,6 +6309,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 title = self.getProperty("homerow_{0}_title".format(slot)) or title
                 value = self._settings_home_row_state(slot)
         self.setProperty("settings_info_now", "")
+        self._settings_sync_preview(key)
         self.setProperty("settings_info", "1")
         self.setProperty("settings_info_title", title)
         self.setProperty("settings_info_value", value)
@@ -6490,6 +6535,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_info_value", focused)
         self.setProperty("settings_info_now",
                          "Now " + current if current and focused != current else "")
+        if picker["key"] == "nextupstyle":
+            styles = {label: value for value, label in settings_options.NEXT_UP_STYLES}
+            self._settings_sync_preview("nextupstyle", styles.get(focused, ""))
         # While picking, the left column's choices light only the focused one.
         for i in range(settings_info.MAX_OPTIONS):
             label = self.getProperty("settings_info_opt{0}".format(i + 1))
