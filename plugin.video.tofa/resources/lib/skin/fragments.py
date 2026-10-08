@@ -250,6 +250,12 @@ class PosterSize(NamedTuple):
     mask: str
     border: str
     glow: str
+    #: Caption faces and nudges: Browse's grid is smaller than the rows'.
+    title_font: str = "tofa_font_poster_title"
+    meta_font: str = "tofa_font_metadata"
+    title_dy: int = 0
+    meta_dy: int = 0
+    caption_dx: int = 0
 
 
 POSTER_STD = PosterSize(T.POSTER_W, T.POSTER_H,
@@ -260,7 +266,8 @@ POSTER_COMPACT = PosterSize(T.DETAIL_P2_POSTER_W, T.DETAIL_P2_POSTER_H,
                             "top-result-glow.png")
 # Browse's grid (app 2.0): seven columns of 212x318.
 POSTER_GRID = PosterSize(T.GRID_POSTER_W, T.GRID_POSTER_H, "grid-poster-mask.png",
-                         "grid-poster-border.png", "grid-poster-glow.png")
+                         "grid-poster-border.png", "grid-poster-glow.png",
+                         T.FONT_CARD_TITLE, T.FONT_CARD_META, -5, -8, -3)
 
 
 def poster_cell(size: PosterSize = POSTER_STD) -> tuple[int, int]:
@@ -777,7 +784,7 @@ def poster_card(
     # card resize -- one copy of a control follows the token and its twin does
     # not, so a change to POSTER_W moves the unfocused caption and leaves the
     # focused one behind, visible only while a card is selected.
-    CAPTION_X = 4 + HPAD
+    CAPTION_X = 4 + HPAD + size.caption_dx
     # POSTER_W - 8, not - 28. CAPTION_X already encodes the deliberate 4px
     # inset from the art's left edge, and the right-aligned caption_trailing
     # label beside it has always used POSTER_W - 8, i.e. the SAME 4px inset on
@@ -904,10 +911,10 @@ def poster_card(
 {item_visual}
                     <control type="label">
                         <posx>{CAPTION_X}</posx>
-                        <posy>{CAPTION_TOP}</posy>
+                        <posy>{CAPTION_TOP + size.meta_dy}</posy>
                         <width>{CAPTION_W}</width>
                         <height>{T.CAPTION_META_H}</height>
-                        <font>tofa_font_metadata</font>
+                        <font>{size.meta_font}</font>
                         <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                         <label>$INFO[ListItem.Property({caption_field})]</label>
                     </control>{trailing}
@@ -925,10 +932,10 @@ def poster_card(
                     <control type="group">
                         <control type="label">
                             <posx>{CAPTION_X}</posx>
-                            <posy>{CAPTION_TITLE_TOP}</posy>
+                            <posy>{CAPTION_TITLE_TOP + size.title_dy}</posy>
                             <width>{CAPTION_W}</width>
                             <height>{CAPTION_TITLE_HEIGHT}</height>
-                            <font>tofa_font_poster_title</font>
+                            <font>{size.title_font}</font>
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[ListItem.Label]</label>
                         </control>
@@ -939,10 +946,10 @@ def poster_card(
 {focused_visual}
                     <control type="label">
                         <posx>{CAPTION_X}</posx>
-                        <posy>{CAPTION_TOP}</posy>
+                        <posy>{CAPTION_TOP + size.meta_dy}</posy>
                         <width>{CAPTION_W}</width>
                         <height>{T.CAPTION_META_H}</height>
-                        <font>tofa_font_metadata</font>
+                        <font>{size.meta_font}</font>
                         <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
                         <label>$INFO[ListItem.Property({caption_field})]</label>
                     </control>{trailing}
@@ -988,10 +995,10 @@ def poster_card(
                         <control type="label">
                             <visible>Control.HasFocus({list_id})</visible>
                             <posx>{CAPTION_X}</posx>
-                            <posy>{CAPTION_TITLE_TOP}</posy>
+                            <posy>{CAPTION_TITLE_TOP + size.title_dy}</posy>
                             <width>{CAPTION_W}</width>
                             <height>{CAPTION_TITLE_HEIGHT}</height>
-                            <font>tofa_font_poster_title</font>
+                            <font>{size.title_font}</font>
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <scroll>true</scroll>
                             <scrollsuffix>\u2003\u2003\u2003</scrollsuffix>
@@ -1000,10 +1007,10 @@ def poster_card(
                         <control type="label">
                             <visible>!Control.HasFocus({list_id})</visible>
                             <posx>{CAPTION_X}</posx>
-                            <posy>{CAPTION_TITLE_TOP}</posy>
+                            <posy>{CAPTION_TITLE_TOP + size.title_dy}</posy>
                             <width>{CAPTION_W}</width>
                             <height>{CAPTION_TITLE_HEIGHT}</height>
-                            <font>tofa_font_poster_title</font>
+                            <font>{size.title_font}</font>
                             <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                             <label>$INFO[ListItem.Label]</label>
                         </control>
