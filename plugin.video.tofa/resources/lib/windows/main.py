@@ -7,7 +7,9 @@ standalone window. Window.Property names are shared window-wide (unlike
 control ids) -- a new section can't reuse another's property name."""
 from __future__ import annotations
 
+import base64
 import datetime
+import hashlib
 import os
 import random
 import threading
@@ -2864,7 +2866,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             art = (self._sources[idx].get("art") if idx is not None
                    else "") or ""
         self.setProperty("browse_backdrop", art)
-        src = self._sources[item.dataSource] if item is not None and item.dataSource is not None else {}
+        if item is not None and item.dataSource is None:
+            src = {"kind": "blur"}        # Surprise me
+        else:
+            src = self._sources[item.dataSource] if item is not None else {}
         self._browse_sync_wall(src)
 
     def _browse_sync_wall(self, src: dict):
@@ -2874,7 +2879,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_sync_feature()
             return
         posters = self._browse_walls.get(self._browse_wall_key(src)) or []
-        mode = {"library": "tilt", "watchlist": "row", "history": "row"}.get(src.get("kind"), "")
+        mode = {"library": "tilt", "blur": "tilt", "watchlist": "row",
+                "history": "row"}.get(src.get("kind"), "")
         if not posters or not mode:
             self.setProperty("browse_wall", "")
             return
@@ -2920,7 +2926,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 if src.get("kind") == "library" and key in self._browse_walls:
                     continue
                 try:
-                    items = self._browse_wall_items(client, src)
+                    items = raw = self._browse_wall_items(client, src)
                 except http.ApiError as exc:
                     kodigui.ERROR("main.py: browse wall failed: {0}".format(exc))
                     continue
@@ -2930,6 +2936,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                          and not (it["poster_path"] in seen or seen.add(it["poster_path"]))]
                 if not items:
                     continue
+                if src.get("kind") == "library" and "blur" not in self._browse_walls:
+                    self._browse_walls["blur"] = self._browse_blur_tiles(raw)
                 artcache.prefetch(client.stage_pairs(items, "poster_path"))
                 urls = [client.resolve_image_url(it.get("poster_path")) for it in items]
                 self._browse_walls[key] = [u for u in urls if u]
@@ -2957,6 +2965,26 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return {"title": name, "line": line,
                 "posters": [(client.resolve_image_url(m.get("poster_path")) or "",
                              str(m.get("year") or "")) for m in films]}
+
+    @staticmethod
+    def _browse_blur_tiles(items: list) -> list:
+        """Surprise me's wall: the server's 32x18 backdrop thumbnails, written
+        out as files; Kodi scales them up, which blurs them as the app does."""
+        out = []
+        folder = artcache._cache_dir()
+        for it in items:
+            data = it.get("backdrop_thumb")
+            if not data:
+                continue
+            path = os.path.join(folder, "blur-%s.jpg" % hashlib.sha1(data.encode()).hexdigest()[:16])
+            try:
+                if not os.path.exists(path):
+                    with open(path, "wb") as fh:
+                        fh.write(base64.b64decode(data))
+            except (OSError, ValueError):
+                continue
+            out.append(path)
+        return out
 
     def _browse_wall_items(self, client: MediaServerClient, src: dict) -> list:
         kind = src.get("kind")
