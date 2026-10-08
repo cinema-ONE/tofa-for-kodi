@@ -130,9 +130,10 @@ def gen_still_outline() -> None:
 
 
 # 8.10's episode-drawer row still: 16:9 at the drawer's own row height.
-DRAWER_STILL_W = 140
-DRAWER_STILL_H = 79
-DRAWER_STILL_RADIUS = 8
+# The player's episodes row (app 2.0): 16:9 cards along the bottom.
+DRAWER_STILL_W = 416
+DRAWER_STILL_H = 234
+DRAWER_STILL_RADIUS = 14
 
 
 def gen_drawer_still_mask() -> None:

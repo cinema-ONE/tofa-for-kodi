@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- COPIED from resources/lib/skin/static/script-tofa-player.xml and processed.
-     hash=fec2427d5eb7. DO NOT HAND-EDIT: edit the file under static/,
+     hash=70f0da73f3a9. DO NOT HAND-EDIT: edit the file under static/,
      which keeps every comment; this copy has them stripped and its
      capsules and rounded rects swapped for resolution-free art. -->
 <window type="dialog">
@@ -3415,378 +3415,475 @@
         </control>
         <control type="group" id="9800">
             <visible>!String.IsEmpty(Window.Property(player_episodes))</visible>
-            <animation effect="slide" start="672,0" end="0,0" time="250" tween="cubic" easing="out">Visible</animation>
             <animation effect="fade" start="0" end="100" time="250">Visible</animation>
-            <animation effect="slide" start="0,0" end="672,0" time="200" tween="cubic" easing="in">Hidden</animation>
+            <animation effect="slide" start="0,60" end="0,0" time="250" tween="cubic" easing="out">Visible</animation>
             <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
             <control type="image">
-                <posx>1248</posx>
+                <posx>0</posx>
                 <posy>0</posy>
-                <width>672</width>
+                <width>1920</width>
                 <height>1080</height>
-                <colordiffuse>0xE6060A0F</colordiffuse>
+                <colordiffuse>0x66000000</colordiffuse>
                 <texture>white-square.png</texture>
             </control>
             <control type="image">
-                <posx>1248</posx>
-                <posy>0</posy>
-                <width>2</width>
-                <height>1080</height>
-                <colordiffuse>0x1AFFFFFF</colordiffuse>
-                <texture>white-square.png</texture>
+                <posx>0</posx>
+                <posy>300</posy>
+                <width>1920</width>
+                <height>780</height>
+                <colordiffuse>0xCC000000</colordiffuse>
+                <texture>nextup-lower-scrim.png</texture>
             </control>
             <control type="label">
-                <posx>1268</posx>
-                <posy>44</posy>
-                <width>500</width>
-                <height>26</height>
-                <font>tofa_font_eyebrow</font>
-                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                <label>$INFO[Window.Property(drawer_season)]</label>
-            </control>
-            <control type="label">
-                <posx>1268</posx>
-                <posy>76</posy>
-                <width>500</width>
-                <height>58</height>
-                <font>tofa_font_heading</font>
+                <posx>20</posx>
+                <posy>389</posy>
+                <width>150</width>
+                <height>46</height>
+                <aligny>center</aligny>
+                <font>tofa_font_button</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>Episodes</label>
             </control>
             <control type="list" id="9801">
                 <onleft>9999</onleft>
                 <onright>9999</onright>
-                <posx>1263</posx>
-                <posy>156</posy>
-                <width>644</width>
-                <height>43</height>
+                <posx>180</posx>
+                <posy>388</posy>
+                <width>1680</width>
+                <height>48</height>
                 <orientation>horizontal</orientation>
-                <itemwidth>92</itemwidth>
-                <itemheight>43</itemheight>
+                <itemwidth>80</itemwidth>
+                <itemheight>48</itemheight>
+                <scrolltime>200</scrolltime>
                 <onup>9999</onup>
                 <ondown>9802</ondown>
-                <itemlayout width="92" height="43">
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0xF0FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>0xFF06090D</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
+                <itemlayout width="80" height="48">
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-left.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>23</posx>
+                            <posy>0</posy>
+                            <width>20</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-mid.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>43</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-right.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-left.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>23</posx>
+                            <posy>0</posy>
+                            <width>20</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-mid.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>43</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-right.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x33FFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active)) + !false</visible>
+                            <texture>pill-outline-66x46.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <visible>false</visible>
+                            <texture>pill-outline-66x46.png</texture>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>false</visible>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>!false</visible>
+                        </control>
                 </itemlayout>
-                <focusedlayout width="92" height="43">
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>Control.HasFocus(9801)</visible>
-                    </control>
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0xF0FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>!Control.HasFocus(9801) + !String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture border="21">capsule-h43.png</texture>
-                        <visible>!Control.HasFocus(9801) + String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>Control.HasFocus(9801)</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>0xFF06090D</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!Control.HasFocus(9801) + !String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>5</posx>
-                        <width>82</width>
-                        <height>43</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!Control.HasFocus(9801) + String.IsEmpty(ListItem.Property(active))</visible>
-                    </control>
+                <focusedlayout width="80" height="48">
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-left.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>23</posx>
+                            <posy>0</posy>
+                            <width>20</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-mid.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>43</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x29FFFFFF</colordiffuse>
+                            <visible>String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-right.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-left.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>23</posx>
+                            <posy>0</posy>
+                            <width>20</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-mid.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>43</posx>
+                            <posy>0</posy>
+                            <width>23</width>
+                            <height>46</height>
+                            <colordiffuse>0x4DFFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active))</visible>
+                            <texture>pill-cap-right.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>0x33FFFFFF</colordiffuse>
+                            <visible>!String.IsEmpty(ListItem.Property(active)) + !Control.HasFocus(9801)</visible>
+                            <texture>pill-outline-66x46.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>66</width>
+                            <height>46</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <visible>Control.HasFocus(9801)</visible>
+                            <texture>pill-outline-66x46.png</texture>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>Control.HasFocus(9801)</visible>
+                        </control>
+                        <control type="label">
+                            <width>66</width>
+                            <height>46</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_account</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                            <visible>!Control.HasFocus(9801)</visible>
+                        </control>
                 </focusedlayout>
             </control>
-            <control type="list" id="9802">
+            <control type="grouplist">
+                <posx>20</posx>
+                <posy>462</posy>
+                <width>1800</width>
+                <height>50</height>
+                <orientation>horizontal</orientation>
+                <itemgap>18</itemgap>
+                <usecontrolcoords>true</usecontrolcoords>
+                <control type="label">
+                    <width>auto</width>
+                    <height>50</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_dialog_title</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>$INFO[Container(9802).ListItem.Property(number)]</label>
+                </control>
+                <control type="label">
+                    <width>auto</width>
+                    <height>50</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_dialog_title</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Container(9802).ListItem.Label]</label>
+                </control>
+                <control type="label">
+                    <posy>6</posy>
+                    <width>auto</width>
+                    <height>50</height>
+                    <aligny>center</aligny>
+                    <font>tofa_font_metadata</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>$INFO[Container(9802).ListItem.Property(state)]</label>
+                </control>
+            </control>
+            <control type="fixedlist" id="9802">
                 <onleft>9999</onleft>
                 <onright>9999</onright>
-                <posx>1268</posx>
-                <posy>214</posy>
-                <width>640</width>
-                <height>837</height>
-                <orientation>vertical</orientation>
-                <itemheight>93</itemheight>
+                <posx>-160</posx>
+                <posy>530</posy>
+                <width>2280</width>
+                <height>330</height>
+                <orientation>horizontal</orientation>
+                <itemwidth>456</itemwidth>
+                <itemheight>330</itemheight>
+                <focusposition>2</focusposition>
+                <movement>2</movement>
+                <scrolltime>200</scrolltime>
                 <onup>9801</onup>
                 <ondown>9999</ondown>
-                <itemlayout width="640" height="93">
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <aspectratio scalediffuse="false">scale</aspectratio>
-                        <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x8C000000</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE06C;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE080;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>0x1AFFFFFF</colordiffuse>
-                        <texture>drawer-progress/100.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture>$INFO[ListItem.Property(progress)]</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>11</posy>
-                        <width>468</width>
-                        <height>28</height>
-                        <font>tofa_font_metadata</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[ListItem.Property(meta)]</label>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
+                <itemlayout width="456" height="330">
+                        <control type="group">
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <colordiffuse>0x14FFFFFF</colordiffuse>
+                                <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                            </control>
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <aspectratio scalediffuse="false">scale</aspectratio>
+                                <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>0x33FFFFFF</colordiffuse>
+                                <texture>drawer-progress/100.png</texture>
+                                <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                                <texture>$INFO[ListItem.Property(progress)]</texture>
+                            </control>
+                            <control type="image">
+                                <posx>12</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <colordiffuse>0xB3000000</colordiffuse>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                                <texture>pill-circle.png</texture>
+                            </control>
+                            <control type="label">
+                                <posx>14</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>tofa_font_icons_19</font>
+                                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                                <label>&#xE13C;</label>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                            </control>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Property(caption)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Property(number)] $INFO[ListItem.Label]</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[ListItem.Property(meta)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>Playing</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
                 </itemlayout>
-                <focusedlayout width="640" height="93">
-                    <control type="image">
-                        <posy>3</posy>
-                        <width>640</width>
-                        <height>87</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture>exact-rounded-14-640x87.png</texture>
-                        <visible>Control.HasFocus(9802)</visible>
-                    </control>
-                    <control type="image">
-                        <posy>3</posy>
-                        <width>640</width>
-                        <height>87</height>
-                        <colordiffuse>0x33FFFFFF</colordiffuse>
-                        <texture>exact-rounded-14-outline-640x87.png</texture>
-                        <visible>Control.HasFocus(9802)</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x14FFFFFF</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <aspectratio scalediffuse="false">scale</aspectratio>
-                        <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <colordiffuse>0x8C000000</colordiffuse>
-                        <texture diffuse="drawer-still-mask.png">white-square.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE06C;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>6</posx>
-                        <posy>7</posy>
-                        <width>140</width>
-                        <height>79</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_26</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE080;</label>
-                        <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>0x1AFFFFFF</colordiffuse>
-                        <texture>drawer-progress/100.png</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="image">
-                        <posx>6</posx>
-                        <posy>80</posy>
-                        <width>140</width>
-                        <height>6</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture>$INFO[ListItem.Property(progress)]</texture>
-                        <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>11</posy>
-                        <width>468</width>
-                        <height>28</height>
-                        <font>tofa_font_metadata</font>
-                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                        <label>$INFO[ListItem.Property(meta)]</label>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>!String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
-                    <control type="label">
-                        <posx>164</posx>
-                        <posy>43</posy>
-                        <width>468</width>
-                        <height>38</height>
-                        <font>tofa_font_caption</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                        <visible>String.IsEmpty(ListItem.Property(watched))</visible>
-                    </control>
+                <focusedlayout width="456" height="330">
+                        <control type="group">
+                            <animation effect="zoom" start="100" end="105.8" center="208,248" time="140" tween="cubic" easing="out" condition="Control.HasFocus(9802)">Conditional</animation>
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <colordiffuse>0x14FFFFFF</colordiffuse>
+                                <texture diffuse="drawer-still-mask.png">white-square.png</texture>
+                            </control>
+                            <control type="image">
+                                <posy>14</posy>
+                                <width>416</width>
+                                <height>234</height>
+                                <aspectratio scalediffuse="false">scale</aspectratio>
+                                <texture diffuse="drawer-still-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>0x33FFFFFF</colordiffuse>
+                                <texture>drawer-progress/100.png</texture>
+                                <visible>!String.IsEmpty(ListItem.Property(progress))</visible>
+                            </control>
+                            <control type="image">
+                                <posy>242</posy>
+                                <width>416</width>
+                                <height>6</height>
+                                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                                <texture>$INFO[ListItem.Property(progress)]</texture>
+                            </control>
+                            <control type="image">
+                                <posx>12</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <colordiffuse>0xB3000000</colordiffuse>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                                <texture>pill-circle.png</texture>
+                            </control>
+                            <control type="label">
+                                <posx>14</posx>
+                                <posy>26</posy>
+                                <width>40</width>
+                                <height>40</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>tofa_font_icons_19</font>
+                                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                                <label>&#xE13C;</label>
+                                <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                            </control>
+                            <control type="image">
+                                <posx>-2</posx>
+                                <posy>12</posy>
+                                <width>420</width>
+                                <height>238</height>
+                                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                                <texture>exact-rounded-14-outline-420x238.png</texture>
+                                <visible>Control.HasFocus(9802)</visible>
+                            </control>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Property(caption)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>258</posy>
+                            <width>416</width>
+                            <height>32</height>
+                            <font>tofa_font_poster_title</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>$INFO[ListItem.Property(number)] $INFO[ListItem.Label]</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                            <label>$INFO[ListItem.Property(meta)]</label>
+                            <visible>String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
+                        <control type="label">
+                            <posy>290</posy>
+                            <width>416</width>
+                            <height>30</height>
+                            <font>tofa_font_metadata</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>Playing</label>
+                            <visible>!String.IsEmpty(ListItem.Property(playing))</visible>
+                        </control>
                 </focusedlayout>
             </control>
         </control>

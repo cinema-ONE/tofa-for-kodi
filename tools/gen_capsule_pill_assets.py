@@ -180,12 +180,14 @@ _HEIGHTS = (
           # border=21 -- 21px taken from a 19px arc, which is the
           # radius!=border fault feedback_capsule_ninepatch_rule exists
           # to stop.
+    40,   # the episodes row's "playing" badge (drawn 40x40 = a true circle)
     42,   # focus ring AROUND a 38-high control: the settings segments and
           # the home-row switch, which are both 38. Drawn outside, on the
           # row surface, so no bright fill sits under its anti-aliased
           # edge. 38 + 2x2 because the stroke is 2 units wide, so a 2px pad
           # lands the ring's INNER edge flush on the control -- at 3 a
           # 1px line of row surface shows between the two.
+    46,   # the player episodes row's season pills (app 2.0, measured ~47)
     52,   # player transport buttons (drawn 52x52 = a true circle)
     54,   # Discover tab pills
     58,   # Browse's Sort/Filter/Quality/Genre pills

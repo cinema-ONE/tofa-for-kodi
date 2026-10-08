@@ -2905,11 +2905,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._seek_to(end)
 
     # ------------------------------------------------------------------
-    # 8.10 -- episode drawer
+    # Episodes row (app 2.0), still called the drawer in the code
     # ------------------------------------------------------------------
-
-    _DRAWER_ROW_TEXT_W = 468     # matches the row layout's label width
-    _DRAWER_STILL_W = 140
 
     def toggle_drawer(self):
         if self.getProperty("player_episodes"):
@@ -3012,11 +3009,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._drawer_episodes.addItems(rows)
 
     def _drawer_row(self, ep: dict):
-        """One episode row.
-
-        The metadata line is the reference app's own wording, runtime and
-        all: "Episode 2 - 40:37", minutes and SECONDS, not the "40 min" the
-        Detail grid uses."""
+        """One episode card: "E2" and the title under the still, then its
+        runtime -- or "Playing" for the one on screen (app 2.0)."""
         number = ep.get("episode_number") or 0
         avail = [f for f in (ep.get("files") or []) if f.get("available")]
         f = avail[0] if avail else None
@@ -3024,18 +3018,13 @@ class PlayerWindow(kodigui.ControlledDialog):
         item = kodigui.ManagedListItem(title, data_source=(ep, f))
         playing = bool(f and str(f.get("id")) == str(self.file_id))
         item.setProperty("playing", "1" if playing else "")
-        meta = f"Episode {number}"
+        item.setProperty("number", f"E{number}")
+        grey = theme.TEXT_SECONDARY[2:]
+        item.setProperty("caption", f"[COLOR {grey}]E{number}[/COLOR] {title}")
         duration_ms = (f or {}).get("duration_ms") or 0
-        if duration_ms:
-            total_s = duration_ms // 1000
-            meta = f"{meta} · {total_s // 60}:{total_s % 60:02d}"
-        if playing:
-            # The reference gives the playing episode a THIRD line saying
-            # this, which a single-itemheight Kodi list cannot do. Riding on
-            # the metadata line keeps the words rather than paying for them
-            # out of the title's colour, which the reference leaves alone.
-            meta = f"{meta} · Now playing"
-        item.setProperty("meta", meta)
+        minutes = int(round(duration_ms / 60000.0)) if duration_ms else 0
+        item.setProperty("meta", f"{minutes} min" if minutes else "")
+        item.setProperty("state", "Playing" if playing else item.getProperty("meta"))
         item.setArt({"thumb": self.client.resolve_image_url(ep.get("still_path")) or ""})
 
         watched = bool((ep.get("user_data") or {}).get("watched")) and not playing
