@@ -20,6 +20,7 @@ from typing import NamedTuple
 
 from . import icon_glyphs
 from . import tokens as T
+from .. import textmetrics
 
 
 def logo_block() -> str:
@@ -5063,47 +5064,33 @@ def settings_qr_rail(*, eyebrow: str, texture: str, caption_property: str,
 
 
 def settings_fox_tile(list_id: int) -> tuple[str, str]:
-    """9.4's fox tile: the artwork for one accent preset over its name.
+    """One tile of the fox picker (app 2.0): the preset's logo over its name
+    on glass tinted its own colour.
 
-    The logo is a raster per preset (`tofa-logo-<name>.png`) rather than one
-    image tinted at runtime -- see theme.PRESETS, which owns that mapping and
-    explains why the artwork cannot be colordiffused like the flat chrome can.
-    So each item carries its own texture and the layout just draws it.
+    The current fox adds a rim and a check badge, the focused one a stronger
+    tint. Each item carries its colours as properties (tile_color/_wash/
+    _current/_focus), since a tile shows its own hue, not the live accent."""
+    W, H = T.SETTINGS_FOX_TILE_W, T.SETTINGS_FOX_TILE_H
+    ART = 80
+    current = "String.IsEqual(ListItem.Property(selected),1)"
 
-    Three states, and they are three because 9.4 asks for three: rest is a
-    faint platter with a hairline ring; SELECTED (this is the live accent)
-    takes a ring in the tile's own colour, which arrives as a per-item
-    `tile_color` property rather than the window accent -- during a preview
-    the two differ, and it is the tile's own hue that has to show; FOCUSED
-    adds the neutral rim, for the same reason the sidebar row does.
-
-    The star on the default marks 9.4's "Tofa Fox is the original look"
-    badge."""
-    W = T.SETTINGS_FOX_TILE_W
-    H = T.SETTINGS_FOX_TILE_H
-    ART = 78
-    ART_X = (W - ART) // 2
-
-    def _body(ring: str, ring_texture: str, label_color: str) -> str:
+    def _tile(fill: str, rim: bool, label_font: str, label_colour: str) -> str:
+        ring = f"""
+                    <control type="image">
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <colordiffuse>$INFO[ListItem.Property(tile_color)]</colordiffuse>
+                        <texture border="14">rounded-14-outline.png</texture>
+                    </control>""" if rim else ""
         return f"""
                     <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
                         <width>{W}</width>
                         <height>{H}</height>
-                        <colordiffuse>{T.PANEL_WASH}</colordiffuse>
+                        <colordiffuse>$INFO[ListItem.Property({fill})]</colordiffuse>
                         <texture border="14">rounded-14.png</texture>
-                    </control>
+                    </control>{ring}
                     <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{W}</width>
-                        <height>{H}</height>
-                        <colordiffuse>{ring}</colordiffuse>
-                        <texture border="14">{ring_texture}</texture>
-                    </control>
-                    <control type="image">
-                        <posx>{ART_X}</posx>
+                        <posx>{(W - ART) // 2}</posx>
                         <posy>16</posy>
                         <width>{ART}</width>
                         <height>{ART}</height>
@@ -5111,62 +5098,65 @@ def settings_fox_tile(list_id: int) -> tuple[str, str]:
                         <texture>$INFO[ListItem.Art(thumb)]</texture>
                     </control>
                     <control type="label">
-                        <posx>0</posx>
-                        <posy>{H - 44}</posy>
+                        <posy>{H - 50}</posy>
                         <width>{W}</width>
-                        <height>30</height>
+                        <height>32</height>
                         <align>center</align>
                         <aligny>center</aligny>
-                        <font>{T.FONT_METADATA}</font>
-                        <textcolor>{label_color}</textcolor>
-                        <label>$INFO[ListItem.Label]</label>
-                    </control>
-                    <control type="label">
-                        <visible>String.IsEqual(ListItem.Property(is_default),1)</visible>
-                        <posx>{W - 30}</posx>
-                        <posy>10</posy>
-                        <width>22</width>
-                        <height>22</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>{T.FONT_ICON_19}</font>
-                        <textcolor>{T.SETTINGS_FOX_DEFAULT_BADGE}</textcolor>
-                        <label>&#x{icon_glyphs.STAR:04X};</label>
+                        <font>{label_font}</font>
+                        <textcolor>{label_colour}</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
                     </control>"""
 
-    item = f"""                <itemlayout width="{T.SETTINGS_FOX_CELL_W}" height="{T.SETTINGS_FOX_CELL_H}">
+    badge = f"""
                     <control type="group">
-                        <visible>!String.IsEqual(ListItem.Property(selected),1)</visible>{_body(
-                            T.BORDER_SOFT, "rounded-14-outline.png",
-                            "$INFO[Window.Property(text_secondary)]")}
-                    </control>
-                    <control type="group">
-                        <visible>String.IsEqual(ListItem.Property(selected),1)</visible>{_body(
-                            "$INFO[ListItem.Property(tile_color)]", "rounded-14-outline.png",
-                            "$INFO[Window.Property(text_primary)]")}
-                    </control>
-                </itemlayout>"""
+                        <visible>{current}</visible>
+                        <control type="image">
+                            <posx>{W - 34}</posx>
+                            <posy>8</posy>
+                            <width>26</width>
+                            <height>26</height>
+                            <colordiffuse>$INFO[ListItem.Property(tile_color)]</colordiffuse>
+                            <texture>circle.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{W - 34}</posx>
+                            <posy>8</posy>
+                            <width>26</width>
+                            <height>26</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ICON_19}</font>
+                            <textcolor>{T.CANVAS}</textcolor>
+                            <label>&#x{icon_glyphs.CHECK:04X};</label>
+                        </control>
+                    </control>"""
+    white = "$INFO[Window.Property(text_primary)]"
+    grey = "$INFO[Window.Property(text_secondary)]"
 
-    focused = f"""                <focusedlayout width="{T.SETTINGS_FOX_CELL_W}" height="{T.SETTINGS_FOX_CELL_H}">
+    def _states(focused: bool) -> str:
+        rest = f"""
                     <control type="group">
-                        <visible>!String.IsEqual(ListItem.Property(selected),1)</visible>{_body(
-                            T.BORDER_SOFT, "rounded-14-outline.png",
-                            "$INFO[Window.Property(text_secondary)]")}
+                        <visible>!{current}</visible>{_tile("tile_wash", False, T.FONT_BODY, grey)}
                     </control>
                     <control type="group">
-                        <visible>String.IsEqual(ListItem.Property(selected),1)</visible>{_body(
-                            "$INFO[ListItem.Property(tile_color)]", "rounded-14-outline.png",
-                            "$INFO[Window.Property(text_primary)]")}
+                        <visible>{current}</visible>{_tile("tile_current", True, T.FONT_POSTER_TITLE, white)}
+                    </control>"""
+        if not focused:
+            return rest + badge
+        return f"""
+                    <control type="group">
+                        <visible>!Control.HasFocus({list_id})</visible>{rest}
                     </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{W}</width>
-                        <height>{H}</height>
-                        <colordiffuse>{T.FOCUS_RIM_NEUTRAL}</colordiffuse>
-                        <texture border="14">rounded-14-outline.png</texture>
-                    </control>
+                    <control type="group">
+                        <visible>Control.HasFocus({list_id})</visible>{_tile(
+                            "tile_focus", True, T.FONT_POSTER_TITLE, white)}
+                    </control>{badge}"""
+
+    cell = f'width="{T.SETTINGS_FOX_CELL_W}" height="{T.SETTINGS_FOX_CELL_H}"'
+    item = f"""                <itemlayout {cell}>{_states(False)}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout {cell}>{_states(True)}
                 </focusedlayout>"""
     return item, focused
 
@@ -5699,11 +5689,28 @@ def settings_add_row(list_id: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> tup
 
 
 def settings_choice_row(list_id: int, *, value_property: str,
+                        dot_values: tuple = (), dot_colour: str = "",
                         **kwargs) -> tuple[str, str]:
     """A row whose value is one of several, shown as "value >" and picked in
-    the right-column picker (app 2.0). The value turns accent with its row."""
+    the right-column picker (app 2.0). The value turns accent with its row.
+
+    `dot_values` puts a `dot_colour` dot before each of those values, placed
+    from its text width at render time: a list layout cannot move a control."""
     W = kwargs.get("width", T.SETTINGS_DETAIL_W_WIDE)
     H = kwargs.get("height", T.SETTINGS_ACTION_ROW_H)
+    dots = ""
+    for value in dot_values:
+        width = textmetrics.text_width(value) * 28 / textmetrics.SIZE
+        dots += f"""
+                    <control type="image">
+                        <visible>String.IsEqual(Window.Property({value_property}),{value})</visible>
+                        <posx>{int(W - 57 - width - 12 - 16)}</posx>
+                        <posy>{(H - 16) // 2}</posy>
+                        <width>16</width>
+                        <height>16</height>
+                        <colordiffuse>{dot_colour}</colordiffuse>
+                        <texture>circle.png</texture>
+                    </control>"""
 
     def _trailing(colour: str, gate: str = "") -> str:
         vis = f"""
@@ -5732,9 +5739,9 @@ def settings_choice_row(list_id: int, *, value_property: str,
                         <label>&#x{icon_glyphs.CHEVRON_RIGHT:04X};</label>
                     </control>"""
 
-    rest = _trailing("$INFO[Window.Property(text_secondary)]")
-    focused = (_trailing("$INFO[Window.Property(accent_color)]",
-                         f"Control.HasFocus({list_id})")
+    rest = dots + _trailing("$INFO[Window.Property(text_secondary)]")
+    focused = (dots + _trailing("$INFO[Window.Property(accent_color)]",
+                                f"Control.HasFocus({list_id})")
                + _trailing("$INFO[Window.Property(text_secondary)]",
                            f"!Control.HasFocus({list_id})"))
     return _settings_control_row(list_id, trailing=rest, trailing_focused=focused,
@@ -5743,11 +5750,11 @@ def settings_choice_row(list_id: int, *, value_property: str,
 
 def settings_choice_list(list_id: int, *, value_property: str, posy: int,
                          onup: int, ondown: int,
-                         width: int = T.SETTINGS_DETAIL_W_WIDE) -> str:
+                         width: int = T.SETTINGS_DETAIL_W_WIDE, **row) -> str:
     """A whole one-item list holding a settings_choice_row."""
     H = T.SETTINGS_ACTION_ROW_H
     item, focused = settings_choice_row(list_id, value_property=value_property,
-                                        width=width)
+                                        width=width, **row)
     return f"""
                         <control type="list" id="{list_id}">
                             <posx>0</posx>
@@ -5844,6 +5851,8 @@ def settings_picker_panel() -> str:
     focused = _row("$INFO[Window.Property(accent_color)]",
                    "$INFO[Window.Property(accent_color)]",
                    wash="$INFO[Window.Property(settings_row_wash)]")
+    fox_item, fox_focused = settings_fox_tile(8200)
+    mode = "String.IsEqual(Window.Property(settings_picker),{0})".format
     return f"""
             <control type="group">
                 <visible>!String.IsEmpty(Window.Property(settings_picker))</visible>
@@ -5882,7 +5891,36 @@ def settings_picker_panel() -> str:
                         <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                         <label>$INFO[Window.Property(settings_picker_title)]</label>
                     </control>
+                    <control type="label">
+                        <posx>{w - 27}</posx>
+                        <posy>26</posy>
+                        <width>{w // 2}</width>
+                        <height>44</height>
+                        <align>right</align>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_BODY}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[Window.Property(settings_picker_hint)]</label>
+                    </control>
+                    <control type="panel" id="8200">
+                        <visible>{mode("fox")}</visible>
+                        <posx>{T.SETTINGS_PICKER_PAD}</posx>
+                        <posy>{T.SETTINGS_PICKER_LIST_Y}</posy>
+                        <width>{T.SETTINGS_FOX_COLS * T.SETTINGS_FOX_CELL_W}</width>
+                        <height>{T.SETTINGS_FOX_ROWS * T.SETTINGS_FOX_CELL_H}</height>
+                        <onup>8200</onup>
+                        <ondown>8200</ondown>
+                        <onleft>8200</onleft>
+                        <onright>8200</onright>
+                        <orientation>vertical</orientation>
+                        <itemwidth>{T.SETTINGS_FOX_CELL_W}</itemwidth>
+                        <itemheight>{T.SETTINGS_FOX_CELL_H}</itemheight>
+                        <scrolltime>{T.SCROLLTIME}</scrolltime>
+{fox_item}
+{fox_focused}
+                    </control>
                     <control type="list" id="8990">
+                        <visible>{mode("list")}</visible>
                         <posx>{T.SETTINGS_PICKER_PAD}</posx>
                         <posy>{T.SETTINGS_PICKER_LIST_Y}</posy>
                         <width>{lw}</width>

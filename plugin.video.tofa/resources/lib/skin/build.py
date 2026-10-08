@@ -74,6 +74,11 @@ _SOURCE_FILES = (
     # skipped the file. The scaffold went on painting over a finished page.
     os.path.join(_PACKAGE_DIR, "..", "home_rows.py"),
     os.path.join(_PACKAGE_DIR, "..", "settings_pages.py"),
+    # ...and the other modules the renderer reads: picker rows, fox names
+    # and the text widths that place the fox row's dot.
+    os.path.join(_PACKAGE_DIR, "..", "settings_options.py"),
+    os.path.join(_PACKAGE_DIR, "..", "foxes.py"),
+    os.path.join(_PACKAGE_DIR, "..", "textmetrics.py"),
     # ...and addon.xml, because ABOUT's card bakes the add-on's NAME in from
     # there (branding.app_name). Renaming the add-on would otherwise leave
     # that card showing the old name for ever: the hash would not have moved,

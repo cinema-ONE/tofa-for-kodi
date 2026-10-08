@@ -88,7 +88,7 @@ RIGHT_TARGETS: dict[str, int] = {
     # from the tab does nothing (tests/test_settings_nav_targets.py).
     "playback": 8910,
     "audio": 8510,
-    "appearance": 8200,
+    "appearance": 8205,
     "home": 8320,
     "privacy": 8620,
 }

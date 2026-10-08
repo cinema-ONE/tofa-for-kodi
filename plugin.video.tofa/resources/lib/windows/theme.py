@@ -12,6 +12,7 @@ network down), not as an independent value to keep in sync by hand.
 from __future__ import annotations
 
 from . import kodigui
+from .. import foxes
 
 DEFAULT_ACCENT = "2DD4BF"  # "Tofa Fox" teal, matches settings.xml's <default>
 
@@ -153,29 +154,7 @@ def rating_numeral(score) -> str:
         return ""
     return u"[COLOR FF{0}]{1}[/COLOR]".format(tier_hex, int(round(float(score))))
 
-# (name, hex, logo filename) -- exact hex values from tofa's internal
-# design spec. The fox logo can only ever be one of these 14 raster
-# variants (resources/skins/Main/media/tofa-logo[-<name>].png) -- unlike
-# the flat UI chrome, which can colordiffuse to any arbitrary accent hex,
-# there's no way to tint the logo artwork itself at runtime. So
-# default_logo() always snaps the current accent to whichever of these 14
-# is nearest by RGB distance, even for a fully custom (non-preset) color.
-PRESETS = (
-    ("Tofa", "2DD4BF", "tofa-logo.png"),
-    ("Sky", "38BDF8", "tofa-logo-sky.png"),
-    ("Emerald", "34D399", "tofa-logo-emerald.png"),
-    ("Indigo", "818CF8", "tofa-logo-indigo.png"),
-    ("Violet", "A78BFA", "tofa-logo-violet.png"),
-    ("Pink", "F472B6", "tofa-logo-pink.png"),
-    ("Rose", "FB7185", "tofa-logo-rose.png"),
-    ("Orange", "FB923C", "tofa-logo-orange.png"),
-    ("Amber", "FBBF24", "tofa-logo-amber.png"),
-    ("Crimson", "A31621", "tofa-logo-crimson.png"),
-    ("Forest", "15803D", "tofa-logo-forest.png"),
-    ("Ocean", "1E40AF", "tofa-logo-ocean.png"),
-    ("Plum", "6B21A8", "tofa-logo-plum.png"),
-    ("Snow", "F1EFE8", "tofa-logo-snow.png"),
-)
+PRESETS = foxes.PRESETS
 
 # Cached for the lifetime of this process only -- most of this add-on's
 # entry points (addon.py's plugin:// dispatch) are a fresh Python process per
