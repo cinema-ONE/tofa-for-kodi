@@ -2718,13 +2718,88 @@ def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
                         <visible>String.IsEqual(ListItem.Property(tab_idx),{idx})</visible>{labels}{marks}
                     </control>"""
 
+    def filters_slot(selected: bool) -> str:
+        """Icon, label and count badge, right-aligned; white only on focus."""
+        off = n * T.DISCOVER_SUBTAB_SLOT
+        out = []
+        for badged in (False, True):
+            shift = T.DISCOVER_FILTERS_BADGE_SHIFT if badged else 0
+            label_x = T.DISCOVER_FILTERS_RIGHT - T.DISCOVER_FILTERS_LABEL_W - shift - off
+            icon_x = label_x - T.DISCOVER_FILTERS_ICON_GAP - T.DISCOVER_FILTERS_ICON_W
+            colour = (f"$INFO[Window.Property(text_primary)]" if selected else T.NAV_TAB_REST)
+            rest = (f"<visible>!{focused}</visible>" if selected else "")
+            texts = ""
+            for c, vis in (((colour, f"<visible>{focused}</visible>"), (T.NAV_TAB_REST, rest))
+                           if selected else ((colour, ""),)):
+                texts += f"""
+                            <control type="label">
+                                <posx>{icon_x - 2}</posx>
+                                <posy>{T.DISCOVER_FILTERS_ICON_Y}</posy>
+                                <width>24</width>
+                                <height>24</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>tofa_font_icons_24</font>
+                                <textcolor>{c}</textcolor>
+                                <label>$INFO[ListItem.Property(icon_glyph)]</label>{vis}
+                            </control>
+                            <control type="label">
+                                <posx>{label_x - 1}</posx>
+                                <posy>{T.DISCOVER_SUBTAB_LABEL_Y}</posy>
+                                <width>{T.DISCOVER_FILTERS_LABEL_W + 20}</width>
+                                <height>{T.DISCOVER_SUBTAB_LABEL_H}</height>
+                                <font>{T.FONT_CAPTION}</font>
+                                <textcolor>{c}</textcolor>
+                                <label>$INFO[ListItem.Label]</label>{vis}
+                            </control>"""
+            badge = ""
+            if badged:
+                bx = T.DISCOVER_FILTERS_RIGHT - T.DISCOVER_FILTERS_BADGE - off
+                badge = f"""
+                            <control type="image">
+                                <posx>{bx}</posx>
+                                <posy>{T.DISCOVER_FILTERS_BADGE_Y}</posy>
+                                <width>{T.DISCOVER_FILTERS_BADGE}</width>
+                                <height>{T.DISCOVER_FILTERS_BADGE}</height>
+                                <colordiffuse>{T.DISCOVER_FILTERS_ROW_FILL}</colordiffuse>
+                                <texture>circle.png</texture>
+                            </control>
+                            <control type="label">
+                                <posx>{bx}</posx>
+                                <posy>{T.DISCOVER_FILTERS_BADGE_Y}</posy>
+                                <width>{T.DISCOVER_FILTERS_BADGE}</width>
+                                <height>{T.DISCOVER_FILTERS_BADGE}</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_EYEBROW}</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <label>$INFO[ListItem.Property(badge)]</label>
+                            </control>"""
+            line = ""
+            if selected:
+                line_x = icon_x - 2
+                line = _nav_mark(line_x, T.DISCOVER_FILTERS_RIGHT - off - line_x,
+                                 T.DISCOVER_SUBTAB_UNDERLINE_Y + _NAV_LIST_Y, T.NAV_UNDERLINE_H,
+                                 f' border="{T.NAV_UNDERLINE_H // 2}">capsule-h{T.NAV_UNDERLINE_H}.png',
+                                 focused)
+            gate = ("!String.IsEmpty(ListItem.Property(badge))" if badged
+                    else "String.IsEmpty(ListItem.Property(badge))")
+            out.append(f"""
+                        <control type="group">
+                            <visible>{gate}</visible>{texts}{badge}{line}
+                        </control>""")
+        return f"""
+                    <control type="group">
+                        <visible>String.IsEqual(ListItem.Property(tab_idx),{n})</visible>{"".join(out)}
+                    </control>"""
+
     n = len(T.DISCOVER_SUBTAB_CENTRES)
-    item = "".join(slot(i, False) for i in range(n))
-    sel = "".join(slot(i, True) for i in range(n))
+    item = "".join(slot(i, False) for i in range(n)) + filters_slot(False)
+    sel = "".join(slot(i, True) for i in range(n)) + filters_slot(True)
     return f"""            <control type="list" id="{list_id}">
                 <posx>0</posx>
                 <posy>0</posy>
-                <width>{T.DISCOVER_SUBTAB_SLOT * n}</width>
+                <width>{T.DISCOVER_SUBTAB_SLOT * (n + 1)}</width>
                 <height>{T.DISCOVER_DIVIDER_Y}</height>
                 <orientation>horizontal</orientation>
                 <onup>{onup}</onup>
@@ -2743,6 +2818,140 @@ def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
                 <height>1</height>
                 <colordiffuse>{T.DISCOVER_DIVIDER}</colordiffuse>
                 <texture>white-square.png</texture>
+            </control>"""
+
+
+def discover_filters_popover(list_id: int) -> str:
+    """The Filters popover under the strip's Filters item: four on/off rows,
+    then a rule and "Reset filters" while any is on."""
+    rw, rh = T.DISCOVER_FILTERS_ROW_W, T.DISCOVER_FILTERS_ROW_H
+    ring_x = rw - T.DISCOVER_FILTERS_RING_RIGHT - T.DISCOVER_FILTERS_RING
+    ring_y = (rh - T.DISCOVER_FILTERS_RING) // 2
+    on = "!String.IsEmpty(ListItem.Property(is_on))"
+    reset = "!String.IsEmpty(ListItem.Property(is_reset))"
+
+    def row(focused: bool) -> str:
+        fill = "$INFO[Window.Property(accent_pill_fill)]" if focused else T.DISCOVER_FILTERS_ROW_FILL
+        edge = "$INFO[Window.Property(accent_color)]" if focused else T.DISCOVER_FILTERS_ROW_EDGE
+        ink = "$INFO[Window.Property(accent_color)]" if focused else "$INFO[Window.Property(text_primary)]"
+        ring = "$INFO[Window.Property(accent_color)]" if focused else T.DISCOVER_FILTERS_RING_REST
+        disc = "$INFO[Window.Property(accent_color)]" if focused else "$INFO[Window.Property(text_primary)]"
+        tick = "$INFO[Window.Property(on_accent_color)]" if focused else T.CANVAS
+
+        def body(y: int, with_ring: bool) -> str:
+            ring_xml = f"""
+                        <control type="image">
+                            <posx>{ring_x}</posx>
+                            <posy>{y + ring_y}</posy>
+                            <width>{T.DISCOVER_FILTERS_RING}</width>
+                            <height>{T.DISCOVER_FILTERS_RING}</height>
+                            <colordiffuse>{ring}</colordiffuse>
+                            <texture border="{T.DISCOVER_FILTERS_RING // 2}">capsule-h{T.DISCOVER_FILTERS_RING}-outline.png</texture>
+                            <visible>!{on}</visible>
+                        </control>
+                        <control type="image">
+                            <posx>{ring_x}</posx>
+                            <posy>{y + ring_y}</posy>
+                            <width>{T.DISCOVER_FILTERS_RING}</width>
+                            <height>{T.DISCOVER_FILTERS_RING}</height>
+                            <colordiffuse>{disc}</colordiffuse>
+                            <texture border="{T.DISCOVER_FILTERS_RING // 2}">capsule-h{T.DISCOVER_FILTERS_RING}.png</texture>
+                            <visible>{on}</visible>
+                        </control>
+                        <control type="label">
+                            <posx>{ring_x}</posx>
+                            <posy>{y + ring_y}</posy>
+                            <width>{T.DISCOVER_FILTERS_RING}</width>
+                            <height>{T.DISCOVER_FILTERS_RING}</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>tofa_font_icons_19</font>
+                            <textcolor>{tick}</textcolor>
+                            <label>{chr(icon_glyphs.CHECK)}</label>
+                            <visible>{on}</visible>
+                        </control>""" if with_ring else ""
+            return f"""
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>{y}</posy>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{fill}</colordiffuse>
+                            <texture border="14">rounded-14.png</texture>
+                        </control>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>{y}</posy>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{edge}</colordiffuse>
+                            <texture border="14">rounded-14-outline.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{T.DISCOVER_FILTERS_LABEL_X}</posx>
+                            <posy>{y}</posy>
+                            <width>{ring_x - T.DISCOVER_FILTERS_LABEL_X - 12}</width>
+                            <height>{rh}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_ROW_TITLE}</font>
+                            <textcolor>{ink}</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                        </control>{ring_xml}"""
+
+        gap = T.DISCOVER_FILTERS_RESET_GAP
+        return f"""
+                    <control type="group">
+                        <visible>!{reset}</visible>{body(0, True)}
+                    </control>
+                    <control type="group">
+                        <visible>{reset}</visible>
+                        <control type="image">
+                            <posx>0</posx>
+                            <posy>{gap // 2 - 6}</posy>
+                            <width>{rw}</width>
+                            <height>1</height>
+                            <colordiffuse>{T.DISCOVER_FILTERS_PANEL_EDGE}</colordiffuse>
+                            <texture>white-square.png</texture>
+                        </control>{body(gap, False)}
+                    </control>"""
+
+    top = T.DISCOVER_FILTERS_ROW_Y - T.DISCOVER_FILTERS_PANEL_Y
+    rows_h = 3 * T.DISCOVER_FILTERS_PITCH + rh
+    panels = ""
+    for with_reset in (False, True):
+        h = top * 2 + rows_h + (T.DISCOVER_FILTERS_PITCH + T.DISCOVER_FILTERS_RESET_GAP if with_reset else 0)
+        gate = ("!" if with_reset else "") + "String.IsEmpty(Window.Property(discover_filter_count))"
+        for tex, colour in (("rounded-20.png", T.DISCOVER_FILTERS_PANEL_FILL),
+                            ("rounded-20-outline.png", T.DISCOVER_FILTERS_PANEL_EDGE)):
+            panels += f"""
+                <control type="image">
+                    <posx>{T.DISCOVER_FILTERS_PANEL_X}</posx>
+                    <posy>{T.DISCOVER_FILTERS_PANEL_Y}</posy>
+                    <width>{T.DISCOVER_FILTERS_PANEL_W}</width>
+                    <height>{h}</height>
+                    <colordiffuse>{colour}</colordiffuse>
+                    <texture border="20">{tex}</texture>
+                    <visible>{gate}</visible>
+                </control>"""
+    list_h = 4 * T.DISCOVER_FILTERS_PITCH + T.DISCOVER_FILTERS_RESET_GAP + rh
+    pitch = T.DISCOVER_FILTERS_PITCH
+    return f"""            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(discover_filters_open))</visible>{panels}
+                <control type="list" id="{list_id}">
+                    <posx>{T.DISCOVER_FILTERS_ROW_X}</posx>
+                    <posy>{T.DISCOVER_FILTERS_ROW_Y}</posy>
+                    <width>{rw}</width>
+                    <height>{list_h}</height>
+                    <orientation>vertical</orientation>
+                    <onup>{list_id}</onup>
+                    <ondown>{list_id}</ondown>
+                    <onleft>{list_id}</onleft>
+                    <onright>{list_id}</onright>
+                    <itemlayout width="{rw}" height="{pitch}">{row(False)}
+                    </itemlayout>
+                    <focusedlayout width="{rw}" height="{pitch}">{row(True)}
+                    </focusedlayout>
+                </control>
             </control>"""
 
 

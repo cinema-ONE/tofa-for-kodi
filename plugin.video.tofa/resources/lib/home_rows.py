@@ -355,6 +355,14 @@ DISCOVER_TABS: tuple[tuple[str, str], ...] = (
 # The sub-tabs are one list (app 2.0.0's text tabs), clear of Browse
 # (6000-6200), Search (6700-6860) and the Discover rows (7000-7310).
 DISCOVER_TAB_STRIP_ID = 6900
+# The strip's last item opens Filters: (server flag, label), in screen order.
+DISCOVER_FILTERS: tuple[tuple[str, str], ...] = (
+    ("hide_watched", "Hide watched movies"),
+    ("hide_cinema", "Hide cinema-only movies"),
+    ("hide_upcoming", "Hide upcoming"),
+    ("only_in_library", "Only show my library"),
+)
+DISCOVER_FILTER_LIST_ID = 6950
 
 
 def row_title(row: dict, localize, shelf_titles: dict | None = None) -> str:

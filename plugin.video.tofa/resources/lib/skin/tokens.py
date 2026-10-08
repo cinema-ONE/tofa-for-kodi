@@ -328,6 +328,36 @@ DISCOVER_FOCUS_ROW_Y = 387 - 14
 DISCOVER_ROW_PAD_BOTTOM = SCREEN_H - DISCOVER_FOCUS_ROW_Y - DISCOVER_ROW_PITCH
 DISCOVER_ROWS_GAP = -(DISCOVER_FOCUS_ROW_Y + DISCOVER_ROW_PAD_BOTTOM)
 DISCOVER_ROW0_H = DISCOVER_ROWS_Y + DISCOVER_ROW_PITCH + DISCOVER_ROW_PAD_BOTTOM
+
+#: Filters, right-aligned to 1823 at the strip's fifth slot: sliders icon,
+#: label and, with any filter on, a 30px count badge; all shift 44 left then.
+DISCOVER_FILTERS_RIGHT = 1823
+DISCOVER_FILTERS_LABEL_W = 69
+DISCOVER_FILTERS_ICON_GAP = 20
+DISCOVER_FILTERS_ICON_W = 20
+DISCOVER_FILTERS_ICON_Y = 147
+DISCOVER_FILTERS_BADGE = 30
+DISCOVER_FILTERS_BADGE_Y = 146
+DISCOVER_FILTERS_BADGE_SHIFT = 44
+#: The popover, measured off 2026-10-08-discover-filters-*.png: four 66px
+#: rows on a 79px pitch, then a rule and "Reset filters" once any is on.
+DISCOVER_FILTERS_PANEL_X = 1225
+DISCOVER_FILTERS_PANEL_Y = 204
+DISCOVER_FILTERS_PANEL_W = 597
+DISCOVER_FILTERS_ROW_X = 1244
+DISCOVER_FILTERS_ROW_Y = 224
+DISCOVER_FILTERS_ROW_W = 559
+DISCOVER_FILTERS_ROW_H = 66
+DISCOVER_FILTERS_PITCH = 79
+DISCOVER_FILTERS_RESET_GAP = 25
+DISCOVER_FILTERS_LABEL_X = 21
+DISCOVER_FILTERS_RING = 30
+DISCOVER_FILTERS_RING_RIGHT = 23
+DISCOVER_FILTERS_PANEL_FILL = "0xFA020504"
+DISCOVER_FILTERS_PANEL_EDGE = "0x21FFFFFF"
+DISCOVER_FILTERS_ROW_FILL = "0x1CFFFFFF"
+DISCOVER_FILTERS_ROW_EDGE = "0x2EFFFFFF"
+DISCOVER_FILTERS_RING_REST = "0x66FFFFFF"
 # The shelves' own local posy inside group 6800, and the ABSOLUTE y that
 # lands on. Both are needed: Kodi's keep-focused-item-in-view math wants the
 # region's true screen position, so the parent's 324 has to be in the sum or
@@ -1253,7 +1283,7 @@ FONT_HEADING = "tofa_font_heading"          # full-screen headings (sign-in)
 FONT_DIALOG_TITLE = "tofa_font_dialog_title"  # 7.2 card-options title (34/Bold)
 FONT_SECTION_TITLE = "tofa_font_section_title"  # row/section headers
 FONT_ROW_TITLE = "tofa_font_row_title"      # nav tabs, Browse pills
-FONT_BUTTON = "tofa_font_button"            # CTA pills, Discover tab pills
+FONT_BUTTON = "tofa_font_button"            # CTA pills
 FONT_LINK = "tofa_font_link"                # pairing URL (mono)
 FONT_CODE = "tofa_font_code"                # pairing code (mono, oversized)
 FONT_POSTER_TITLE = "tofa_font_poster_title"

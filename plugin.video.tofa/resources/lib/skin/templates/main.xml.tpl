@@ -702,6 +702,7 @@
                 <scrolltime>{SCROLLTIME}</scrolltime>
 {discover_rows}
             </control>
+{discover_filters}
         </control>
 
         <!-- ============================================================
