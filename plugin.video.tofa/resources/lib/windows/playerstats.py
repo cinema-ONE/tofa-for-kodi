@@ -40,9 +40,8 @@ MISSING = "—"  # em dash
 
 # Modes, in the order the stats button cycles them.
 OFF = ""
-PILL = "pill"
 PANEL = "panel"
-CYCLE = (OFF, PILL, PANEL)
+CYCLE = (OFF, PANEL)
 
 # Substrings that mean a decoder is running on dedicated silicon rather
 # than on the CPU. Kodi names most decoders after the ffmpeg codec plus the
@@ -137,8 +136,23 @@ def _delivery(nego: dict[str, Any]) -> str:
     mode = nego.get("decision_mode") or ""
     if not method:
         return MISSING
-    body = _join(method, mode)
+    body = _join(_METHOD_LABELS.get(method, method), _MODE_LABELS.get(mode, mode))
     return body if is_direct(nego) else _colored(body, theme.STATUS_DEGRADED)
+
+
+#: The server's play methods as tofa's own apps name them.
+_METHOD_LABELS = {
+    "DirectPlay": "Direct Play",
+    "DirectStream": "Direct Stream",
+    "Transcode": "Transcode",
+}
+#: How the stream is built, in plain words beside the method.
+_MODE_LABELS = {
+    "DirectFile": "whole file",
+    "HlsRemux": "repackaged",
+    "HlsCopyVideoTranscodeAudio": "audio converted",
+    "HlsFullTranscode": "video and audio converted",
+}
 
 
 def _reason(nego: dict[str, Any]) -> str:
@@ -163,18 +177,6 @@ def _reason(nego: dict[str, Any]) -> str:
     if not reasons:
         return MISSING
     return _colored("; ".join(reasons), theme.STATUS_DEGRADED)
-
-
-def _delivery_short(nego: dict[str, Any]) -> str:
-    """The pill's version: the method alone, tinted the same way.
-
-    The panel spells out the decision mode and the transcode reasons beside
-    it; repeating all of that in a one-line pill costs a third of its width
-    to say what the panel is one keypress away from saying properly."""
-    method = nego.get("play_method") or ""
-    if not method:
-        return MISSING
-    return method if is_direct(nego) else _colored(method, theme.STATUS_DEGRADED)
 
 
 def _quality(selection) -> str:
@@ -211,12 +213,6 @@ def _unpad(height: Optional[float]) -> Optional[int]:
         if standard <= height <= standard + 15:
             return standard
     return int(height)
-
-
-def _resolution_label(height: Optional[float]) -> str:
-    """`1080p` for the pill, from the unpadded height."""
-    unpadded = _unpad(height)
-    return f"{unpadded}p" if unpadded else ""
 
 
 def _dynamic_range(nego: dict[str, Any]) -> str:
@@ -661,33 +657,6 @@ def _prune_pairs(rows):
                 continue
         out.append(entry)
     return out
-
-
-def build(nego: dict[str, Any], selection, position: str) -> dict[str, str]:
-    """Window properties for the PILL only, in one pass with the panel's
-    columns so the two can never disagree -- they are two views of the same
-    reading, and the panel is what a viewer opens after the pill showed them
-    something surprising.
-
-    The panel's own rows are NOT properties any more; they are list items,
-    because their number varies by platform. See columns()."""
-    buffer_pct = _number("Player.CacheLevel")
-
-    height = _number("Player.Process(videoheight)")
-    fps = _number("Player.Process(videofps)")
-    decoder, engine = _decoder(_label("Player.Process(videodecoder)"))
-    return {
-        "stats_pill": _join(
-            _delivery_short(nego),
-            _join(_resolution_label(height), _dynamic_range(nego)).replace(" · ", "·"),
-            # Codec and engine are one phrase ("AVC hw"), not two facts, so
-            # they get a space where every other run gets a middot.
-            " ".join(p for p in (tracks.video_codec_label(nego.get("video_codec")),
-                                 engine) if p),
-            f"{fps:g} fps" if fps else "",
-            f"buffer {int(buffer_pct)}%" if buffer_pct is not None else "",
-        ),
-    }
 
 
 def rows(nego: dict[str, Any], selection, position: str, subtitle=None):

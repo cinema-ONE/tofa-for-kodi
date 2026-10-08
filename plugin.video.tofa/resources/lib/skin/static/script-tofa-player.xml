@@ -1743,55 +1743,6 @@
             </control>
         </control>
 
-        <!-- ============================== stats pill ================= -->
-        <!-- 8.11 stage one, from player-stats-overlay.png: a 38px capsule
-             centred on x=960, top edge y=44, holding one monospace line.
-
-             Its width is set from Python (player.py's _size_stats_pill), not
-             fixed here, because the capsule hugs its text in the reference
-             and the text length changes with the stream. That is cheap to do
-             correctly precisely BECAUSE the font is monospace — character
-             count times a known advance, no metrics table needed, unlike
-             textmetrics.py's per-character one for the proportional badges.
-
-             The label is drawn over the full capsule with aligny center
-             rather than at a back-solved posy: the pill is one line in one
-             box, so centring is both simpler and self-correcting if the
-             font size is ever retuned. -->
-        <control type="group" id="9600">
-            <visible>String.IsEqual(Window.Property(player_stats),pill)</visible>
-            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
-            <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
-            <control type="image" id="9601">
-                <posx>641</posx>
-                <posy>44</posy>
-                <width>639</width>
-                <height>38</height>
-                <colordiffuse>0x14FFFFFF</colordiffuse>   <!-- SURFACE_REST -->
-                <texture border="19">capsule-h38.png</texture>
-            </control>
-            <control type="image" id="9602">
-                <posx>641</posx>
-                <posy>44</posy>
-                <width>639</width>
-                <height>38</height>
-                <colordiffuse>0x1FFFFFFF</colordiffuse>   <!-- BORDER_REST -->
-                <texture border="19">capsule-h38-outline.png</texture>
-            </control>
-            <control type="label" id="9603">
-                <posx>641</posx>
-                <posy>44</posy>
-                <width>639</width>
-                <height>38</height>
-                <align>center</align>
-                <aligny>center</aligny>
-                <font>tofa_font_stats_value</font>
-                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <shadowcolor>0xB0000000</shadowcolor>
-                <label>$INFO[Window.Property(stats_pill)]</label>
-            </control>
-        </control>
-
         <!-- ============================== stats panel ================ -->
         <!-- 8.11 stage two, from player-stats-panel.png. The panel box
              (x 28, y 43, w 559) and the rhythm inside it are measured: rows
