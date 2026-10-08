@@ -572,6 +572,23 @@ def gen_feature_poster_mask() -> None:
     _save(im, "browse-feature-mask.png", (140, 206))
 
 
+def gen_person_assets() -> None:
+    """The person page (app 2.0): photo mask, Filmography pill, and the
+    Filmography panel's row fill and focus rim."""
+    def rect(name, w, h, r, stroke=0):
+        im = Image.new("RGBA", (w * S, h * S), (255, 255, 255, 0))
+        box = [0, 0, w * S - 1, h * S - 1]
+        if stroke:
+            ImageDraw.Draw(im).rounded_rectangle(box, radius=r * S, outline="white", width=stroke * S)
+        else:
+            ImageDraw.Draw(im).rounded_rectangle(box, radius=r * S, fill="white")
+        _save(im, name, (w, h))
+    rect("person-photo-mask.png", 200, 250, 16)
+    rect("person-pill.png", 188, 60, 30)
+    rect("person-film-row.png", 1110, 58, 10)
+    rect("person-film-row-focus.png", 1110, 58, 10, BORDER_STROKE)
+
+
 def gen_card_glow() -> None:
     """Soft accent-tintable focus glow that bleeds *outward* beyond the
     card's own border, matching Apple TV's soft halo (poster+border draw
@@ -697,6 +714,7 @@ def main() -> None:
     gen_collection_assets()
     gen_sort_row_assets()
     gen_feature_poster_mask()
+    gen_person_assets()
 
 
 if __name__ == "__main__":

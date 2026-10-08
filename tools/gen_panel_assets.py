@@ -137,26 +137,19 @@ def _panel_shadow() -> None:
 
 
 def gen_person_bg() -> None:
-    """7.4's full-screen vertical gradient for the person/filmography page.
-
-    Kodi has no gradient primitive, so this is a real texture. It is 2px
-    wide rather than 1px: a 1px-wide image stretched across 1920 is fine in
-    principle, but some Kodi renderers sample the single column at its edge
-    and band. Height is the full 1080 so the ramp is never resampled
-    vertically, which is where banding would actually show.
-
-    Endpoints are measured, not from the prose -- see PERSON_BG_* in
-    skin/tokens.py. Emitted as a plain opaque RGB ramp, so the control
-    needs no colordiffuse."""
-    top, bottom = (0x19, 0x1A, 0x22), (0x11, 0x12, 0x16)
-    h, w = 1080, 2
+    """The person page's backdrop (app 2.0): the canvas with a soft glow at
+    the top, where the app blurs the photo. Measured: (62,68,60) near
+    (700,20), falling to the canvas (0,10,14) by the far edges."""
+    w, h = 480, 270                     # quarter size; Kodi scales it smoothly
+    peak, base = (62, 68, 60), (0, 10, 14)
+    cx, cy, rx, ry = 175, 0, 300, 250   # (700, 0), radii 1200 x 1000 at full
     im = Image.new("RGB", (w, h))
     px = im.load()
     for y in range(h):
-        f = y / (h - 1)
-        c = tuple(round(top[i] + (bottom[i] - top[i]) * f) for i in range(3))
         for x in range(w):
-            px[x, y] = c
+            d = min(1.0, ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2) ** 0.5
+            f = (1 - d) ** 1.6
+            px[x, y] = tuple(round(base[i] + (peak[i] - base[i]) * f) for i in range(3))
     path = os.path.join(_MEDIA_DIR, "person-bg.png")
     im.save(path)
     print("saved person-bg.png", im.size)

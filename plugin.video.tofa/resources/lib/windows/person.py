@@ -22,7 +22,6 @@ from __future__ import annotations
 from . import cards, focusmemory, kodigui, profile_select, theme
 from .. import api, artcache, auth, http, regional
 from ..api import MediaServerClient
-from ..skin import icon_glyphs
 
 IN_LIBRARY = "library"
 NOT_IN_LIBRARY = "discover"
@@ -36,6 +35,22 @@ def _year(item: dict) -> str:
     if date and len(date) >= 4 and date[:4].isdigit():
         return date[:4]
     return ""
+
+
+def _sort_title(title: str) -> str:
+    low = title.lower()
+    return low[4:] if low.startswith("the ") else low
+
+
+def _credits_line(items: list) -> str:
+    """ "41 credits from 1994 to 2026", over both halves."""
+    n = len(items)
+    line = "1 credit" if n == 1 else "{0} credits".format(regional.number(n))
+    years = sorted(int(y) for y in (_year(it) for it in items) if y.isdigit())
+    if years:
+        line += (" in {0}".format(years[0]) if years[0] == years[-1]
+                 else " from {0} to {1}".format(years[0], years[-1]))
+    return line
 
 
 def _titles_phrase(n: int) -> str:
@@ -55,9 +70,15 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     GRID_ID = 8000
     SECTION_LABEL_ID = 8010
+    PILL_ID = 8020          # Filmography
+    FILM_LIST_ID = 8030     # the Filmography panel's rows
 
     def __init__(self, *args, **kwargs):
         self.person_name = kwargs.pop("name", "") or ""
+        # From the cast entry that opened this page: who they played there.
+        self.person_role = kwargs.pop("role", "") or ""
+        self.from_title = kwargs.pop("title", "") or ""
+        self.person_photo = kwargs.pop("photo", "") or ""
         # The caller (detail.py) already holds an authenticated client;
         # reusing it keeps this window from re-running the profile gate,
         # which would pop a dialog on top of an already-signed-in session.
@@ -70,6 +91,8 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._counts = {IN_LIBRARY: 0, NOT_IN_LIBRARY: 0}
         self._preferences: dict | None = None
         self._section_shown: str | None = None
+        self.film_list: kodigui.ManagedControlList | None = None
+        self._film_rows: list = []
 
     # ------------------------------------------------------------------
     # lifecycle
@@ -87,6 +110,12 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("text_tertiary", theme.TEXT_TERTIARY)
 
         self.setProperty("person_name", self.person_name)
+        self.setProperty("person_photo", self.person_photo)
+        self.setProperty("person_initials", "".join(w[0] for w in self.person_name.split()[:2]).upper())
+        role = self.person_role
+        self.setProperty("person_role", "{0} in {1}".format(role, self.from_title)
+                         if role and self.from_title else role)
+        self.film_list = kodigui.ManagedControlList(self, self.FILM_LIST_ID, 12)
         # Capacity, not the item count: ManagedControlList's third arg is
         # max_view_index, and passing the real count leaves every row but the
         # last blank (see cardoptions.py, which hit exactly that).
@@ -129,6 +158,16 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         owned, owned_failed = self._load_owned(client)
         discover, discover_failed = self._load_discover(client)
+        # The app lists what you have by title, "The" set aside.
+        owned.sort(key=lambda it: _sort_title(it.get("title") or ""))
+        # Newest first, and A to Z within a year.
+        self._film_rows = sorted(
+            [(it, True) for it in owned] + [(it, False) for it in discover],
+            key=lambda row: (-int(_year(row[0]) or 0), _sort_title(row[0].get("title") or "")))
+        self.setProperty("person_credits", _credits_line(owned + discover))
+        n = len(self._film_rows)
+        self.setProperty("person_film_count", "1 title" if n == 1 else "{0} titles".format(
+            regional.number(n)))
 
         self._counts[IN_LIBRARY] = len(owned)
         self._counts[NOT_IN_LIBRARY] = len(discover)
@@ -234,11 +273,9 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             data_source=item, offscreen=True)
         mli.setArt({"poster": poster})
         mli.setProperty("caption_meta", _year(item))
-        # 7.4's "requestable treatment": plus chip, and deliberately NO
-        # rating badge -- the real app shows one only on owned cards
-        # (internal-docs/atv-reference/person-not-in-library.png).
-        mli.setProperty("rating", "")
-        mli.setProperty("watchlist_glyph", chr(icon_glyphs.PLUS))
+        # App 2.0 rates these too, with the plus (or the clock when coming).
+        mli.setProperty("rating", theme.card_rating_text(item, self._ensure_preferences()))
+        cards.apply_library_badge(mli, item, in_library=False)
         mli.setProperty("tmdb_id", str(item.get("tmdb_id") or ""))
         mli.setProperty("media_type", item.get("type") or item.get("media_type") or "")
         mli.setProperty("section", NOT_IN_LIBRARY)
@@ -285,24 +322,61 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if section == self._section_shown:
             return
         self._section_shown = section
-        title = "In your library" if section == IN_LIBRARY else "Not in your library"
-        count = self._counts[section]
-        # Inline markup rather than a second control: see the template.
-        # TEXT_TERTIARY is "0xAARRGGBB"; Kodi's [COLOR] wants it without the
-        # 0x prefix.
-        tint = theme.TEXT_TERTIARY[2:]
-        self.setProperty(
-            "section_title",
-            u"{0}   [COLOR {1}]{2}[/COLOR]".format(title, tint, count),
-        )
+        title = "IN YOUR LIBRARY" if section == IN_LIBRARY else "MORE OF THEIR WORK"
+        self.setProperty("section_title", u"{0} \u00b7 {1}".format(
+            title, regional.number(self._counts[section])))
 
     def onAction(self, action):
+        import xbmcgui
+        if (action.getId() in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self.getProperty("person_film_open")):
+            self._film_close()
+            return
         # The grid is one control, so onFocus never fires as the selection
         # moves between items -- the label has to be re-checked per keypress.
         # _sync_section_label() is a no-op unless the section actually
         # changed, so this costs a comparison.
         kodigui.ControlledWindow.onAction(self, action)
         self._sync_section_label()
+
+    # ------------------------------------------------------------------
+    # Filmography panel
+    # ------------------------------------------------------------------
+
+    def _film_open(self):
+        if not self._film_rows:
+            return
+        items = []
+        for it, owned in self._film_rows:
+            mli = kodigui.ManagedListItem(label=it.get("title") or it.get("name") or "",
+                                          label2=_year(it), data_source=it)
+            mli.setProperty("in_library", "1" if owned else "")
+            items.append(mli)
+        self.film_list.reset()
+        self.film_list.addItems(items)
+        self.setProperty("person_film_open", "1")
+        self.film_list.selectItem(0)
+        self.setFocusId(self.FILM_LIST_ID)
+
+    def _film_close(self):
+        self.setProperty("person_film_open", "")
+        self.setFocusId(self.PILL_ID)
+
+    def _film_clicked(self):
+        item = self.film_list.getSelectedItem()
+        data = (item.dataSource if item else None) or {}
+        self._open_title(data, bool(item and item.getProperty("in_library")))
+
+    def _open_title(self, data: dict, owned: bool):
+        from .detail import DetailWindow
+        media_id = (data.get("id") or data.get("media_id")) if owned else None
+        if media_id:
+            DetailWindow.open(media_id=str(media_id))
+            return
+        tmdb_id = data.get("tmdb_id")
+        media_type = data.get("type") or data.get("media_type")
+        if tmdb_id and media_type:
+            DetailWindow.open(discovery_id=str(tmdb_id), media_type=media_type)
 
     # ------------------------------------------------------------------
     # navigation
@@ -319,6 +393,12 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def onClick(self, controlID):
         self.remember_focus(controlID)
+        if controlID == self.PILL_ID:
+            self._film_open()
+            return
+        if controlID == self.FILM_LIST_ID:
+            self._film_clicked()
+            return
         if controlID != self.GRID_ID or self.grid is None:
             return
         item = self.grid.getSelectedItem()
@@ -335,11 +415,12 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             DetailWindow.open(discovery_id=tmdb_id, media_type=media_type)
 
 
-def show(name: str, client: MediaServerClient | None = None) -> None:
+def show(name: str, client: MediaServerClient | None = None, *, role: str = "",
+         title: str = "", photo: str = "") -> None:
     """Open the filmography for `name`. Silently does nothing without a
     name: a cast entry can carry an empty name string, and looking that up
     would just render a confusing empty page."""
     if not name:
         return
-    w = PersonWindow.open(name=name, client=client)
+    w = PersonWindow.open(name=name, client=client, role=role, title=title, photo=photo)
     del w

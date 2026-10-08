@@ -867,15 +867,17 @@ def render_person() -> str:
     )
 
     chip = fragments.watchlist_badge_item()
+    size = fragments.POSTER_PERSON
     grid_item, grid_focused = fragments.poster_card(
         GRID_ID,
         has_progress=False,
         caption_field="caption_meta",
         extra_item_xml=chip,
         extra_focused_xml=chip,
-        # Grid pitch, not row pitch -- see GRID_GAP_* in tokens.py. Must
-        # match the panel's <itemheight> ({GRID_CELL_H}) or Kodi ignores it.
-        extra_bottom_pad=T.GRID_GAP,
+        # The cell must be exactly the panel's <itemheight>, or Kodi ignores it.
+        extra_bottom_pad=T.PERSON_CELL_H - fragments.poster_cell(size)[1],
+        size=size,
+        cell_w=T.PERSON_CELL_W,
         # 7.4's grid keeps the rating badge on the FOCUSED card, unlike
         # Browse/Home which clear it. Both are the real app's own behaviour
         # on their own screen: person-filmography.png shows 43 still on the
@@ -887,6 +889,9 @@ def render_person() -> str:
         GRID_ID=GRID_ID,
         SECTION_LABEL_ID=SECTION_LABEL_ID,
         SECTION_COUNT_ID=SECTION_COUNT_ID,
+        PILL_ID=8020,
+        PERSON_NAME_W=T.PERSON_GRID_X - T.PERSON_NAME_X - 20,
+        film_panel=fragments.person_film_panel(8030),
         grid_item=grid_item,
         grid_focused=grid_focused,
         empty_state=empty_state,

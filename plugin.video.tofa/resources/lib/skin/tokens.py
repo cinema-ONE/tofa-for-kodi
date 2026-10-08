@@ -746,33 +746,40 @@ STATUS_RED = "0xFFF87171"
 EMPTY_STATE_Y = 521 - 32
 
 # ------------------------------------------------- person / filmography --
-# 7.4. All measured off internal-docs/atv-reference/person-filmography.png
-# (native 1080p, so 1:1) rather than taken from the prose, which only gives
-# the card size and the two font scales.
-PERSON_LEFT = 176               # name, subtitle, section label, poster art
-PERSON_COLS = 5
-PERSON_GRID_X = PERSON_LEFT - HPAD
-PERSON_GRID_W = PERSON_COLS * CELL_W
-# posy values are the CONTROL's top; the numbers in the comments are where
-# the measured ink lands. Each was corrected once after measuring our own
-# render against the capture (the label box has its own internal leading,
-# so the control top is not the ink top and cannot be read off the
-# reference directly).
-PERSON_NAME_Y = 115             # ink 136-175 in the capture
-PERSON_SUBTITLE_Y = 191         # ink 199-219
-PERSON_SECTION_Y = 272          # ink 280-304
-PERSON_GRID_Y = 331 - TOP_PAD   # measured first poster top edge = 331
+# App 2.0 (internal-docs/atv-reference/2026-10-08-person-*.png): a fixed left
+# column (photo, name, role, Filmography, credits) and four posters across on
+# the right under one section label. Numbers are the capture's.
+PERSON_LEFT = 96
+PERSON_PHOTO_Y = 84
+PERSON_PHOTO_W, PERSON_PHOTO_H = 200, 250
+PERSON_PHOTO_RADIUS = 16
+PERSON_NAME_X = PERSON_LEFT + PERSON_PHOTO_W + 29
+PERSON_NAME_Y = 219             # cap 239
+PERSON_ROLE_Y = 295             # cap 305
+PERSON_PILL_Y = 350
+PERSON_PILL_W, PERSON_PILL_H = 188, 60
+PERSON_RULE_Y = 436
+PERSON_RULE_W = 623
+PERSON_CREDITS_EYEBROW_Y = 445  # cap 451
+PERSON_CREDITS_Y = 467          # cap 477
+PERSON_SECTION_X = 761
+PERSON_SECTION_Y = 82           # cap 88
+PERSON_COLS = 4
+PERSON_CELL_W = 278             # posters 760 / 1037 / 1315 / 1592
+PERSON_CELL_H = 490
+PERSON_GRID_X = 760 - HPAD
+PERSON_GRID_Y = 122 - TOP_PAD
+PERSON_GRID_W = PERSON_COLS * PERSON_CELL_W
 PERSON_GRID_H = SCREEN_H - PERSON_GRID_Y
-
-# 7.4 runs a near-black vertical gradient across the whole screen and calls
-# it a deliberate one-off, tinted darker than abyss. Measured top #191A22 ->
-# bottom #111216: in practice
-# LIGHTER than our CANVAS (#030B10) and tinted toward purple, so it is a
-# genuine one-off and not a reuse of the page background. Drawn from a
-# generated texture (tools/gen_panel_assets.py:gen_person_bg) because Kodi
-# has no gradient primitive.
-PERSON_BG_TOP = "0xFF191A22"
-PERSON_BG_BOTTOM = "0xFF111216"
+# The Filmography panel: every credit by year over the dimmed page.
+PERSON_FILM_X, PERSON_FILM_Y = 340, 90
+PERSON_FILM_W, PERSON_FILM_H = 1240, 900
+PERSON_FILM_ROW_X = 64
+PERSON_FILM_ROW_W, PERSON_FILM_ROW_H = 1110, 58
+PERSON_FILM_LIST_Y = 174
+PERSON_FILM_PITCH = 66
+PERSON_FILM_ROWS = 10
+PERSON_FILM_DIM = "0xCC030B10"
 
 # ------------------------------------------------------------ settings (9) --
 # A three-column page: sidebar / detail / optional right rail. Every number
@@ -1284,6 +1291,8 @@ FONT_BROWSE_SECTION = "tofa_font_settings_title"   # bold 38, as Settings
 FONT_CARD_TITLE = "tofa_font_card_title"
 FONT_CARD_META = "tofa_font_card_meta"
 FONT_FEATURE_TITLE = "tofa_font_feature_title"
+FONT_PERSON_NAME = "tofa_font_person_name"
+FONT_PERSON_PANEL = "tofa_font_person_panel"
 FONT_BROWSE_TITLE = "tofa_font_player_title"   # bold 45, by ink width
 FONT_BODY = "tofa_font_body"
 FONT_METADATA = "tofa_font_metadata"
