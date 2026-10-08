@@ -99,11 +99,11 @@ GLOW_PAD = 10
 # Discover's wide focused card (fragments.py:discover_card).
 DISCOVER_WIDE_W, DISCOVER_WIDE_H = 672, 378
 
-# 7.5's collections tile (fragments.py:collection_card) -- the one landscape
+# The collections card (fragments.py:collection_row) -- the one landscape
 # 16:9 tile in an app of 2:3 portraits. Keep in step with tokens.py's
 # COLLECTION_TILE_W / COLLECTION_TILE_H / COLLECTION_RADIUS.
-COLLECTION_W, COLLECTION_H = 448, 252
-COLLECTION_RADIUS = 14
+COLLECTION_W, COLLECTION_H = 556, 312
+COLLECTION_RADIUS = 12
 GLOW_ALPHA = 90  # peak opacity (0-255) of the glow's uniform interior --
 # flat translucent wash near the border, falloff reserved for the outer
 # edge only, fading fully to invisible there.
@@ -510,50 +510,37 @@ def gen_avatar_shadow() -> None:
           (AVATAR_SIZE + AVATAR_SHADOW_PAD * 2,) * 2)
 
 
-def gen_collection_mask() -> None:
-    """Rounded-corner mask for 7.5's collections tile.
-
-    There was already a collection-mask.png, but it was authored 1:1 -- the
-    only mask in the card family that was, every other one having been moved
-    to ASSET_SCALE. On the 4K box Kodi draws this 448-wide tile into 896
-    physical pixels, so a 1:1 mask is upscaled 2x and its 14px corner arrives
-    as a soft smear while the poster beside it stays crisp. Same file name,
-    same geometry, twice the pixels."""
-    sz = (COLLECTION_W * S, COLLECTION_H * S)
-    im = Image.new("RGBA", sz, (255, 255, 255, 0))
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle(
-        [0, 0, sz[0] - 1, sz[1] - 1], radius=COLLECTION_RADIUS * S, fill="white")
+def gen_collection_assets() -> None:
+    """The collections card (app 2.0): mask, focus rim, focus glow, the 1px
+    rim every card wears, and one mask per quarter of a 2x2 poster mosaic."""
+    w, h, r = COLLECTION_W * S, COLLECTION_H * S, COLLECTION_RADIUS * S
+    im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    ImageDraw.Draw(im).rounded_rectangle([0, 0, w - 1, h - 1], radius=r, fill="white")
     _save(im, "collection-mask.png", (COLLECTION_W, COLLECTION_H))
 
+    for name, stroke in (("collection-border.png", BORDER_STROKE),
+                         ("collection-hairline.png", 1)):
+        im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+        ImageDraw.Draw(im).rounded_rectangle(
+            [0, 0, w - 1, h - 1], radius=r, outline="white", width=stroke * S)
+        _save(im, name, (COLLECTION_W, COLLECTION_H))
 
-def gen_collection_glow() -> None:
-    """The collections tile's focus halo -- the last card in the family that
-    did not have one.
+    # A quarter is the full card's mask cropped, so only its outer corner rounds.
+    qw, qh = w // 2, h // 2
+    full = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    ImageDraw.Draw(full).rounded_rectangle([0, 0, w - 1, h - 1], radius=r, fill="white")
+    for name, (x, y) in (("tl", (0, 0)), ("tr", (qw, 0)), ("bl", (0, qh)), ("br", (qw, qh))):
+        _save(full.crop((x, y, x + qw, y + qh)), f"collection-quad-{name}.png",
+              (COLLECTION_W // 2, COLLECTION_H // 2))
 
-    Posters, episodes, Discover's wide cards and (since 2026-08-01) the round
-    person tiles all get an accent halo on focus; the collections tile got
-    only a rim, so focusing one read as a flatter, cheaper state than
-    focusing anything else in the app. Same construction as gen_card_glow(),
-    just this tile's shape: a FILLED rounded-rect at the glow's outer extent,
-    blurred, flattened to GLOW_ALPHA, so the interior stays near-constant and
-    the ramp lives in the outer GLOW_PAD.
-
-    Unlike the poster row, the collections grid has real slack around each
-    tile (COLLECTION_GAP_X 30, GAP_Y 44), so the glow does not have to be
-    borrowed out of the cell -- collection_card() draws it at -GLOW_PAD and
-    the gap absorbs it."""
-    w = (COLLECTION_W + GLOW_PAD * 2) * S
-    h = (COLLECTION_H + GLOW_PAD * 2) * S
-    mask = Image.new("L", (w, h), 0)
-    d = ImageDraw.Draw(mask)
-    box = [GLOW_PAD * S, GLOW_PAD * S,
-           GLOW_PAD * S + COLLECTION_W * S - 1, GLOW_PAD * S + COLLECTION_H * S - 1]
-    d.rounded_rectangle(
-        box, radius=COLLECTION_RADIUS * S + GLOW_PAD * S // 2, fill=255)
+    gw, gh = (COLLECTION_W + GLOW_PAD * 2) * S, (COLLECTION_H + GLOW_PAD * 2) * S
+    mask = Image.new("L", (gw, gh), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        [GLOW_PAD * S, GLOW_PAD * S, GLOW_PAD * S + w - 1, GLOW_PAD * S + h - 1],
+        radius=r + GLOW_PAD * S // 2, fill=255)
     mask = mask.filter(ImageFilter.GaussianBlur(GLOW_PAD * S // 2))
     mask = mask.point(lambda v: v * GLOW_ALPHA // 255)
-    im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    im = Image.new("RGBA", (gw, gh), (255, 255, 255, 0))
     im.putalpha(mask)
     _save(im, "collection-glow.png",
           (COLLECTION_W + GLOW_PAD * 2, COLLECTION_H + GLOW_PAD * 2))
@@ -681,8 +668,7 @@ def main() -> None:
     gen_card_set(GRID_POSTER_W, GRID_POSTER_H, "grid-poster")
     gen_browse_tile_assets()
     gen_avatar_shadow()
-    gen_collection_mask()
-    gen_collection_glow()
+    gen_collection_assets()
 
 
 if __name__ == "__main__":

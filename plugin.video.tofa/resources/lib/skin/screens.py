@@ -163,7 +163,8 @@ def render_main() -> str:
         photo_size=T.SEARCH_ACTOR_PHOTO,
         placeholder_mode="icon", subtitle_property="titles_label")
 
-    collection_item, collection_focused = fragments.collection_card(6210)
+    collection_item, collection_focused = fragments.collection_row(6210)
+    custom_item, custom_focused = fragments.collection_row(6215)
 
     # Browse's "back to all collections" pill. Only drawn while a collection
     # is open; the real app keeps the viewer inside Browse and offers this
@@ -445,6 +446,8 @@ def render_main() -> str:
         folder_state=folder_state,
         collection_item=collection_item,
         collection_focused=collection_focused,
+        custom_item=custom_item,
+        custom_focused=custom_focused,
         **T.template_kwargs(),
         logo_block=fragments.logo_block(),
         nav_bar=fragments.nav_bar(ondown_target=home_rows.HOME_ROW_LIST_IDS[0]),
