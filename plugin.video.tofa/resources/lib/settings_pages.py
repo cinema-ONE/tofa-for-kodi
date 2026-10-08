@@ -64,9 +64,9 @@ PAGES: tuple[Page, ...] = (
     # Privacy & About LAST: it is the reference section (diagnostics, version,
     # licences), not something a viewer sets, so it belongs after the ones
     # they do.
-    Page("device", "This Device", icon_glyphs.TV,
-         "This Device", "Settings that apply to this Kodi install only",
-         built=True),
+    # Its own tab since app 2.0: the spotlight and the row editor.
+    Page("home", "Home", icon_glyphs.HOUSE,
+         "Home", "What Home shows and in what order", built=True),
     Page("privacy", "Privacy & About", icon_glyphs.HAND,
          "Privacy & About", "Diagnostics, version, and legal", built=True),
 )
@@ -96,8 +96,8 @@ RIGHT_TARGETS: dict[str, int] = {
     "playback": 8911,
     "audio": 8510,
     "appearance": 8200,
+    "home": 8320,
     "privacy": 8620,
-    "device": 8710,
 }
 
 

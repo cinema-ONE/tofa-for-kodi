@@ -703,41 +703,28 @@ PERSON_BG_BOTTOM = "0xFF111216"
 # The rail is present on Account and Privacy & About only; the other pages let
 # the detail column run the full width instead, which is why there are two
 # widths rather than one plus a hidden rail.
-SETTINGS_LEFT = HOME_LEFT               # 156, shared with Home's content edge
-SETTINGS_SIDEBAR_W = 420
-SETTINGS_GUTTER = 56
-SETTINGS_DETAIL_X = SETTINGS_LEFT + SETTINGS_SIDEBAR_W + SETTINGS_GUTTER   # 632
-SETTINGS_RAIL_X = 1348
-SETTINGS_RAIL_W = 360
-SETTINGS_DETAIL_W = SETTINGS_RAIL_X - SETTINGS_GUTTER - SETTINGS_DETAIL_X  # 660
-SETTINGS_DETAIL_W_WIDE = SETTINGS_RAIL_X + SETTINGS_RAIL_W - SETTINGS_DETAIL_X  # 1076
-
-# Sidebar. The profile card sits above the SETTINGS eyebrow, outside the nav
-# list -- it is a display, never focusable.
-SETTINGS_PROFILE_Y = 227
+# App 2.0.0 (atv-reference/2026-10-08-settings-*.png): six text tabs under
+# the top bar, an info column on the left and the rows on the right.
+SETTINGS_LEFT = DISCOVER_LEFT           # 96
+SETTINGS_DETAIL_X = 872                 # rows run 873-1844 on the capture
+SETTINGS_DETAIL_W = 1844 - SETTINGS_DETAIL_X
+SETTINGS_DETAIL_W_WIDE = SETTINGS_DETAIL_W
+#: The left column: page title (ink 267) and, on Account and Privacy, the QR.
+SETTINGS_INFO_W = 700
+SETTINGS_TITLE_Y = 254
+SETTINGS_SUBTITLE_Y = 336
+#: Account's identity card, top of the left column.
+SETTINGS_PROFILE_Y = 250
+SETTINGS_PROFILE_W = SETTINGS_INFO_W
 SETTINGS_PROFILE_H = 98
-SETTINGS_EYEBROW_Y = 344                # ink 354-364
-SETTINGS_NAV_Y = 381
-# Taller than the app's 90-on-a-96-pitch, and with more air between the two
-# text lines, by explicit request 2026-08-03: the two-line row read cramped
-# at the measured size. A deliberate divergence -- do not "correct" it back
-# to the capture.
-SETTINGS_NAV_ROW_H = 100
-SETTINGS_NAV_PITCH = 108                # 8px between rows
-# Six pages: the app's five, plus "This Device" for the Kodi-only settings
-# (skin fonts, local accent fallback, device id) it has no equivalent of.
-SETTINGS_NAV_PAGES = 6
-SETTINGS_NAV_LIST_H = SETTINGS_NAV_PAGES * SETTINGS_NAV_PITCH
-# The rail's footer line (6: app version under the sections), 16 below the last row.
-SETTINGS_RAIL_FOOTER_Y = (SETTINGS_NAV_Y + (SETTINGS_NAV_PAGES - 1) * SETTINGS_NAV_PITCH
-                          + SETTINGS_NAV_ROW_H + 16)
-
-# Detail column. posy values are the CONTROL's top; the comment gives where
-# the measured ink lands, same convention as the person tokens above -- a
-# label box has its own leading, so the ink top cannot be used directly.
-SETTINGS_TITLE_Y = 219                  # ink 240-278
-SETTINGS_SUBTITLE_Y = 299               # ink 307-326
-SETTINGS_CONTENT_Y = 406                # first card, and the rail panel, share it
+SETTINGS_RAIL_X = SETTINGS_LEFT
+SETTINGS_RAIL_W = 360
+#: Tab ink centres and widths (tofa_font_caption), on 320px list slots.
+SETTINGS_TAB_SLOT = 320
+SETTINGS_TAB_CENTRES = (148, 355, 619, 851, 1014, 1196)
+SETTINGS_TAB_INK_W = (97, 194, 192, 138, 67, 179)
+#: First row's top; its group eyebrow inks at 255.
+SETTINGS_CONTENT_Y = 285
 
 # Rows. A two-line action row (a title over an explanatory line, e.g. Switch
 # Profile, Sign Out) is 109; a single-line value row (label left, value right,
@@ -1095,8 +1082,10 @@ SETTINGS_FOX_GRID_H = SETTINGS_FOX_ROWS * SETTINGS_FOX_CELL_H
 SETTINGS_RAIL_PANEL_H = 430
 SETTINGS_RAIL_RADIUS = 24
 SETTINGS_QR = 292
-SETTINGS_QR_Y = 431                     # 25 below the panel top
-SETTINGS_QR_CAPTION_Y = 741             # ink 753-808, three centred lines
+#: The QR panel, in the left column under the page title.
+SETTINGS_RAIL_Y = 470
+SETTINGS_QR_Y = SETTINGS_RAIL_Y + 25
+SETTINGS_QR_CAPTION_Y = SETTINGS_RAIL_Y + 335
 
 # ---------------------------------------------------------------- surfaces --
 # The glass ladder. Was eight ad-hoc white alphas (0x0F/0x14/0x1E/0x1F/0x33/

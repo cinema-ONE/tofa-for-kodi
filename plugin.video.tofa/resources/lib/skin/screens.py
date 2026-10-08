@@ -216,7 +216,6 @@ def render_main() -> str:
     )
 
     # ------------------------------------------------------------ settings
-    settings_nav_item, settings_nav_focused = fragments.settings_nav_row(8000)
     # 8110, 8115 and 8120 are separate one-item lists sharing one layout: the
     # fragment gates its focus ring on Control.HasFocus(list_id), so the id
     # baked in here has to be the one that actually holds focus. 8110's copy
@@ -354,8 +353,8 @@ def render_main() -> str:
     return _load("main.xml.tpl").format(
         toast=fragments.toast(),
         hero_scroll_when=hero_scroll_when,
-        settings_nav_item=settings_nav_item,
-        settings_nav_focused=settings_nav_focused,
+        settings_tab_strip=fragments.settings_tab_strip(
+            list_id=8000, onup=3000, ondown=8110),
         settings_action_item=settings_action_item,
         settings_action_focused=settings_action_focused,
         settings_action_item_2=settings_action_item_2,

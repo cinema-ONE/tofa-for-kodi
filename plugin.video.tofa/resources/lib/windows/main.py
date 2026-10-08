@@ -1600,7 +1600,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if self._open_card_options(self.getFocusId()):
                 return
 
-        if (action_id in (xbmcgui.ACTION_MOVE_UP, xbmcgui.ACTION_MOVE_DOWN)
+        if (action_id in (xbmcgui.ACTION_MOVE_LEFT, xbmcgui.ACTION_MOVE_RIGHT)
                 and self.getFocusId() == self.SETTINGS_NAV_ID):
             # Same tvOS "load as soon as the row is highlighted" rule the nav
             # bar uses for Left/Right, and the same reason for reading the
@@ -5472,13 +5472,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # ------------------------------------------------------------------
 
     def _settings_fill_nav(self):
-        """The sidebar's six rows. Static -- no server data is needed to
-        know which pages exist, only to fill in their value subtitles, which
-        _settings_load() does later."""
+        """The six tabs under the top bar (app 2.0). Static: no server data
+        is needed to know which pages exist."""
         items = []
-        for page in settings_pages.PAGES:
+        for idx, page in enumerate(settings_pages.PAGES):
             li = kodigui.ManagedListItem(label=page.label, data_source=page)
-            li.setProperty("icon_glyph", chr(page.glyph))
+            li.setProperty("tab_idx", str(idx))
             items.append(li)
         self.settings_nav_list.reset()
         self.settings_nav_list.addItems(items)
@@ -5542,9 +5541,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_page", page.key)
         self.setProperty("settings_title", page.title)
         self.setProperty("settings_subtitle", page.subtitle)
+        for item in self.settings_nav_list:
+            item.setProperty("is_current", "1" if item.dataSource is page else "")
         target = self._settings_entry_target(page.key) or self.SETTINGS_NAV_ID
         try:
-            self.getControl(self.SETTINGS_NAV_ID).controlRight(self.getControl(target))
+            self.getControl(self.SETTINGS_NAV_ID).controlDown(self.getControl(target))
         except Exception:
             pass
 
@@ -5710,7 +5711,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "audio": "Language defaults",
             "appearance": self._settings_appearance_summary(),
             "privacy": "Diagnostics and version",
-            "device": "Fonts and device id",
         }
         for idx, page in enumerate(settings_pages.PAGES):
             self.settings_nav_list.getListItem(idx).setProperty(
@@ -6296,7 +6296,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             except Exception:                                   # noqa: BLE001
                 continue
             for i, btn in enumerate(btns):
-                btn.controlLeft(btns[i - 1] if i else nav)
+                btn.controlLeft(btns[i - 1] if i else btn)
                 if i < len(btns) - 1:
                     btn.controlRight(btns[i + 1])
             rows[_key] = btns
@@ -6322,18 +6322,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         for a, b in zip(playback_chain, playback_chain[1:]):
             _join(rows.get(a), rows.get(b))
 
-        # The rating row sits between "Add a row" and "Episodes remaining"
+        for btn in rows.get(playback_chain[0], []):
+            btn.controlUp(nav)
+        # The rating row sits between the fox grid and "Episodes remaining"
         # on Appearance, not in the playback chain.
         try:
+            foxes = self.getControl(self.SETTINGS_FOX_ID)
             add_row = self.getControl(self.SETTINGS_ADD_ROW_ID)
             episodes = self.getControl(self.SETTINGS_EPISODES_ID)
         except Exception:                                       # noqa: BLE001
             return
+        add_row.controlDown(add_row)
         for btn in rows.get("rating", []):
-            btn.controlUp(add_row)
+            btn.controlUp(foxes)
             btn.controlDown(episodes)
         if rows.get("rating"):
-            add_row.controlDown(rows["rating"][0])
+            foxes.controlDown(rows["rating"][0])
             episodes.controlUp(rows["rating"][0])
 
     def _settings_rating_index(self, prefs: dict) -> int:
@@ -6457,12 +6461,23 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         except Exception:                                    # noqa: BLE001
             log.warning("settings: could not wire the Account pane's nav")
             return
+        profile.controlUp(self.getControl(self.SETTINGS_NAV_ID))
         profile.controlDown(server)
         server.controlUp(profile)
         server.controlDown(out)
         out.controlUp(server)
         out.controlDown(direct)
         direct.controlUp(out)
+        # THIS DEVICE, folded into Account from its old tab.
+        fonts = self.getControl(self.SETTINGS_FONTS_ID)
+        direct.controlDown(fonts)
+        fonts.controlUp(direct)
+        fonts.controlDown(fonts)
+        # Privacy & About: Open Source Notices, then the artwork cache.
+        licences = self.getControl(self.SETTINGS_LICENCES_ID)
+        budget = self.getControl(self.SETTINGS_ARTBUDGET_ID)
+        licences.controlDown(budget)
+        budget.controlUp(licences)
 
     def _settings_wire_appearance_nav(self):
         """Re-assert the two MEDIA CARDS rows' up/down from Python.
@@ -6488,8 +6503,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # from the fox grid did nothing. Reported 2026-08-27.
             episodes = self.getControl(self.SETTINGS_EPISODES_ID)
             spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
-            foxes.controlDown(spotlight)
-            spotlight.controlUp(foxes)
+            # The spotlight heads the Home tab now; above it are the tabs.
+            spotlight.controlUp(self.getControl(self.SETTINGS_NAV_ID))
             # spotlight <-> first editor row and last editor row <-> the
             # add tile are joined by _settings_wire_home_rows, which is the
             # only place that knows how many rows the account actually has.
@@ -6688,9 +6703,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 if n:
                     btn.controlLeft(row[live[n - 1]])
                 else:
-                    # Leftmost column keeps the pane's rule: Left is "back
-                    # to the sidebar".
-                    btn.controlLeft(self.getControl(self.SETTINGS_NAV_ID))
+                    # Leftmost column: Left stays put (the tabs are above).
+                    btn.controlLeft(btn)
                 if n < len(live) - 1:
                     btn.controlRight(row[live[n + 1]])
                 # Vertically, keep the column when the neighbouring row also
