@@ -75,7 +75,7 @@ def render_main() -> str:
         home_rows.HOME_ROW_GROUP_IDS_NOHERO, home_rows.HOME_ROW_LIST_IDS_NOHERO)
     grid_item, grid_focused = fragments.poster_card(
         6200, has_progress=False, caption_field="caption_meta",
-        extra_bottom_pad=T.GRID_GAP_BROWSE,
+        extra_bottom_pad=T.GRID_GAP_BROWSE, size=fragments.POSTER_GRID,
     )
 
     watchlist_item_xml = fragments.watchlist_badge_item()
@@ -109,49 +109,21 @@ def render_main() -> str:
     row_kwargs["discover_filters"] = fragments.discover_filters_popover(
         home_rows.DISCOVER_FILTER_LIST_ID)
 
-    sidebar_item, sidebar_focused = fragments.sidebar_row(6000)
-    sidebar_lib_item, sidebar_lib_focused = fragments.sidebar_row(6010)
-    # NO PREFIXES on this row. Every pill now shows its VALUE and nothing
-    # else -- "Date Added", not "Sort: Date Added" -- because the icon
-    # already says which axis it is and the words were eating the column the
-    # values need (fragments._pill_label has the measurements). It also makes
-    # the three pills read as one row of values rather than three sentences.
-    #
-    # This is a deliberate divergence: the real app keeps "Sort: Title" (read
-    # off Android 0.1.11 and the Apple TV capture, which agree). It does not
-    # need the room -- its pills are content-width, ours are a fixed 346.
-    # The Sort glyph is a PROPERTY, not a literal: it states the direction the
-    # grid is actually running (arrow-down descending, arrow-up ascending, and
-    # only Shuffle keeps the generic up-and-down pair, having no direction).
-    # MainWindow._browse_sort_glyph writes it -- and it is the only thing on
-    # screen that can report a reverse toggle, which leaves the label alone.
-    sort_item, sort_focused = fragments.browse_pill(
-        6110, icon="$INFO[ListItem.Property(sort_glyph)]",
-        label_prefix="", label_property="sort_label", always_active=True,
-    )
-    # Filter needs the whole column either way: it names up to three axes at
-    # once. MainWindow._browse_filter_label writes the entire line, including
-    # the bare word "Filter" when nothing is set (which is what the real app
-    # shows there permanently). See _pill_label.
-    filter_item, filter_focused = fragments.browse_pill(
-        6120, icon="&#xE460;",
-        label_prefix="", label_property="filter_label",
-    )
-    # Genre joins the other two: no prefix, and MainWindow._browse_genre_label
-    # writes the bare word "Genre" when nothing is picked, the genre's own
-    # name when something is.
-    genre_item, genre_focused = fragments.browse_pill(
-        6100, icon="&#xE17F;",
-        label_prefix="", label_property="genre_label",
-    )
-
-    # View: first in the row on a library, naming the view on screen (the
-    # library's own kind, or Folders); MainWindow shifts Sort/Filter/Genre
-    # one slot right to make room, and hides them in the folder view.
-    folders_item, folders_focused = fragments.browse_pill(
-        6130, icon="$INFO[ListItem.Property(view_glyph)]",
-        label_prefix="", label_property="view_label",
-    )
+    # Browse (app 2.0): the landing's tiles, the view's two header pills and
+    # its chip row. Chip words and widths are MainWindow's (_browse_sync_chips).
+    tile_item, tile_focused = fragments.browse_tile(6020)
+    folders_item, folders_focused = fragments.browse_header_pill(
+        6130, glyph="$INFO[ListItem.Property(view_glyph)]",
+        label="$INFO[ListItem.Property(view_label)]", width=T.BROWSE_FOLDERS_W)
+    surprise_item, surprise_focused = fragments.browse_header_pill(
+        6140, glyph=f"&#x{icon_glyphs.DICE_5:04X};", label="Surprise me",
+        width=T.BROWSE_SURPRISE_W)
+    chip_indent = "                    "
+    sort_chip = fragments.browse_chip(6110, indent=chip_indent)
+    unwatched_chip = fragments.browse_chip(6115, indent=chip_indent)
+    filter_chip = fragments.browse_chip(6120, indent=chip_indent)
+    genre_chips = "\n".join(fragments.browse_chip(6151 + i, indent=chip_indent)
+                            for i in range(T.BROWSE_GENRE_CHIPS))
 
     alpha_item, alpha_focused = fragments.alpha_rail_pill(6220)
 
@@ -203,19 +175,8 @@ def render_main() -> str:
         glyph=f"&#x{icon_glyphs.FOLDER:04X};",
         title="$INFO[Window.Property(browse_folder_title)]",
         message="$INFO[Window.Property(browse_folder_message)]",
-        posx=440, width=1432, indent="            ",
+        posx=T.BROWSE_LEFT, width=T.BROWSE_GRID_W, indent="            ",
     )
-    collection_back = fragments.glass_pill(
-        # height 58, not an invented 56: glass_pill() builds its texture
-        # name from the height, and capsule-h56.png does not exist, so the
-        # pill rendered as bare text with no glass behind it.
-        6260, group_id=6261, x=1526, width=346, height=64, ondown=6200, onleft=6100,
-        visible=("!String.IsEmpty(Window.Property(browse_heading))"
-                 " + String.IsEmpty(Window.Property(browse_folders))"),
-        label_xml=fragments.action_pill_content(
-            346, "All Collections", "&#xE06E;", height=64),
-    )
-
     # ------------------------------------------------------------ settings
     # 8110, 8115 and 8120 are separate one-item lists sharing one layout: the
     # fragment gates its focus ring on Control.HasFocus(list_id), so the id
@@ -481,7 +442,6 @@ def render_main() -> str:
             texture="qr-account.png",
             caption_property="settings_qr_caption",
         ),
-        collection_back=collection_back,
         folder_state=folder_state,
         collection_item=collection_item,
         collection_focused=collection_focused,
@@ -494,21 +454,19 @@ def render_main() -> str:
         search_actor_focused=search_actor_focused,
         grid_item=grid_item,
         grid_focused=grid_focused,
-        sidebar_item=sidebar_item,
-        sidebar_focused=sidebar_focused,
-        sidebar_lib_item=sidebar_lib_item,
-        sidebar_lib_focused=sidebar_lib_focused,
-        sort_item=sort_item,
-        sort_focused=sort_focused,
-        filter_item=filter_item,
-        filter_focused=filter_focused,
+        tile_item=tile_item,
+        tile_focused=tile_focused,
+        surprise_item=surprise_item,
+        surprise_focused=surprise_focused,
+        sort_chip=sort_chip,
+        unwatched_chip=unwatched_chip,
+        filter_chip=filter_chip,
+        genre_chips=genre_chips,
         # No quality_* pair: the Quality pill went when its axis moved into
         # the Filter dialog, and the template stopped naming it then. The
         # fragment was still being built and passed for nothing.
-        genre_item=genre_item,
         folders_item=folders_item,
         folders_focused=folders_focused,
-        genre_focused=genre_focused,
         alpha_item=alpha_item,
         alpha_focused=alpha_focused,
         top_result_item=top_result_item,

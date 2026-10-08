@@ -340,14 +340,14 @@
         </control>
 
         <!-- ============================================================
-             BROWSE SECTION (control ids 6000-6299)
+             BROWSE SECTION (control ids 6000-6299). App 2.0: a landing of
+             tiles, each opening a full-width view (browse_view) that hides
+             the top bar.
              ============================================================ -->
         <control type="group" id="3900">
             <posx>0</posx>
             <posy>0</posy>
             <visible>String.IsEqual(Window.Property(active_section),browse)</visible>
-
-            <!-- flat canvas wash so the grid reads on #030b10 -->
             <control type="image">
                 <posx>0</posx>
                 <posy>0</posy>
@@ -357,306 +357,204 @@
                 <texture>white-square.png</texture>
             </control>
 
-            <!-- Top nav bar scrim -->
-            <control type="image">
-                <posx>0</posx>
-                <posy>0</posy>
-                <width>{SCREEN_W}</width>
-                <height>{SCRIM_H}</height>
-                <colordiffuse>{SCRIM_TOP}</colordiffuse>
-                <texture>fade-top.png</texture>
-            </control>
-
-            <!-- Sidebar: eyebrow + glass rows. Two separate list controls
-                 (fixed sources 6000, per-library rows 6010) with a real
-                 empty gap between them plus a hairline divider: Kodi's
-                 <list> control can't vary itemheight per item, so a real
-                 gap needs a second list rather than a per-item property
-                 on one shared list. -->
-            <control type="label">
-                <posx>70</posx>
-                <posy>190</posy>
-                <width>268</width>
-                <height>24</height>
-                <font>tofa_font_eyebrow</font>
-                <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                <label>LIBRARY</label>
-            </control>
-
-            <control type="list" id="6000">
-                <posx>68</posx>
-                <posy>222</posy>
-                <width>300</width>
-                <height>240</height>
-                <onup>3000</onup>
-                <onleft>6000</onleft>
-                <!-- Right jumps straight to the grid, not the filter row:
-                     the filter row can be hidden, and Kodi can't focus an
-                     invisible control. Still reachable via Down from the
-                     nav bar or Up from the grid. -->
-                <onright>6200</onright>
-                <ondown>6010</ondown>
-                <orientation>vertical</orientation>
-                <itemwidth>300</itemwidth>
-                <itemheight>60</itemheight>
-{sidebar_item}
-
-{sidebar_focused}
-            </control>
-
-            <!-- Static divider; the real gap comes from the two list
-                 controls' own posy, not from this line. -->
-            <control type="image">
-                <posx>84</posx>
-                <posy>476</posy>
-                <width>268</width>
-                <height>1</height>
-                <colordiffuse>{SURFACE_RAISED}</colordiffuse>
-                <texture>white-square.png</texture>
-            </control>
-
-            <control type="list" id="6010">
-                <posx>68</posx>
-                <posy>491</posy>
-                <width>300</width>
-                <height>560</height>
-                <onup>6000</onup>
-                <onleft>6010</onleft>
-                <onright>6200</onright>
-                <ondown>6010</ondown>
-                <orientation>vertical</orientation>
-                <itemwidth>300</itemwidth>
-                <itemheight>60</itemheight>
-{sidebar_lib_item}
-
-{sidebar_lib_focused}
-            </control>
-
-            <!-- Collection drill-down heading. The real app keeps the
-                 viewer INSIDE Browse when a collection is opened: same
-                 sidebar, same grid, plus a title above the toolbar and a
-                 way back to the collection list. Both are hidden until a
-                 collection is open. -->
-            <control type="label" id="6250">
-                <visible>!String.IsEmpty(Window.Property(browse_heading))</visible>
-                <posx>440</posx>
-                <!-- MEASURED off the real app's own collection screen: its
-                     heading ink is 29 tall and sits at y=197, where
-                     tofa_font_heading (57) gave us 46 and read far too big.
-                     section_title is the closest tier and is literally the
-                     section-header font, which is what this is. posy is
-                     back-solved from the ink top, since a Kodi label's box
-                     sits above the cap by the font's own ascender slack. -->
-                <posy>184</posy>
-                <width>1400</width>
-                <height>52</height>
-                <font>tofa_font_section_title</font>
-                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <label>$INFO[Window.Property(browse_heading)]</label>
-            </control>
-
-            <!-- glass_pill() emits a group with an x but no y; its vertical
-                 position comes from whatever encloses it, exactly as the
-                 Detail action row does. Sits between the heading and the
-                 grid at 299. -->
-            <!-- On the HEADING's row, not a row of its own. Both reference
-                 apps fit the title and one control row; their back pill
-                 sits inline with Sort, which our four full-width buttons
-                 leave no space for. Putting it beside the title costs no
-                 extra row, so the grid still starts where theirs does. -->
-            <!-- The fourth toolbar slot, freed by folding Quality into the
-                 Filter dialog. Both reference apps put every control on one
-                 row; ours could not until that button went away. -->
+            <!-- LANDING: the focused tile's art above the tiles. -->
             <control type="group">
-                <posy>261</posy>
-{collection_back}
+                <visible>String.IsEmpty(Window.Property(browse_view))</visible>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>{SCREEN_W}</width>
+                    <height>{BROWSE_BACKDROP_H}</height>
+                    <aspectratio>scale</aspectratio>
+                    <fadetime>300</fadetime>
+                    <texture background="true">$INFO[Window.Property(browse_backdrop)]</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>{SCREEN_W}</width>
+                    <height>{BROWSE_BACKDROP_H}</height>
+                    <colordiffuse>0x8C030B10</colordiffuse>
+                    <texture>white-square.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>{BROWSE_BACKDROP_FADE_Y}</posy>
+                    <width>{SCREEN_W}</width>
+                    <height>{BROWSE_BACKDROP_FADE_H}</height>
+                    <colordiffuse>{CANVAS}</colordiffuse>
+                    <texture>fade-bottom.png</texture>
+                </control>
+                <control type="image">
+                    <posx>0</posx>
+                    <posy>0</posy>
+                    <width>{SCREEN_W}</width>
+                    <height>{SCRIM_H}</height>
+                    <colordiffuse>{SCRIM_TOP}</colordiffuse>
+                    <texture>fade-top.png</texture>
+                </control>
+                <control type="panel" id="6020">
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_TILES_Y}</posy>
+                    <width>{BROWSE_TILES_W}</width>
+                    <height>{BROWSE_TILES_H}</height>
+                    <onup>3000</onup>
+                    <onleft>6020</onleft>
+                    <onright>6020</onright>
+                    <ondown>6020</ondown>
+                    <orientation>vertical</orientation>
+                    <itemwidth>{BROWSE_TILE_PITCH_X}</itemwidth>
+                    <itemheight>{BROWSE_TILE_PITCH_Y}</itemheight>
+                    <scrolltime>{SCROLLTIME}</scrolltime>
+{tile_item}
+{tile_focused}
+                </control>
             </control>
+
+            <!-- A TILE'S VIEW: title row, chips, grid and A-Z rail. -->
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(browse_view))</visible>
+                <control type="label" id="6250">
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_HEAD_Y}</posy>
+                    <width>1000</width>
+                    <height>{BROWSE_HEAD_H}</height>
+                    <aligny>center</aligny>
+                    <font>{FONT_BROWSE_TITLE}</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(browse_title)]</label>
+                </control>
+                <control type="label" id="6251">
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_HEAD_Y}</posy>
+                    <width>300</width>
+                    <height>{BROWSE_HEAD_H}</height>
+                    <aligny>center</aligny>
+                    <font>{FONT_METADATA}</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>$INFO[Window.Property(browse_count)]</label>
+                </control>
+                <control type="list" id="6130">
+                    <visible>!String.IsEmpty(Window.Property(browse_folders_offered))</visible>
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_HEAD_Y}</posy>
+                    <width>{BROWSE_FOLDERS_W}</width>
+                    <height>{BROWSE_CHIP_H}</height>
+                    <onleft>6130</onleft>
+                    <onright>6140</onright>
+                    <onup>6130</onup>
+                    <ondown>6110</ondown>
+                    <orientation>horizontal</orientation>
+                    <itemwidth>{BROWSE_FOLDERS_W}</itemwidth>
+                    <itemheight>{BROWSE_CHIP_H}</itemheight>
+{folders_item}
+{folders_focused}
+                </control>
+                <control type="image" id="6132">
+                    <visible>!String.IsEmpty(Window.Property(browse_folders_offered))</visible>
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_DIVIDER_Y}</posy>
+                    <width>1</width>
+                    <height>{BROWSE_DIVIDER_H}</height>
+                    <colordiffuse>{DISCOVER_DIVIDER}</colordiffuse>
+                    <texture>white-square.png</texture>
+                </control>
+                <control type="list" id="6140">
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_HEAD_Y}</posy>
+                    <width>{BROWSE_SURPRISE_W}</width>
+                    <height>{BROWSE_CHIP_H}</height>
+                    <onleft>6130</onleft>
+                    <onright>6140</onright>
+                    <onup>6140</onup>
+                    <ondown>6110</ondown>
+                    <orientation>horizontal</orientation>
+                    <itemwidth>{BROWSE_SURPRISE_W}</itemwidth>
+                    <itemheight>{BROWSE_CHIP_H}</itemheight>
+{surprise_item}
+{surprise_focused}
+                </control>
+
+                <!-- One row, laid out by Kodi: a grouplist sizes nothing itself,
+                     so MainWindow sets each chip's words and width. -->
+                <control type="grouplist" id="6150">
+                    <visible>!String.IsEmpty(Window.Property(browse_filterbar))</visible>
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_CHIPS_Y}</posy>
+                    <width>{BROWSE_CHIPS_W}</width>
+                    <height>{BROWSE_CHIP_H}</height>
+                    <orientation>horizontal</orientation>
+                    <itemgap>{BROWSE_CHIP_GAP}</itemgap>
+                    <usecontrolcoords>true</usecontrolcoords>
+                    <scrolltime>{SCROLLTIME}</scrolltime>
+                    <onup>6140</onup>
+                    <ondown>6200</ondown>
+{sort_chip}
+{unwatched_chip}
+{filter_chip}
+                    <control type="button" id="6116">
+                        <posy>{BROWSE_CHIP_DIVIDER_Y}</posy>
+                        <width>{BROWSE_CHIP_DIVIDER_W}</width>
+                        <height>{BROWSE_DIVIDER_H}</height>
+                        <enable>false</enable>
+                        <texturenofocus border="0,0,0,0" colordiffuse="{DISCOVER_DIVIDER}">browse-divider.png</texturenofocus>
+                        <texturefocus border="0,0,0,0" colordiffuse="{DISCOVER_DIVIDER}">browse-divider.png</texturefocus>
+                        <label></label>
+                    </control>
+{genre_chips}
+                </control>
 
 {folder_state}
-
-            <!-- Sort/Filter/Quality/Genre: 4 evenly-spaced wide buttons
-                 spanning the full row width, each showing its current
-                 value via a *_label ListItem property kept in sync by
-                 main.py. Single-item lists, not plain buttons, for the
-                 focus-ring + controlID-for-onClick behavior that needs. -->
-            <control type="list" id="6110">
-                <visible>!String.IsEmpty(Window.Property(browse_filterbar))</visible>
-                <posx>440</posx>
-                <posy>190</posy>
-                <width>346</width>
-                <height>62</height>
-                <onup>3000</onup>
-                <onleft>6000</onleft>
-                <onright>6120</onright>
-                <ondown>6200</ondown>
-                <orientation>horizontal</orientation>
-                <itemwidth>346</itemwidth>
-                <itemheight>62</itemheight>
-{sort_item}
-
-{sort_focused}
-            </control>
-
-            <!-- Filter: accent-filled when a non-default Watch Status/Year
-                 is active (ListItem property "active", set in
-                 _browse_filter_clicked()), glass otherwise. -->
-            <control type="list" id="6120">
-                <visible>!String.IsEmpty(Window.Property(browse_filterbar))</visible>
-                <posx>802</posx>
-                <posy>190</posy>
-                <width>346</width>
-                <height>62</height>
-                <onup>3000</onup>
-                <onleft>6110</onleft>
-                <onright>6100</onright>
-                <ondown>6200</ondown>
-                <orientation>horizontal</orientation>
-                <itemwidth>346</itemwidth>
-                <itemheight>62</itemheight>
-{filter_item}
-
-{filter_focused}
-            </control>
-
-            <!-- Quality: accent-filled when a non-"Any" value is active
-                 (ListItem property "active", set in
-                 _browse_quality_clicked()), glass otherwise. -->
-            <control type="list" id="6100">
-                <visible>!String.IsEmpty(Window.Property(browse_filterbar))</visible>
-                <posx>1164</posx>
-                <posy>190</posy>
-                <width>346</width>
-                <height>62</height>
-                <onup>3000</onup>
-                <onleft>6120</onleft>
-                <onright>6100</onright>
-                <ondown>6200</ondown>
-                <orientation>horizontal</orientation>
-                <itemwidth>346</itemwidth>
-                <itemheight>62</itemheight>
-{genre_item}
-
-{genre_focused}
-            </control>
-
-            <!-- View: on library sources only, always the first slot. main.py
-                 sets every toolbar pill's x and left/right at runtime. -->
-            <control type="list" id="6130">
-                <visible>!String.IsEmpty(Window.Property(browse_folders_offered))</visible>
-                <posx>440</posx>
-                <posy>190</posy>
-                <width>346</width>
-                <height>62</height>
-                <onup>3000</onup>
-                <onleft>6100</onleft>
-                <onright>6130</onright>
-                <ondown>6200</ondown>
-                <orientation>horizontal</orientation>
-                <itemwidth>346</itemwidth>
-                <itemheight>62</itemheight>
-{folders_item}
-
-{folders_focused}
-            </control>
-
-            <!-- Main 5-column poster grid. -->
-            <!-- 7.5's collections index is a LANDSCAPE grid, so it cannot
-                 share the poster panel: a Kodi panel has one itemwidth and
-                 one itemheight. Two panels, one visible at a time. -->
-            <!-- Pulled back by GLOW_PAD on both axes, and grown by the same
-                 on the height, because collection_card()'s content group is
-                 offset by GLOW_PAD inside its cell so the focus halo has
-                 somewhere to bleed (a panel clips each item to its cell, and
-                 all of this cell's slack is on its right and bottom). Net
-                 effect on the grid is zero: the first tile still lands on
-                 440,299 and the pitch is COLLECTION_CELL_W/H either way. -->
+            <!-- Collections: wide cards, three across; titles: the poster grid. -->
             <control type="panel" id="6210">
                 <visible>!String.IsEmpty(Window.Property(browse_collections))</visible>
-                <posx>430</posx>
-                <posy>289</posy>
+                <posx>{BROWSE_COLLECTIONS_X}</posx>
+                <posy>{BROWSE_GRID_Y}</posy>
                 <width>{COLLECTION_GRID_W}</width>
-                <height>791</height>
-                <onleft>6000</onleft>
-                <onup>6100</onup>
+                <height>{BROWSE_GRID_H}</height>
+                <onleft>6210</onleft>
+                <onup>6140</onup>
                 <orientation>vertical</orientation>
                 <itemwidth>{COLLECTION_CELL_W}</itemwidth>
                 <itemheight>{COLLECTION_CELL_H}</itemheight>
                 <scrolltime>{SCROLLTIME}</scrolltime>
-
 {collection_item}
-
 {collection_focused}
             </control>
-
             <control type="panel" id="6200">
                 <visible>String.IsEmpty(Window.Property(browse_collections))</visible>
-                <!-- Shifted left by HPAD, not sat at 440: poster_card()
-                     insets the poster art HPAD within its own cell, so this
-                     brings the visible poster art back in line with the nav
-                     bar/Sort pill's shared 440 edge. Both derived, so the
-                     grid follows CELL_W instead of silently going out of
-                     register when the card changes width. -->
                 <posx>{BROWSE_GRID_X}</posx>
-                <posy>299</posy>
+                <posy>{BROWSE_GRID_Y}</posy>
                 <width>{BROWSE_GRID_W}</width>
-                <height>781</height>
-                <!-- onup targets the whole panel regardless of which
-                     column is focused; 6110 (Sort) is the row's leftmost
-                     control. -->
+                <height>{BROWSE_GRID_H}</height>
                 <onup>6110</onup>
-                <onleft>6000</onleft>
-                <!-- Right off the LAST column reaches the A-Z rail; inside a
-                     row Kodi moves the cursor and never consults this. Same
-                     way the Android app is reached, measured on the box.
-
-                     RE-AIMED at runtime by _browse_fill_alpha_rail(): the
-                     rail is not on every source, and a static onright cannot
-                     know that, so on a library without one this would point
-                     Right at a hidden control. -->
+                <onleft>6200</onleft>
                 <onright>6220</onright>
                 <ondown>6200</ondown>
                 <orientation>vertical</orientation>
-                <itemwidth>{CELL_W}</itemwidth>
-                <!-- Not shifted by -HPAD like Home/Discover/Search: this
-                     5-column grid sits flush against the sidebar
-                     (itemwidth*5 == panel width exactly), so shifting it
-                     left to align the first column would crowd it. -->
+                <itemwidth>{BROWSE_CELL_W}</itemwidth>
                 <itemheight>{BROWSE_CELL_H}</itemheight>
                 <scrolltime>{SCROLLTIME}</scrolltime>
 {grid_item}
-
 {grid_focused}
             </control>
-
-            <!-- A-Z filter rail, down the right margin. "All" first, "#"
-                 last, which is both the Android app's order and the
-                 server's own bucket name (/api/v1/media?letter=#).
-
-                 Shown only where it earns its place, which is the window's
-                 call, not the skin's: see _browse_alpha_wanted(). That
-                 subsumes the collections case; a collection is a set, and
-                 the letter filter applies to titles.
-
-                 onright is deliberately absent so build.py's _stop_wraps
-                 fills it: this is the rightmost control on the screen. -->
             <control type="list" id="6220">
                 <visible>String.IsEqual(Window.Property(browse_alpha),1)</visible>
                 <posx>{ALPHA_RAIL_X}</posx>
                 <posy>{ALPHA_RAIL_Y}</posy>
                 <width>{ALPHA_PILL_W}</width>
                 <height>{ALPHA_RAIL_H}</height>
-                <onup>6100</onup>
+                <onup>6110</onup>
                 <onleft>6200</onleft>
                 <orientation>vertical</orientation>
                 <itemwidth>{ALPHA_PILL_W}</itemwidth>
                 <itemheight>{ALPHA_PITCH}</itemheight>
                 <scrolltime>{SCROLLTIME}</scrolltime>
 {alpha_item}
-
 {alpha_focused}
             </control>
+            </control>
         </control>
-
         <!-- ============================================================
              DISCOVER SECTION (control ids 6300-6699). Row-title
              properties are discover_rowN_title, not rowN_title, since
@@ -2320,6 +2218,9 @@
         <!-- Shared chrome, rendered last so it paints on top of whichever
              section's own content is visible: Kodi draws controls in
              document order, and every section's content is full-bleed. -->
+        <!-- Gone while a Browse view is open (nav_hidden), as in app 2.0. -->
+        <control type="group">
+            <visible>String.IsEmpty(Window.Property(nav_hidden))</visible>
 {logo_block}
 
 {nav_bar}
@@ -2410,6 +2311,7 @@
             {NAV_COLLAPSE_FADE}
         </control>
 {nav_avatar_button}
+        </control>
 
         <!-- Covers this window while a profile switch tears it down.
              LAST in the file, so it is over everything.

@@ -45,7 +45,7 @@ class FakeWindow:
     _browse_folder_up = MainWindow._browse_folder_up
     _browse_folder_root = MainWindow._browse_folder_root
     _FOLDER_TRAIL_CHARS = MainWindow._FOLDER_TRAIL_CHARS
-    NAV_LIST_ID, SIDEBAR_ID, SIDEBAR_LIBRARY_ID, GRID_ID = 3000, 6000, 6010, 6200
+    NAV_LIST_ID, TILES_ID, GRID_ID = 3000, 6020, 6200
 
     def __init__(self, src, caps=("library.folders",)):
         self.src, self._server_capabilities = src, set(caps)
@@ -116,8 +116,8 @@ def main():
     check("...and lands on the folder we came out of", w.restored[-1], ("", 5))
     check("at the top, Back is Browse's own again", w._browse_folder_up(), False)
     w._browse_folder_path["v"] = "Samples"
-    w.focus = w.SIDEBAR_ID
-    check("Back from the sidebar leaves the folder alone", w._browse_folder_up(), False)
+    w.focus = w.TILES_ID
+    check("Back from the tiles leaves the folder alone", w._browse_folder_up(), False)
     w._browse_folder_path["v"] = "Samples/8K Association"
     check("Select on the library row goes to its folder root",
           (w._browse_folder_root(), w.loads[-1]), (True, ""))

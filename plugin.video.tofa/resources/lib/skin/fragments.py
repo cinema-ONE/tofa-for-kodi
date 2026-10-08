@@ -258,6 +258,9 @@ POSTER_STD = PosterSize(T.POSTER_W, T.POSTER_H,
 POSTER_COMPACT = PosterSize(T.DETAIL_P2_POSTER_W, T.DETAIL_P2_POSTER_H,
                             "top-result-mask.png", "top-result-border.png",
                             "top-result-glow.png")
+# Browse's grid (app 2.0): seven columns of 212x318.
+POSTER_GRID = PosterSize(T.GRID_POSTER_W, T.GRID_POSTER_H, "grid-poster-mask.png",
+                         "grid-poster-border.png", "grid-poster-glow.png")
 
 
 def poster_cell(size: PosterSize = POSTER_STD) -> tuple[int, int]:
@@ -2004,560 +2007,214 @@ def glass_pill(
                         </control>"""
 
 
-def _pill_label(label_prefix: str, label_property: str) -> str:
-    """A Browse pill's text: "Genre: Action", or the bare value.
-
-    An EMPTY prefix hands the whole line to the window, and the 71px the
-    word would have taken with it. Sort and Filter both take that deal now;
-    Genre is the only pill still carrying a prefix, because its own values
-    are bare nouns and "All" alone would not say what it was all of.
-
-    The measurement behind it, off the shipped font (inter_tight_semibold
-    26) against the 248px the label column actually has:
-
-        Filter: Unwatched                 207px   fits
-        Filter: Unwatched, 2020s          296px   Kodi cuts it to
-                                                  "Filter: In Progress, ..."
-        Unwatched, 2020s                  225px   fits whole
-
-    -- which is why a Browse filtered on two axes could only ever show the
-    first one. Nothing is lost by dropping the word: each pill keeps its own
-    glyph, and an active filter keeps the accent fill that says so. The
-    window puts the bare word "Filter" back when there is nothing to name.
-    """
-    value = f"$INFO[ListItem.Property({label_property})]"
-    return f"{label_prefix}: {value}" if label_prefix else value
-
-
-def browse_pill(
-    list_id: int,
-    *,
-    icon: str,
-    label_prefix: str,
-    label_property: str,
-    always_active: bool = False,
-) -> tuple[str, str]:
-    """Returns (itemlayout_xml, focusedlayout_xml) for one of Browse's 4
-    single-item pill lists (Sort/Filter/Quality/Genre, ids 6110/6120/
-    6130/6100).
-
-    `always_active=True` (Sort only) skips the ListItem.Property(active)
-    branching entirely: Sort has no inactive state, it always shows
-    accent-tinted text on an accent-tinted glass fill, only the outline
-    responds to focus. `always_active=False` (Filter/Quality/Genre)
-    renders the full active&times;focused 2&times;2 state matrix: inactive
-    glass (SURFACE_REST idle / SURFACE_RAISED focused-outline-only) vs. active
-    accent-tinted glass (accent_pill_fill fill in both idle and focused
-    states, outline swaps white<->accent_color on focus), same "Kodi
-    always renders focusedlayout for the CURRENT item" gating sidebar_row()
-    also needs.
-
-    Position and navigation aren't parameters either: posx/onleft/onright
-    live on the wrapping <control type="list"> in main.xml.tpl, and all 4
-    callers share <onup>3000</onup> (nav) / <ondown>6200</ondown> (grid)."""
-    W, H = 346, 62
-
-    if always_active:
-        item = f"""                <itemlayout width="{W}" height="{H}">
-                    <control type="image">
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                        <texture border="29">capsule-h58.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>16</posx>
-                        <posy>15</posy>
-                        <width>28</width>
-                        <height>28</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_24</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{icon}</label>
-                    </control>
-                    <control type="label">
-                        <posx>50</posx>
-                        <width>248</width>
-                        <height>58</height>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{_pill_label(label_prefix, label_property)}</label>
-                    </control>
-                    <control type="label">
-                        <posx>312</posx>
-                        <posy>18</posy>
-                        <width>24</width>
-                        <height>24</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_19</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>&#xE211;</label>
-                    </control>
-                </itemlayout>"""
-        focused = f"""                <focusedlayout width="{W}" height="{H}">
-                    <control type="image">
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                        <texture border="29">capsule-h58.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>white</colordiffuse>
-                        <texture border="29">capsule-h58-outline.png</texture>
-                    </control>
-                    <control type="label">
-                        <posx>16</posx>
-                        <posy>15</posy>
-                        <width>28</width>
-                        <height>28</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_24</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{icon}</label>
-                    </control>
-                    <control type="label">
-                        <posx>50</posx>
-                        <width>248</width>
-                        <height>58</height>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{_pill_label(label_prefix, label_property)}</label>
-                    </control>
-                    <control type="label">
-                        <posx>312</posx>
-                        <posy>18</posy>
-                        <width>24</width>
-                        <height>24</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_19</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>&#xE211;</label>
-                    </control>
-                </focusedlayout>"""
-        return item, focused
-
-    # active/inactive x focused/unfocused 2x2 matrix (Filter/Quality/Genre)
-    label = _pill_label(label_prefix, label_property)
-    item = f"""                <itemlayout width="{W}" height="{H}">
-                    <control type="image">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>{T.SURFACE_REST}</colordiffuse>
-                        <texture border="29">capsule-h58.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                        <texture border="29">capsule-h58.png</texture>
-                    </control>
-                    <control type="label">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>16</posx>
-                        <posy>15</posy>
-                        <width>28</width>
-                        <height>28</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_24</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>{icon}</label>
-                    </control>
-                    <control type="label">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>16</posx>
-                        <posy>15</posy>
-                        <width>28</width>
-                        <height>28</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_24</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{icon}</label>
-                    </control>
-                    <control type="label">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>50</posx>
-                        <width>248</width>
-                        <height>58</height>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>{label}</label>
-                    </control>
-                    <control type="label">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>50</posx>
-                        <width>248</width>
-                        <height>58</height>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{label}</label>
-                    </control>
-                    <control type="label">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>312</posx>
-                        <posy>18</posy>
-                        <width>24</width>
-                        <height>24</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_19</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE211;</label>
-                    </control>
-                    <control type="label">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>312</posx>
-                        <posy>18</posy>
-                        <width>24</width>
-                        <height>24</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_19</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>&#xE211;</label>
-                    </control>
-                </itemlayout>"""
-    focused = f"""                <focusedlayout width="{W}" height="{H}">
-                    <control type="image">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>{T.SURFACE_RAISED}</colordiffuse>
-                        <texture border="29">capsule-h58.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                        <texture border="29">capsule-h58.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id}) + !String.IsEqual(ListItem.Property(active),1)</visible>
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="29">capsule-h58-outline.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id}) + String.IsEqual(ListItem.Property(active),1)</visible>
-                        <width>{W}</width>
-                        <height>58</height>
-                        <colordiffuse>white</colordiffuse>
-                        <texture border="29">capsule-h58-outline.png</texture>
-                    </control>
-                    <control type="label">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>16</posx>
-                        <posy>15</posy>
-                        <width>28</width>
-                        <height>28</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_24</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>{icon}</label>
-                    </control>
-                    <control type="label">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>16</posx>
-                        <posy>15</posy>
-                        <width>28</width>
-                        <height>28</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_24</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{icon}</label>
-                    </control>
-                    <control type="label">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>50</posx>
-                        <width>248</width>
-                        <height>58</height>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>{label}</label>
-                    </control>
-                    <control type="label">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>50</posx>
-                        <width>248</width>
-                        <height>58</height>
-                        <aligny>center</aligny>
-                        <font>tofa_font_row_title</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>{label}</label>
-                    </control>
-                    <control type="label">
-                        <visible>!String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>312</posx>
-                        <posy>18</posy>
-                        <width>24</width>
-                        <height>24</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_19</font>
-                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                        <label>&#xE211;</label>
-                    </control>
-                    <control type="label">
-                        <visible>String.IsEqual(ListItem.Property(active),1)</visible>
-                        <posx>312</posx>
-                        <posy>18</posy>
-                        <width>24</width>
-                        <height>24</height>
-                        <align>center</align>
-                        <aligny>center</aligny>
-                        <font>tofa_font_icons_19</font>
-                        <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                        <label>&#xE211;</label>
-                    </control>
-                </focusedlayout>"""
-    return item, focused
-
-
-def sidebar_row(list_id: int, *, width: int = 300) -> tuple[str, str]:
-    """Returns (itemlayout_xml, focusedlayout_xml) for a Browse sidebar
-    row: Browse's fixed-sources sidebar (id 6000) and per-library sidebar
-    (id 6010, same itemlayout, only the list-level wiring differs).
-
-    Styled to match the Settings sidebar (settings_nav_row) rather than the
-    Apple TV app's own Browse rail, by explicit request 2026-08-03: two rails
-    that sit in the same place across two sections should not use two
-    different active treatments. What that changed here -- the app's Browse
-    rail marks its active row with a raised wash plus a 3px accent bar and
-    accent text, which is what this used to draw:
-
-      * active row is now a SOLID accent fill with on-accent text, as
-        Settings' is; the left bar is gone, redundant against a filled row.
-      * focus adds the same neutral white rim, for the same reason it is not
-        accent there (FOCUS_RIM_NEUTRAL: an accent rim on an accent fill
-        cannot be seen).
-      * the fill uses rounded-14 rather than white-square-rounded, whose real
-        radius is ~4px whatever border it is sliced at
-        (project_corner_radius_consolidation) -- so these rows were barely
-        rounded while Settings' were properly so.
-
-    Geometry is deliberately NOT copied over: these rows are single-line with
-    a trailing count, in a 300px rail beside a poster grid, where Settings'
-    are two-line with a chevron in a 420px one. Only the state machine and
-    the surface treatment are shared.
-
-    ACTIVE is not the same as selected here, unlike in Settings. Browse has
-    TWO sidebar lists, so the row whose content is on screen can live in the
-    list that does not hold the cursor -- which is why both layouts carry
-    both states rather than letting focusedlayout stand in for "active".
-
-    Detail's season sidebar (id 6400) is NOT a caller of this: its
-    itemlayout has real structural differences beyond a size/icon
-    parameter (unfocused state collapses to a single always-on SURFACE_RAISED
-    fill with no separate dimmer inactive shade, and a single count label
-    with no active/inactive color split), so it stays hand-typed in
-    detail.xml.tpl rather than forcing a different state machine through
-    this fragment."""
-    H = 60
-    label_w = width - 60 - 70
-
-    def _state(active: bool, focused: bool = False) -> str:
-        """One complete row in one state. Every accented layer is drawn once
-        per state rather than conditionally recoloured within one control.
-
-        A library name can outrun a 300px rail ("Movies (Deutsch)"), so the
-        label marquees -- but ONLY while the list really holds focus, which is
-        why it is drawn twice with complementary gates rather than once with
-        <scroll>. focusedlayout renders for the ACTIVE row even when the
-        cursor is off in the grid, and a rail that scrolls its own text
-        forever in the background is exactly the "panel that never sits still"
-        the options panel avoided."""
-        gate = "" if active else "!"
-        fill = ("$INFO[Window.Property(accent_color)]" if active
-                else T.SURFACE_FAINT)
-        text = ("$INFO[Window.Property(on_accent_color)]" if active
-                else "$INFO[Window.Property(text_primary)]")
-        count = ("$INFO[Window.Property(on_accent_color)]" if active
-                 else "$INFO[Window.Property(text_tertiary)]")
-
-        def _label(visible: str, marquee: bool) -> str:
-            scroll = ("""
-                            <scroll>true</scroll>
-                            <scrollsuffix>   </scrollsuffix>""" if marquee else "")
-            gate_xml = f"""
-                            <visible>{visible}</visible>""" if visible else ""
-            return f"""
-                        <control type="label">{gate_xml}
-                            <posx>60</posx>
-                            <posy>2</posy>
-                            <width>{label_w}</width>
-                            <height>54</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_SIDEBAR}</font>
-                            <textcolor>{text}</textcolor>
-                            <label>$INFO[ListItem.Label]</label>{scroll}
-                        </control>"""
-
-        # One plain label unless this IS the focused layout, in which case a
-        # complementary pair: the marquee copy only exists where it can ever
-        # be visible, rather than being emitted everywhere and hidden.
-        if focused:
-            label_block = (_label(f"!Control.HasFocus({list_id})", False)
-                           + _label(f"Control.HasFocus({list_id})", True))
-        else:
-            label_block = _label("", False)
-        return f"""
-                    <control type="group">
-                        <visible>{gate}String.IsEqual(ListItem.Property(active),1)</visible>
-                        <control type="image">
-                            <posx>0</posx>
-                            <posy>2</posy>
-                            <width>{width}</width>
-                            <height>54</height>
-                            <colordiffuse>{fill}</colordiffuse>
-                            <texture border="14">rounded-14.png</texture>
-                        </control>
-                        <control type="label">
-                            <posx>18</posx>
-                            <posy>14</posy>
-                            <width>30</width>
-                            <height>30</height>
-                            <align>center</align>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ICON_26}</font>
-                            <textcolor>{text}</textcolor>
-                            <label>$INFO[ListItem.Property(icon_glyph)]</label>
-                        </control>
-{label_block}
-                        <control type="label">
-                            <posx>{width - 82}</posx>
-                            <posy>2</posy>
-                            <width>70</width>
-                            <height>54</height>
-                            <align>right</align>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>{count}</textcolor>
-                            <label>$INFO[ListItem.Property(count)]</label>
-                        </control>
-                    </control>"""
-
-    item = f"""                <itemlayout width="{width}" height="{H}">{_state(False)}{_state(True)}
-                </itemlayout>"""
-
-    focused = f"""                <focusedlayout width="{width}" height="{H}">{_state(False, focused=True)}{_state(True, focused=True)}
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>2</posy>
-                        <width>{width}</width>
-                        <height>54</height>
-                        <colordiffuse>{T.FOCUS_RIM_NEUTRAL}</colordiffuse>
-                        <texture border="14">rounded-14-outline.png</texture>
-                    </control>
-                </focusedlayout>"""
-    return item, focused
-
-
 def alpha_rail_pill(list_id: int) -> tuple[str, str]:
-    """Returns (itemlayout_xml, focusedlayout_xml) for one pill of Browse's
-    A-Z rail: "All", A..Z, then "#", down the right margin.
+    """One entry of Browse's A-Z rail (app 2.0): a small grey letter, "All"
+    first and "#" last. The chosen letter sits in a grey disc and the focused
+    one in the accent's. The layout is a whole pitch tall: a list steps by
+    its itemlayout's height, not by <itemheight>."""
+    W, D = T.ALPHA_PILL_W, T.ALPHA_PITCH
+    active = "String.IsEqual(ListItem.Property(active),1)"
 
-    Geometry is the Android TV app's, measured off
-    internal-docs/androidtv-reference/browse-alpha-rail.png -- 80x58 at
-    pitch 68. The Apple TV app has not shipped this screen, so Android is
-    the reference by Adrian's decision (2026-08-06) and the styling is
-    expected to be revisited when it does; nothing here is bespoke art.
-
-    The STATE MACHINE is sidebar_row()'s, not the Android app's, for the
-    reason recorded there: the app marks focus with an accent ring and
-    accent glyph, but every other rail in this UI uses a solid accent fill
-    for active and a neutral white rim for focus, and two rails on the same
-    screen must not disagree. It also keeps focus readable ON the active
-    pill, where an accent rim on an accent fill cannot be seen.
-
-    ACTIVE is not the same as selected, exactly as in sidebar_row: the
-    chosen letter stays filled while the cursor is off in the grid, so both
-    layouts carry both states."""
-    # The LAYOUT is a whole pitch tall; the capsule is H and sits centred in
-    # it. That gap is the fix for a real bug, not styling: `<itemheight>` is
-    # a PANEL container's property and a `type="list"` ignores it entirely,
-    # taking its step from the ITEMLAYOUT's own height instead. So the rail
-    # declared itemheight 68 with a 58-high layout and Kodi stepped 58 --
-    # measured on a live capture, "All" ending at y358 and "A" starting at
-    # y359, i.e. the pills touched and the 10px never reached the screen.
-    #
-    # Android draws pill 58 at pitch 68 with a clear 10px band between
-    # (measured off internal-docs/androidtv-reference/browse-alpha-rail.png
-    # and again live 2026-08-10). Making the layout the pitch is what
-    # actually produces that band here.
-    W, H = T.ALPHA_PILL_W, T.ALPHA_PILL_H
-    PITCH = T.ALPHA_PITCH
-    PAD = (PITCH - H) // 2
-
-    def _state(active: bool) -> str:
-        # Tested against the literal "1", the way browse_pill does, rather
-        # than String.IsEmpty: the first cut used IsEmpty with the negation
-        # the wrong way round and every pill came up accent-filled at once,
-        # which reads as "the whole alphabet is selected".
-        gate = "" if active else "!"
-        fill = ("$INFO[Window.Property(accent_color)]" if active
-                else T.SURFACE_FAINT)
-        text = ("$INFO[Window.Property(on_accent_color)]" if active
-                else "$INFO[Window.Property(text_primary)]")
+    def _disc(colour: str, vis: str) -> str:
         return f"""
-                    <control type="group">
-                        <visible>{gate}String.IsEqual(ListItem.Property(active),1)</visible>
-                        <control type="image">
-                            <posy>{PAD}</posy>
-                            <width>{W}</width>
-                            <height>{H}</height>
-                            <colordiffuse>{fill}</colordiffuse>
-                            <texture border="29">capsule-h{H}.png</texture>
-                        </control>
-                        <control type="label">
-                            <posy>{PAD}</posy>
-                            <width>{W}</width>
-                            <height>{H}</height>
-                            <align>center</align>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ROW_TITLE}</font>
-                            <textcolor>{text}</textcolor>
-                            <!-- The GLYPH, not the label: the label is what
-                                 a screen reader says ("F, 15 titles"), since
-                                 Kodi reads ListItem.Label and a count drawn
-                                 beside a 64px pill would be unreadable at
-                                 ten feet. See _browse_alpha_speech(). -->
-                            <label>$INFO[ListItem.Property(glyph)]</label>
-                        </control>
+                    <control type="image">
+                        <visible>{vis}</visible>
+                        <posx>{(W - D) // 2}</posx>
+                        <width>{D}</width>
+                        <height>{D}</height>
+                        <colordiffuse>{colour}</colordiffuse>
+                        <texture>circle.png</texture>
                     </control>"""
 
-    item = f"""                <itemlayout width="{W}" height="{PITCH}">{_state(False)}{_state(True)}
+    def _glyph(colour: str, vis: str) -> str:
+        return f"""
+                    <control type="label">
+                        <visible>{vis}</visible>
+                        <width>{W}</width>
+                        <height>{D}</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_MICRO}</font>
+                        <textcolor>{colour}</textcolor>
+                        <label>$INFO[ListItem.Property(glyph)]</label>
+                    </control>"""
+
+    rest = (_disc("0x4DFFFFFF", active)
+            + _glyph("$INFO[Window.Property(text_primary)]", active)
+            + _glyph("$INFO[Window.Property(text_secondary)]", "!" + active))
+    focus = f"Control.HasFocus({list_id})"
+    item = f"""                <itemlayout width="{W}" height="{D}">{rest}
                 </itemlayout>"""
-    focused = f"""                <focusedlayout width="{W}" height="{PITCH}">{_state(False)}{_state(True)}
+    focused = f"""                <focusedlayout width="{W}" height="{D}">
+                    <control type="group">
+                        <visible>!{focus}</visible>{rest}
+                    </control>{_disc("$INFO[Window.Property(accent_color)]", focus)}{_glyph(
+                        "$INFO[Window.Property(on_accent_color)]", focus)}
+                </focusedlayout>"""
+    return item, focused
+
+
+def browse_tile(list_id: int) -> tuple[str, str]:
+    """A tile of Browse's landing (app 2.0): art from the library under a
+    dark fade, the name and a count (or the last title watched). The focused
+    tile grows a little and takes an accent rim and glow."""
+    W, H = T.BROWSE_TILE_W, T.BROWSE_TILE_H
+    CW, CH = T.BROWSE_TILE_PITCH_X, T.BROWSE_TILE_PITCH_Y
+
+    def _tile(rim: str) -> str:
+        return f"""
                     <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posy>{PAD}</posy>
                         <width>{W}</width>
                         <height>{H}</height>
-                        <colordiffuse>{T.FOCUS_RIM_NEUTRAL}</colordiffuse>
-                        <texture border="29">capsule-h{H}-outline.png</texture>
+                        <colordiffuse>0xFF16222B</colordiffuse>
+                        <texture diffuse="browse-tile-mask.png">white-square.png</texture>
+                    </control>
+                    <control type="image">
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <aspectratio>scale</aspectratio>
+                        <texture diffuse="browse-tile-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                    </control>
+                    <control type="image">
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <colordiffuse>0xB3000000</colordiffuse>
+                        <texture diffuse="browse-tile-mask.png">fade-bottom.png</texture>
+                    </control>
+                    <control type="label">
+                        <visible>String.IsEqual(ListItem.Property(kind),surprise_me)</visible>
+                        <posx>{W - 52}</posx>
+                        <posy>14</posy>
+                        <width>36</width>
+                        <height>36</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_ICON_29}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>&#x{icon_glyphs.DICE_5:04X};</label>
+                    </control>
+                    <control type="label">
+                        <posx>25</posx>
+                        <posy>{H - 82}</posy>
+                        <width>{W - 50}</width>
+                        <height>38</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_BUTTON}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <posx>25</posx>
+                        <posy>{H - 46}</posy>
+                        <width>{W - 50}</width>
+                        <height>26</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_BROWSE_CAPTION}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                    </control>{rim}"""
+
+    focus = f"Control.HasFocus({list_id})"
+    rim = f"""
+                    <control type="image">
+                        <visible>{focus}</visible>
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>browse-tile-border.png</texture>
+                    </control>"""
+    glow = f"""
+                    <control type="image">
+                        <visible>{focus}</visible>
+                        <posx>-10</posx>
+                        <posy>-10</posy>
+                        <width>{W + 20}</width>
+                        <height>{H + 20}</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>browse-tile-glow.png</texture>
+                    </control>"""
+    zoom = (f'<animation effect="zoom" start="100" end="103.5" center="{W // 2},{H // 2}" '
+            f'time="150" tween="cubic" easing="out" condition="{focus}">Conditional</animation>')
+    item = f"""                <itemlayout width="{CW}" height="{CH}">{_tile("")}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout width="{CW}" height="{CH}">
+                    <control type="group">
+                        {zoom}{glow}{_tile(rim)}
                     </control>
                 </focusedlayout>"""
     return item, focused
+
+
+def browse_header_pill(list_id: int, *, glyph: str, label: str,
+                       width: int) -> tuple[str, str]:
+    """Folders and Surprise me beside a Browse view's title (app 2.0): glass
+    with an icon and a word; focused, the accent's wash, rim and text."""
+    H = T.BROWSE_CHIP_H
+
+    def _body(colour: str, gate: str = "") -> str:
+        vis = f"<visible>{gate}</visible>" if gate else ""
+        return f"""
+                    <control type="label">{vis}
+                        <posx>22</posx><width>28</width><height>{H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_ICON_24}</font>
+                        <textcolor>{colour}</textcolor>
+                        <label>{glyph}</label>
+                    </control>
+                    <control type="label">{vis}
+                        <posx>58</posx><width>{width - 76}</width><height>{H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_POSTER_TITLE}</font>
+                        <textcolor>{colour}</textcolor>
+                        <label>{label}</label>
+                    </control>"""
+
+    glass = f"""
+                    <control type="image">
+                        <width>{width}</width><height>{H}</height>
+                        <colordiffuse>0x1AFFFFFF</colordiffuse>
+                        <texture border="30">capsule-h60.png</texture>
+                    </control>"""
+    focus = f"Control.HasFocus({list_id})"
+    white = "$INFO[Window.Property(text_primary)]"
+    accent = "$INFO[Window.Property(accent_color)]"
+    item = f"""                <itemlayout width="{width}" height="{H}">{glass}{_body(white)}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout width="{width}" height="{H}">{glass}
+                    <control type="image">
+                        <visible>{focus}</visible>
+                        <width>{width}</width><height>{H}</height>
+                        <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
+                        <texture border="30">capsule-h60.png</texture>
+                    </control>
+                    <control type="image">
+                        <visible>{focus}</visible>
+                        <width>{width}</width><height>{H}</height>
+                        <colordiffuse>{accent}</colordiffuse>
+                        <texture border="30">capsule-h60-outline.png</texture>
+                    </control>{_body(accent, focus)}{_body(white, "!" + focus)}
+                </focusedlayout>"""
+    return item, focused
+
+
+def browse_chip(control_id: int, *, indent: str = "                ") -> str:
+    """One chip of a Browse view's chip row: a button whose width MainWindow
+    sets, its words and resting fill window properties (browse_chip_<id>,
+    _label) so a chosen chip reads as chosen. Python's setLabel would reset
+    the font and colours. Focused: the accent's wash."""
+    H = T.BROWSE_CHIP_H
+    return f"""{indent}<control type="button" id="{control_id}">
+{indent}    <width>{T.BROWSE_CHIP_PAD * 2}</width>
+{indent}    <height>{H}</height>
+{indent}    <font>{T.FONT_BODY}</font>
+{indent}    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+{indent}    <focusedcolor>$INFO[Window.Property(accent_color)]</focusedcolor>
+{indent}    <textoffsetx>{T.BROWSE_CHIP_PAD}</textoffsetx>
+{indent}    <aligny>center</aligny>
+{indent}    <texturefocus border="30" colordiffuse="$INFO[Window.Property(settings_row_wash)]">capsule-h60.png</texturefocus>
+{indent}    <texturenofocus border="30" colordiffuse="$INFO[Window.Property(browse_chip_{control_id})]">capsule-h60.png</texturenofocus>
+{indent}    <label>$INFO[Window.Property(browse_chip_{control_id}_label)]</label>
+{indent}</control>"""
 
 
 def empty_state(

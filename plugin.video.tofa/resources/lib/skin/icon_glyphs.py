@@ -50,6 +50,8 @@ USERS = 0xE1A4
 TRIANGLE_ALERT = 0xE193
 GALLERY_VERTICAL_END = 0xE4D2
 SHUFFLE = 0xE15E
+# Browse's Surprise me (app 2.0): one die, as the app draws it.
+DICE_5 = 0xE28B
 CLAPPERBOARD = 0xE29B
 TV = 0xE195
 VIDEO = 0xE1A5

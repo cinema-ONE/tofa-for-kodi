@@ -88,7 +88,7 @@ check("order is Watch Status, Format, Year",
 
 # 6. The value-less pills name themselves rather than showing a bare "All".
 check('unfiltered Filter reads "Filter"', 'else "Filter"' in label)
-check('unpicked Genre reads "Genre"', 'else "Genre"' in _body("_browse_genre_label"))
+check("the Filter chip leaves Unwatched to its own chip", "skip_unwatched" in label)
 
 print()
 failed = [n for n, ok in RESULTS if not ok]
