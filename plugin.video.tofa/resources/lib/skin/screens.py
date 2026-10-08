@@ -52,7 +52,8 @@ def render_main() -> str:
         blocks = []
         for idx, list_id in enumerate(list_ids):
             item_xml, focused_xml = fragments.poster_card(
-                list_id, has_progress=True, caption_field="caption_meta"
+                list_id, has_progress=True, caption_field="caption_meta",
+                cell_w=T.ROW_CELL_W,
             )
             prev_id = list_ids[idx - 1] if idx else NAV_LIST_ID
             next_id = list_ids[idx + 1] if idx + 1 < len(list_ids) else list_id
@@ -63,6 +64,7 @@ def render_main() -> str:
                 onup=prev_id, ondown=next_id,
                 item_xml=item_xml, focused_xml=focused_xml,
                 list_width=T.row_bleed_width(T.HOME_LEFT),
+                cell_w=T.ROW_CELL_W,
             ))
         return "\n\n".join(blocks)
 
@@ -93,6 +95,7 @@ def render_main() -> str:
             onup=prev_id, ondown=next_id,
             item_xml=item_xml, focused_xml=focused_xml,
             list_width=T.row_bleed_width(T.DISCOVER_LEFT),
+            cell_w=T.ROW_CELL_W,
             pos=(T.DISCOVER_ROWS_X, T.DISCOVER_FOCUS_ROW_Y if idx else T.DISCOVER_ROWS_Y),
             block_h=T.DISCOVER_ROW_PITCH,
             indent="                    ",
