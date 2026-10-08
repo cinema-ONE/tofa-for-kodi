@@ -1321,6 +1321,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if profile:
             mli.setArt({"poster": profile})
             mli.setProperty("has_photo", "1")
+            mli.setProperty("photo", profile)
         else:
             mli.setProperty("has_photo", "")
         mli.setProperty("initials", _initials(name))
@@ -2682,7 +2683,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         item = lst.getSelectedItem()
         if item is None:
             return
-        person.show(item.getLabel(), self._get_client())
+        person.show(item.getLabel(), self._get_client(), role=item.getProperty("role"),
+                    title=self.getProperty("p2_title"), photo=item.getProperty("photo"))
 
     def _open_playback_options(self) -> bool:
         """7.7's pre-play options: Quality / Audio / Subtitles for the file

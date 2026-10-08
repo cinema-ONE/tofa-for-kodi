@@ -264,6 +264,9 @@ POSTER_STD = PosterSize(T.POSTER_W, T.POSTER_H,
 POSTER_COMPACT = PosterSize(T.DETAIL_P2_POSTER_W, T.DETAIL_P2_POSTER_H,
                             "top-result-mask.png", "top-result-border.png",
                             "top-result-glow.png")
+# The person page's grid (app 2.0): the standard poster, the grid's captions.
+POSTER_PERSON = PosterSize(T.POSTER_W, T.POSTER_H, "poster-mask.png", "poster-border.png",
+                           "card-glow.png", T.FONT_CARD_TITLE, T.FONT_BROWSE_CAPTION, -7, -5, -3)
 # Browse's grid (app 2.0): seven columns of 212x318.
 POSTER_GRID = PosterSize(T.GRID_POSTER_W, T.GRID_POSTER_H, "grid-poster-mask.png",
                          "grid-poster-border.png", "grid-poster-glow.png",
@@ -4787,6 +4790,138 @@ def browse_sort_panel(list_id: int) -> str:
                     </control>
                 </control>
             </control>"""
+
+
+def person_film_panel(list_id: int) -> str:
+    """The person page's Filmography panel (app 2.0): every credit, newest
+    first, a year and a title per row and "In library" where you have it."""
+    rw, rh, pitch = T.PERSON_FILM_ROW_W, T.PERSON_FILM_ROW_H, T.PERSON_FILM_PITCH
+    owned = "String.IsEqual(ListItem.Property(in_library),1)"
+
+    def _row(focused: bool) -> str:
+        gate = f"Control.HasFocus({list_id})"
+        colour = ("$INFO[Window.Property(accent_color)]" if focused
+                  else "$INFO[Window.Property(text_primary)]")
+        focus = (f"""
+                        <control type="image">
+                            <visible>{gate}</visible>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_wash_focus)]</colordiffuse>
+                            <texture>person-film-row.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>{gate}</visible>
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>person-film-row-focus.png</texture>
+                        </control>""" if focused else "")
+        return f"""
+                        <control type="image">
+                            <width>{rw}</width>
+                            <height>{rh}</height>
+                            <colordiffuse>{T.SETTINGS_PICKER_ROW}</colordiffuse>
+                            <texture>person-film-row.png</texture>
+                        </control>{focus}
+                        <control type="label">
+                            <posx>22</posx>
+                            <width>90</width>
+                            <height>{rh}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_POSTER_TITLE}</font>
+                            <textcolor>{colour if focused else "$INFO[Window.Property(text_secondary)]"}</textcolor>
+                            <label>$INFO[ListItem.Label2]</label>
+                        </control>
+                        <control type="label">
+                            <posx>128</posx>
+                            <width>{rw - 128 - 150}</width>
+                            <height>{rh}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_CAPTION}</font>
+                            <textcolor>{colour}</textcolor>
+                            <label>$INFO[ListItem.Label]</label>
+                        </control>
+                        <control type="image">
+                            <visible>{owned}</visible>
+                            <posx>{rw - 34 - 96}</posx>
+                            <posy>{(rh - 26) // 2}</posy>
+                            <width>96</width>
+                            <height>26</height>
+                            <colordiffuse>$INFO[Window.Property(accent_wash_focus)]</colordiffuse>
+                            <texture border="13">tag-pill.png</texture>
+                        </control>
+                        <control type="label">
+                            <visible>{owned}</visible>
+                            <posx>{rw - 34 - 96}</posx>
+                            <posy>{(rh - 26) // 2}</posy>
+                            <width>96</width>
+                            <height>26</height>
+                            <align>center</align>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_MICRO}</font>
+                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                            <label>In library</label>
+                        </control>"""
+
+    w, h = T.PERSON_FILM_W, T.PERSON_FILM_H
+    return f"""
+        <control type="group">
+            <visible>!String.IsEmpty(Window.Property(person_film_open))</visible>
+            <control type="image">
+                <width>{T.SCREEN_W}</width>
+                <height>{T.SCREEN_H}</height>
+                <colordiffuse>{T.PERSON_FILM_DIM}</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="group">
+                <posx>{T.PERSON_FILM_X}</posx>
+                <posy>{T.PERSON_FILM_Y}</posy>
+                <control type="image">
+                    <width>{w}</width>
+                    <height>{h}</height>
+                    <colordiffuse>{T.SETTINGS_PICKER_FILL}</colordiffuse>
+                    <texture border="20">rounded-20.png</texture>
+                </control>
+                <control type="image">
+                    <width>{w}</width>
+                    <height>{h}</height>
+                    <colordiffuse>{T.SETTINGS_PICKER_RIM}</colordiffuse>
+                    <texture border="20">rounded-20-outline.png</texture>
+                </control>
+                <control type="label">
+                    <posx>57</posx>
+                    <posy>50</posy>
+                    <width>{w - 114}</width>
+                    <height>56</height>
+                    <font>{T.FONT_PERSON_PANEL}</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(person_name)]</label>
+                </control>
+                <control type="label">
+                    <posx>57</posx>
+                    <posy>115</posy>
+                    <width>{w - 114}</width>
+                    <height>28</height>
+                    <font>{T.FONT_BROWSE_CAPTION}</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>$INFO[Window.Property(person_film_count)]</label>
+                </control>
+                <control type="list" id="{list_id}">
+                    <posx>{T.PERSON_FILM_ROW_X}</posx>
+                    <posy>{T.PERSON_FILM_LIST_Y}</posy>
+                    <width>{rw}</width>
+                    <height>{T.PERSON_FILM_ROWS * pitch}</height>
+                    <orientation>vertical</orientation>
+                    <itemheight>{pitch}</itemheight>
+                    <scrolltime>{T.SCROLLTIME}</scrolltime>
+                    <itemlayout width="{rw}" height="{pitch}">{_row(False)}
+                    </itemlayout>
+                    <focusedlayout width="{rw}" height="{pitch}">{_row(True)}
+                    </focusedlayout>
+                </control>
+            </control>
+        </control>"""
 
 
 def collection_row(list_id: int) -> tuple[str, str]:

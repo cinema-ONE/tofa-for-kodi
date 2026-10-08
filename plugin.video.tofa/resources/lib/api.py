@@ -718,8 +718,8 @@ class MediaServerClient:
         with titles you already own removed server-side. That last part is
         why the two halves of 7.4 can simply be concatenated: the in-library
         half comes from `media_list(cast=name)` and the server guarantees
-        they don't overlap."""
-        return self._get("/api/v1/discovery/person", params={"name": name})
+        they don't overlap. The default page is 30; ask for all of them."""
+        return self._get("/api/v1/discovery/person", params={"name": name, "limit": 200})
 
     def discovery_board(
         self,
