@@ -2039,78 +2039,16 @@
                         </control>
                     </control>
 
-                    <!-- ONE GROUP PER ROW, not a list, so each row can
-                         carry three independently focusable controls the way
-                         the reference app does: move up, move down, and the
-                         switch. A list cannot: Kodi builds item layouts with
-                         insideContainer=true, so an item's controls are drawn
-                         but never join the focus tree and the list itself is
-                         the single focus target. A grouplist of real buttons
-                         is what Kodi's own Estuary uses for SettingsCategory.
-
-                         Each row is a DIRECT child of the appearance
-                         grouplist, which is what makes up/down between rows
-                         and scroll-into-view work; the buttons inside are
-                         grandchildren, so their navigation is wired in
-                         Python (see _settings_wire_home_rows) rather than
-                         here, because a grouplist OVERRIDES its children's
-                         up/down and grandchildren resolve to nothing.
-
-                         Slots past the account's row count hide themselves
-                         on an empty title property, which also takes them
-                         out of the grouplist's chain. -->
+                    <!-- ROWS, IN ORDER: one grouplist child per row, so each
+                         scrolls into view; empty slots hide themselves. -->
 {settings_homerow_editors}
-
-                    <!-- ONE "Add a row", holding three groups. It was two
-                         tiles until the reference apps settled on a single
-                         grouped picker; 8350 is retired, not reused. -->
+                    <!-- ADD A ROW -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_HOMEADD_H}</height>
-                        <control type="list" id="8340">
-                            <posx>0</posx>
-                            <posy>0</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_HOMEADD_H}</height>
-                            <onleft>8340</onleft>
-                            <onright>8340</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_HOMEADD_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_add_row_item}
-
-{settings_add_row_focused}
-                        </control>
-                    </control>
-
-                    <!-- The line the reference app puts under the row
-                         editor. It carries two facts a viewer cannot infer
-                         from the controls: that the list order IS the Home
-                         order, and that turning a row off follows the
-                         account rather than staying on this device.
-
-                         The text arrives as a WINDOW PROPERTY, not as
-                         $LOCALIZE[31122]. Kodi resolves $LOCALIZE in a
-                         window XML against the ACTIVE SKIN's strings, and
-                         31000-31999 is the range skins use: Estuary's
-                         #31122 is "Unwatched TV Shows", which is exactly
-                         what this line displayed. It fails silently and
-                         differently per skin, so nothing in this add-on's
-                         XML may use $LOCALIZE; check_xml.py enforces it. -->
-                    <control type="group">
-                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                        <height>{SETTINGS_HOMEROWS_NOTE_H}</height>
-                        <control type="label">
-                            <posx>18</posx>
-                            <posy>0</posy>
-                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
-                            <height>{SETTINGS_HOMEROWS_NOTE_H}</height>
-                            <aligny>center</aligny>
-                            <font>tofa_font_metadata</font>
-                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                            <label>$INFO[Window.Property(home_rows_note)]</label>
-                        </control>
+                        <height>{SETTINGS_HOMEADD_GROUP_H}</height>
+{settings_homeadd_eyebrow}
+{settings_homeadd_discover}
+{settings_homeadd_genre}
                     </control>
 
                 </control>

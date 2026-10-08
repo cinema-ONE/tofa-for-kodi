@@ -560,12 +560,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_EPISODES_ID = 8310
     SETTINGS_SPOILERS_ID = 8315
     SETTINGS_SPOTLIGHT_ID = 8320
-    SETTINGS_HOMEROWS_ID = 8330
-    # ONE "Add a row" tile, holding three groups. 8350 was a second tile
-    # ("Add a genre row") until the reference apps settled on a single
-    # grouped picker; the id is retired rather than reused so a stale
-    # rendered XML cannot resolve it to something else.
+    #: ADD A ROW: "Add a Discover row", "Add a genre row" (app 2.0).
     SETTINGS_ADD_ROW_ID = 8340
+    SETTINGS_ADD_GENRE_ID = 8345
     SETTINGS_REGION_ID = 8360
     # Playback & Video (8400s) and Audio & Subtitles (8500s) each own a
     # scrolling grouplist of their own, 8490 / 8590.
@@ -944,12 +941,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_SPOILERS_ID, 1)
         self.settings_spotlight_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SPOTLIGHT_ID, 1)
-        # NOTE: no settings_homerows_list any more. The home-row editor is
-        # nine groups of real buttons (home_rows.HOME_ROW_EDIT_IDS), because
-        # a list item cannot hold three focus targets. See
-        # fragments.settings_home_row_editor.
+        self.settings_homerow_lists = [
+            kodigui.ManagedControlList(self, lid, 1)
+            for lid in home_rows.HOME_ROW_EDIT_IDS]
         self.settings_add_row_list = kodigui.ManagedControlList(
             self, self.SETTINGS_ADD_ROW_ID, 1)
+        self.settings_add_genre_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_ADD_GENRE_ID, 1)
         self.settings_region_list = kodigui.ManagedControlList(
             self, self.SETTINGS_REGION_ID, 1)
         self.settings_audiolang_list = kodigui.ManagedControlList(
@@ -1305,11 +1303,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_choice_clicked(settings_options.CHOICE_BY_ID[controlID])
         elif controlID in (self.SETTINGS_PICKER_ID, self.SETTINGS_FOX_ID):
             self._settings_picker_clicked()
-        elif (home_rows.HOME_ROW_EDIT_GROUP_IDS[0]
-              <= controlID <= home_rows.HOME_ROW_EDIT_IDS[-1][-1]):
-            self._settings_home_row_pressed(controlID)
+        elif controlID in home_rows.HOME_ROW_EDIT_IDS:
+            self._settings_home_row_menu(home_rows.HOME_ROW_EDIT_IDS.index(controlID))
         elif controlID == self.SETTINGS_ADD_ROW_ID:
-            self._settings_add_row()
+            self._settings_add_row("discovery")
+        elif controlID == self.SETTINGS_ADD_GENRE_ID:
+            self._settings_add_row("genre")
         elif controlID == self.SETTINGS_REGION_ID:
             self._settings_region_clicked()
         elif controlID in self.SETTINGS_LANGUAGE_ROWS:
@@ -6184,7 +6183,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
         8550: "sub_lang2", 8530: "always_subs",
         8205: "fox", 8310: "episodes_remaining", 8315: "hide_spoilers",
-        8360: "region", 8320: "spotlight", 8340: "add_row",
+        8360: "region", 8320: "spotlight", 8340: "add_discover", 8345: "add_genre",
         8620: "licences", 8720: "art_budget", 8730: "art_clear",
     }
 
@@ -6193,7 +6192,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return self._settings_picker["key"]
         if control_id in settings_options.CHOICE_BY_ID:
             return settings_options.CHOICE_BY_ID[control_id]
-        if self._settings_home_row_button(control_id)[0] is not None:
+        if control_id in home_rows.HOME_ROW_EDIT_IDS:
             return "home_rows"
         return self.SETTINGS_INFO_KEYS.get(control_id, "")
 
@@ -6226,6 +6225,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "region": lambda: prop("settings_region"),
             "spotlight": lambda: checked(self.settings_spotlight_list),
             "home_rows": lambda: prop("settings_home_rows_count"),
+            "home_shown": lambda: self._settings_home_tally(True),
+            "home_hidden": lambda: self._settings_home_tally(False),
+            "home_first": lambda: prop("homerow_0_title"),
             "art_budget": lambda: prop("settings_art_budget"),
             "version": lambda: prop("settings_version"),
         }
@@ -6254,9 +6256,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                                  self._settings_value(vkey) if vkey else "")
             return
         value = self._settings_value(key)
+        title = info.title
+        if key == "home_rows":
+            # The row itself names the panel: "Continue Watching", "Row 1 of 12, shown".
+            origin = (self._settings_picker or {}).get("origin", control_id)
+            if origin in home_rows.HOME_ROW_EDIT_IDS:
+                slot = home_rows.HOME_ROW_EDIT_IDS.index(origin)
+                title = self.getProperty("homerow_{0}_title".format(slot)) or title
+                value = self._settings_home_row_state(slot)
         self.setProperty("settings_info_now", "")
         self.setProperty("settings_info", "1")
-        self.setProperty("settings_info_title", info.title)
+        self.setProperty("settings_info_title", title)
         self.setProperty("settings_info_value", value)
         lines = textmetrics.wrap_lines(info.body, T.SETTINGS_INFO_W, 3, 24)
         for i in range(3):
@@ -6405,7 +6415,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- The right-column picker (app 2.0) -------------------------------
 
     def _settings_choose(self, key: str, title: str, rows: list, selected: int,
-                         pick) -> None:
+                         pick, now: str = "") -> None:
         """Open the picker over the right column; `pick(index)` runs on Select.
 
         `rows` are {"label", "detail"?}; `key` names the row for the left
@@ -6423,18 +6433,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "list", self.settings_picker_list, key, title,
             [r["label"] for r in rows], selected, pick,
             shown * T.SETTINGS_PICKER_PITCH
-            - (T.SETTINGS_PICKER_PITCH - T.SETTINGS_PICKER_ROW_H))
+            - (T.SETTINGS_PICKER_PITCH - T.SETTINGS_PICKER_ROW_H), now=now)
 
     def _settings_picker_show(self, mode: str, lst, key: str, title: str,
                               labels: list, selected: int, pick, body_h: int,
-                              hint: str = "") -> None:
-        """Size the panel to `body_h`, show `mode`'s content and focus `lst`."""
+                              hint: str = "", now: str = "") -> None:
+        """Size the panel to `body_h`, show `mode`'s content and focus `lst`.
+        `now` names the current state when no option is it (a row's menu)."""
         height = T.SETTINGS_PICKER_LIST_Y + body_h + T.SETTINGS_PICKER_FOOT
         for cid in (self.SETTINGS_PICKER_FILL_ID, self.SETTINGS_PICKER_RIM_ID):
             self.getControl(cid).setHeight(height)
         self._settings_picker = {
             "key": key, "origin": self.getFocusId(), "pick": pick, "list": lst,
-            "list_id": lst.controlID, "current": selected, "labels": labels}
+            "list_id": lst.controlID, "current": selected, "labels": labels,
+            "now": now}
         self.setProperty("settings_picker_title", title)
         self.setProperty("settings_picker_hint", hint)
         self.setProperty("settings_picker", mode)
@@ -6442,12 +6454,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         lst.selectItem(max(selected, 0))
         self._settings_sync_info(lst.controlID)
 
-    def _settings_picker_close(self) -> dict | None:
-        """Hide the picker and put focus back on its row."""
+    def _settings_picker_close(self, focus_id: int = 0) -> dict | None:
+        """Hide the picker and put focus back on its row, or on `focus_id`."""
         picker, self._settings_picker = self._settings_picker, None
         self.setProperty("settings_picker", "")
         if picker:
-            self.setFocusId(picker["origin"])
+            self.setFocusId(focus_id or picker["origin"])
         return picker
 
     def _settings_picker_clicked(self):
@@ -6457,11 +6469,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not picker:
             return
         index = picker["list"].getSelectedPosition()
+        target = 0
         try:
             if index is not None and index >= 0:
-                picker["pick"](index)
+                target = picker["pick"](index) or 0
         finally:
-            self._settings_picker_close()
+            self._settings_picker_close(target)
 
     def _settings_picker_sync(self):
         """The left column names the focused option, and the current one
@@ -6473,6 +6486,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         pos = picker["list"].getSelectedPosition()
         focused = labels[pos] if pos is not None and 0 <= pos < len(labels) else ""
         current = labels[picker["current"]] if 0 <= picker["current"] < len(labels) else ""
+        current = current or picker["now"]
         self.setProperty("settings_info_value", focused)
         self.setProperty("settings_info_now",
                          "Now " + current if current and focused != current else "")
@@ -6713,275 +6727,123 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _settings_fill_home_screen(self):
         home = self._settings_home_screen()
 
-        # The note under the editor. From Python because $LOCALIZE in a
-        # window XML reads the ACTIVE SKIN's strings, not ours -- see the
-        # comment on the label in main.xml.tpl.
-        self.setProperty("home_rows_note", _(31122))
-
         spotlight = kodigui.ManagedListItem(label="Featured spotlight")
-        spotlight.setProperty("summary", "Show the featured banner above your home rows")
         spotlight.setProperty("checked", "1" if home.get("show_hero", True) else "")
         self.settings_spotlight_list.reset()
         self.settings_spotlight_list.addItems([spotlight])
 
-        # Window properties, one set per SLOT: these rows are real controls
-        # now, not list items, so there is no ListItem to read from. A slot
-        # with an empty title hides itself, which also removes it from the
-        # grouplist's navigation chain.
+        # (index in home_screen.rows, title, enabled, removable) per row we can
+        # name; a row type this add-on does not know is skipped, never guessed.
         shown = []
         for index, row in enumerate(home.get("rows") or []):
             title = home_rows.row_title(row, _, self._shelf_titles)
             if not title:
-                # Same rule _home_load() follows: a row type this add-on does
-                # not understand is skipped, never guessed at. Editing a list
-                # we cannot fully name would reorder rows blind.
                 log.debug("settings: skipping unnameable home row {0}".format(row))
                 continue
             shown.append((index, title, row.get("enabled", True),
-                          row.get("type"), home_rows.row_removable(row)))
-
-        self._settings_home_slots = [i for i, _t, _e, _k, _r in shown]
-        on = sum(1 for _i, _t, enabled, _k, _r in shown if enabled)
+                          home_rows.row_removable(row)))
+        if len(shown) > home_rows.MAX_HOME_ROWS:
+            log.warning("settings: {0} home rows but only {1} slots".format(
+                len(shown), home_rows.MAX_HOME_ROWS))
+        self._settings_home_shown = shown[:home_rows.MAX_HOME_ROWS]
+        on = sum(1 for _i, _t, enabled, _r in shown if enabled)
         self.setProperty("settings_home_rows_count",
                          "{0} of {1} shown".format(on, len(shown)) if shown else "")
-        # Say so LOUDLY rather than editing a list the viewer cannot see all
-        # of. MAX_HOME_ROWS sat at 9 while tofa's own default grew to 10, and
-        # the tenth row simply was not there -- no error, no gap, just a
-        # shorter list than the account holds.
-        if len(shown) > home_rows.MAX_HOME_ROWS:
-            log.warning(
-                "settings: account has {0} home rows but only {1} slots exist "
-                "-- raise home_rows.MAX_HOME_ROWS".format(
-                    len(shown), home_rows.MAX_HOME_ROWS))
-        for slot in range(home_rows.MAX_HOME_ROWS):
-            prefix = "homerow_{0}".format(slot)
-            if slot >= len(shown):
-                self.setProperty(prefix + "_title", "")
-                self.setProperty(prefix + "_can_up", "")
-                self.setProperty(prefix + "_can_down", "")
-                self.setProperty(prefix + "_checked", "")
-                self.setProperty(prefix + "_can_remove", "")
-                self.setProperty(prefix + "_sub", "")
-                continue
-            _index, title, enabled, kind, removable = shown[slot]
-            self.setProperty(prefix + "_title", title)
-            # The TEN rows an account starts with can only be switched off,
-            # never taken off the list -- every tofa app enforces that, and
-            # nothing in the row data marks them, so home_rows carries the
-            # list. Everything else the viewer put there can go.
-            #
-            # This is NOT "is it a builtin": two of the ten are typed
-            # `discovery`, indistinguishable in the payload from a Discover
-            # row added by hand.
-            self.setProperty(prefix + "_can_remove", "1" if removable else "")
-            # The subtitle rides with the remove button, not with the row
-            # TYPE. Checked on a 2x crop of the reference: its two default
-            # trending rows are typed `discovery` and carry no subtitle,
-            # while the trending row the viewer added carries "Discover".
-            # So the line is not "what kind of row is this" -- it is why
-            # this one can be taken off the list, which is only worth
-            # saying about a row that can.
-            self.setProperty(prefix + "_sub", {
-                "discovery": "Discover", "genre": "Genre",
-            }.get(kind, "") if removable else "")
-            self.setProperty(prefix + "_checked", "1" if enabled else "")
-            # The app dims the first row's up arrow and the last row's down.
-            # <enable> is bound to these, and Kodi SKIPS a disabled control
-            # when navigating, so the ends behave as well as look right.
-            self.setProperty(prefix + "_can_up", "" if slot == 0 else "1")
-            self.setProperty(prefix + "_can_down",
-                             "" if slot == len(shown) - 1 else "1")
-        self._settings_wire_home_rows(
-            len(shown), [r for _i, _t, _e, _k, r in shown])
+        for slot, lst in enumerate(self.settings_homerow_lists):
+            title = ""
+            if slot < len(self._settings_home_shown):
+                _index, title, enabled, _r = self._settings_home_shown[slot]
+                item = kodigui.ManagedListItem(
+                    label=title, label2="Shown" if enabled else "Hidden")
+                item.setProperty("checked", "1" if enabled else "")
+                lst.reset()
+                lst.addItems([item])
+            self.setProperty("homerow_{0}_title".format(slot), title)
+        self._settings_wire_home_rows()
+
+    def _settings_home_tally(self, enabled: bool) -> str:
+        """How many rows are shown (or hidden), in words."""
+        n = sum(1 for row in getattr(self, "_settings_home_shown", [])
+                if bool(row[2]) == enabled)
+        return "{0} row{1}".format(n, "" if n == 1 else "s") if n else "None"
+
+    def _settings_home_row_state(self, slot: int) -> str:
+        """"Row 3 of 12, shown" for the left column."""
+        shown = getattr(self, "_settings_home_shown", [])
+        if not 0 <= slot < len(shown):
+            return ""
+        return "Row {0} of {1}, {2}".format(
+            slot + 1, len(shown), "shown" if shown[slot][2] else "hidden")
 
     def _settings_spotlight_clicked(self):
         home = self._settings_home_screen()
         home["show_hero"] = not home.get("show_hero", True)
         self._settings_write_home(home)
-        # Straight away, not on the next launch. Settings and Home are the
-        # same window here, so the Home controls are there to update -- and
-        # Home is loaded ONCE (_loaded_sections), so switching back to it
-        # would not re-read the preference. The Android TV app gets this
-        # wrong: its Home keeps the hero until the app is restarted, which
-        # is what sent Adrian looking.
-        #
-        # A full _home_load, not just the property: the two states are two
-        # different grouplists (see _home_apply_hero), so the set that has
-        # just become live is still empty and its d-pad chain unwired. The
-        # cost lands on a settings click rather than on Home, and the row
-        # fetches come back off the same cache the first load warmed.
+        # Home is loaded once, so redraw it now; the two hero states are two
+        # different grouplists, hence a full load rather than a property.
         self._home_load()
 
-    def _settings_wire_home_rows(self, count: int, removable=None):
-        """Chain the editor's buttons by hand, in both axes.
-
-        Two reasons XML cannot do this. CGUIControlGroupList::AddControl
-        OVERRIDES its direct children's up/down, and these buttons are
-        GRANDCHILDREN of the appearance grouplist, which is precisely the
-        case that resolves to nothing and makes Kodi wrap internally instead
-        of navigating away (reference_kodi_grouplist_children). And the last
-        VISIBLE row is only known at runtime, since the account decides how
-        many rows there are.
-
-        Vertical moves keep the COLUMN, the way the app does: up from the
-        middle button lands on the middle button above, not back at the
-        first control of the row.
-        """
+    def _settings_wire_home_rows(self):
+        """Up/Down along spotlight, the visible rows, then ADD A ROW. The rows
+        are grandchildren of the grouplist, so this only holds from Python."""
         try:
-            spotlight = self.getControl(self.SETTINGS_SPOTLIGHT_ID)
-            add_row = self.getControl(self.SETTINGS_ADD_ROW_ID)
-            cols = [[self.getControl(cid)
-                     for cid in home_rows.HOME_ROW_EDIT_IDS[slot]]
-                    for slot in range(count)]
+            get = self.getControl
+            chain = [get(self.SETTINGS_SPOTLIGHT_ID)]
+            chain += [get(lid) for lid in home_rows.HOME_ROW_EDIT_IDS[
+                :len(getattr(self, "_settings_home_shown", []))]]
+            chain += [get(self.SETTINGS_ADD_ROW_ID), get(self.SETTINGS_ADD_GENRE_ID)]
         except Exception as exc:                                # noqa: BLE001
-            # Before onInit has built the controls, or a slot id that does
-            # not exist: nothing to wire, and this must never break the pane.
             log.debug("settings: home row wiring skipped ({0!r})".format(exc))
             return
+        chain[0].controlUp(get(self.SETTINGS_NAV_ID))
+        for above, below in zip(chain, chain[1:]):
+            above.controlDown(below)
+            below.controlUp(above)
+        chain[-1].controlDown(chain[-1])
 
-        removable = list(removable or [False] * count)
+    #: The row menu's actions: (key, label), in the order the menu lists them.
+    SETTINGS_HOME_ROW_ACTIONS = (
+        ("up", "Move up"), ("down", "Move down"), ("hide", "Hide from Home"),
+        ("show", "Show on Home"), ("remove", "Remove from Home"))
 
-        def usable(slot):
-            """Columns that can actually take focus on this row, LEFT TO
-            RIGHT as they are drawn.
-
-            Two separate things are being respected here. A disabled control
-            cannot take focus, so wiring INTO one is the same bug as aiming
-            focus at it -- the move silently does nothing. And the order is
-            the SCREEN order, not the order the ids happen to run in: remove
-            sits between the down arrow and the switch on screen, while its
-            id is the last of the four. Walking the id order instead sent
-            Left from the switch back to the UP ARROW, two columns away and
-            past the button it was meant to reach -- and since a press there
-            moves the row, that mis-wire did not just misfocus, it acted."""
-            out = []
-            if slot > 0:
-                out.append(home_rows.EDIT_UP)
-            if slot < count - 1:
-                out.append(home_rows.EDIT_DOWN)
-            if slot < len(removable) and removable[slot]:
-                out.append(home_rows.EDIT_REMOVE)
-            out.append(home_rows.EDIT_TOGGLE)
-            return out
-
-        for slot, row in enumerate(cols):
-            live = usable(slot)
-            for n, col in enumerate(live):
-                btn = row[col]
-                if n:
-                    btn.controlLeft(row[live[n - 1]])
-                else:
-                    # Leftmost column: Left stays put (the tabs are above).
-                    btn.controlLeft(btn)
-                if n < len(live) - 1:
-                    btn.controlRight(row[live[n + 1]])
-                # Vertically, keep the column when the neighbouring row also
-                # has it; otherwise fall to its toggle, which every row has.
-                for delta, fallback in ((-1, spotlight), (1, add_row)):
-                    near = slot + delta
-                    if 0 <= near < len(cols):
-                        target = row_at = cols[near]
-                        pick = (col if col in usable(near)
-                                else home_rows.EDIT_TOGGLE)
-                        target = row_at[pick]
-                    else:
-                        target = fallback
-                    (btn.controlUp if delta < 0 else btn.controlDown)(target)
-        if cols:
-            # The block's own ends, so the pane above and below still joins
-            # up -- landing on a control that can actually take focus. The
-            # FIRST row's up arrow is disabled by design, so aiming Down
-            # from the spotlight at cols[0][0] pointed at a dead control and
-            # Down did nothing. Same mistake as the focus-follow bug, one
-            # layer up. Mirrored for the last row's down arrow.
-            first = (cols[0][home_rows.EDIT_DOWN] if len(cols) > 1
-                     else cols[0][home_rows.EDIT_TOGGLE])
-            last = (cols[-1][home_rows.EDIT_UP] if len(cols) > 1
-                    else cols[-1][home_rows.EDIT_TOGGLE])
-            spotlight.controlDown(first)
-            add_row.controlUp(last)
-
-    #: control id -> (slot, what pressing it does)
-    def _settings_home_row_button(self, control_id: int):
-        for slot, ids in enumerate(home_rows.HOME_ROW_EDIT_IDS):
-            for action, cid in zip(("up", "down", "toggle", "remove"), ids):
-                if cid == control_id:
-                    return slot, action
-        return None, None
-
-    def _settings_home_row_pressed(self, control_id: int):
-        """Move a row, or turn it off, straight from the row itself.
-
-        No action panel any more: the three choices are three real buttons,
-        which is what the reference app shows and what a viewer expects to
-        find on the row rather than one Select deeper.
-        """
-        slot, action = self._settings_home_row_button(control_id)
-        if slot is None:
+    def _settings_home_row_menu(self, slot: int):
+        """Select on a row: its moves, hide or show, and remove when it is a
+        row the viewer added, in the right-column picker."""
+        shown = getattr(self, "_settings_home_shown", [])
+        if not 0 <= slot < len(shown):
             return
-        slots = getattr(self, "_settings_home_slots", [])
-        if not (0 <= slot < len(slots)):
-            return
-        index = slots[slot]
+        _index, title, enabled, removable = shown[slot]
+        wanted = {"up": slot > 0, "down": slot < len(shown) - 1,
+                  "hide": enabled, "show": not enabled, "remove": removable}
+        actions = [(k, label) for k, label in self.SETTINGS_HOME_ROW_ACTIONS
+                   if wanted[k]]
+        self._settings_choose(
+            "home_rows", title, [{"label": label} for _k, label in actions], -1,
+            lambda index: self._settings_home_row_action(slot, actions[index][0]),
+            now=self._settings_home_row_state(slot))
+
+    def _settings_home_row_action(self, slot: int, action: str):
+        """Apply one menu action; returns the row list focus should land on,
+        following the moved row rather than the position."""
+        shown = getattr(self, "_settings_home_shown", [])
         home = self._settings_home_screen()
         rows = list(home.get("rows") or [])
-        if not (0 <= index < len(rows)):
-            return
-
-        if action == "up" and slot > 0:
-            other = slots[slot - 1]
+        index = shown[slot][0]
+        landed = slot
+        if action in ("up", "down"):
+            landed = slot - 1 if action == "up" else slot + 1
+            other = shown[landed][0]
             rows[other], rows[index] = rows[index], rows[other]
-        elif action == "down" and slot < len(slots) - 1:
-            other = slots[slot + 1]
-            rows[other], rows[index] = rows[index], rows[other]
+        elif action in ("hide", "show"):
+            rows[index] = dict(rows[index], enabled=action == "show")
         elif action == "remove":
             del rows[index]
-        elif action == "toggle":
-            rows[index] = dict(rows[index], enabled=not rows[index].get("enabled", True))
-        else:
-            return
+            landed = min(slot, len(shown) - 2)
         home["rows"] = rows
         self._settings_write_home(home)
-        # Follow the row, not the position: after a move the viewer is still
-        # thinking about the row they just moved, and leaving focus behind
-        # means the next press moves a DIFFERENT row.
-        if action == "remove":
-            # The row is gone. Land on whatever now occupies its slot, or the
-            # one above if it was the last -- never on the vanished row.
-            landed = min(slot, len(slots) - 2)
-            if landed < 0:
-                return
-            try:
-                self.setFocusId(
-                    home_rows.HOME_ROW_EDIT_IDS[landed][home_rows.EDIT_TOGGLE])
-            except Exception:                                   # noqa: BLE001
-                pass
-        elif action in ("up", "down"):
-            landed = slot - 1 if action == "up" else slot + 1
-            landed = max(0, min(landed, len(slots) - 1))
-            # The arrow the viewer just pressed may be DISABLED at the row's
-            # new position -- moving row 2 up makes it row 1, whose up arrow
-            # is dimmed by design, and the mirror case for the last row's
-            # down arrow. setFocusId on a disabled control does nothing, so
-            # focus was left stranded on the row that had moved away and the
-            # next Up escaped to the nav bar. Reported 2026-08-27.
-            #
-            # Follow the ROW to the nearest control that can actually hold
-            # focus: the pressed column first, then the other arrow, then the
-            # switch, which is never disabled.
-            last = len(slots) - 1
-            wanted = 0 if action == "up" else 1
-            order = [wanted, 1 - wanted, 2]
-            for col in order:
-                if col == 0 and landed == 0:
-                    continue        # up arrow is dimmed at the top
-                if col == 1 and landed == last:
-                    continue        # down arrow is dimmed at the bottom
-                try:
-                    self.setFocusId(home_rows.HOME_ROW_EDIT_IDS[landed][col])
-                except Exception:                               # noqa: BLE001
-                    continue
-                break
+        if landed < 0:
+            return self.SETTINGS_ADD_ROW_ID
+        return home_rows.HOME_ROW_EDIT_IDS[landed]
 
     def _settings_write_home(self, home: dict):
         """Send the WHOLE home_screen object, for the shallow-merge reason in
@@ -6990,129 +6852,77 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_fill_home_screen()
         self._settings_fill_add_rows()
 
-    # --- Appearance: adding a row --------------------------------------
+    # --- Home: adding a row ------------------------------------------------
 
     def _settings_fill_add_rows(self):
-        """The one "add a row" action. A static label; what it can offer is
-        only known once the picker is opened, which is deliberate -- the
-        shelf and genre lists are both a network call and this page must
-        draw without one."""
-        add = kodigui.ManagedListItem(label="Add a row")
-        # Not "a row you removed": the Home rows group offers Recently
-        # Released to anyone who does not have it, including a profile that
-        # predates the row and removed nothing. "not already here" is true
-        # of all three groups and says why the list is shorter than the
-        # Discover screen.
-        add.setProperty("summary",
-                        "Any Discover list, genre, or Home row not already here")
-        self.settings_add_row_list.reset()
-        self.settings_add_row_list.addItems([add])
+        """ADD A ROW's two rows. What they offer is only fetched on Select,
+        so this page draws without a network call."""
+        for lst, label in ((self.settings_add_row_list, "Add a Discover row"),
+                           (self.settings_add_genre_list, "Add a genre row")):
+            if not lst.size():
+                lst.addItems([kodigui.ManagedListItem(label=label)])
 
-    def _settings_add_row(self):
-        """ONE picker over three groups -- Home rows, Discover, Genres --
-        rather than a button per kind.
+    def _settings_add_row(self, kind: str):
+        """Offer the rows of `kind` not already on Home in the picker.
 
-        That is the reference apps' shape: the web app renders a single
-        select whose options are grouped under exactly these three labels,
-        and the tvOS app the same. What we had instead was two buttons, and
-        a Discover list annotated with the raw `kind` the server tags a
-        shelf with ("Now", "Availability"), which appears in no tofa app --
-        those are our Discover TAB names, not a category anyone else shows.
-
-        Genres come from the library, Discover shelves from the server, and
-        the builtin group from what this add-on knows how to draw. Anything
-        already on Home is left out of all three.
-        """
-        # Lazy, same as every other playoptions caller here: it pulls in a
-        # second WindowXML and nothing on this page needs it until a picker
-        # is actually opened.
-        from . import playoptions
+        "discovery" also lists the Home rows an account can lack (Recently
+        Released on an older profile, Leaving soon where the server has it).
+        Each row is written in the shape the web app writes, so every app
+        de-duplicates it the same way."""
         client = self._get_client()
         if client is None:
-            cardoptions.alert("Home Screen", "Can't reach your server.", error=True)
+            cardoptions.alert("Home", "Can't reach your server.", error=True)
             return
-
         home = self._settings_home_screen()
         rows = list(home.get("rows") or [])
-        present = {r.get("id") for r in rows}
-        taken_lists = {r.get("discoveryList") for r in rows if r.get("type") == "discovery"}
-        taken_genres = {r.get("genre") for r in rows if r.get("type") == "genre"}
-
-        # Builtins first: no network, and it is the group the reference puts
-        # at the top.
-        # Leaving soon exists only where the server's lifecycle feature
-        # does; the web app gates the row on the same capability.
-        builtins = [rid for rid in home_rows.ADDABLE_BUILTIN_IDS
-                    if rid not in present
-                    and (rid != "leaving_soon" or self._has_capability("lifecycle"))]
-
-        # A shelf list or a genre list that fails is not fatal -- the other
-        # groups are still worth offering, so each is fetched on its own and
-        # an error simply empties that group.
-        try:
-            shelves = (client.discovery_page() or {}).get("shelves") or []
-        except http.ApiError as exc:
-            log.warning("settings: discover shelves unavailable ({0})".format(exc.message))
-            shelves = []
-        # Keyed off `key`, never `list_type`: the latter is null on every
-        # shelf added after the original seven (see api.discovery_page). The
-        # row entry mirrors what the web app writes -- id "discover-<key>" --
-        # so a row added here and one added on the web are the same object.
-        offered_shelves = [s for s in shelves
-                           if s.get("key") and s["key"] not in taken_lists]
-        for s in shelves:
-            if s.get("key") and s.get("title"):
-                self._shelf_titles.setdefault(s["key"], s["title"])
-
-        try:
-            genres = client.genres() or []
-        except http.ApiError as exc:
-            log.warning("settings: genres unavailable ({0})".format(exc.message))
-            genres = []
-        offered_genres = [g for g in genres
-                          if isinstance(g, str) and g and g not in taken_genres]
-
-        groups = [
-            {"key": "builtin", "title": "Home rows",
-             "options": [{"label": _(home_rows.BUILTIN_ROW_LABELS[rid]),
-                          "detail": ""} for rid in builtins]},
-            {"key": "discovery", "title": "Discover",
-             "options": [{"label": s.get("title") or s["key"], "detail": ""}
-                         for s in offered_shelves]},
-            {"key": "genre", "title": "Genres",
-             "options": [{"label": g, "detail": ""} for g in offered_genres]},
-        ]
-        if not any(g["options"] for g in groups):
-            cardoptions.alert("Home Screen",
-                              "Every row your server offers is already on Home.")
-            return
-
-        picked = playoptions.show_grouped_choice(
-            title="Add a row", subtitle="", groups=groups)
-        if picked is None:
-            return
-        kind, index = picked
-
-        if kind == "builtin":
-            row_id = builtins[index]
-            rows.append({"type": "builtin", "id": row_id, "enabled": True})
-        elif kind == "discovery":
-            key = offered_shelves[index]["key"]
-            rows.append({"type": "discovery", "discoveryList": key,
-                         "id": "discover-{0}".format(key), "enabled": True})
+        options = []          # (label, row dict)
+        if kind == "discovery":
+            present = {r.get("id") for r in rows}
+            for rid in home_rows.ADDABLE_BUILTIN_IDS:
+                if rid in present or (rid == "leaving_soon"
+                                      and not self._has_capability("lifecycle")):
+                    continue
+                options.append((_(home_rows.BUILTIN_ROW_LABELS[rid]),
+                                {"type": "builtin", "id": rid, "enabled": True}))
+            taken = {r.get("discoveryList") for r in rows if r.get("type") == "discovery"}
+            try:
+                shelves = (client.discovery_page() or {}).get("shelves") or []
+            except http.ApiError as exc:
+                log.warning("settings: discover shelves unavailable ({0})".format(exc.message))
+                shelves = []
+            # Keyed off `key`: `list_type` is null on newer shelves.
+            for shelf in shelves:
+                key = shelf.get("key")
+                if not key or key in taken:
+                    continue
+                if shelf.get("title"):
+                    self._shelf_titles.setdefault(key, shelf["title"])
+                options.append((shelf.get("title") or key, {
+                    "type": "discovery", "discoveryList": key,
+                    "id": "discover-{0}".format(key), "enabled": True}))
         else:
-            # /media/genres returns NAMES, and `/media`'s genre filter takes
-            # the name string directly, so the name is the whole key -- there
-            # is no id to look up. The row's `id` is `genre:<name>`, the
-            # exact form the web app writes, so a row added here and one
-            # added there are the same object to every app's de-duplication
-            # (the earlier `genre-<slug>` form is still read fine: nothing
-            # names a genre row from its id, see home_rows.row_title).
-            genre = offered_genres[index]
-            rows.append({"type": "genre", "genre": genre,
-                         "id": "genre:{0}".format(genre), "enabled": True})
-        home["rows"] = rows
-        self._settings_write_home(home)
+            taken = {r.get("genre") for r in rows if r.get("type") == "genre"}
+            try:
+                genres = client.genres() or []
+            except http.ApiError as exc:
+                log.warning("settings: genres unavailable ({0})".format(exc.message))
+                genres = []
+            # /media/genres returns NAMES, which are the whole key.
+            for genre in genres:
+                if isinstance(genre, str) and genre and genre not in taken:
+                    options.append((genre, {"type": "genre", "genre": genre,
+                                            "id": "genre:{0}".format(genre),
+                                            "enabled": True}))
+        if not options:
+            cardoptions.alert("Home", "Every row your server offers is already on Home.")
+            return
+
+        def _pick(index):
+            home["rows"] = rows + [options[index][1]]
+            self._settings_write_home(home)
+        key = "add_discover" if kind == "discovery" else "add_genre"
+        self._settings_choose(key, settings_info.ROWS[key].title,
+                              [{"label": label} for label, _r in options], -1, _pick)
 
     def _settings_playback(self) -> dict:
         return dict(self._ensure_preferences().get("playback") or {})

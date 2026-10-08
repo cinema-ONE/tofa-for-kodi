@@ -5202,19 +5202,15 @@ def _settings_control_row(list_id: int, *, trailing: str, trailing_focused: str 
     return item, focused
 
 
-def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
-    """A row whose value is on/off, drawn as the app's capsule switch: 64x38,
-    a white knob, the accent track when on.
-
-    Our own art rather than Kodi's <radiobutton>, whose art is the host
-    skin's. The knob cannot slide: Kodi swaps two parked knobs instead."""
-    W = kwargs.get("width", T.SETTINGS_DETAIL_W_WIDE)
-    H = kwargs.get("height", T.SETTINGS_ACTION_ROW_H)
+def _settings_switch(width: int, height: int) -> str:
+    """The app's capsule switch at a row's right edge: 64x38, a white knob,
+    the accent track when the item is `checked`. The knob cannot slide in
+    Kodi, so two parked knobs swap."""
     SW, SH, KNOB = 64, 38, 32
-    X = W - 27 - SW
-    Y = (H - SH) // 2
+    X = width - 27 - SW
+    Y = (height - SH) // 2
     on = "String.IsEqual(ListItem.Property(checked),1)"
-    trailing = f"""
+    return f"""
                     <control type="image">
                         <posx>{X}</posx>
                         <posy>{Y}</posy>
@@ -5250,442 +5246,72 @@ def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
                         <colordiffuse>white</colordiffuse>
                         <texture>circle.png</texture>
                     </control>"""
-    return _settings_control_row(list_id, trailing=trailing,
-                                 trailing_w=SW + 54, **kwargs)
 
 
-def settings_home_row_editor(slot: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> str:
-    """One row of the home-screen editor: title, move up, move down, switch.
+def settings_toggle_row(list_id: int, **kwargs) -> tuple[str, str]:
+    """A row whose value is on/off, drawn as the app's capsule switch.
+    Our own art rather than Kodi's <radiobutton>, whose art is the host skin's."""
+    W = kwargs.get("width", T.SETTINGS_DETAIL_W_WIDE)
+    H = kwargs.get("height", T.SETTINGS_ACTION_ROW_H)
+    return _settings_control_row(list_id, trailing=_settings_switch(W, H),
+                                 trailing_w=64 + 54, **kwargs)
 
-    THREE REAL FOCUS TARGETS, like the reference app. The previous shape was
-    a list whose Select opened an action panel, because a list item cannot
-    offer a third focus target -- Kodi builds item layouts with
-    `insideContainer=true` so their controls are drawn but never join the
-    focus tree. That constraint is real; the conclusion that a panel was the
-    only answer was not. Real buttons inside a grouplist is what Kodi's own
-    Estuary does for SettingsCategory, and it is what this uses.
 
-    Everything is driven by WINDOW properties, not ListItem ones: these are
-    ordinary controls, so there is no list item to read. main.py's
-    _settings_fill_home_screen writes homerow_<slot>_* for each slot.
+def settings_home_row_editor(slot: int, group_id: int, list_id: int,
+                             width: int = T.SETTINGS_DETAIL_W_WIDE) -> str:
+    """Slot `slot` of Home's row editor (app 2.0): the row's name, "Shown" or
+    "Hidden" (Label2) and a switch; Select opens the row's menu in the picker.
 
-    The wrapping group is hidden when the account has fewer rows than slots,
-    which also takes the row out of the grouplist's navigation chain.
+    Its own grouplist child so the grouplist scrolls it into view; the group
+    hides on an empty title property, which also drops it from the chain."""
+    H = T.SETTINGS_ACTION_ROW_H
+    first = slot == 0
+    state_x = width - 27 - 64 - 16 - 240
 
-    An arrow the row cannot use is DIMMED, not hidden, because that is what
-    the reference app draws -- measured off a capture, its end-of-list arrow
-    sits at 0.36-0.40 of a live one's brightness against the same
-    background. `enable` on the button carries the other half: Kodi skips a
-    disabled control when navigating, so the ends behave as well as look
-    right.
-
-    NAVIGATION IS WIRED IN PYTHON, not here. CGUIControlGroupList::AddControl
-    OVERRIDES its children's up/down, and these buttons are grandchildren of
-    the grouplist, which is exactly the case that resolves to nothing and
-    makes Kodi wrap internally (reference_kodi_grouplist_children). See
-    _settings_wire_home_rows.
-    """
-    # Local import: home_rows.py is deliberately dependency-free.
-    from .. import home_rows
-
-    up_id, down_id, tog_id, rm_id = home_rows.HOME_ROW_EDIT_IDS[slot]
-    group_id = home_rows.HOME_ROW_EDIT_GROUP_IDS[slot]
-    H = T.SETTINGS_HOMEROW_H
-    TEXT_X = 18
-    BTN = 58                      # capsule/circle asset heights that exist
-    GAP = 12
-    SW_W = 72                     # the switch, same as the pane's other rows
-    TOG_X = width - 28 - SW_W
-    # A row the viewer ADDED carries a fourth control, remove, between the
-    # down arrow and the switch -- as the reference app does for e.g.
-    # "Trending Anime". The arrows are laid out as if it is always there and
-    # slide RIGHT by one slot when it is not, because Kodi cannot reposition
-    # a control by condition but it can slide one; the same conditional-slide
-    # idiom Detail uses to bottom-anchor its hero title.
-    RM_X = TOG_X - GAP - BTN
-    DOWN_X = RM_X - GAP - BTN
-    UP_X = DOWN_X - GAP - BTN
-    SHIFT = BTN + GAP
-    Y = (H - BTN) // 2
-    P = f"homerow_{slot}"
-
-    DIM = 38                      # the reference app's unavailable arrow
-
-    def circle(x: int, glyph: int, focus_id: int, flag: str) -> str:
-        """The visual half of one arrow: a filled circle when focused, an
-        outline when not, with the glyph on top. The button itself is
-        transparent and sits over this -- the same split the rest of the
-        skin uses, so focus never has to move to a textured control.
-
-        The whole arrow fades to DIM when the row cannot move that way. It
-        is a zero-time conditional fade on the wrapping group rather than a
-        `<visible>`, because hiding it leaves a hole in the first and last
-        rows where the reference app shows a greyed arrow."""
+    def _state(colour: str, gate: str = "") -> str:
+        vis = f"""
+                        <visible>{gate}</visible>""" if gate else ""
         return f"""
-                        <control type="group">
-                            <animation effect="fade" start="100" end="{DIM}" time="0"
-                                       condition="String.IsEmpty(Window.Property({flag}))">Conditional</animation>
-                        <control type="image">
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <texture>circle-outline.png</texture>
-                            <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
-                        </control>
-                        <control type="image">
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <texture>circle.png</texture>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <visible>Control.HasFocus({focus_id})</visible>
-                        </control>
-                        <control type="label">
-                            <posx>{x}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <align>center</align><aligny>center</aligny>
-                            <font>tofa_font_icons_26</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                            <label>{chr(glyph)}</label>
-                        </control>
-                        </control>"""
+                    <control type="label">{vis}
+                        <posx>{state_x}</posx>
+                        <width>240</width>
+                        <height>{H}</height>
+                        <align>right</align>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_SETTINGS_VALUE}</font>
+                        <textcolor>{colour}</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                    </control>"""
 
-    # The pane's own switch, redrawn against WINDOW properties. Same
-    # geometry and the same two-parked-knobs trick as settings_toggle_row
-    # (Kodi cannot animate a control's position, see ANIMATION.md); it
-    # cannot simply be reused because that one reads ListItem properties
-    # and these rows are not list items.
-    SH, KNOB = 38, 30
-    SY = (H - SH) // 2
-    on = f"String.IsEqual(Window.Property({P}_checked),1)"
-    # The switch needs its OWN focus signal. The arrows show focus by
-    # filling their circle, but a switch is already filled when it is on, so
-    # focus has to read as a ring around it rather than a change of fill.
-    # h52 outline against the 38-high switch = a 7px inset all round, and
-    # 52 is a capsule height that actually ships an asset
-    # (feedback_capsule_ninepatch_rule).
-    # Same ring as the settings segments, same asset, same 2px pad: both
-    # controls are 38 high, and 2 is the stroke's own width, so the ring
-    # sits flush on the switch with no row surface showing between them.
-    #
-    # WHITE, not the accent. A switch that is ON is already an accent-filled
-    # capsule, so an accent ring around it says the same colour twice and
-    # focus stops being a separate signal.
-    RING_PAD = 2
-    ring = f"""
-                        <control type="image">
-                            <visible>Control.HasFocus({tog_id})</visible>
-                            <posx>{TOG_X - RING_PAD}</posx>
-                            <posy>{(H - SH) // 2 - RING_PAD}</posy>
-                            <width>{SW_W + 2 * RING_PAD}</width>
-                            <height>{SH + 2 * RING_PAD}</height>
-                            <colordiffuse>white</colordiffuse>
-                            <texture border="21">capsule-h42-outline.png</texture>
-                        </control>"""
-    switch = f"""
-                        <control type="image">
-                            <posx>{TOG_X}</posx><posy>{SY}</posy>
-                            <width>{SW_W}</width><height>{SH}</height>
-                            <colordiffuse>{T.SURFACE_TRACK}</colordiffuse>
-                            <texture border="19">capsule-h38.png</texture>
-                        </control>
-                        <control type="image">
-                            <visible>{on}</visible>
-                            <posx>{TOG_X}</posx><posy>{SY}</posy>
-                            <width>{SW_W}</width><height>{SH}</height>
-                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                            <texture border="19">capsule-h38.png</texture>
-                        </control>
-                        <control type="image">
-                            <visible>!{on}</visible>
-                            <posx>{TOG_X + 4}</posx><posy>{SY + 4}</posy>
-                            <width>{KNOB}</width><height>{KNOB}</height>
-                            <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
-                            <texture>circle.png</texture>
-                        </control>
-                        <control type="image">
-                            <visible>{on}</visible>
-                            <posx>{TOG_X + SW_W - KNOB - 4}</posx><posy>{SY + 4}</posy>
-                            <width>{KNOB}</width><height>{KNOB}</height>
-                            <colordiffuse>$INFO[Window.Property(on_accent_color)]</colordiffuse>
-                            <texture>circle.png</texture>
-                        </control>{ring}"""
-
-    can_rm = f"!String.IsEmpty(Window.Property({P}_can_remove))"
-    slide = (f"""
-                            <animation effect="slide" start="0,0" end="{SHIFT},0"
-                                       time="0" condition="!{can_rm}">Conditional</animation>""")
-
-    remove = f"""
-                        <control type="image">
-                            <posx>{RM_X}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <texture>circle-outline.png</texture>
-                            <colordiffuse>$INFO[Window.Property(text_tertiary)]</colordiffuse>
-                            <visible>{can_rm}</visible>
-                        </control>
-                        <control type="image">
-                            <posx>{RM_X}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <texture>circle.png</texture>
-                            <colordiffuse>{T.STATUS_RED}</colordiffuse>
-                            <visible>Control.HasFocus({rm_id}) + {can_rm}</visible>
-                        </control>
-                        <control type="label">
-                            <posx>{RM_X}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <align>center</align><aligny>center</aligny>
-                            <font>tofa_font_icons_26</font>
-                            <textcolor>{T.STATUS_RED}</textcolor>
-                            <label>{chr(icon_glyphs.MINUS_CIRCLE)}</label>
-                            <visible>{can_rm} + !Control.HasFocus({rm_id})</visible>
-                        </control>
-                        <control type="label">
-                            <posx>{RM_X}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <align>center</align><aligny>center</aligny>
-                            <font>tofa_font_icons_26</font>
-                            <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
-                            <label>{chr(icon_glyphs.MINUS_CIRCLE)}</label>
-                            <visible>{can_rm} + Control.HasFocus({rm_id})</visible>
-                        </control>
-                        <control type="button" id="{rm_id}">
-                            <posx>{RM_X}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <texturefocus>transparent-6px.png</texturefocus>
-                            <texturenofocus>transparent-6px.png</texturenofocus>
-                            <label></label>
-                            <enable>{can_rm}</enable>
-                        </control>"""
-
-    can_up = f"!String.IsEmpty(Window.Property({P}_can_up))"
-    can_down = f"!String.IsEmpty(Window.Property({P}_can_down))"
-
+    switch = _settings_switch(width, H)
+    grey = "$INFO[Window.Property(text_secondary)]"
+    item, focused = _settings_control_row(
+        list_id, trailing=_state(grey) + switch,
+        trailing_focused=(_state("$INFO[Window.Property(accent_color)]",
+                                 f"Control.HasFocus({list_id})")
+                          + _state(grey, f"!Control.HasFocus({list_id})") + switch),
+        trailing_w=width - state_x, width=width)
+    eyebrow = settings_group_eyebrow(
+        posy=T.SETTINGS_SECTION_BAND, label="ROWS, IN ORDER",
+        indent="                        ") + "\n" if first else ""
     return f"""
                     <control type="group" id="{group_id}">
+                        <visible>!String.IsEmpty(Window.Property(homerow_{slot}_title))</visible>
                         <width>{width}</width>
-                        <height>{H}</height>
-                        <visible>!String.IsEmpty(Window.Property({P}_title))</visible>
-                        <control type="label">
-                            <posx>{TEXT_X}</posx>
-                            <posy>0</posy>
-                            <width>{UP_X - TEXT_X - 16}</width>
+                        <height>{T.SETTINGS_HOMEROW_FIRST_H if first else T.SETTINGS_HOMEROW_PITCH}</height>
+{eyebrow}                        <control type="list" id="{list_id}">
+                            <posy>{T.SETTINGS_SECTION_BAND if first else 0}</posy>
+                            <width>{width}</width>
                             <height>{H}</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ROW_TITLE}</font>
-                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                            <label>$INFO[Window.Property({P}_title)]</label>
-                            <animation effect="slide" start="0,0" end="0,-9" time="0"
-                                       condition="!String.IsEmpty(Window.Property({P}_sub))">Conditional</animation>
-                        </control>
-                        <control type="label">
-                            <posx>{TEXT_X}</posx>
-                            <posy>{H // 2 + 2}</posy>
-                            <width>{UP_X - TEXT_X - 16}</width>
-                            <height>24</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_tertiary)]</textcolor>
-                            <label>$INFO[Window.Property({P}_sub)]</label>
-                            <visible>!String.IsEmpty(Window.Property({P}_sub))</visible>
-                        </control>
-                        <control type="group">{slide}{circle(UP_X, icon_glyphs.ARROW_UP, up_id, f"{P}_can_up")}{circle(DOWN_X, icon_glyphs.ARROW_DOWN, down_id, f"{P}_can_down")}
-                        </control>{remove}
-{switch}
-                        <control type="button" id="{up_id}">
-                            <posx>{UP_X}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <texturefocus>transparent-6px.png</texturefocus>
-                            <texturenofocus>transparent-6px.png</texturenofocus>
-                            <label></label>{slide}
-                            <enable>{can_up}</enable>
-                        </control>
-                        <control type="button" id="{down_id}">
-                            <posx>{DOWN_X}</posx><posy>{Y}</posy>
-                            <width>{BTN}</width><height>{BTN}</height>
-                            <texturefocus>transparent-6px.png</texturefocus>
-                            <texturenofocus>transparent-6px.png</texturenofocus>
-                            <label></label>{slide}
-                            <enable>{can_down}</enable>
-                        </control>
-                        <control type="button" id="{tog_id}">
-                            <posx>{TOG_X}</posx><posy>0</posy>
-                            <width>{SW_W}</width><height>{H}</height>
-                            <texturefocus>transparent-6px.png</texturefocus>
-                            <texturenofocus>transparent-6px.png</texturenofocus>
-                            <label></label>
+                            <onleft>{list_id}</onleft>
+                            <onright>{list_id}</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{H}</itemheight>
+                            <scrolltime>0</scrolltime>
+{item}
+{focused}
                         </control>
                     </control>"""
-
-
-def settings_home_row(list_id: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> tuple[str, str]:
-    """One row of the home-screen editor: its name, and whether it is on.
-
-    Compact and single-line, unlike the pane's other rows -- there are up to
-    nine of them and they are a LIST of one thing, not nine separate settings.
-
-    The state label is positioned by its LEFT edge even though it is
-    right-aligned: inside a list item Kodi treats <posx> as the left edge,
-    unlike a window-level label where a right-aligned posx IS the right edge
-    (reference_kodi_layout_traps). Getting that backwards pushed the word
-    clean off the row, which reads as "the property never got set".
-
-    No inline up/down arrows, which is where this departs from the app. The
-    app gives every row three independently focusable controls (up, down, and
-    a switch); a D-pad has no way to reach a third control inside a list item,
-    and Left is already "back to the sidebar" on this pane. Select opens a
-    small action panel offering the same three choices instead."""
-    H = T.SETTINGS_HOMEROW_H
-    TEXT_X = 18
-
-    def _body(title_color: str, state_color: str, gate: str) -> str:
-        vis = f"""
-                        <visible>{gate}</visible>""" if gate else ""
-        return f"""
-                    <control type="group">{vis}
-                        <control type="label">
-                            <posx>{TEXT_X}</posx>
-                            <posy>0</posy>
-                            <width>{width - TEXT_X - 160}</width>
-                            <height>{H}</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ROW_TITLE}</font>
-                            <textcolor>{title_color}</textcolor>
-                            <label>$INFO[ListItem.Label]</label>
-                        </control>
-                        <control type="label">
-                            <posx>{width - 28 - 130}</posx>
-                            <posy>0</posy>
-                            <width>130</width>
-                            <height>{H}</height>
-                            <align>right</align>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>{state_color}</textcolor>
-                            <label>$INFO[ListItem.Property(state)]</label>
-                        </control>
-                    </control>"""
-
-    # A row that is switched OFF is drawn muted, so the list reads as an
-    # ordered set with some members greyed rather than as a list of labels
-    # with a word after each.
-    off = "String.IsEqual(ListItem.Property(checked),1)"
-    rest = (_body("$INFO[Window.Property(text_primary)]",
-                  "$INFO[Window.Property(text_tertiary)]", off)
-            + _body("$INFO[Window.Property(text_tertiary)]",
-                    "$INFO[Window.Property(text_tertiary)]", f"!{off}"))
-
-    item = f"""                <itemlayout width="{width}" height="{H}">{rest}
-                </itemlayout>"""
-
-    focused = f"""                <focusedlayout width="{width}" height="{H}">
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>2</posy>
-                        <width>{width}</width>
-                        <height>{H - 4}</height>
-                        <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
-                        <texture border="14">rounded-14.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>2</posy>
-                        <width>{width}</width>
-                        <height>{H - 4}</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="14">rounded-14-outline.png</texture>
-                    </control>{_body(
-                        "$INFO[Window.Property(accent_color)]",
-                        "$INFO[Window.Property(text_secondary)]",
-                        f"Control.HasFocus({list_id})")}{_body(
-                        "$INFO[Window.Property(text_primary)]",
-                        "$INFO[Window.Property(text_tertiary)]",
-                        f"!Control.HasFocus({list_id})")}
-                </focusedlayout>"""
-    return item, focused
-
-
-def settings_add_row(list_id: int, width: int = T.SETTINGS_DETAIL_W_WIDE) -> tuple[str, str]:
-    """9.4's two "add a row" actions under the home-screen editor.
-
-    Accent text with a trailing plus, not a normal row: these ADD something
-    rather than change something that is already there, and the app draws
-    them that way. Shorter than an action row for the same reason -- the
-    subtitle is one clause, not an explanation."""
-    H = T.SETTINGS_HOMEADD_H
-    TEXT_X = 18
-
-    def _body(gate: str) -> str:
-        vis = f"""
-                        <visible>{gate}</visible>""" if gate else ""
-        return f"""
-                    <control type="group">{vis}
-                        <control type="label">
-                            <posx>{TEXT_X}</posx>
-                            <posy>14</posy>
-                            <width>{width - TEXT_X - 90}</width>
-                            <height>32</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ROW_TITLE}</font>
-                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                            <label>$INFO[ListItem.Label]</label>
-                        </control>
-                        <control type="label">
-                            <posx>{TEXT_X}</posx>
-                            <posy>46</posy>
-                            <width>{width - TEXT_X - 90}</width>
-                            <height>26</height>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_METADATA}</font>
-                            <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                            <label>$INFO[ListItem.Property(summary)]</label>
-                        </control>
-                        <control type="label">
-                            <posx>{width - 28 - 40}</posx>
-                            <posy>0</posy>
-                            <width>40</width>
-                            <height>{H}</height>
-                            <align>center</align>
-                            <aligny>center</aligny>
-                            <font>{T.FONT_ICON_26}</font>
-                            <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                            <label>&#x{icon_glyphs.PLUS:04X};</label>
-                        </control>
-                    </control>"""
-
-    card = f"""
-                    <control type="image">
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{H}</height>
-                        <colordiffuse>{T.PANEL_WASH}</colordiffuse>
-                        <texture border="20">rounded-20.png</texture>
-                    </control>"""
-
-    item = f"""                <itemlayout width="{width}" height="{H}">{card}{_body("")}
-                </itemlayout>"""
-    focused = f"""                <focusedlayout width="{width}" height="{H}">{card}
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{H}</height>
-                        <colordiffuse>$INFO[Window.Property(settings_row_wash)]</colordiffuse>
-                        <texture border="20">rounded-20.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>Control.HasFocus({list_id})</visible>
-                        <posx>0</posx>
-                        <posy>0</posy>
-                        <width>{width}</width>
-                        <height>{H}</height>
-                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture border="20">rounded-20-outline.png</texture>
-                    </control>{_body("")}
-                </focusedlayout>"""
-    return item, focused
 
 
 def settings_choice_row(list_id: int, *, value_property: str,

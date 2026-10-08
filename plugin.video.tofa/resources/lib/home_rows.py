@@ -212,38 +212,13 @@ DISCOVERY_LIST_LABELS: dict[str, int] = {
 # sixteen are spoken for before the viewer adds a single genre row.
 MAX_HOME_ROWS = 16
 
-#: The home-screen EDITOR in Settings > Appearance: three focusable
-#: controls per row slot, laid out like the reference app -- move up, move
-#: down, and the on/off switch.
-#:
-#: They have to be real controls rather than parts of a list item: Kodi
-#: builds a list item's layout with `insideContainer=true`
-#: (CGUIListItemLayout::LoadControl), so those controls are drawn but never
-#: join the focus tree -- the list itself is the single focus target. A
-#: grouplist of real buttons is the shape Kodi's own Estuary uses for
-#: SettingsCategory, and it is what makes three targets per row reachable.
-#:
-#: 9101/9102/9103/9104 for slot 0, then +10 per slot.
-#:
-#: The block moved from 88xx when the slot count went to 16: 8800 + 10*15
-#: reaches 8950, and Playback & Video's segmented rows own 8900-8973. 84xx
-#: was never available either -- that pane's segments are 8410-8450 with its
-#: grouplist at 8490, and check_xml.py caught that collision the first time
-#: this was written. Above 9000 (the hero backdrop, the highest id in the
-#: window) there is nothing to collide with at all.
-HOME_ROW_EDIT_IDS: tuple[tuple[int, int, int, int], ...] = tuple(
-    (9101 + 10 * i, 9102 + 10 * i, 9103 + 10 * i, 9104 + 10 * i)
-    for i in range(MAX_HOME_ROWS)
-)
-
-#: Column meaning, so a caller never indexes these by a bare number.
-EDIT_UP, EDIT_DOWN, EDIT_TOGGLE, EDIT_REMOVE = 0, 1, 2, 3
-
-#: Slot i's wrapping group, so the whole row can be hidden when the account
-#: has fewer rows than slots.
+#: Settings > Home's row editor (app 2.0): one card per slot, a one-item
+#: list in its own group so the group can hide when the account has fewer
+#: rows. Slot i: group 9100 + 10i, list 9101 + 10i (clear of 89xx and 9000).
+HOME_ROW_EDIT_IDS: tuple[int, ...] = tuple(
+    9101 + 10 * i for i in range(MAX_HOME_ROWS))
 HOME_ROW_EDIT_GROUP_IDS: tuple[int, ...] = tuple(
-    9100 + 10 * i for i in range(MAX_HOME_ROWS)
-)
+    9100 + 10 * i for i in range(MAX_HOME_ROWS))
 
 # HOME_ROW_GROUP_IDS[i]/HOME_ROW_LIST_IDS[i] is slot i's (group, list)
 # control-id pair in the Home section of main.xml.tpl (rendered to

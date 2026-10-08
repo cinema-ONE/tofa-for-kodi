@@ -119,10 +119,14 @@ ROWS: dict[str, Info] = {
         "Home rows",
         "Rows appear on Home in this order, and hiding one hides it on "
         "every tofa app your profile uses.",
-        note="Use the arrows to move a row, the switch to hide it."),
-    "add_row": Info(
-        "Add a row",
-        "Adds a row from Home, Discover or your genres."),
+        note="Select a row to move it, hide it or remove one you added."),
+    "add_discover": Info(
+        "Add a Discover row",
+        "Puts one of Discover's lists, or a Home row you took off, at the end "
+        "of Home."),
+    "add_genre": Info(
+        "Add a genre row",
+        "Puts everything in your library from one genre at the end of Home."),
     # Privacy & About
     "licences": Info(
         "Open Source Notices",
@@ -147,7 +151,8 @@ SUMMARIES: dict[str, tuple] = {
     "appearance": (("FOX", "fox"), ("RATING BADGE", "rating"),
                    ("EPISODES REMAINING", "episodes_remaining"),
                    ("REGION", "region")),
-    "home": (("FEATURED SPOTLIGHT", "spotlight"), ("ROWS", "home_rows")),
+    "home": (("SHOWN ON HOME", "home_shown"), ("FIRST ROW", "home_first"),
+             ("HIDDEN", "home_hidden"), ("FEATURED SPOTLIGHT", "spotlight")),
     "privacy": (("VERSION", "version"), ("ARTWORK STORAGE", "art_budget")),
 }
 MAX_SUMMARY = 4
