@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- COPIED from resources/lib/skin/static/script-tofa-player.xml and processed.
-     hash=41d7773e62e2. DO NOT HAND-EDIT: edit the file under static/,
+     hash=375920ec6aae. DO NOT HAND-EDIT: edit the file under static/,
      which keeps every comment; this copy has them stripped and its
      capsules and rounded rects swapped for resolution-free art. -->
 <window type="dialog">
@@ -1957,260 +1957,1332 @@
             </control>
         </control>
         <control type="group" id="9700">
-            <posx>1140</posx>
-            <posy>0</posy>
             <visible>!String.IsEmpty(Window.Property(player_next_up))</visible>
-            <animation effect="slide" start="780,0" end="0,0" time="340" tween="cubic" easing="out">Visible</animation>
             <animation effect="fade" start="0" end="100" time="340">Visible</animation>
-            <animation effect="slide" start="0,0" end="780,0" time="250" tween="cubic" easing="in">Hidden</animation>
+            <animation effect="slide" start="0,40" end="0,0" time="340" tween="cubic" easing="out">Visible</animation>
             <animation effect="fade" start="100" end="0" time="250">Hidden</animation>
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(nextup_style),compact)</visible>
             <control type="image">
-                <posx>-260</posx>
+                <posx>1201</posx>
+                <posy>762</posy>
+                <width>638</width>
+                <height>258</height>
+                <colordiffuse>0xE6121417</colordiffuse>
+                <texture>exact-rounded-20-638x258.png</texture>
+            </control>
+            <control type="image">
+                <posx>1201</posx>
+                <posy>762</posy>
+                <width>638</width>
+                <height>258</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <texture>exact-rounded-20-outline-638x258.png</texture>
+            </control>
+            <control type="image">
+                <posx>1225</posx>
+                <posy>785</posy>
+                <width>224</width>
+                <height>126</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>
+                <texture diffuse="nextup-mask-224x126.png">white-square.png</texture>
+            </control>
+            <control type="image">
+                <posx>1225</posx>
+                <posy>785</posy>
+                <width>224</width>
+                <height>126</height>
+                <aspectratio scalediffuse="false">scale</aspectratio>
+                <texture diffuse="nextup-mask-224x126.png">$INFO[Window.Property(nextup_still)]</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_still))</visible>
+            </control>
+            <control type="label">
+                <posx>1470</posx>
+                <posy>798</posy>
+                <width>340</width>
+                <height>24</height>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>NEXT UP · $INFO[Window.Property(nextup_number)]</label>
+            </control>
+            <control type="label">
+                <posx>1469</posx>
+                <posy>824</posy>
+                <width>346</width>
+                <height>46</height>
+                <aligny>center</aligny>
+                <font>tofa_font_dialog_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(nextup_title)]</label>
+            </control>
+            <control type="label">
+                <posx>1470</posx>
+                <posy>870</posy>
+                <width>346</width>
+                <height>30</height>
+                <aligny>center</aligny>
+                <font>tofa_font_metadata</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(nextup_meta)]</label>
+            </control>
+            <control type="image">
+                <posx>1221</posx>
+                <posy>933</posy>
+                <width>32</width>
+                <height>64</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1253</posx>
+                <posy>933</posy>
+                <width>453</width>
+                <height>64</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1706</posx>
+                <posy>933</posy>
+                <width>32</width>
+                <height>64</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1221</posx>
+                <posy>933</posy>
+                <width>32</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1253</posx>
+                <posy>933</posy>
+                <width>453</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1706</posx>
+                <posy>933</posy>
+                <width>32</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1221</posx>
+                <posy>933</posy>
+                <width>517</width>
+                <height>64</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-outline-517x64.png</texture>
+            </control>
+            <control type="image">
+                <posx>1221</posx>
+                <posy>933</posy>
+                <width>517</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-outline-517x64.png</texture>
+            </control>
+            <control type="label">
+                <posx>1240</posx>
+                <posy>933</posy>
+                <width>36</width>
+                <height>64</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1240</posx>
+                <posy>933</posy>
+                <width>36</width>
+                <height>64</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1282</posx>
+                <posy>933</posy>
+                <width>436</width>
+                <height>64</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>Play Next</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1282</posx>
+                <posy>933</posy>
+                <width>436</width>
+                <height>64</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>Play Next</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="image">
+                <posx>1657</posx>
+                <posy>949</posy>
+                <width>2</width>
+                <height>32</height>
+                <colordiffuse>0x33FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_ring))</visible>
+            </control>
+            <control type="image">
+                <posx>1752</posx>
+                <posy>933</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1752</posx>
+                <posy>933</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1752</posx>
+                <posy>933</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h64.png</texture>
+            </control>
+            <control type="image">
+                <posx>1752</posx>
+                <posy>933</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h64.png</texture>
+            </control>
+            <control type="label">
+                <posx>1752</posx>
+                <posy>933</posy>
+                <width>64</width>
+                <height>64</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>Control.HasFocus(9702)</visible>
+            </control>
+            <control type="label">
+                <posx>1752</posx>
+                <posy>933</posy>
+                <width>64</width>
+                <height>64</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>!Control.HasFocus(9702)</visible>
+            </control>
+            </control>
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(nextup_style),minimal)</visible>
+            <control type="image">
+                <posx>1036</posx>
+                <posy>929</posy>
+                <width>44</width>
+                <height>88</height>
+                <colordiffuse>0xE6121417</colordiffuse>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1080</posx>
+                <posy>929</posy>
+                <width>714</width>
+                <height>88</height>
+                <colordiffuse>0xE6121417</colordiffuse>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1794</posx>
+                <posy>929</posy>
+                <width>44</width>
+                <height>88</height>
+                <colordiffuse>0xE6121417</colordiffuse>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1036</posx>
+                <posy>929</posy>
+                <width>802</width>
+                <height>88</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <texture>pill-outline-802x88.png</texture>
+            </control>
+            <control type="image">
+                <posx>1048</posx>
+                <posy>937</posy>
+                <width>128</width>
+                <height>72</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>
+                <texture diffuse="nextup-mask-128x72.png">white-square.png</texture>
+            </control>
+            <control type="image">
+                <posx>1048</posx>
+                <posy>937</posy>
+                <width>128</width>
+                <height>72</height>
+                <aspectratio scalediffuse="false">scale</aspectratio>
+                <texture diffuse="nextup-mask-128x72.png">$INFO[Window.Property(nextup_still)]</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_still))</visible>
+            </control>
+            <control type="label">
+                <posx>1197</posx>
+                <posy>942</posy>
+                <width>340</width>
+                <height>24</height>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(nextup_eyebrow_short)]</label>
+            </control>
+            <control type="label">
+                <posx>1196</posx>
+                <posy>966</posy>
+                <width>340</width>
+                <height>34</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(nextup_title)]</label>
+            </control>
+            <control type="image" id="9706">
+                <posx>1536</posx>
+                <posy>937</posy>
+                <width>204</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <texture border="36">capsule-h72.png</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_ring))</visible>
+            </control>
+            <control type="image">
+                <posx>1536</posx>
+                <posy>937</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1572</posx>
+                <posy>937</posy>
+                <width>132</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1704</posx>
+                <posy>937</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1536</posx>
+                <posy>937</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1572</posx>
+                <posy>937</posy>
+                <width>132</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1704</posx>
+                <posy>937</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1536</posx>
+                <posy>937</posy>
+                <width>204</width>
+                <height>72</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-outline-204x72.png</texture>
+            </control>
+            <control type="image">
+                <posx>1536</posx>
+                <posy>937</posy>
+                <width>204</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-outline-204x72.png</texture>
+            </control>
+            <control type="label">
+                <posx>1556</posx>
+                <posy>937</posy>
+                <width>36</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1556</posx>
+                <posy>937</posy>
+                <width>36</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1596</posx>
+                <posy>937</posy>
+                <width>124</width>
+                <height>72</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>Play Next</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1596</posx>
+                <posy>937</posy>
+                <width>124</width>
+                <height>72</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>Play Next</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="image">
+                <posx>1756</posx>
+                <posy>937</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1756</posx>
+                <posy>937</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1756</posx>
+                <posy>937</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h72.png</texture>
+            </control>
+            <control type="image">
+                <posx>1756</posx>
+                <posy>937</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h72.png</texture>
+            </control>
+            <control type="label">
+                <posx>1756</posx>
+                <posy>937</posy>
+                <width>72</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>Control.HasFocus(9702)</visible>
+            </control>
+            <control type="label">
+                <posx>1756</posx>
+                <posy>937</posy>
+                <width>72</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>!Control.HasFocus(9702)</visible>
+            </control>
+            </control>
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(nextup_style),lower)</visible>
+            <control type="image">
+                <posx>0</posx>
+                <posy>600</posy>
+                <width>1920</width>
+                <height>480</height>
+                <colordiffuse>0xF2000000</colordiffuse>
+                <texture>nextup-lower-scrim.png</texture>
+            </control>
+            <control type="image">
+                <posx>80</posx>
+                <posy>823</posy>
+                <width>352</width>
+                <height>198</height>
+                <colordiffuse>0x14FFFFFF</colordiffuse>
+                <texture diffuse="nextup-mask-352x198.png">white-square.png</texture>
+            </control>
+            <control type="image">
+                <posx>80</posx>
+                <posy>823</posy>
+                <width>352</width>
+                <height>198</height>
+                <aspectratio scalediffuse="false">scale</aspectratio>
+                <texture diffuse="nextup-mask-352x198.png">$INFO[Window.Property(nextup_still)]</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_still))</visible>
+            </control>
+            <control type="label">
+                <posx>468</posx>
+                <posy>874</posy>
+                <width>900</width>
+                <height>26</height>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>NEXT UP · $INFO[Window.Property(nextup_season_line)]</label>
+            </control>
+            <control type="label">
+                <posx>467</posx>
+                <posy>900</posy>
+                <width>940</width>
+                <height>60</height>
+                <aligny>center</aligny>
+                <font>tofa_font_player_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(nextup_title)]</label>
+            </control>
+            <control type="label">
+                <posx>468</posx>
+                <posy>964</posy>
+                <width>600</width>
+                <height>30</height>
+                <aligny>center</aligny>
+                <font>tofa_font_metadata</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(nextup_runtime)]</label>
+            </control>
+            <control type="image">
+                <posx>1450</posx>
+                <posy>945</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1486</posx>
+                <posy>945</posy>
+                <width>231</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1717</posx>
+                <posy>945</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1450</posx>
+                <posy>945</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1486</posx>
+                <posy>945</posy>
+                <width>231</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1717</posx>
+                <posy>945</posy>
+                <width>36</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1450</posx>
+                <posy>945</posy>
+                <width>303</width>
+                <height>72</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-outline-303x72.png</texture>
+            </control>
+            <control type="image">
+                <posx>1450</posx>
+                <posy>945</posy>
+                <width>303</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-outline-303x72.png</texture>
+            </control>
+            <control type="label">
+                <posx>1470</posx>
+                <posy>945</posy>
+                <width>36</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1470</posx>
+                <posy>945</posy>
+                <width>36</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1510</posx>
+                <posy>945</posy>
+                <width>223</width>
+                <height>72</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>Play Next</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1510</posx>
+                <posy>945</posy>
+                <width>223</width>
+                <height>72</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>Play Next</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="image">
+                <posx>1667</posx>
+                <posy>965</posy>
+                <width>2</width>
+                <height>32</height>
+                <colordiffuse>0x33FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_ring))</visible>
+            </control>
+            <control type="image">
+                <posx>1768</posx>
+                <posy>945</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1768</posx>
+                <posy>945</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1768</posx>
+                <posy>945</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h72.png</texture>
+            </control>
+            <control type="image">
+                <posx>1768</posx>
+                <posy>945</posy>
+                <width>72</width>
+                <height>72</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h72.png</texture>
+            </control>
+            <control type="label">
+                <posx>1768</posx>
+                <posy>945</posy>
+                <width>72</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>Control.HasFocus(9702)</visible>
+            </control>
+            <control type="label">
+                <posx>1768</posx>
+                <posy>945</posy>
+                <width>72</width>
+                <height>72</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>!Control.HasFocus(9702)</visible>
+            </control>
+            </control>
+            <control type="group">
+                <visible>String.IsEqual(Window.Property(nextup_style),full)</visible>
+            <control type="image">
+                <posx>880</posx>
                 <posy>0</posy>
                 <width>1040</width>
                 <height>1080</height>
-                <colordiffuse>0xD6000000</colordiffuse>
+                <colordiffuse>0xEB000000</colordiffuse>
                 <texture>nextup-scrim.png</texture>
             </control>
+            <control type="label">
+                <posx>1206</posx>
+                <posy>40</posy>
+                <width>660</width>
+                <height>26</height>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>NEXT UP</label>
+            </control>
             <control type="image">
-                <posx>54</posx>
-                <posy>190</posy>
-                <width>672</width>
-                <height>378</height>
+                <posx>1206</posx>
+                <posy>100</posy>
+                <width>660</width>
+                <height>371</height>
                 <colordiffuse>0x14FFFFFF</colordiffuse>
                 <texture diffuse="nextup-still-mask.png">white-square.png</texture>
             </control>
             <control type="image">
-                <posx>54</posx>
-                <posy>190</posy>
-                <width>672</width>
-                <height>378</height>
+                <posx>1206</posx>
+                <posy>100</posy>
+                <width>660</width>
+                <height>371</height>
                 <aspectratio scalediffuse="false">scale</aspectratio>
                 <texture diffuse="nextup-still-mask.png">$INFO[Window.Property(nextup_still)]</texture>
                 <visible>!String.IsEmpty(Window.Property(nextup_still))</visible>
             </control>
             <control type="image">
-                <posx>54</posx>
-                <posy>190</posy>
-                <width>672</width>
-                <height>378</height>
+                <posx>1206</posx>
+                <posy>100</posy>
+                <width>660</width>
+                <height>371</height>
                 <colordiffuse>0x14FFFFFF</colordiffuse>
                 <texture>nextup-still-outline.png</texture>
             </control>
             <control type="label">
-                <posx>54</posx>
-                <posy>596</posy>
-                <width>672</width>
+                <posx>1206</posx>
+                <posy>494</posy>
+                <width>660</width>
                 <height>26</height>
+                <aligny>center</aligny>
                 <font>tofa_font_eyebrow</font>
                 <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                <shadowcolor>0xB0000000</shadowcolor>
-                <label>UP NEXT</label>
+                <label>$INFO[Window.Property(nextup_season_line)]</label>
             </control>
-            <control type="textbox">
-                <posx>54</posx>
-                <posy>634</posy>
-                <width>672</width>
-                <height>112</height>
+            <control type="label">
+                <posx>1205</posx>
+                <posy>520</posy>
+                <width>660</width>
+                <height>62</height>
+                <aligny>center</aligny>
                 <font>tofa_font_player_title</font>
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <shadowcolor>0xB0000000</shadowcolor>
                 <label>$INFO[Window.Property(nextup_title)]</label>
             </control>
             <control type="label">
-                <posx>54</posx>
-                <posy>754</posy>
-                <width>672</width>
+                <posx>1206</posx>
+                <posy>584</posy>
+                <width>660</width>
                 <height>30</height>
-                <font>tofa_font_caption</font>
+                <aligny>center</aligny>
+                <font>tofa_font_metadata</font>
                 <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
-                <shadowcolor>0xB0000000</shadowcolor>
-                <label>$INFO[Window.Property(nextup_number)]</label>
+                <label>$INFO[Window.Property(nextup_runtime)]</label>
+            </control>
+            <control type="label">
+                <posx>1206</posx>
+                <posy>657</posy>
+                <width>660</width>
+                <height>26</height>
+                <aligny>center</aligny>
+                <font>tofa_font_micro</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(nextup_place)]</label>
             </control>
             <control type="image">
-                <posx>54</posx>
-                <posy>814</posy>
-                <width>39</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <posx>1204</posx>
+                <posy>950</posy>
+                <width>38</width>
+                <height>76</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
                 <texture>pill-cap-left.png</texture>
             </control>
             <control type="image">
-                <posx>93</posx>
-                <posy>814</posy>
-                <width>242</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <posx>1242</posx>
+                <posy>950</posy>
+                <width>506</width>
+                <height>76</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
                 <texture>pill-mid.png</texture>
             </control>
             <control type="image">
-                <posx>335</posx>
-                <posy>814</posy>
-                <width>39</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <posx>1748</posx>
+                <posy>950</posy>
+                <width>38</width>
+                <height>76</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
                 <texture>pill-cap-right.png</texture>
             </control>
             <control type="image">
-                <posx>54</posx>
-                <posy>814</posy>
-                <width>320</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
+                <posx>1204</posx>
+                <posy>950</posy>
+                <width>38</width>
+                <height>76</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
                 <visible>Control.HasFocus(9701)</visible>
-                <texture>pill-outline-320x78.png</texture>
+                <texture>pill-cap-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>1242</posx>
+                <posy>950</posy>
+                <width>506</width>
+                <height>76</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-mid.png</texture>
+            </control>
+            <control type="image">
+                <posx>1748</posx>
+                <posy>950</posy>
+                <width>38</width>
+                <height>76</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-cap-right.png</texture>
+            </control>
+            <control type="image">
+                <posx>1204</posx>
+                <posy>950</posy>
+                <width>582</width>
+                <height>76</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9701)</visible>
+                <texture>pill-outline-582x76.png</texture>
+            </control>
+            <control type="image">
+                <posx>1204</posx>
+                <posy>950</posy>
+                <width>582</width>
+                <height>76</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9701)</visible>
+                <texture>pill-outline-582x76.png</texture>
             </control>
             <control type="label">
-                <posx>54</posx>
-                <posy>814</posy>
-                <width>320</width>
-                <height>78</height>
+                <posx>1226</posx>
+                <posy>950</posy>
+                <width>36</width>
+                <height>76</height>
                 <align>center</align>
                 <aligny>center</aligny>
-                <font>tofa_font_button</font>
-                <textcolor>$INFO[Window.Property(on_accent_color)]</textcolor>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1226</posx>
+                <posy>950</posy>
+                <width>36</width>
+                <height>76</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE13C;</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1268</posx>
+                <posy>950</posy>
+                <width>498</width>
+                <height>76</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
                 <label>Play Next</label>
+                <visible>Control.HasFocus(9701)</visible>
+            </control>
+            <control type="label">
+                <posx>1268</posx>
+                <posy>950</posy>
+                <width>498</width>
+                <height>76</height>
+                <aligny>center</aligny>
+                <font>tofa_font_row_title</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>Play Next</label>
+                <visible>!Control.HasFocus(9701)</visible>
+            </control>
+            <control type="image">
+                <posx>1693</posx>
+                <posy>972</posy>
+                <width>2</width>
+                <height>32</height>
+                <colordiffuse>0x33FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+                <visible>!String.IsEmpty(Window.Property(nextup_ring))</visible>
+            </control>
+            <control type="image">
+                <posx>1801</posx>
+                <posy>956</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>0x29FFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1801</posx>
+                <posy>956</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle.png</texture>
+            </control>
+            <control type="image">
+                <posx>1801</posx>
+                <posy>956</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>0x1FFFFFFF</colordiffuse>
+                <visible>!Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h64.png</texture>
+            </control>
+            <control type="image">
+                <posx>1801</posx>
+                <posy>956</posy>
+                <width>64</width>
+                <height>64</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>Control.HasFocus(9702)</visible>
+                <texture>pill-circle-outline-h64.png</texture>
+            </control>
+            <control type="label">
+                <posx>1801</posx>
+                <posy>956</posy>
+                <width>64</width>
+                <height>64</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>Control.HasFocus(9702)</visible>
+            </control>
+            <control type="label">
+                <posx>1801</posx>
+                <posy>956</posy>
+                <width>64</width>
+                <height>64</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_icons_26</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>&#xE1B2;</label>
+                <visible>!Control.HasFocus(9702)</visible>
+            </control>
+            </control>
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(nextup_segments))</visible>
+            <control type="image" id="9710">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg0)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9711">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg1)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9712">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg2)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9713">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg3)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9714">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg4)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9715">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg5)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9716">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg6)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9717">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg7)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9718">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg8)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9719">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg9)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9720">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg10)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9721">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg11)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9722">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg12)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9723">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg13)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9724">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg14)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9725">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg15)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9726">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg16)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9727">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg17)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9728">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg18)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9729">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg19)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9730">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg20)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9731">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg21)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9732">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg22)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9733">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg23)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9734">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg24)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9735">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg25)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9736">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg26)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9737">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg27)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9738">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg28)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image" id="9739">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>10</width>
+                <height>4</height>
+                <colordiffuse>$INFO[Window.Property(nextup_seg29)]</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            </control>
+            <control type="image" id="9703">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>48</width>
+                <height>48</height>
+                <colordiffuse>$INFO[Window.Property(nextup_ring_track)]</colordiffuse>
+                <visible>!String.IsEmpty(Window.Property(nextup_ring)) + !String.IsEqual(Window.Property(nextup_style),minimal)</visible>
+                <texture>nextup-ring-track.png</texture>
+            </control>
+            <control type="image" id="9704">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>48</width>
+                <height>48</height>
+                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                <visible>!String.IsEqual(Window.Property(nextup_style),minimal)</visible>
+                <texture>$INFO[Window.Property(nextup_ring)]</texture>
+            </control>
+            <control type="label" id="9705">
+                <posx>0</posx>
+                <posy>0</posy>
+                <width>48</width>
+                <height>48</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>tofa_font_eyebrow</font>
+                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
+                <label>$INFO[Window.Property(nextup_seconds),,s]</label>
+                <visible>!String.IsEqual(Window.Property(nextup_style),minimal)</visible>
             </control>
             <control type="button" id="9701">
-                <posx>54</posx>
-                <posy>814</posy>
-                <width>320</width>
-                <height>78</height>
+                <posx>1221</posx>
+                <posy>933</posy>
+                <width>517</width>
+                <height>64</height>
                 <texturefocus />
                 <texturenofocus />
                 <label />
                 <onright>9702</onright>
             </control>
-            <control type="image">
-                <posx>394</posx>
-                <posy>814</posy>
-                <width>39</width>
-                <height>78</height>
-                <colordiffuse>0x14FFFFFF</colordiffuse>
-                <texture>pill-cap-left.png</texture>
-            </control>
-            <control type="image">
-                <posx>433</posx>
-                <posy>814</posy>
-                <width>122</width>
-                <height>78</height>
-                <colordiffuse>0x14FFFFFF</colordiffuse>
-                <texture>pill-mid.png</texture>
-            </control>
-            <control type="image">
-                <posx>555</posx>
-                <posy>814</posy>
-                <width>39</width>
-                <height>78</height>
-                <colordiffuse>0x14FFFFFF</colordiffuse>
-                <texture>pill-cap-right.png</texture>
-            </control>
-            <control type="image">
-                <posx>394</posx>
-                <posy>814</posy>
-                <width>39</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                <visible>Control.HasFocus(9702)</visible>
-                <texture>pill-cap-left.png</texture>
-            </control>
-            <control type="image">
-                <posx>433</posx>
-                <posy>814</posy>
-                <width>122</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                <visible>Control.HasFocus(9702)</visible>
-                <texture>pill-mid.png</texture>
-            </control>
-            <control type="image">
-                <posx>555</posx>
-                <posy>814</posy>
-                <width>39</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(accent_pill_fill)]</colordiffuse>
-                <visible>Control.HasFocus(9702)</visible>
-                <texture>pill-cap-right.png</texture>
-            </control>
-            <control type="image">
-                <posx>394</posx>
-                <posy>814</posy>
-                <width>200</width>
-                <height>78</height>
-                <colordiffuse>0x1FFFFFFF</colordiffuse>
-                <visible>!Control.HasFocus(9702)</visible>
-                <texture>pill-outline-200x78.png</texture>
-            </control>
-            <control type="image">
-                <posx>394</posx>
-                <posy>814</posy>
-                <width>200</width>
-                <height>78</height>
-                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                <visible>Control.HasFocus(9702)</visible>
-                <texture>pill-outline-200x78.png</texture>
-            </control>
-            <control type="label">
-                <posx>394</posx>
-                <posy>814</posy>
-                <width>200</width>
-                <height>78</height>
-                <align>center</align>
-                <aligny>center</aligny>
-                <font>tofa_font_button</font>
-                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <label>Dismiss</label>
-                <visible>!Control.HasFocus(9702)</visible>
-            </control>
-            <control type="label">
-                <posx>394</posx>
-                <posy>814</posy>
-                <width>200</width>
-                <height>78</height>
-                <align>center</align>
-                <aligny>center</aligny>
-                <font>tofa_font_button</font>
-                <textcolor>$INFO[Window.Property(accent_color)]</textcolor>
-                <label>Dismiss</label>
-                <visible>Control.HasFocus(9702)</visible>
-            </control>
             <control type="button" id="9702">
-                <posx>394</posx>
-                <posy>814</posy>
-                <width>200</width>
-                <height>78</height>
+                <posx>1752</posx>
+                <posy>933</posy>
+                <width>64</width>
+                <height>64</height>
                 <texturefocus />
                 <texturenofocus />
                 <label />
                 <onleft>9701</onleft>
-            </control>
-            <control type="image" id="9703">
-                <posx>678</posx>
-                <posy>829</posy>
-                <width>48</width>
-                <height>48</height>
-                <colordiffuse>$INFO[Window.Property(nextup_ring_track)]</colordiffuse>
-                <visible>!String.IsEmpty(Window.Property(nextup_ring))</visible>
-                <texture>nextup-ring-track.png</texture>
-            </control>
-            <control type="image">
-                <posx>678</posx>
-                <posy>829</posy>
-                <width>48</width>
-                <height>48</height>
-                <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                <texture>$INFO[Window.Property(nextup_ring)]</texture>
-            </control>
-            <control type="label">
-                <posx>678</posx>
-                <posy>829</posy>
-                <width>48</width>
-                <height>48</height>
-                <align>center</align>
-                <aligny>center</aligny>
-                <font>tofa_font_eyebrow</font>
-                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
-                <label>$INFO[Window.Property(nextup_seconds)]</label>
             </control>
         </control>
         <control type="group" id="9750">

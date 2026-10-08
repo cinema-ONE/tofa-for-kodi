@@ -290,7 +290,8 @@ def render_main() -> str:
     for _key, _gid, _sids, _prop in settings_options.SEGMENTED_GROUPS:
         _name = {"rating": "settings_rating_group",
                  "quality": "settings_quality_group",
-                 "nextup": "settings_nextup_group"}.get(
+                 "nextup": "settings_nextup_group",
+                 "nextupstyle": "settings_nextupstyle_group"}.get(
                      _key, "settings_seg_{0}_group".format(_key))
         _w = (T.SETTINGS_NEXTUP_PILL_W if _key == "nextup"
               else T.SETTINGS_SEGMENT_PILL_W)
@@ -300,6 +301,8 @@ def render_main() -> str:
         _skip = [k for k, _l, _h in settings_options.SEGMENT_ROWS]
         if _key in _skip and _skip.index(_key):
             _y = T.SETTINGS_SKIP_ROW_Y[_skip.index(_key)]
+        elif _key == "nextupstyle":
+            _y = T.settings_stack_row_y(1)
         else:
             _y = T.SETTINGS_SECTION_BAND
         settings_seg_groups[_name] = fragments.settings_segmented_group(

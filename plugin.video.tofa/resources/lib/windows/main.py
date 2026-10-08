@@ -6182,6 +6182,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         "rating":  ("Rating badge", "Which score appears on posters"),
         "quality": ("Streaming quality", "Auto adapts to your connection"),
         "nextup":  ("Play the next episode", "What happens as an episode ends"),
+        "nextupstyle": ("Next Up style", "How the next episode appears"),
     }
 
     def _settings_segmented_options(self, key: str):
@@ -6200,12 +6201,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return list(self.SETTINGS_QUALITY_SEGMENTS)
         if key == "nextup":
             return [(l, v) for v, l in settings_options.AUTO_PLAY_NEXT_ACTIONS]
+        if key == "nextupstyle":
+            return [(l, v) for v, l in settings_options.NEXT_UP_STYLES]
         return [(l, v) for v, l in settings_options.SEGMENT_ACTIONS]
 
     def _settings_segmented_active(self, key: str) -> int:
         """Which option is currently selected, as an index."""
         if key == "rating":
             return self._settings_rating_index(self._ensure_preferences())
+        if key == "nextupstyle":
+            values = [v for v, _l in settings_options.NEXT_UP_STYLES]
+            return values.index(settings_options.next_up_style())
         playback = self._settings_playback()
         if key == "quality":
             return self._settings_quality_index(playback)
@@ -6266,6 +6272,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_write({"playback": {"default_quality": value}})
         elif key == "nextup":
             self._settings_write({"playback": {"auto_play_next": value}})
+        elif key == "nextupstyle":
+            settings_options.set_next_up_style(value)
         else:
             actions = dict(self._settings_playback().get("segment_actions") or {})
             actions[key] = value

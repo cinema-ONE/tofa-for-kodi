@@ -136,6 +136,7 @@ SEGMENTED_GROUPS: tuple[tuple[str, int, tuple[int, ...], str], ...] = (
     ("rating",  8900, (8901, 8902, 8903), "segrow_rating"),
     ("quality", 8910, (8911, 8912),       "segrow_quality"),
     ("nextup",  8920, (8921, 8922, 8923), "segrow_nextup"),
+    ("nextupstyle", 8980, (8981, 8982, 8983, 8984), "segrow_nextupstyle"),
     ("intro",      8930, (8931, 8932, 8933), "segrow_intro"),
     ("recap",      8940, (8941, 8942, 8943), "segrow_recap"),
     ("preview",    8950, (8951, 8952, 8953), "segrow_preview"),
@@ -157,6 +158,34 @@ SEGMENT_ROWS: tuple[tuple[str, str, str], ...] = (
     ("outro", "Outro", "Credits or ending segment near the end."),
     ("commercial", "Commercial", "Ad-break markers when available."),
 )
+
+
+#: The app 2.0's Next Up styles, a DEVICE setting (Kodi add-on setting
+#: nextup_style), with the app's one-line descriptions.
+NEXT_UP_STYLES: tuple[tuple[str, str], ...] = (
+    ("compact", "Compact"), ("minimal", "Minimal"),
+    ("lower", "Lower third"), ("full", "Full"),
+)
+NEXT_UP_STYLE_DEFAULT = "compact"
+
+
+def next_up_style() -> str:
+    """This box's Next Up style; anything unknown reads as the default."""
+    import xbmcaddon
+    try:
+        value = xbmcaddon.Addon().getSetting("nextup_style")
+    except Exception:                                        # noqa: BLE001
+        value = ""
+    return value if value in dict(NEXT_UP_STYLES) else NEXT_UP_STYLE_DEFAULT
+
+
+def set_next_up_style(value: str) -> None:
+    import xbmcaddon
+    try:
+        xbmcaddon.Addon().setSetting("nextup_style", value)
+    except Exception:                                        # noqa: BLE001
+        from . import log
+        log.warning("settings: could not persist nextup_style")
 
 
 # preferences.playback.auto_play_next (server 0.9.27). Labels are the web

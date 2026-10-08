@@ -1020,7 +1020,7 @@ SETTINGS_SEGMENT_PILL_W = 150
 # viewport, and a child taller than the viewport cannot be scrolled to
 # (project_kodi_grouplist_scroll_limit). Two children each shorter than the
 # viewport is exactly the shape that grouplist scrolling does handle.
-SETTINGS_NEXTUP_GROUP_H = settings_stack_group_h(1)
+SETTINGS_NEXTUP_GROUP_H = settings_stack_group_h(2)   # + Next Up style
 #: "Automatically" is 133px of ink against "Do nothing"'s 108, so this row
 #: gets its own width -- reusing SETTINGS_SEGMENT_PILL_W would leave it 8px
 #: of padding where the segment rows get 21, and read as a different control.

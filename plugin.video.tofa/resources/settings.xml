@@ -126,6 +126,17 @@
                     <visible>false</visible>
                     <control type="toggle"/>
                 </setting>
+                <!-- How Next Up appears on THIS box (app 2.0: "on this Apple
+                     TV"), so it is a device setting. Settings > Playback. -->
+                <setting id="nextup_style" type="string" label="30035">
+                    <level>0</level>
+                    <default>compact</default>
+                    <visible>false</visible>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string"/>
+                </setting>
                 <!-- Stable X-Tofa-Device-Id, minted once by auth.py and
                      shown read-only on Settings > This Device. Editing it by
                      hand would orphan the pairing. -->
