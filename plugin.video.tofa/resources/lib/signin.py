@@ -18,7 +18,7 @@ import xbmc
 import xbmcgui
 import xbmcvfs
 
-from . import addonref, auth, branding, cloud, http
+from . import addonref, auth, branding, cloud, http, log
 from .windows import cardoptions, kodigui, theme
 
 # Both lazy, see addonref.py.
@@ -467,6 +467,8 @@ def _cloud_access_token(session, tok: auth.Tokens) -> str | None:
         # 403 email_not_verified: all three end the same way, with the
         # device flow.
         if exc.status in (401, 403):
+            log.warning(f"auth: the cloud refused this TV's login ({exc.error}); "
+                        "sign in again to use cloud features")
             return None
         raise
     # Rotation is conditional on the token's age, so this is usually the
