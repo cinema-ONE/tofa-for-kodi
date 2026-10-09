@@ -122,6 +122,8 @@ class Tok:
         self.server_fallback = None
         self.access_token = "bearer"
         self.device_id = "dev"
+        self.server_id = "srv"
+        self.connect_url = "https://cloud"
 
 
 def fake_picker(session, tok, items, *, start_in_pin=False, current_id=""):

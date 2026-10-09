@@ -106,6 +106,9 @@ class MediaServerClient:
         self.fallback_base_url = fallback_base_url.rstrip("/") if fallback_base_url else None
         self._image_token: Optional[str] = None
         self._image_token_expires_at: float = 0.0
+        # Set when this client speaks for a household member (household.py):
+        # their tokens live in memory only and renew on a refusal.
+        self.household_identity: Optional[str] = None
 
     def profile_token_expired(self, margin: float = 30.0) -> bool:
         """True once this client's PIN-verified profile token is past (or
@@ -209,6 +212,10 @@ class MediaServerClient:
             return self._attempt(method, path, kwargs, want_response, try_fallback,
                                  busy_is_final)
         except http.ApiError as exc:
+            if self.household_identity and self._household_retry(exc):
+                kwargs["headers"] = self._headers()
+                return self._attempt(method, path, kwargs, want_response, try_fallback,
+                                     busy_is_final)
             # A profile token that ROTATED under us, not one that expired.
             # See _adopt_rotated_token: exactly one retry, and only when
             # there is a different token to retry WITH.
@@ -217,6 +224,24 @@ class MediaServerClient:
             kwargs["headers"] = self._headers()
             return self._attempt(method, path, kwargs, want_response, try_fallback,
                                  busy_is_final)
+
+    def _household_retry(self, exc: http.ApiError) -> bool:
+        """Whether a member's refused request is worth one more try.
+
+        A 401 means renew the viewer token (ViewerEnded if the member is gone);
+        the cloud being unreachable, or the server's bodyless 500, means wait."""
+        from . import household
+        if exc.status == 401 and not _is_profile_token_401(exc):
+            viewer = household.renew(self.session, auth.load(), force=True)
+            if not viewer or viewer["identity_id"] != self.household_identity:
+                raise household.ViewerEnded(household.REVOKED)
+            self.access_token = viewer["access_token"]
+            return True
+        if (exc.status == 503 and exc.error == "household_authorization_unavailable") or \
+                (exc.status == 500 and exc.error == http.NO_ENVELOPE):
+            time.sleep(2)
+            return True
+        return False
 
     def _adopt_rotated_token(self) -> bool:
         """Take on a profile token another component banked, after the server
@@ -239,6 +264,8 @@ class MediaServerClient:
         makes this safe to retry on: a token that is merely dead reads the
         same on disk as in memory, so it retries nothing and the 401 stands.
         """
+        if self.household_identity:
+            return False
         try:
             fresh = auth.load()
         except Exception as exc:                                # noqa: BLE001
@@ -348,7 +375,7 @@ class MediaServerClient:
         if self._image_token and time.time() < self._image_token_expires_at - 60:
             return self._image_token
 
-        cached = auth.load_cached_image_token()
+        cached = None if self.household_identity else auth.load_cached_image_token()
         if cached:
             token, expires_at = cached
             if time.time() < expires_at - 60:
@@ -358,7 +385,8 @@ class MediaServerClient:
         granted = self._get("/api/v1/auth/image-token")
         self._image_token = granted["token"]
         self._image_token_expires_at = time.time() + granted["expires_in"]
-        auth.save_image_token(self._image_token, self._image_token_expires_at)
+        if not self.household_identity:
+            auth.save_image_token(self._image_token, self._image_token_expires_at)
         return self._image_token
 
     def resolve_image_url(self, path: Optional[str]) -> Optional[str]:
@@ -1125,7 +1153,11 @@ class MediaServerClient:
                 return
             expires_at = _rfc3339_epoch(headers.get("X-Profile-Token-Expires-At"))
             self.profile_token = rotated
-            auth.save_rotated_profile_token(rotated, expires_at)
+            if self.household_identity:
+                from . import household
+                household.set_viewer_profile(self.profile_id, rotated, expires_at)
+            else:
+                auth.save_rotated_profile_token(rotated, expires_at)
             log.info("api: profile token rotated by the server, unlock slid")
         except Exception as exc:                                # noqa: BLE001
             log.debug(f"api: could not bank a rotated profile token: {exc!r}")
@@ -1189,6 +1221,21 @@ def client_for(session, tok) -> MediaServerClient:
     copies had to go with it.
     """
     base, fallback = direct_only_addresses(tok.server, tok.server_fallback)
+    from . import household
+    viewer = household.active_viewer()
+    if viewer is not None and viewer.get("server_id") == tok.server_id:
+        # A member is watching: never fall back to the owner's tokens.
+        viewer = household.renew(session, tok)
+        if viewer is None:
+            raise household.ViewerEnded("ended")
+        client = MediaServerClient(
+            session, base, viewer["access_token"], tok.device_id,
+            fallback_base_url=fallback,
+            profile_id=viewer.get("profile_id"),
+            profile_token=viewer.get("profile_token"),
+            profile_token_expires_at=viewer.get("profile_token_expires_at"))
+        client.household_identity = viewer["identity_id"]
+        return client
     return MediaServerClient(
         session,
         base,

@@ -1758,13 +1758,36 @@
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
                     <scrolltime>{SCROLLTIME}</scrolltime>
 
-                    <!-- SWITCH: two children, one row each. A multi-item
-                         list would eat Down at its last item and dead-end
-                         the page; see SETTINGS_ACCOUNT_SWITCH_GROUP_H. -->
+                    <!-- THIS TV, as app 2.0. Its first row carries the eyebrow, so
+                         Switch Profile comes in two copies: 8110 leads the group,
+                         8111 follows Enable Household Viewing. -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W}</width>
-                        <height>{SETTINGS_ACCOUNT_SWITCH_GROUP_H}</height>
-{settings_switch_eyebrow}
+                        <height>{SETTINGS_ACCOUNT_LEAD_GROUP_H}</height>
+                        <visible>String.IsEqual(Window.Property(settings_household_row),enable)</visible>
+{settings_thistv_eyebrow}
+                        <control type="list" id="8105">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8105</onleft>
+                            <onright>8105</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_action_item_4}
+
+{settings_action_focused_4}
+                        </control>
+                    </control>
+
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W}</width>
+                        <height>{SETTINGS_ACCOUNT_LEAD_GROUP_H}</height>
+                        <visible>!String.IsEqual(Window.Property(settings_household_row),enable)</visible>
+{settings_thistv_eyebrow}
                         <control type="list" id="8110">
                             <posx>0</posx>
                             <posy>{SETTINGS_SECTION_BAND}</posy>
@@ -1782,10 +1805,32 @@
                         </control>
                     </control>
 
-                    <!-- The same group continued, no eyebrow of its own. -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W}</width>
-                        <height>{SETTINGS_ACCOUNT_SWITCH2_GROUP_H}</height>
+                        <height>{SETTINGS_ACCOUNT_STACK_GROUP_H}</height>
+                        <visible>String.IsEqual(Window.Property(settings_household_row),enable)</visible>
+                        <control type="list" id="8111">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>{SETTINGS_DETAIL_W}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8111</onleft>
+                            <onright>8111</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_action_item_6}
+
+{settings_action_focused_6}
+                        </control>
+                    </control>
+
+                    <!-- Not for a household member. -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W}</width>
+                        <height>{SETTINGS_ACCOUNT_STACK_GROUP_H}</height>
+                        <visible>String.IsEmpty(Window.Property(household_member))</visible>
                         <control type="list" id="8115">
                             <posx>0</posx>
                             <posy>0</posy>
@@ -1803,42 +1848,12 @@
                         </control>
                     </control>
 
-                    <!-- SESSION -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W}</width>
-                        <height>{SETTINGS_ACCOUNT_SESSION_GROUP_H}</height>
-{settings_session_eyebrow}
-                        <control type="list" id="8120">
-                            <posx>0</posx>
-                            <posy>{SETTINGS_SECTION_BAND}</posy>
-                            <width>{SETTINGS_DETAIL_W}</width>
-                            <height>{SETTINGS_ACTION_ROW_H}</height>
-                            <onleft>8120</onleft>
-                            <onright>8120</onright>
-                            <orientation>vertical</orientation>
-                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
-                            <scrolltime>0</scrolltime>
-
-{settings_action_item_2}
-
-{settings_action_focused_2}
-                        </control>
-                    </control>
-
-                    <!-- ACCOUNT and SERVER report values and cannot be
-                         focused, so they share the CONNECTION child rather
-                         than being children of their own: a child with no
-                         focusable content joins the grouplist's chain and
-                         swallows a keypress. Their heights are still their
-                         own group heights, so the spacing reads as three
-                         sections. -->
-                    <control type="group">
-                        <width>{SETTINGS_DETAIL_W}</width>
-                        <height>{SETTINGS_ACCOUNT_TAIL_GROUP_H}</height>
-{settings_account_tail}
+                        <height>{SETTINGS_ACCOUNT_LAST_GROUP_H}</height>
                         <control type="list" id="8130">
                             <posx>0</posx>
-                            <posy>{SETTINGS_ACCOUNT_CONNECTION_ROW_Y}</posy>
+                            <posy>0</posy>
                             <width>{SETTINGS_DETAIL_W}</width>
                             <height>{SETTINGS_ACTION_ROW_H}</height>
                             <onleft>8130</onleft>
@@ -1851,10 +1866,71 @@
 
 {settings_direct_focused}
                         </control>
-                        <!-- Reports how THIS box actually reaches the server.
-                             Non-focusable, so it rides in the toggle's child;
-                             body swaps direct/relay in _settings_fill_connection. -->
-{settings_connection_note}
+                    </control>
+
+                    <!-- ACCOUNT: the owner's alone; a member sees none of it. -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W}</width>
+                        <height>{SETTINGS_ACCOUNT_LEAD_GROUP_H}</height>
+                        <visible>String.IsEmpty(Window.Property(household_member))</visible>
+{settings_account_eyebrow}
+                        <control type="list" id="8125">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8125</onleft>
+                            <onright>8125</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_action_item_7}
+
+{settings_action_focused_7}
+                        </control>
+                    </control>
+
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W}</width>
+                        <height>{SETTINGS_ACCOUNT_STACK_GROUP_H}</height>
+                        <visible>String.IsEqual(Window.Property(settings_household_row),disable) + String.IsEmpty(Window.Property(household_member))</visible>
+                        <control type="list" id="8106">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>{SETTINGS_DETAIL_W}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8106</onleft>
+                            <onright>8106</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_action_item_5}
+
+{settings_action_focused_5}
+                        </control>
+                    </control>
+
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W}</width>
+                        <height>{SETTINGS_ACCOUNT_LAST_GROUP_H}</height>
+                        <visible>String.IsEmpty(Window.Property(household_member))</visible>
+                        <control type="list" id="8120">
+                            <posx>0</posx>
+                            <posy>0</posy>
+                            <width>{SETTINGS_DETAIL_W}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8120</onleft>
+                            <onright>8120</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_action_item_2}
+
+{settings_action_focused_2}
+                        </control>
                     </control>
 
                     <!-- THIS DEVICE, folded in from its old tab -->
@@ -2362,7 +2438,7 @@
 
             <!-- ==================== RIGHT RAIL ==================== -->
             <control type="group">
-                <visible>String.IsEqual(Window.Property(settings_page),account) + String.IsEmpty(Window.Property(settings_info))</visible>
+                <visible>String.IsEqual(Window.Property(settings_page),account) + Control.HasFocus(8125)</visible>
 {settings_qr_rail}
             </control>
 

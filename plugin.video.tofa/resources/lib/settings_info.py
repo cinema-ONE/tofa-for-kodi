@@ -31,6 +31,19 @@ ROWS: dict[str, Info] = {
         "Switch Profile",
         "Who is watching on this device. Each profile keeps its own history, "
         "Continue Watching and preferences."),
+    "household": Info(
+        "Household Viewing",
+        "Lets the people in your household watch here as themselves, with "
+        "their own history and watchlist, without signing you out.",
+        note="Only the account owner can turn this on or off."),
+    "household_off": Info(
+        "Disable Household Viewing",
+        "Turns household viewing off on this TV. Members can no longer pick "
+        "themselves here; their accounts and history stay as they are.",
+        note="Only the account owner can turn this on or off."),
+    "manage_account": Info(
+        "Manage account",
+        "Change your email, password or plan at app.tofa.tv."),
     "switch_server": Info(
         "Switch Server",
         "Choose which of your tofa servers this device plays from."),
@@ -155,7 +168,8 @@ ROWS: dict[str, Info] = {
 #: The tab-focused summary per page: (eyebrow, value key) pairs, the value
 #: resolved by windows/main.py.
 SUMMARIES: dict[str, tuple] = {
-    "account": (("SERVER", "server"), ("CONNECTION", "connection")),
+    "account": (("SERVER", "server"), ("CONNECTION", "connection"),
+                ("HOUSEHOLD VIEWING", "household")),
     "playback": (("STREAMING QUALITY", "quality"), ("NEXT EPISODE", "nextup"),
                  ("NEXT UP STYLE", "nextupstyle"), ("INTROS", "intro")),
     "audio": (("AUDIO", "audio_pair"), ("SUBTITLES", "sub_pair"),

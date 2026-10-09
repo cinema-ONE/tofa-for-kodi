@@ -58,6 +58,8 @@ CLAPPERBOARD = 0xE29B
 TV = 0xE195
 VIDEO = 0xE1A5
 HOUSE = 0xE0F5
+# Settings > Account's "Manage account" row (app 2.0).
+QR_CODE = 0xE1DF
 LAYOUT_GRID = 0xE0FF
 SPARKLES = 0xE412
 SEARCH = 0xE151

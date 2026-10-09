@@ -187,35 +187,18 @@ def render_main() -> str:
     settings_action_item, settings_action_focused = fragments.settings_action_row(8110)
     settings_action_item_2, settings_action_focused_2 = fragments.settings_action_row(8120)
     settings_action_item_3, settings_action_focused_3 = fragments.settings_action_row(8115)
+    settings_action_item_4, settings_action_focused_4 = fragments.settings_action_row(8105)
+    settings_action_item_5, settings_action_focused_5 = fragments.settings_action_row(8106)
+    settings_action_item_6, settings_action_focused_6 = fragments.settings_action_row(8111)
+    settings_action_item_7, settings_action_focused_7 = fragments.settings_action_row(8125)
 
     # SWITCH, not PROFILE: the app groups Switch Profile and Switch Server
     # under one heading (build 17), and one eyebrow over both is what makes
     # them read as a pair of destinations rather than two unrelated actions.
-    settings_switch_eyebrow = fragments.settings_group_eyebrow(
-        posy=T.SETTINGS_SECTION_BAND, label="SWITCH", indent="                        ")
-    settings_session_eyebrow = fragments.settings_group_eyebrow(
-        posy=T.SETTINGS_SECTION_BAND, label="SESSION", indent="                        ")
-    # The tail child's three sections. Only CONNECTION's row is focusable;
-    # the other two report values, which is why they live here rather than in
-    # children of their own (see the template).
-    settings_account_tail = "\n".join((
-        fragments.settings_group_eyebrow(
-            posy=T.SETTINGS_ACCOUNT_TAIL_EMAIL_Y, label="ACCOUNT",
-            indent="                        "),
-        fragments.settings_value_row(
-            posy=T.SETTINGS_ACCOUNT_TAIL_EMAIL_Y, label="Email",
-            value_property="settings_email", indent="                        "),
-        fragments.settings_group_eyebrow(
-            posy=T.SETTINGS_ACCOUNT_TAIL_SERVER_Y, label="SERVER",
-            indent="                        "),
-        # The server's name only: 6 shows no user or library counts here.
-        fragments.settings_value_row(
-            posy=T.SETTINGS_ACCOUNT_TAIL_SERVER_Y, label="Server",
-            value_property="settings_server", indent="                        "),
-        fragments.settings_group_eyebrow(
-            posy=T.SETTINGS_ACCOUNT_CONNECTION_ROW_Y, label="CONNECTION",
-            indent="                        "),
-    ))
+    settings_thistv_eyebrow = fragments.settings_group_eyebrow(
+        posy=T.SETTINGS_SECTION_BAND, label="THIS TV", indent="                        ")
+    settings_account_eyebrow = fragments.settings_group_eyebrow(
+        posy=T.SETTINGS_SECTION_BAND, label="ACCOUNT", indent="                        ")
     # width= is not optional here: the Account pane is the NARROW detail
     # column, and a switch positioned against the wide one lands off the
     # row entirely (the fragment's own docstring says so).
@@ -320,16 +303,19 @@ def render_main() -> str:
         settings_action_focused_2=settings_action_focused_2,
         settings_action_item_3=settings_action_item_3,
         settings_action_focused_3=settings_action_focused_3,
-        settings_switch_eyebrow=settings_switch_eyebrow,
-        settings_session_eyebrow=settings_session_eyebrow,
-        settings_account_tail=settings_account_tail,
+        settings_action_item_4=settings_action_item_4,
+        settings_action_focused_4=settings_action_focused_4,
+        settings_action_item_5=settings_action_item_5,
+        settings_action_focused_5=settings_action_focused_5,
+        settings_thistv_eyebrow=settings_thistv_eyebrow,
+        settings_account_eyebrow=settings_account_eyebrow,
+        settings_action_item_6=settings_action_item_6,
+        settings_action_focused_6=settings_action_focused_6,
+        settings_action_item_7=settings_action_item_7,
+        settings_action_focused_7=settings_action_focused_7,
         settings_quality_eyebrow=settings_quality_eyebrow,
         settings_direct_item=settings_direct_item,
         settings_direct_focused=settings_direct_focused,
-        settings_connection_note=fragments.settings_note_card(
-            posy=T.SETTINGS_ACCOUNT_RELAY_NOTE_Y, title="Connection",
-            body_property="settings_connection_body",
-            height=T.SETTINGS_ACCOUNT_RELAY_NOTE_H),
         settings_fox_row=fragments.settings_choice_list(
             8205, value_property="settings_fox_value",
             posy=T.SETTINGS_SECTION_BAND, onup=8000, ondown=8900,

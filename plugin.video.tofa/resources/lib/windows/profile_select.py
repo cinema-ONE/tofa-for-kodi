@@ -15,13 +15,14 @@ Entry points:
 """
 from __future__ import annotations
 
+import dataclasses
 import threading
 import time
 
 import xbmc
 import xbmcgui
 
-from .. import addonref, api, auth, avatar_presets, http, log, monogram
+from .. import addonref, api, auth, avatar_presets, household, http, log, monogram, toast
 from .. import profiles as profiles_api
 from ..api import MediaServerClient
 from . import kodigui, theme
@@ -45,6 +46,89 @@ def _initials(name: str) -> str:
     if len(words) == 1:
         return words[0][:2].upper()
     return (words[0][0] + words[-1][0]).upper()
+
+
+@dataclasses.dataclass
+class MemberTile(profiles_api.Profile):
+    """A household member on Who's watching, after the owner's profiles."""
+    member: dict = dataclasses.field(default_factory=dict)
+
+
+def _member_tiles(session, tok: auth.Tokens) -> list:
+    """The household's members, or none: the owner's tiles never wait on them."""
+    grant = household.load_grant(tok.server_id)
+    if grant is None:
+        return []
+    try:
+        members = household.viewers(session, tok, grant)
+    except http.ApiError as exc:
+        log.warning(f"profile: household members unavailable: {exc}")
+        return []
+    return [MemberTile(id=m["identity_id"], name=m.get("display_name") or "",
+                       avatar_color="", avatar_image_url=m.get("avatar_image_url"),
+                       avatar_ref=m.get("avatar_ref"), is_primary=False,
+                       is_locked=False, is_kids=False, member=m)
+            for m in members]
+
+
+def _stop_playback() -> None:
+    """End anything playing before the TV changes hands."""
+    player = xbmc.Player()
+    if player.isPlaying():
+        player.stop()
+        for _i in range(50):
+            if not player.isPlaying():
+                break
+            xbmc.sleep(100)
+
+
+def _become_member(session, tok: auth.Tokens, member: dict) -> None:
+    """Hand the TV to a household member: their token, then their profile."""
+    grant = household.load_grant(tok.server_id)
+    if grant is None:
+        raise ProfileCanceled()
+    _stop_playback()
+    name = member.get("display_name") or ""
+    try:
+        viewer = household.start_viewer(session, tok, grant, member)
+        items = profiles_api.list_profiles(session, tok.server, viewer["access_token"],
+                                           tok.device_id, fallback=tok.server_fallback)
+    except http.ApiError as exc:
+        household.clear_viewer()
+        log.warning(f"profile: could not switch to a household member: {exc}")
+        toast.show(f"{name} can't watch here right now" if name else
+                   "That person can't watch here right now")
+        raise ProfileCanceled() from None
+    if not viewer["managed"]:
+        items = [p for p in items if p.is_primary] or items[:1]
+    if not items:
+        household.clear_viewer()
+        raise ProfileCanceled()
+    if len(items) == 1 and not items[0].is_locked:
+        household.set_viewer_profile(items[0].id, None, None)
+    else:
+        def verify(profile, pin):
+            try:
+                token, expires_at = profiles_api.verify_pin(
+                    session, tok.server, viewer["access_token"], tok.device_id, profile.id, pin)
+            except http.ApiError as exc:
+                if exc.status == 401:
+                    return False
+                raise
+            household.set_viewer_profile(profile.id, token, expires_at)
+            return True
+        dialog = ProfileDialog.open(profiles=items, verify_pin_callback=verify,
+                                    preset_urls=_resolve_preset_urls(session, tok, items),
+                                    current_id=items[0].id,
+                                    start_in_pin=len(items) == 1)
+        if not dialog or dialog.canceled or not dialog.chosen:
+            household.clear_viewer()
+            raise ProfileCanceled()
+        if not dialog.chosen.is_locked:
+            household.set_viewer_profile(dialog.chosen.id, None, None)
+    # The owner's unlock is not kept: picking them again asks their PIN.
+    auth.clear_profile_selection()
+    household.note_chosen()
 
 
 def _resolve_preset_urls(session, tok: auth.Tokens, profiles: list) -> dict:
@@ -562,17 +646,27 @@ def _run_picker(session, tok: auth.Tokens, items: list[profiles_api.Profile],
         auth.save_profile_selection(profile.id, token, expires_at)
         return True
 
+    items = list(items) + _member_tiles(session, tok)
     photo_urls = _resolve_avatar_photos(session, tok, items)
     preset_urls = _resolve_preset_urls(session, tok, items)
+    viewer = household.active_viewer()
     dialog = ProfileDialog.open(profiles=items, photo_urls=photo_urls,
                                 preset_urls=preset_urls,
                                 verify_pin_callback=verify,
-                                current_id=current_id or tok.profile_id or "",
-                                start_in_pin=start_in_pin)
+                                current_id=(viewer or {}).get("identity_id")
+                                or current_id or tok.profile_id or "",
+                                start_in_pin=start_in_pin and viewer is None)
     if not dialog or dialog.canceled or not dialog.chosen:
         raise ProfileCanceled()
+    if isinstance(dialog.chosen, MemberTile):
+        _become_member(session, tok, dialog.chosen.member)
+        return dialog.chosen
+    if viewer is not None:
+        _stop_playback()
+        household.clear_viewer()
     if not dialog.chosen.is_locked:
         auth.save_profile_selection(dialog.chosen.id, None, None)
+    household.note_chosen()
     return dialog.chosen
 
 
@@ -593,6 +687,22 @@ def ensure_profile_selected(session, tok: auth.Tokens, margin_s: float = MARGIN_
     DetailWindow._renew_profile_token_for.
     """
     now = time.time()
+    viewer = household.active_viewer()
+    if viewer is not None:
+        if viewer.get("profile_id") and (not viewer.get("profile_token") or (
+                viewer.get("profile_token_expires_at") or 0) > now + margin_s):
+            return tok  # a member is watching; client_for speaks for them
+        _become_member(session, tok, {"identity_id": viewer["identity_id"],
+                                      "display_name": viewer.get("name"),
+                                      "managed_profiles": viewer.get("managed")})
+        return auth.load()
+    if household.is_enabled(tok) and not household.chosen_this_run():
+        # A shared TV asks who's watching at every start, and forgets the
+        # owner's unlock in between.
+        items = profiles_api.list_profiles(session, tok.server, tok.access_token,
+                                           tok.device_id, fallback=tok.server_fallback)
+        _run_picker(session, tok, items)
+        return auth.load()
     if tok.profile_id and (not tok.profile_token
                            or (tok.profile_token_expires_at or 0) > now + margin_s):
         return tok  # already resolved, and (if locked) not expired -- no network call

@@ -32,7 +32,7 @@ from __future__ import annotations
 import time
 from typing import Any, Optional
 
-from . import api, auth, home_rows, http, log
+from . import api, auth, home_rows, household, http, log
 from .api import MediaServerClient
 
 #: Filled by warm(), drained by the window as it builds.
@@ -133,8 +133,11 @@ def warm() -> None:
         # one of those up behind a splash is not a trade worth a second of
         # start-up. When this bails, MainWindow does the whole thing
         # properly, exactly as it did before this module existed.
-        if not tok.profile_id:
+        if not tok.profile_id and household.active_viewer() is None:
             log.debug("prefetch: no profile chosen yet; leaving it to the window")
+            return
+        if household.is_enabled(tok) and not household.chosen_this_run():
+            log.debug("prefetch: who's watching comes first on a shared TV")
             return
         if tok.profile_token and (tok.profile_token_expires_at or 0) <= time.time() + 30:
             log.debug("prefetch: profile token needs a PIN; leaving it to the window")

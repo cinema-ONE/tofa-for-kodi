@@ -55,6 +55,7 @@ for name, call in [
         ("save_profile_selection", lambda: auth.save_profile_selection("x", None, None)),
         ("save_rotated_profile_token", lambda: auth.save_rotated_profile_token("q", None)),
         ("save_cloud_refresh_token", lambda: auth.save_cloud_refresh_token("new")),
+        ("clear_profile_selection", lambda: auth.clear_profile_selection()),
 ]:
     STATE["unlocked_io"].clear()
     call()

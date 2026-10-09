@@ -42,6 +42,12 @@ from resources.lib.windows.main import MainWindow
 # plays instead of after it; wait_out() then lets the animation finish before
 # the real window covers it. Opening MainWindow before that would cut the
 # wipe off mid-frame.
+# Back after Minimize starts a new window here: after 15 minutes away a shared
+# TV asks who's watching again.
+from resources.lib import household
+if household.back_after_long_away():
+    household.clear_viewer()
+    household.forget_chosen()
 prefetch.warm()
 splash.wait_out()
 splash.hand_over()
@@ -116,6 +122,10 @@ try:
             # No remembered target: a switch lands on Home, deliberately.
             MainWindow.open()
 finally:
+    # A member's session ends with tofa; the next start asks who's watching.
+    from resources.lib import household
+    household.clear_viewer()
+    household.forget_chosen()
     # A no-op on the normal path (hand_over cleared it); this only
     # fires if the open above threw before Kodi could replace the
     # splash, where an unclosable splash would be the worse failure.
