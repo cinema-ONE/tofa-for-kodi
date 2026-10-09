@@ -458,26 +458,30 @@ def update_server(server: str, server_fallback: str | None) -> None:
     plugin action / window open is a fresh process -- tries the reachable
     one first instead of paying a failed-connection round trip every
     time."""
-    try:
-        tok = load()
-    except NotSignedIn:
-        return
-    if tok.server == server and tok.server_fallback == server_fallback:
-        return
-    save(dataclasses.replace(tok, server=server, server_fallback=server_fallback))
+    # Under the lock like every writer: a write from a stale copy can put back
+    # a retired refresh token, and reusing one revokes the whole login.
+    with _refresh_lock():
+        try:
+            tok = load()
+        except NotSignedIn:
+            return
+        if tok.server == server and tok.server_fallback == server_fallback:
+            return
+        save(dataclasses.replace(tok, server=server, server_fallback=server_fallback))
 
 
 def save_profile_selection(profile_id: str, profile_token: str | None, profile_token_expires_at: float | None) -> None:
     """Persists the "Who's watching?" choice so the next process launch
     doesn't have to ask again (see windows/profile_select.py's
     ensure_profile_selected, which checks this before any network call)."""
-    tok = load()
-    save(dataclasses.replace(
-        tok,
-        profile_id=profile_id,
-        profile_token=profile_token,
-        profile_token_expires_at=profile_token_expires_at,
-    ))
+    with _refresh_lock():
+        tok = load()
+        save(dataclasses.replace(
+            tok,
+            profile_id=profile_id,
+            profile_token=profile_token,
+            profile_token_expires_at=profile_token_expires_at,
+        ))
 
 
 def clear_profile_selection() -> None:
@@ -502,14 +506,15 @@ def save_rotated_profile_token(profile_token: str,
     is stale by definition, and writing it would re-lock nothing and unlock
     nothing -- it would just put a stranger's token in our file.
     """
-    tok = load()
-    if not tok.profile_token:
-        return
-    save(dataclasses.replace(
-        tok,
-        profile_token=profile_token,
-        profile_token_expires_at=profile_token_expires_at,
-    ))
+    with _refresh_lock():
+        tok = load()
+        if not tok.profile_token:
+            return
+        save(dataclasses.replace(
+            tok,
+            profile_token=profile_token,
+            profile_token_expires_at=profile_token_expires_at,
+        ))
 
 
 #: Statuses that mean "unreachable or busy", not "this token is dead".
