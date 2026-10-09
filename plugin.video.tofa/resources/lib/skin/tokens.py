@@ -845,6 +845,9 @@ SETTINGS_INFO_BODY_Y = 459
 SETTINGS_INFO_NOTE_GAP = 45
 SETTINGS_INFO_OPTS_GAP = 60
 SETTINGS_INFO_OPT_PITCH = 82
+# Four choices under a preview: tightened so the fourth ends above 1080.
+SETTINGS_INFO_OPTS_GAP_COMPACT = 22
+SETTINGS_INFO_OPT_PITCH_COMPACT = 74
 # A row's preview (app 2.0): a 16:9 card at the top of the left column, the
 # words moving below it with a smaller title (cap 27 at y 634).
 SETTINGS_PREVIEW_Y = 252
