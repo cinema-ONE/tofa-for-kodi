@@ -1758,6 +1758,30 @@
                     <itemgap>{SETTINGS_GROUPLIST_ITEMGAP}</itemgap>
                     <scrolltime>{SCROLLTIME}</scrolltime>
 
+                    <!-- HOUSEHOLD: the owner's Enable/Disable row; hidden
+                         when it does not apply (main.py). -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W}</width>
+                        <height>{SETTINGS_ACCOUNT_HOUSEHOLD_GROUP_H}</height>
+                        <visible>!String.IsEmpty(Window.Property(settings_household_row))</visible>
+{settings_household_eyebrow}
+                        <control type="list" id="8105">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8105</onleft>
+                            <onright>8105</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_action_item_4}
+
+{settings_action_focused_4}
+                        </control>
+                    </control>
+
                     <!-- SWITCH: two children, one row each. A multi-item
                          list would eat Down at its last item and dead-end
                          the page; see SETTINGS_ACCOUNT_SWITCH_GROUP_H. -->
@@ -1782,10 +1806,12 @@
                         </control>
                     </control>
 
-                    <!-- The same group continued, no eyebrow of its own. -->
+                    <!-- The same group continued, no eyebrow of its own.
+                         Hidden while a household member watches. -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W}</width>
                         <height>{SETTINGS_ACCOUNT_SWITCH2_GROUP_H}</height>
+                        <visible>String.IsEmpty(Window.Property(household_member))</visible>
                         <control type="list" id="8115">
                             <posx>0</posx>
                             <posy>0</posy>
@@ -1803,10 +1829,11 @@
                         </control>
                     </control>
 
-                    <!-- SESSION -->
+                    <!-- SESSION: hidden while a household member watches. -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W}</width>
                         <height>{SETTINGS_ACCOUNT_SESSION_GROUP_H}</height>
+                        <visible>String.IsEmpty(Window.Property(household_member))</visible>
 {settings_session_eyebrow}
                         <control type="list" id="8120">
                             <posx>0</posx>
@@ -2362,7 +2389,7 @@
 
             <!-- ==================== RIGHT RAIL ==================== -->
             <control type="group">
-                <visible>String.IsEqual(Window.Property(settings_page),account) + String.IsEmpty(Window.Property(settings_info))</visible>
+                <visible>String.IsEqual(Window.Property(settings_page),account) + String.IsEmpty(Window.Property(settings_info)) + String.IsEmpty(Window.Property(household_member))</visible>
 {settings_qr_rail}
             </control>
 

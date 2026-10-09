@@ -90,9 +90,16 @@ def stash_pending_session(file_id: str, media_id: Optional[str], session_id: str
                 "session_id": session_id,
                 "session_token": session_token,
                 "stashed_at": time.time(),
+                "viewer": _viewer_identity(),
             }
         ),
     )
+
+
+def _viewer_identity() -> str:
+    """Who is watching: a household member's identity, or "" for the owner."""
+    from . import household
+    return (household.active_viewer() or {}).get("identity_id") or ""
 
 
 def _take_pending_session() -> Optional[dict]:
@@ -213,7 +220,17 @@ class TofaPlayer(xbmc.Player):
         # renewed token reaches this process. Once the viewer re-enters the
         # PIN in the foreground, the next heartbeat picks the new token up
         # with no signalling between the two processes.
-        return api.client_for(self._http_session, tok)
+        try:
+            client = api.client_for(self._http_session, tok)
+        except http.ApiError as exc:
+            log.warning(f"monitor: no client for this viewer: {exc}")
+            return None
+        # Never write one viewer's watching under another's account.
+        started_as = (self._session or {}).get("viewer")
+        if started_as is not None and (client.household_identity or "") != started_as:
+            log.warning("monitor: the viewer changed mid-playback; not reporting")
+            return None
+        return client
 
     def _position_ms(self) -> int:
         """getTime() is unreliable by the time onPlayBackStopped/Ended fire

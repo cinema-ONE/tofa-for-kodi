@@ -480,6 +480,14 @@ def save_profile_selection(profile_id: str, profile_token: str | None, profile_t
     ))
 
 
+def clear_profile_selection() -> None:
+    """Forget whose profile this is, so the next screen asks (and a locked
+    one asks for its PIN). Household viewing does this on every hand-over."""
+    tok = load()
+    save(dataclasses.replace(tok, profile_id=None, profile_token=None,
+                             profile_token_expires_at=None))
+
+
 def save_rotated_profile_token(profile_token: str,
                                profile_token_expires_at: float | None) -> None:
     """Store a profile token the SERVER rotated while viewing continued.

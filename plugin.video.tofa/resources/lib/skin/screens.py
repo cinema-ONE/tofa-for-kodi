@@ -187,6 +187,7 @@ def render_main() -> str:
     settings_action_item, settings_action_focused = fragments.settings_action_row(8110)
     settings_action_item_2, settings_action_focused_2 = fragments.settings_action_row(8120)
     settings_action_item_3, settings_action_focused_3 = fragments.settings_action_row(8115)
+    settings_action_item_4, settings_action_focused_4 = fragments.settings_action_row(8105)
 
     # SWITCH, not PROFILE: the app groups Switch Profile and Switch Server
     # under one heading (build 17), and one eyebrow over both is what makes
@@ -195,6 +196,8 @@ def render_main() -> str:
         posy=T.SETTINGS_SECTION_BAND, label="SWITCH", indent="                        ")
     settings_session_eyebrow = fragments.settings_group_eyebrow(
         posy=T.SETTINGS_SECTION_BAND, label="SESSION", indent="                        ")
+    settings_household_eyebrow = fragments.settings_group_eyebrow(
+        posy=T.SETTINGS_SECTION_BAND, label="HOUSEHOLD", indent="                        ")
     # The tail child's three sections. Only CONNECTION's row is focusable;
     # the other two report values, which is why they live here rather than in
     # children of their own (see the template).
@@ -320,6 +323,9 @@ def render_main() -> str:
         settings_action_focused_2=settings_action_focused_2,
         settings_action_item_3=settings_action_item_3,
         settings_action_focused_3=settings_action_focused_3,
+        settings_action_item_4=settings_action_item_4,
+        settings_action_focused_4=settings_action_focused_4,
+        settings_household_eyebrow=settings_household_eyebrow,
         settings_switch_eyebrow=settings_switch_eyebrow,
         settings_session_eyebrow=settings_session_eyebrow,
         settings_account_tail=settings_account_tail,

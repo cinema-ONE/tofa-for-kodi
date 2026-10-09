@@ -8,6 +8,7 @@ control ids) -- a new section can't reuse another's property name."""
 from __future__ import annotations
 
 import base64
+import dataclasses
 import datetime
 import hashlib
 import os
@@ -28,6 +29,8 @@ from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http,
                 serverversion, settings_info, settings_options, settings_pages,
                 signin)
 from .. import avatar_presets
+from .. import household
+from .. import toast
 from .. import monogram
 # Aliased: `prefs` is the name every settings method already uses for the
 # preferences DICT, and shadowing the module inside them would be a trap.
@@ -322,6 +325,17 @@ def _search_ratings_line(item: dict) -> str:
     return _dot_join(*parts)
 
 
+def _household_error(exc: http.ApiError) -> str:
+    """One sentence for a failed Enable Household Viewing."""
+    words = {
+        "not_found": "Create or join a household at app.tofa.tv first",
+        "household_device_limit": "Your household already has 20 TVs. Remove one at app.tofa.tv",
+        "server_access_required": "Your account needs access to this server first",
+    }
+    return words.get(exc.error) or http.viewer_message(
+        exc, "Couldn't change household viewing. Try again")
+
+
 class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     dismissOnClose = True
 
@@ -492,6 +506,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # list; see fragments.settings_action_row() for why.
     SETTINGS_NAV_ID = 8000
     SETTINGS_SWITCH_PROFILE_ID = 8110
+    SETTINGS_HOUSEHOLD_ID = 8105        # Account > HOUSEHOLD (owner only)
     #: Its own grouplist child, one row, so Down leaves it (see the tokens).
     SETTINGS_SWITCH_SERVER_ID = 8115
     # Between its two neighbours on the page, and numbered between them so
@@ -742,6 +757,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Kodi re-inits this window whenever the one above it closes -- the
         player, a Detail page, anything. That is exactly when the positions
         on screen may have moved, so it is where they get re-read."""
+        if self._household_check():
+            return
         self.refresh_watch_progress()
         self.restore_focus()
 
@@ -822,6 +839,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # must be cleared rather than assumed unset -- a stuck one would
         # paint the whole window SPLASH_BG.
         self.setProperty("switching_profile", "")
+        self._household_start()
         # This window is also reachable straight from Kodi's Program add-ons
         # (launch_home.py), bypassing addon.py's plugin:// router -- so
         # nothing upstream has necessarily checked sign-in yet. Drive the
@@ -891,6 +909,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_NAV_ID, len(settings_pages.PAGES))
         self.settings_switch_profile_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SWITCH_PROFILE_ID, 1)
+        self.settings_household_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_HOUSEHOLD_ID, 1)
+        self._household_renewer = None
+        self._household_ended = ""
         self.settings_switch_server_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SWITCH_SERVER_ID, 1)
         self.settings_direct_list = kodigui.ManagedControlList(
@@ -1250,6 +1272,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_page_clicked()
         elif controlID == self.SETTINGS_SWITCH_PROFILE_ID:
             self._settings_switch_profile()
+        elif controlID == self.SETTINGS_HOUSEHOLD_ID:
+            self._settings_household_clicked()
         elif controlID == self.SETTINGS_SWITCH_SERVER_ID:
             self._settings_switch_server()
         elif controlID == self.SETTINGS_DIRECT_ONLY_ID:
@@ -1474,11 +1498,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._section_settle.stop()
         self._discover_tab_settle.stop()
         self._hero_swap.stop()
+        if self._household_renewer is not None:
+            self._household_renewer.stop()
         self._remember_section()
         kodigui.ControlledWindow.onClosed(self)
 
     def onAction(self, action):
         action_id = action.getId()
+        if self._household_ended and self._household_check():
+            return
 
         if self.getFocusId() == self.QUERY_EDIT_ID:
             # Kodi's edit control already accepts physical-keyboard typing
@@ -1578,6 +1606,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if choice == cardoptions.MINIMIZE:
                 # Kodi's home window. The add-on keeps running, so coming
                 # back is instant and nothing is re-fetched.
+                household.note_away()
                 xbmc.executebuiltin("ActivateWindow(10000)")
             elif choice == cardoptions.EXIT:
                 self.closeNow()
@@ -5679,6 +5708,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         server.setProperty("summary", "")
         self.settings_switch_profile_list.reset()
         self.settings_switch_profile_list.addItems([switch])
+        hh = kodigui.ManagedListItem(label="Enable Household Viewing")
+        hh.setProperty("icon_glyph", chr(icon_glyphs.USERS))
+        hh.setProperty("summary", "")
+        self.settings_household_list.reset()
+        self.settings_household_list.addItems([hh])
         self.settings_switch_server_list.reset()
         self.settings_switch_server_list.addItems([server])
 
@@ -5734,6 +5768,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Where Right or Select enters a page: the control left last, else
         the page's first control (6). Not checked for visibility: a page shown
         a moment ago still reads as hidden, and its rows do not come and go."""
+        if key == "account" and self.getProperty("settings_household_row") \
+                and key not in self._settings_last_control:
+            return self.SETTINGS_HOUSEHOLD_ID
         return (self._settings_last_control.get(key)
                 or settings_pages.RIGHT_TARGETS.get(key))
 
@@ -5824,6 +5861,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_server", server_name or "—")
 
         profile = self._settings_active_profile()
+        self._settings_fill_household(profile)
         self.settings_switch_profile_list.getListItem(0).setProperty(
             "summary", (profile.name if profile else "") or "")
         self.setProperty("settings_profile_name", (profile.name if profile else "") or "")
@@ -5961,9 +5999,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             from .. import profiles as profiles_api
             tok = auth.load()
             session = http.new_session()
-            everyone = list(profiles_api.list_profiles(
-                session, tok.server, tok.access_token, tok.device_id,
-                fallback=tok.server_fallback))
+            viewer = household.active_viewer()
+            if viewer is not None:
+                # A member: their own profiles, under their own token.
+                everyone = list(profiles_api.list_profiles(
+                    session, tok.server, viewer["access_token"], tok.device_id,
+                    fallback=tok.server_fallback))
+                tok = dataclasses.replace(tok, profile_id=viewer.get("profile_id"))
+            else:
+                everyone = list(profiles_api.list_profiles(
+                    session, tok.server, tok.access_token, tok.device_id,
+                    fallback=tok.server_fallback))
             # The ACCOUNT's avatar rides on the primary profile, which is
             # where the cloud applies an uploaded account picture (issue #7).
             # Picked up on this same pass rather than a second one, for the
@@ -6067,7 +6113,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._active_profile_cached = False
         self._active_profile = None
 
-    def _settings_switch_profile(self):
+    def _settings_switch_profile(self, forced: bool = False) -> bool:
         """Open the profile picker, then rebuild the whole window.
 
         Everything this used to do by hand -- dropping _loaded_sections,
@@ -6086,9 +6132,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         Only the module-level caches need clearing here, since they outlive
         the window: the theme (accent is per-profile server data) and the
         prefetch (its client still carries the old profile's token). The
-        launcher re-warms for the new identity behind the splash."""
-        if not profile_select.switch_profile():
-            return
+        launcher re-warms for the new identity behind the splash.
+
+        `forced`: a household member's session ended, so the window goes even
+        if nobody is picked -- it must not go on showing their library."""
+        if not profile_select.switch_profile() and not forced:
+            return False
         # Cover this window before anything else. The picker has just closed,
         # so the Settings page it was pressed from is back on screen, and it
         # stays there until closeNow() unwinds and the launcher raises the
@@ -6122,6 +6171,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # because the wait for the animation then runs with Kodi on screen.
         # The launcher's restart loop raises it after this returns instead.
         self.closeNow()
+        return True
 
     def _settings_switch_server(self):
         """Move this device to another server on the account, keeping the
@@ -6184,6 +6234,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         drops it all and lets each section re-fetch when next shown."""
         if not cardoptions.confirm_sign_out():
             return
+        household.drop_for_sign_out()
         auth.sign_out()
         if not signin.interactive_sign_in():
             self.closeNow()
@@ -6319,7 +6370,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- the left column's info panel (app 2.0) -----------------------
     #: Row controls that are not segmented pills, by info key.
     SETTINGS_INFO_KEYS = {
-        8110: "switch_profile", 8115: "switch_server", 8120: "sign_out",
+        8105: "household", 8110: "switch_profile", 8115: "switch_server", 8120: "sign_out",
         8130: "direct_only", 8710: "setup_device",
         8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
         8550: "sub_lang2", 8530: "always_subs",
@@ -6465,6 +6516,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return prop(choices[key] + "_value")
         values = {
             "switch_profile": lambda: prop("settings_profile_name"),
+            "household": lambda: prop("settings_household_state"),
             "switch_server": lambda: prop("settings_server"),
             "server": lambda: prop("settings_server"),
             "direct_only": lambda: checked(self.settings_direct_list),
@@ -6510,7 +6562,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("settings_info", "")
             self.setProperty("settings_preview", "")
             page = self.getProperty("settings_page")
-            rows = settings_info.SUMMARIES.get(page, ())
+            rows = [r for r in settings_info.SUMMARIES.get(page, ())
+                    if r[1] != "household" or self._settings_value("household")]
             for i in range(settings_info.MAX_SUMMARY):
                 eyebrow, vkey = rows[i] if i < len(rows) else ("", "")
                 self.setProperty("settings_sum{0}_key".format(i + 1), eyebrow)
@@ -6912,6 +6965,84 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             log.warning("settings: cloud account lookup error: {0}".format(exc))
         return self._settings_identity
 
+    # --- household viewing (household.py) ------------------------------
+
+    def _household_start(self):
+        """Mark a member session, and keep its token fresh while we are open."""
+        self.setProperty("household_member",
+                         "1" if household.active_viewer() is not None else "")
+        if self._household_renewer is None and household.load_grant() is not None:
+            self._household_renewer = household.Renewer(self._on_household_ended)
+            self._household_renewer.start()
+
+    def _on_household_ended(self, reason: str):
+        """From the renewer thread: the member can no longer watch here."""
+        self._household_ended = reason
+        toast.show("Household viewing is off on this TV" if reason == household.REVOKED
+                   else "Pick who's watching again")
+
+    def _household_check(self) -> bool:
+        """Back to Who's watching when a member's session ended, or after a
+        long time away. True when the window is being rebuilt."""
+        ended, self._household_ended = self._household_ended, ""
+        if not ended and not household.back_after_long_away():
+            return False
+        if household.load_grant() is None and not ended:
+            return False
+        household.forget_chosen()
+        return self._settings_switch_profile(forced=bool(ended))
+
+    def _settings_fill_household(self, profile):
+        """Show Enable/Disable Household Viewing to the owner, on their own
+        primary profile, when the server and the account both offer it."""
+        member = household.active_viewer() is not None
+        self.setProperty("household_member", "1" if member else "")
+        self.setProperty("settings_household_row", "")
+        self.setProperty("settings_household_state", "")
+        self._ensure_capabilities()
+        if household.CAPABILITY not in (getattr(self, "_server_capabilities", None) or set()):
+            return
+        enabled = household.load_grant() is not None
+        self.setProperty("settings_household_state", "On" if enabled else "Off")
+        if member or not (profile and profile.is_primary):
+            return
+        try:
+            tok = auth.load()
+            available = household.status(http.new_session(), tok).get("available")
+        except (http.ApiError, auth.NotSignedIn, auth.TokenLoadError) as exc:
+            log.warning(f"settings: household status unavailable: {exc}")
+            available = enabled
+        if not available and not enabled:
+            return
+        item = self.settings_household_list.getListItem(0)
+        item.setLabel("Disable Household Viewing" if enabled else "Enable Household Viewing")
+        self.setProperty("settings_household_row", "1")
+        self._settings_wire_account_nav()
+
+    def _settings_household_clicked(self):
+        """Turn household viewing on or off for this TV."""
+        session = http.new_session()
+        try:
+            tok = auth.load()
+            if household.load_grant() is not None:
+                household.disable(session, tok)
+                toast.show("Household viewing is off on this TV")
+            else:
+                name = xbmc.getInfoLabel("System.FriendlyName") or "Kodi"
+                household.enable(session, tok, name)
+                household.note_chosen()
+                toast.show("Household viewing is on. Members can pick themselves under Switch Profile")
+        except http.ApiError as exc:
+            log.warning(f"settings: household viewing change failed: {exc}")
+            toast.show(_household_error(exc))
+            return
+        except (auth.NotSignedIn, auth.TokenLoadError):
+            return
+        self._settings_fill_household(self._settings_active_profile())
+        if household.load_grant() is not None:
+            self._household_start()
+        self._settings_sync_info(self.SETTINGS_HOUSEHOLD_ID)
+
     def _settings_wire_account_nav(self):
         """The Account pane's rows are GRANDCHILDREN of its grouplist too, so
         they need the same Python wiring as Appearance's -- see
@@ -6929,13 +7060,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         except Exception:                                    # noqa: BLE001
             log.warning("settings: could not wire the Account pane's nav")
             return
-        profile.controlUp(self.getControl(self.SETTINGS_NAV_ID))
-        profile.controlDown(server)
-        server.controlUp(profile)
-        server.controlDown(out)
-        out.controlUp(server)
-        out.controlDown(direct)
-        direct.controlUp(out)
+        # Only the rows on screen: the household row is the owner's, and a
+        # household member has no Switch Server or Sign Out.
+        member = bool(self.getProperty("household_member"))
+        chain = ([self.getControl(self.SETTINGS_HOUSEHOLD_ID)]
+                 if self.getProperty("settings_household_row") else [])
+        chain += [profile] + ([] if member else [server, out]) + [direct]
+        chain[0].controlUp(self.getControl(self.SETTINGS_NAV_ID))
+        for above, below in zip(chain, chain[1:]):
+            above.controlDown(below)
+            below.controlUp(above)
         # THIS DEVICE, folded into Account from its old tab.
         fonts = self.getControl(self.SETTINGS_FONTS_ID)
         direct.controlDown(fonts)

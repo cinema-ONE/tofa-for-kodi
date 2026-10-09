@@ -116,6 +116,10 @@ try:
             # No remembered target: a switch lands on Home, deliberately.
             MainWindow.open()
 finally:
+    # A member's session ends with tofa; the next start asks who's watching.
+    from resources.lib import household
+    household.clear_viewer()
+    household.forget_chosen()
     # A no-op on the normal path (hand_over cleared it); this only
     # fires if the open above threw before Kodi could replace the
     # splash, where an unclosable splash would be the worse failure.
