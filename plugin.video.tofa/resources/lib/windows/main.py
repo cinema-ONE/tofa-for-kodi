@@ -595,6 +595,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._section_down_targets: dict[str, int] = {}
         self._household_renewer = None
         self._household_ended = ""
+        # Every section asks for a client, so its failure is toasted once.
+        self._no_client_told = False
 
         # Focus-driven work that is too expensive to do per keypress waits
         # for the cursor to settle. 7.9.6 sets the delay at ~180ms and the
@@ -1136,17 +1138,29 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if warmed is not None and not warmed.profile_token_expired():
             self.client = warmed
             return self.client
+        tok = None
         try:
             session = http.new_session()
             tok = auth.ensure_fresh(session)
             tok = profile_select.ensure_profile_selected(session, tok)
             self.client = api.client_for(session, tok)
-        except (auth.NotSignedIn, profile_select.ProfileCanceled, http.ApiError):
+        except (auth.NotSignedIn, profile_select.ProfileCanceled):
             self.client = None
+        except http.ApiError as exc:
+            self.client = None
+            self._report_no_client(tok, exc)
         # Who's watching may only just have been answered (a shared TV asks
         # at launch), so the member flag is set again here.
         self._household_start()
         return self.client
+
+    def _report_no_client(self, tok, exc: http.ApiError) -> None:
+        """Log why every section will be empty, and say so once per window."""
+        where = tok.server if tok else "the token refresh"
+        log.warning("main: no client, {0}: [{1}] {2}".format(where, exc.error, exc.message))
+        if not self._no_client_told:
+            self._no_client_told = True
+            toast.show(profile_select.failure_message(exc))
 
     #: section name -> the function that loads it, for _activate_section.
     #: Unbound so the table can live on the class; called as loader(self).

@@ -62,6 +62,12 @@ def server_busy(exc: http.ApiError) -> bool:
     return exc.status == 503 and exc.error not in _RELAY_DOWN
 
 
+def unreachable(exc: http.ApiError) -> bool:
+    """Nothing answered as the server: no connection, or a gateway or the
+    relay saying it is not there."""
+    return _worth_retrying(exc) and not server_busy(exc)
+
+
 def _is_profile_token_401(exc: http.ApiError) -> bool:
     """Is this the server refusing our PROFILE token specifically?
 

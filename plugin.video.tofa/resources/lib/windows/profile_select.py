@@ -793,6 +793,15 @@ def renew_for_playback(runtime_ms) -> bool:
         return False
 
 
+def failure_message(exc: http.ApiError) -> str:
+    """The one sentence a viewer sees for a failed server call."""
+    # signin._alert_api_error's pair. A relay-down 503 counts as unreachable:
+    # it carries no message, so 31050 would end in an empty colon.
+    if api.unreachable(exc):
+        return _(31051)
+    return _(31050) % exc.message
+
+
 def switch_profile() -> bool:
     """Settings' "Switch Profile" action -- always shows the picker
     regardless of the current fast-path resolution state, unlike
@@ -819,10 +828,8 @@ def switch_profile() -> bool:
         # worth knowing and the thing the toast could never say.
         log.warning("profiles: list failed against {0}: [{1}] {2}".format(
             tok.server, exc.error, exc.message))
-        # 31051/31050 are signin._alert_api_error's own pair, reused so the
-        # two paths word the same failure the same way.
-        message = _(31051) if exc.status == 0 else _(31050) % exc.message
-        xbmcgui.Dialog().notification(kodigui.ADDON.getAddonInfo("name"), message, xbmcgui.NOTIFICATION_ERROR)
+        xbmcgui.Dialog().notification(kodigui.ADDON.getAddonInfo("name"),
+                                      failure_message(exc), xbmcgui.NOTIFICATION_ERROR)
         return False
     try:
         _run_picker(session, tok, items)
