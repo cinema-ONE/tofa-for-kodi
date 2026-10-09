@@ -1881,12 +1881,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 for it in resp.get("items") or [] if it.get("id")}
 
     def _home_fill_show_counts(self, client: MediaServerClient):
-        """Put episodes left on Continue Watching's show cards, off the UI
-        thread; only the cards that need one are written."""
+        """Episodes left for Continue Watching's shows, off the UI thread,
+        for Settings' card preview; the app's own cards on Home show none."""
         mlist = self.row_lists.get(self._cw_list_id) if self._cw_list_id else None
         if mlist is None or not len(mlist):
             return
-        prefs = self._ensure_preferences()
 
         def run():
             counts = self._show_counts(client)
@@ -1894,8 +1893,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 item = mli.dataSource or {}
                 count = counts.get(item.get("media_id") or item.get("id"))
                 if item.get("media_type") == "tv" and count:
-                    item["_episodes_left"] = count      # for Settings' preview
-                    cards.apply_episodes_left(mli, count, prefs)
+                    item["_episodes_left"] = count
 
         threading.Thread(target=run, name="tofa-show-counts", daemon=True).start()
 
