@@ -590,6 +590,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # _activate_section() (same controlDown()-rewiring technique
         # _home_wire_row_nav() uses for the row chain).
         self._section_down_targets: dict[str, int] = {}
+        self._household_renewer = None
+        self._household_ended = ""
 
         # Focus-driven work that is too expensive to do per keypress waits
         # for the cursor to settle. 7.9.6 sets the delay at ~180ms and the
@@ -911,8 +913,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_SWITCH_PROFILE_ID, 1)
         self.settings_household_list = kodigui.ManagedControlList(
             self, self.SETTINGS_HOUSEHOLD_ID, 1)
-        self._household_renewer = None
-        self._household_ended = ""
         self.settings_switch_server_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SWITCH_SERVER_ID, 1)
         self.settings_direct_list = kodigui.ManagedControlList(
