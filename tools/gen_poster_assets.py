@@ -333,25 +333,6 @@ def gen_active_ring(photo: int) -> None:
     _save(im, "active-ring-{0}.png".format(photo), (photo, photo))
 
 
-def gen_profile_wash() -> None:
-    """9.2's radial wash, tinted per profile by the skin: white with a
-    Gaussian alpha fitted to the Apple TV app (centre 960,473, sigma 426
-    across and 388 down, peak 0.40). A gradient, so drawn at a quarter of
-    the screen and scaled up."""
-    import math
-    w, h, peak = 480, 270, 0.40
-    cx, cy, sx, sy = 960 / 4, 473 / 4, 426 / 4, 388 / 4
-    im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
-    px = im.load()
-    for y in range(h):
-        for x in range(w):
-            e = ((x + 0.5 - cx) / sx) ** 2 / 2 + ((y + 0.5 - cy) / sy) ** 2 / 2
-            px[x, y] = (255, 255, 255, round(255 * peak * math.exp(-e)))
-    path = os.path.join(_MEDIA_DIR, "profile-wash.png")
-    im.save(path)
-    print("saved profile-wash.png", im.size)
-
-
 def gen_ring_glow(photo: int) -> None:
     """gen_person_glow() with the portrait cut out, for 9.2's profile tile.
 
@@ -703,7 +684,6 @@ def main() -> None:
         gen_person_border(photo)
     gen_outer_rim(PROFILE_PHOTO)
     gen_active_ring(PROFILE_PHOTO)
-    gen_profile_wash()
     gen_ring_glow(PROFILE_PHOTO)
     gen_hairline_ring(PROFILE_PHOTO)
     gen_hairline_ring(LOCK_CHIP)

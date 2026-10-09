@@ -107,8 +107,8 @@ def main() -> int:
             return fh.read()
     profile_xml = rendered("script-tofa-profile.xml")
     main_xml = rendered("script-tofa-main.xml")
-    check("picker tiles draw the disc",
-          profile_xml.count("ListItem.Property(monogram_texture)") == 10,
+    check("picker tiles draw the disc, three times per row list",
+          profile_xml.count("ListItem.Property(monogram_texture)") == 9,
           str(profile_xml.count("ListItem.Property(monogram_texture)")))
     check("the PIN screen draws it too",
           "Window.Property(pin_avatar_monogram)" in profile_xml)

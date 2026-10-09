@@ -25,6 +25,7 @@ from .. import addonref, api, auth, avatar_presets, http, log, monogram
 from .. import profiles as profiles_api
 from ..api import MediaServerClient
 from . import kodigui, theme
+from ..skin import tokens as T
 
 _ = addonref.localize  # lazy, see addonref.py
 
@@ -96,11 +97,9 @@ class ProfileDialog(kodigui.BaseDialog):
     width = 1920
     height = 1080
 
-    # One list control per realistic profile count (1-5, see
-    # script-tofa-profile.xml's docstring for why fixed-width centered
-    # variants rather than one dynamically-positioned list) -- counts
-    # beyond 5 reuse the 5-wide variant and scroll.
-    LIST_IDS = {1: 800, 2: 801, 3: 802, 4: 803, 5: 804}
+    # One list per row of portraits (app 2.0), sized and centred from here.
+    ROW_IDS = (800, 801, 802)
+    TITLE_ID = 810
     CANCEL_ID = 820
     DIGIT_IDS = {str(d): 900 + d for d in range(10)}
     ID_TO_DIGIT = {v: k for k, v in DIGIT_IDS.items()}
@@ -128,8 +127,10 @@ class ProfileDialog(kodigui.BaseDialog):
         # ensure_profile_selected.
         self._start_in_pin = bool(kwargs.pop("start_in_pin", False))
         kodigui.BaseDialog.__init__(self, *args, **kwargs)
-        self._list_id = self.LIST_IDS[min(max(len(self._profiles), 1), 5)]
-        self._profile_list = None
+        n = len(self._profiles)
+        # Three a row as the app; wider rows past six keep it to two rows.
+        self._cols = 3 if n <= 6 else (4 if n <= 8 else 5)
+        self._rows: list = []           # one ManagedControlList per used row
         self._entered_pin = ""
         self._current_profile = None
         self.chosen = None
@@ -142,15 +143,16 @@ class ProfileDialog(kodigui.BaseDialog):
         # per-account lookup -- this screen's focus ring/text must not
         # depend on whichever profile was active before, or on the local
         # Kodi fallback setting.
-        self.setProperty("accent_color", "0xFF" + theme.DEFAULT_ACCENT)
-        self.setProperty("accent_pill_fill", "0x3D" + theme.DEFAULT_ACCENT)
+        # The last profile's fox, as the app wears the current one; read from
+        # settings, since nothing can be resolved before a profile is chosen.
+        accent = theme.last_known_accent()
+        self.setProperty("accent_color", accent)
+        self.setProperty("accent_pill_fill", "0x29" + accent[4:])
         self.setProperty("text_primary", theme.TEXT_PRIMARY)
         self.setProperty("text_secondary", theme.TEXT_SECONDARY)
         self.setProperty("text_tertiary", theme.TEXT_TERTIARY)
         self.setProperty("heading", _(31090))
-        self.setProperty("subheading", _(31091))
         self.setProperty("cancel_label", _(31092))
-        self.setProperty("profile_count", str(min(max(len(self._profiles), 1), 5)))
         # The PIN pane's exit pill says "Back to profiles" whenever there is a
         # picker worth returning to, and "Cancel" only when there genuinely
         # is not -- a one-profile household, where the grid behind would be a
@@ -166,14 +168,8 @@ class ProfileDialog(kodigui.BaseDialog):
         # literal at XML-load time.
         for d in range(10):
             self.setProperty("digit_{0}".format(d), str(d))
-        self._build_list()
+        self._build_rows()
         self.setProperty("state", "picker")
-        # Dynamic Down/Up wiring between Cancel and whichever list variant
-        # is actually visible -- same controlDown()/controlUp() technique
-        # as windows/main.py's nav bar, since the target can't be a single
-        # fixed static XML <onup>/<ondown>.
-        self.getControl(self.CANCEL_ID).controlUp(self.getControl(self._list_id))
-        self.getControl(self._list_id).controlDown(self.getControl(self.CANCEL_ID))
         if self._start_in_pin and self._profiles:
             # Position the picker underneath BEFORE swapping to the keypad, so
             # backing out lands on the profile being unlocked rather than on
@@ -181,7 +177,6 @@ class ProfileDialog(kodigui.BaseDialog):
             self._focus_current_profile()
             self._enter_pin_state(self._pin_target())
             return
-        self.setFocusId(self._list_id)
         self._focus_current_profile()
 
     def _focus_current_profile(self):
@@ -200,44 +195,82 @@ class ProfileDialog(kodigui.BaseDialog):
         (a first-ever run, or a profile deleted server-side since) leaves the
         selection where it was, which is the first tile -- the old
         behaviour, and the right fallback."""
-        if not self._current_id or not self._profile_list:
-            return
-        for pos, profile in enumerate(self._profiles):
-            if profile.id == self._current_id:
-                try:
-                    self._profile_list.setSelectedItemByPos(pos)
-                except Exception:  # noqa: BLE001 - never block the picker
-                    log.debug("profile: could not preselect %s" % self._current_id)
-                return
+        index = next((pos for pos, p in enumerate(self._profiles)
+                      if self._current_id and p.id == self._current_id), 0)
+        self._focus_index(index)
 
-    def _build_list(self):
-        lst = kodigui.ManagedControlList(self, self._list_id, max(1, len(self._profiles)))
-        items = []
-        for p in self._profiles:
-            mli = kodigui.ManagedListItem(label=p.name)
-            mli.setProperty("name", p.name)
-            mli.setProperty("initial", _initials(p.name))
-            # The disc behind the initials is the profile's identity, the same
-            # colour every other tofa client derives from the same id.
-            mli.setProperty("monogram_texture", monogram.texture_for(p.id))
-            mli.setProperty("avatar_texture", self._preset_urls.get(p.id, ""))
-            mli.setProperty("photo_url", self._photo_urls.get(p.id, ""))
-            mli.setProperty("locked", "1" if p.is_locked else "")
-            # 9.2: the profile in use keeps a white ring while focus is
-            # elsewhere, and the focused one tints the background.
-            mli.setProperty("active", "1" if p.id == self._current_id else "")
-            mli.setProperty("wash", monogram.wash_color(p.id))
-            items.append(mli)
-        lst.reset()
-        lst.addItems(items)
-        self._profile_list = lst
+    def _focus_index(self, index: int):
+        """Focus the portrait at `index` in the grid."""
+        row, col = divmod(index, self._cols)
+        if row >= len(self._rows):
+            return
+        try:
+            self._rows[row].setSelectedItemByPos(col)
+            self.setFocusId(self.ROW_IDS[row])
+        except Exception:  # noqa: BLE001 - never block the picker
+            log.debug("profile: could not focus %d" % index)
+
+    def _build_rows(self):
+        """One list per row, each centred; the block sits on the screen's
+        centre with the title above it, as in the app."""
+        cols, n = self._cols, len(self._profiles)
+        rows = [self._profiles[i:i + cols] for i in range(0, n, cols)][:len(self.ROW_IDS)]
+        block = T.WHO_TILE + 40 + (len(rows) - 1) * T.WHO_ROW_PITCH
+        top = int(540 - block / 2)
+        self._rows = []
+        for r, row in enumerate(rows):
+            lst = kodigui.ManagedControlList(self, self.ROW_IDS[r], cols)
+            lst.reset()
+            lst.addItems([self._tile(p) for p in row])
+            width = len(row) * T.WHO_CELL_W
+            control = self.getControl(self.ROW_IDS[r])
+            control.setWidth(width)
+            control.setPosition(960 - width // 2, top - T.WHO_TILE_Y + r * T.WHO_ROW_PITCH)
+            self._rows.append(lst)
+        self.getControl(self.TITLE_ID).setPosition(0, top - T.WHO_TITLE_ABOVE)
+
+    def _tile(self, p) -> kodigui.ManagedListItem:
+        mli = kodigui.ManagedListItem(label=p.name)
+        mli.setProperty("name", p.name)
+        mli.setProperty("initial", _initials(p.name))
+        # The disc behind the initials is the profile's identity, the same
+        # colour every other tofa client derives from the same id.
+        mli.setProperty("monogram_texture", monogram.texture_for(p.id))
+        mli.setProperty("avatar_texture", self._preset_urls.get(p.id, ""))
+        mli.setProperty("photo_url", self._photo_urls.get(p.id, ""))
+        mli.setProperty("locked", "1" if p.is_locked else "")
+        # The profile in use keeps a white ring while focus is elsewhere.
+        mli.setProperty("active", "1" if p.id == self._current_id else "")
+        return mli
+
+    def _row_of(self, control_id: int) -> int:
+        return self.ROW_IDS.index(control_id) if control_id in self.ROW_IDS[:len(self._rows)] else -1
+
+    def _move_row(self, row: int, step: int) -> bool:
+        """Up/Down between rows onto the portrait nearest in x; Down from the
+        last row reaches Cancel."""
+        target = row + step
+        if target >= len(self._rows):
+            self.setFocusId(self.CANCEL_ID)
+            return True
+        if target < 0:
+            return True
+        col = self._rows[row].getSelectedPosition()
+        here = self._centre_x(row, col)
+        best = min(range(len(self._rows[target])), key=lambda c: abs(self._centre_x(target, c) - here))
+        self._rows[target].setSelectedItemByPos(best)
+        self.setFocusId(self.ROW_IDS[target])
+        return True
+
+    def _centre_x(self, row: int, col: int) -> float:
+        width = len(self._rows[row]) * T.WHO_CELL_W
+        return 960 - width / 2 + (col + 0.5) * T.WHO_CELL_W
 
     def _enter_pin_state(self, profile):
         self._current_profile = profile
         self._entered_pin = ""
         self.setProperty("pin_avatar_initial", _initials(profile.name))
         self.setProperty("pin_avatar_monogram", monogram.texture_for(profile.id))
-        self.setProperty("pin_wash", monogram.wash_color(profile.id))
         self.setProperty("pin_avatar_texture",
                          self._preset_urls.get(profile.id, ""))
         self.setProperty("pin_avatar_photo_url", self._photo_urls.get(profile.id, ""))
@@ -380,9 +413,11 @@ class ProfileDialog(kodigui.BaseDialog):
         self.setFocusId(self.DIGIT_IDS["1"])
 
     def onClick(self, controlID):
-        if controlID == self._list_id:
-            idx = self._profile_list.getSelectedPosition()
-            if idx < 0:
+        row = self._row_of(controlID)
+        if row >= 0:
+            pos = self._rows[row].getSelectedPosition()
+            idx = row * self._cols + pos
+            if pos < 0 or idx >= len(self._profiles):
                 return
             profile = self._profiles[idx]
             if profile.is_locked:
@@ -437,6 +472,19 @@ class ProfileDialog(kodigui.BaseDialog):
                 self._append_digit(digit)
                 return
 
+        if (self.getProperty("state") == "picker"
+                and action.getId() in (xbmcgui.ACTION_MOVE_UP, xbmcgui.ACTION_MOVE_DOWN)):
+            # Rows and Cancel carry no XML up/down: Kodi would move focus
+            # before this runs, and the move here would land a second time.
+            row = self._row_of(self.getFocusId())
+            if row >= 0:
+                self._move_row(row, 1 if action.getId() == xbmcgui.ACTION_MOVE_DOWN else -1)
+                return
+            if self.getFocusId() == self.CANCEL_ID and action.getId() == xbmcgui.ACTION_MOVE_UP:
+                if self._rows:
+                    self.setFocusId(self.ROW_IDS[len(self._rows) - 1])
+                return
+
         if action.getId() in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK):
             if self.getProperty("state") == "pin" and self._leave_pin_state():
                 return
@@ -484,7 +532,11 @@ class ProfileDialog(kodigui.BaseDialog):
         if self._alone():
             return False
         self.setProperty("state", "picker")
-        self.waitAndSetFocus(self._list_id)
+        index = next((i for i, p in enumerate(self._profiles) if p is self._current_profile), 0)
+        row, col = divmod(index, self._cols)
+        if row < len(self._rows):
+            self._rows[row].setSelectedItemByPos(col)
+            self.waitAndSetFocus(self.ROW_IDS[row])
         return True
 
 
