@@ -980,56 +980,15 @@ SETTINGS_GROUPLIST_Y = SETTINGS_CONTENT_Y - SETTINGS_SECTION_BAND
 # A part-drawn row at the edge is the honest signal that there is more below.
 SETTINGS_GROUPLIST_H = SCREEN_H - SETTINGS_GROUPLIST_Y
 
-# Account, matching the app's build 17. The pane SCROLLS now (a grouplist,
-# like Appearance), because the app's five sections do not fit a 1080 screen:
-# they total 1165 against a 699 viewport. Each child fits on its own, which
-# is the rule that matters -- a child taller than the viewport can never be
-# scrolled fully into view.
-#
-# SWITCH is two children, one row each -- NOT one two-item list, which was
-# tried first and traps focus. Measured 2026-08-13: a multi-item list inside
-# a grouplist CONSUMES Down at its last item (our lists stop rather than
-# wrap), so focus never reaches the next child and the page dead-ends on
-# Switch Server. A one-item list hands the keypress back and the grouplist
-# chains on, which is exactly why Appearance's single-row children work.
-# The eyebrow belongs to the first child; the second is the same visual
-# group continued, so the gap between them is a stack gap, not a group gap.
-SETTINGS_ACCOUNT_SWITCH_ROW_PITCH = SETTINGS_ACTION_ROW_H + SETTINGS_STACK_ROW_GAP
-SETTINGS_ACCOUNT_SWITCH_GROUP_H = (
+# Account, as app 2.0: THIS TV, then ACCOUNT. One row per grouplist child,
+# since a multi-row list eats Down at its last row. A group's first child
+# carries the eyebrow (LEAD), the rest stack under it, the LAST ends it.
+SETTINGS_ACCOUNT_LEAD_GROUP_H = (
     SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_STACK_ROW_GAP)
-SETTINGS_ACCOUNT_SWITCH2_GROUP_H = SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
-SETTINGS_ACCOUNT_SESSION_GROUP_H = (
-    SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL)
-# HOUSEHOLD: the owner's Enable Household Viewing row, shaped as SESSION.
-SETTINGS_ACCOUNT_HOUSEHOLD_GROUP_H = SETTINGS_ACCOUNT_SESSION_GROUP_H
-SETTINGS_ACCOUNT_EMAIL_GROUP_H = (
-    SETTINGS_SECTION_BAND + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_TRAIL)
-# SERVER is one value row, the server's name, as the app shows it now.
-SETTINGS_ACCOUNT_SERVER_GROUP_H = (
-    SETTINGS_SECTION_BAND + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_TRAIL)
-# ACCOUNT, SERVER and CONNECTION share ONE grouplist child. Neither of the
-# first two can take focus, and a focusless child joins the chain and eats a
-# keypress -- so they ride with the toggle, which can. They keep their own
-# group spacing, so the eye still reads three sections.
-SETTINGS_ACCOUNT_TAIL_EMAIL_Y = SETTINGS_SECTION_BAND
-SETTINGS_ACCOUNT_TAIL_SERVER_Y = (
-    SETTINGS_ACCOUNT_TAIL_EMAIL_Y + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_GAP)
-SETTINGS_ACCOUNT_CONNECTION_ROW_Y = (
-    SETTINGS_ACCOUNT_TAIL_SERVER_Y + SETTINGS_VALUE_ROW_H + SETTINGS_GROUP_GAP)
-# A read-only note under the CONNECTION toggle, reporting how THIS box is
-# actually reaching the server (direct or through tofa's relay). It rides
-# inside the tail child rather than in a child of its own, for the same
-# reason ACCOUNT and SERVER do: a focusless grouplist child eats a keypress.
-# Two body lines, so it stays short enough that the whole tail child still
-# fits the 699 viewport (project_kodi_grouplist_scroll_limit) -- a 3-line
-# card would push the bottom past it. Only the toggle above it takes focus,
-# so the card can hang a few px into the trail without stranding anything.
-SETTINGS_ACCOUNT_RELAY_NOTE_Y = (
-    SETTINGS_ACCOUNT_CONNECTION_ROW_Y + SETTINGS_ACTION_ROW_H + 6)
-SETTINGS_ACCOUNT_RELAY_NOTE_H = 18 + 34 + 4 + 2 * 27 + 18  # 128, two body lines
-SETTINGS_ACCOUNT_TAIL_GROUP_H = (
-    SETTINGS_ACCOUNT_RELAY_NOTE_Y + SETTINGS_ACCOUNT_RELAY_NOTE_H
-    + SETTINGS_GROUP_TRAIL)
+SETTINGS_ACCOUNT_STACK_GROUP_H = SETTINGS_ACTION_ROW_H + SETTINGS_STACK_ROW_GAP
+SETTINGS_ACCOUNT_LAST_GROUP_H = SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
+# Two lines of the connection explanation (now in Direct's side panel).
+SETTINGS_ACCOUNT_RELAY_NOTE_H = 18 + 34 + 4 + 2 * 27 + 18  # 128
 # THEME: the Fox accent row alone.
 SETTINGS_THEME_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
 # Media cards: four rows, each its own one-item list. Same in-group spacing

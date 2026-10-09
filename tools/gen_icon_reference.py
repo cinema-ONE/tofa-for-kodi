@@ -53,6 +53,7 @@ _OPEN_SANS = os.path.join(_FONTS_DIR, "OpenSans-Regular.ttf")
 WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
     ("Top nav bar", "resources/lib/windows/navbar.py", [
         ("HOUSE", "Home tab"),
+        ("QR_CODE", "Settings > Account: Manage account"),
         ("LAYOUT_GRID", "Browse tab"),
         ("SPARKLES", "Discover tab"),
         ("SEARCH", "Search tab"),

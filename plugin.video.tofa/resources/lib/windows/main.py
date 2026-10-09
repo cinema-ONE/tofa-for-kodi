@@ -508,6 +508,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_SWITCH_PROFILE_ID = 8110
     SETTINGS_HOUSEHOLD_ID = 8105        # Account > HOUSEHOLD (owner only)
     SETTINGS_HOUSEHOLD_OFF_ID = 8106    # ...and its Disable, above Sign Out
+    SETTINGS_SWITCH_PROFILE2_ID = 8111  # Switch Profile under Enable (no eyebrow)
+    SETTINGS_MANAGE_ACCOUNT_ID = 8125   # ACCOUNT's first row; the QR shows on focus
     #: Its own grouplist child, one row, so Down leaves it (see the tokens).
     SETTINGS_SWITCH_SERVER_ID = 8115
     # Between its two neighbours on the page, and numbered between them so
@@ -916,6 +918,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_HOUSEHOLD_ID, 1)
         self.settings_household_off_list = kodigui.ManagedControlList(
             self, self.SETTINGS_HOUSEHOLD_OFF_ID, 1)
+        self.settings_switch_profile2_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_SWITCH_PROFILE2_ID, 1)
+        self.settings_manage_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_MANAGE_ACCOUNT_ID, 1)
         self.settings_switch_server_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SWITCH_SERVER_ID, 1)
         self.settings_direct_list = kodigui.ManagedControlList(
@@ -1276,7 +1282,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._home_detail_clicked(self.row_lists[controlID], self._row_kinds[controlID])
         elif controlID == self.SETTINGS_NAV_ID:
             self._settings_page_clicked()
-        elif controlID == self.SETTINGS_SWITCH_PROFILE_ID:
+        elif controlID in (self.SETTINGS_SWITCH_PROFILE_ID, self.SETTINGS_SWITCH_PROFILE2_ID):
             self._settings_switch_profile()
         elif controlID in (self.SETTINGS_HOUSEHOLD_ID, self.SETTINGS_HOUSEHOLD_OFF_ID):
             self._settings_household_clicked()
@@ -5704,23 +5710,31 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # load; only their subtitles are data, and those are set on the item
         # by _settings_load().
         switch = kodigui.ManagedListItem(label="Switch Profile")
-        switch.setProperty("icon_glyph", chr(icon_glyphs.USERS))
+        switch.setProperty("icon_glyph", "")
         switch.setProperty("summary", "")
         # Not destructive: switching servers keeps the pairing and is one
         # keypress to undo by switching back, which is the whole point of it
         # existing rather than making people sign out.
         server = kodigui.ManagedListItem(label="Switch Server")
-        server.setProperty("icon_glyph", chr(icon_glyphs.SERVER))
+        server.setProperty("icon_glyph", "")
         server.setProperty("summary", "")
         self.settings_switch_profile_list.reset()
         self.settings_switch_profile_list.addItems([switch])
+        switch2 = kodigui.ManagedListItem(label="Switch Profile")
+        switch2.setProperty("icon_glyph", "")
+        self.settings_switch_profile2_list.reset()
+        self.settings_switch_profile2_list.addItems([switch2])
+        manage = kodigui.ManagedListItem(label="Manage account")
+        manage.setProperty("icon_glyph", chr(icon_glyphs.QR_CODE))
+        self.settings_manage_list.reset()
+        self.settings_manage_list.addItems([manage])
         hh = kodigui.ManagedListItem(label="Enable Household Viewing")
-        hh.setProperty("icon_glyph", chr(icon_glyphs.HOUSE))
+        hh.setProperty("icon_glyph", "")
         hh.setProperty("summary", "")
         self.settings_household_list.reset()
         self.settings_household_list.addItems([hh])
         hh_off = kodigui.ManagedListItem(label="Disable Household Viewing")
-        hh_off.setProperty("icon_glyph", chr(icon_glyphs.HOUSE))
+        hh_off.setProperty("icon_glyph", "")
         hh_off.setProperty("summary", "")
         hh_off.setProperty("destructive", "1")
         self.settings_household_off_list.reset()
@@ -5741,7 +5755,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_direct_list.addItems([direct])
 
         out = kodigui.ManagedListItem(label="Sign Out")
-        out.setProperty("icon_glyph", chr(icon_glyphs.LOG_OUT))
+        out.setProperty("icon_glyph", "")
         out.setProperty("summary", "Disconnect this device from your server")
         # 2: destructive reads as red TEXT over glass, not a filled red row.
         out.setProperty("destructive", "1")
@@ -5780,9 +5794,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Where Right or Select enters a page: the control left last, else
         the page's first control (6). Not checked for visibility: a page shown
         a moment ago still reads as hidden, and its rows do not come and go."""
-        if key == "account" and self.getProperty("settings_household_row") == "enable" \
-                and key not in self._settings_last_control:
-            return self.SETTINGS_HOUSEHOLD_ID
+        if key == "account":
+            enable = self.getProperty("settings_household_row") == "enable"
+            last = self._settings_last_control.get(key)
+            if last in (self.SETTINGS_SWITCH_PROFILE_ID, self.SETTINGS_SWITCH_PROFILE2_ID):
+                return self.SETTINGS_SWITCH_PROFILE2_ID if enable else self.SETTINGS_SWITCH_PROFILE_ID
+            if last in (self.SETTINGS_HOUSEHOLD_ID, self.SETTINGS_HOUSEHOLD_OFF_ID, None):
+                return self.SETTINGS_HOUSEHOLD_ID if enable else self.SETTINGS_SWITCH_PROFILE_ID
         return (self._settings_last_control.get(key)
                 or settings_pages.RIGHT_TARGETS.get(key))
 
@@ -5874,8 +5892,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         profile = self._settings_active_profile()
         self._settings_fill_household(profile)
-        self.settings_switch_profile_list.getListItem(0).setProperty(
-            "summary", (profile.name if profile else "") or "")
+        for lst in (self.settings_switch_profile_list, self.settings_switch_profile2_list):
+            lst.getListItem(0).setProperty("summary", (profile.name if profile else "") or "")
         self.setProperty("settings_profile_name", (profile.name if profile else "") or "")
         self.setProperty("settings_avatar_photo",
                          self._settings_account_avatar()
@@ -6382,7 +6400,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- the left column's info panel (app 2.0) -----------------------
     #: Row controls that are not segmented pills, by info key.
     SETTINGS_INFO_KEYS = {
-        8105: "household", 8106: "household_off", 8110: "switch_profile", 8115: "switch_server", 8120: "sign_out",
+        8105: "household", 8106: "household_off", 8110: "switch_profile",
+        8111: "switch_profile", 8125: "manage_account", 8115: "switch_server", 8120: "sign_out",
         8130: "direct_only", 8710: "setup_device",
         8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
         8550: "sub_lang2", 8530: "always_subs",
@@ -6574,7 +6593,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("settings_info", "")
             self.setProperty("settings_preview", "")
             page = self.getProperty("settings_page")
-            rows = settings_info.SUMMARIES.get(page, ())
+            rows = [r for r in settings_info.SUMMARIES.get(page, ())
+                    if r[1] != "household" or self._settings_value("household")]
             for i in range(settings_info.MAX_SUMMARY):
                 eyebrow, vkey = rows[i] if i < len(rows) else ("", "")
                 self.setProperty("settings_sum{0}_key".format(i + 1), eyebrow)
@@ -6603,6 +6623,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("settings_info_body{0}".format(i + 1),
                              lines[i] if i < len(lines) else "")
         note_text = info.note
+        if key == "direct_only":
+            note_text = self.getProperty("settings_connection_body") or note_text
         if key == "switch_profile" and household.load_grant() is not None:
             note_text = "Household viewing is on: pick someone here to hand them the TV."
         note = textmetrics.wrap_lines(note_text, T.SETTINGS_INFO_W, 2, 23)
@@ -7080,31 +7102,32 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         nothing at all. The list is not in the grouplist's chain, its ondown
         resolves to nothing, and Kodi wraps it internally onto its own single
         item rather than navigating away."""
+        # Only the rows on screen, in app 2.0's order: THIS TV, then ACCOUNT
+        # (the owner's alone), then THIS DEVICE.
         try:
-            profile = self.getControl(self.SETTINGS_SWITCH_PROFILE_ID)
-            server = self.getControl(self.SETTINGS_SWITCH_SERVER_ID)
-            out = self.getControl(self.SETTINGS_SIGN_OUT_ID)
-            direct = self.getControl(self.SETTINGS_DIRECT_ONLY_ID)
+            get = self.getControl
+            member = bool(self.getProperty("household_member"))
+            row = self.getProperty("settings_household_row")
+            chain = [get(self.SETTINGS_HOUSEHOLD_ID)] if row == "enable" else []
+            chain.append(get(self.SETTINGS_SWITCH_PROFILE2_ID if row == "enable"
+                             else self.SETTINGS_SWITCH_PROFILE_ID))
+            if not member:
+                chain.append(get(self.SETTINGS_SWITCH_SERVER_ID))
+            chain.append(get(self.SETTINGS_DIRECT_ONLY_ID))
+            if not member:
+                chain.append(get(self.SETTINGS_MANAGE_ACCOUNT_ID))
+                if row == "disable":
+                    chain.append(get(self.SETTINGS_HOUSEHOLD_OFF_ID))
+                chain.append(get(self.SETTINGS_SIGN_OUT_ID))
+            fonts = get(self.SETTINGS_FONTS_ID)
         except Exception:                                    # noqa: BLE001
             log.warning("settings: could not wire the Account pane's nav")
             return
-        # Only the rows on screen: the household row is the owner's, and a
-        # household member has no Switch Server or Sign Out.
-        member = bool(self.getProperty("household_member"))
-        row = self.getProperty("settings_household_row")
-        chain = [self.getControl(self.SETTINGS_HOUSEHOLD_ID)] if row == "enable" else []
-        chain += [profile] + ([] if member else [server])
-        if row == "disable":
-            chain.append(self.getControl(self.SETTINGS_HOUSEHOLD_OFF_ID))
-        chain += ([] if member else [out]) + [direct]
-        chain[0].controlUp(self.getControl(self.SETTINGS_NAV_ID))
+        chain.append(fonts)
+        chain[0].controlUp(get(self.SETTINGS_NAV_ID))
         for above, below in zip(chain, chain[1:]):
             above.controlDown(below)
             below.controlUp(above)
-        # THIS DEVICE, folded into Account from its old tab.
-        fonts = self.getControl(self.SETTINGS_FONTS_ID)
-        direct.controlDown(fonts)
-        fonts.controlUp(direct)
         fonts.controlDown(fonts)
         # Privacy & About: Open Source Notices, then the artwork cache.
         licences = self.getControl(self.SETTINGS_LICENCES_ID)
