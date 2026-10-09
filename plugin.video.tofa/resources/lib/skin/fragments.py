@@ -2572,17 +2572,24 @@ def settings_info_panel() -> str:
     stack += "".join(label(0, 27, T.FONT_METADATA, grey,
                            f"$INFO[Window.Property(settings_info_note{n})]",
                            prop_set(f"settings_info_note{n}")) for n in (1, 2))
-    stack += f"""
+    compact = prop_set("settings_info_compact")
+    for gap, when in ((T.SETTINGS_INFO_OPTS_GAP, f"!{compact}"),
+                      (T.SETTINGS_INFO_OPTS_GAP_COMPACT, compact)):
+        stack += f"""
                     <control type="group">
-                        <height>{T.SETTINGS_INFO_OPTS_GAP}</height>
-                        <visible>{prop_set("settings_info_opt1")}</visible>
+                        <height>{gap}</height>
+                        <visible>{prop_set("settings_info_opt1")} + {when}</visible>
                     </control>"""
-    for n in range(1, 5):
+    # Two copies of each choice: the measured pitch, and a tightened one for
+    # four choices under a preview (a group's height cannot be conditional).
+    for n, pitch, when in [(n, p, w) for p, w in (
+            (T.SETTINGS_INFO_OPT_PITCH, f"!{compact}"),
+            (T.SETTINGS_INFO_OPT_PITCH_COMPACT, compact)) for n in range(1, 5)]:
         on = prop_set(f"settings_info_opt{n}_on")
         stack += f"""
                     <control type="group">
-                        <height>{T.SETTINGS_INFO_OPT_PITCH}</height>
-                        <visible>{prop_set(f"settings_info_opt{n}")}</visible>
+                        <height>{pitch}</height>
+                        <visible>{prop_set(f"settings_info_opt{n}")} + {when}</visible>
                         <control type="image">
                             <posx>1</posx>
                             <posy>9</posy>

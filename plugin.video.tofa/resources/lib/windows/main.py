@@ -6638,6 +6638,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("settings_info_opt{0}_on".format(i + 1),
                              "1" if label and label == value else "")
             self.setProperty("settings_info_opt{0}_dim".format(i + 1), "")
+        # Four choices under a preview only fit tightened (the app drops one).
+        self.setProperty("settings_info_compact", "1" if (
+            self.getProperty("settings_preview") and len(info.options) > 3) else "")
         if self._settings_picker and control_id == self._settings_picker["list_id"]:
             self._settings_picker_sync()
 
