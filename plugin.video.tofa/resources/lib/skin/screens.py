@@ -188,6 +188,7 @@ def render_main() -> str:
     settings_action_item_2, settings_action_focused_2 = fragments.settings_action_row(8120)
     settings_action_item_3, settings_action_focused_3 = fragments.settings_action_row(8115)
     settings_action_item_4, settings_action_focused_4 = fragments.settings_action_row(8105)
+    settings_action_item_5, settings_action_focused_5 = fragments.settings_action_row(8106)
 
     # SWITCH, not PROFILE: the app groups Switch Profile and Switch Server
     # under one heading (build 17), and one eyebrow over both is what makes
@@ -325,6 +326,8 @@ def render_main() -> str:
         settings_action_focused_3=settings_action_focused_3,
         settings_action_item_4=settings_action_item_4,
         settings_action_focused_4=settings_action_focused_4,
+        settings_action_item_5=settings_action_item_5,
+        settings_action_focused_5=settings_action_focused_5,
         settings_household_eyebrow=settings_household_eyebrow,
         settings_switch_eyebrow=settings_switch_eyebrow,
         settings_session_eyebrow=settings_session_eyebrow,

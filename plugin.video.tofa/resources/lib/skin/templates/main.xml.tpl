@@ -1763,7 +1763,7 @@
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W}</width>
                         <height>{SETTINGS_ACCOUNT_HOUSEHOLD_GROUP_H}</height>
-                        <visible>!String.IsEmpty(Window.Property(settings_household_row))</visible>
+                        <visible>String.IsEqual(Window.Property(settings_household_row),enable)</visible>
 {settings_household_eyebrow}
                         <control type="list" id="8105">
                             <posx>0</posx>
@@ -1826,6 +1826,29 @@
 {settings_action_item_3}
 
 {settings_action_focused_3}
+                        </control>
+                    </control>
+
+                    <!-- HOUSEHOLD once on: Disable sits with the session rows. -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W}</width>
+                        <height>{SETTINGS_ACCOUNT_HOUSEHOLD_GROUP_H}</height>
+                        <visible>String.IsEqual(Window.Property(settings_household_row),disable)</visible>
+{settings_household_eyebrow}
+                        <control type="list" id="8106">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8106</onleft>
+                            <onright>8106</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_action_item_5}
+
+{settings_action_focused_5}
                         </control>
                     </control>
 

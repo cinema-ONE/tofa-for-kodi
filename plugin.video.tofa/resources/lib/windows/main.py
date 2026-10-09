@@ -507,6 +507,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_NAV_ID = 8000
     SETTINGS_SWITCH_PROFILE_ID = 8110
     SETTINGS_HOUSEHOLD_ID = 8105        # Account > HOUSEHOLD (owner only)
+    SETTINGS_HOUSEHOLD_OFF_ID = 8106    # ...and its Disable, above Sign Out
     #: Its own grouplist child, one row, so Down leaves it (see the tokens).
     SETTINGS_SWITCH_SERVER_ID = 8115
     # Between its two neighbours on the page, and numbered between them so
@@ -913,6 +914,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_SWITCH_PROFILE_ID, 1)
         self.settings_household_list = kodigui.ManagedControlList(
             self, self.SETTINGS_HOUSEHOLD_ID, 1)
+        self.settings_household_off_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_HOUSEHOLD_OFF_ID, 1)
         self.settings_switch_server_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SWITCH_SERVER_ID, 1)
         self.settings_direct_list = kodigui.ManagedControlList(
@@ -1134,6 +1137,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.client = api.client_for(session, tok)
         except (auth.NotSignedIn, profile_select.ProfileCanceled, http.ApiError):
             self.client = None
+        # Who's watching may only just have been answered (a shared TV asks
+        # at launch), so the member flag is set again here.
+        self._household_start()
         return self.client
 
     #: section name -> the function that loads it, for _activate_section.
@@ -1272,7 +1278,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_page_clicked()
         elif controlID == self.SETTINGS_SWITCH_PROFILE_ID:
             self._settings_switch_profile()
-        elif controlID == self.SETTINGS_HOUSEHOLD_ID:
+        elif controlID in (self.SETTINGS_HOUSEHOLD_ID, self.SETTINGS_HOUSEHOLD_OFF_ID):
             self._settings_household_clicked()
         elif controlID == self.SETTINGS_SWITCH_SERVER_ID:
             self._settings_switch_server()
@@ -5713,6 +5719,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         hh.setProperty("summary", "")
         self.settings_household_list.reset()
         self.settings_household_list.addItems([hh])
+        hh_off = kodigui.ManagedListItem(label="Disable Household Viewing")
+        hh_off.setProperty("icon_glyph", chr(icon_glyphs.HOUSE))
+        hh_off.setProperty("summary", "")
+        hh_off.setProperty("destructive", "1")
+        self.settings_household_off_list.reset()
+        self.settings_household_off_list.addItems([hh_off])
         self.settings_switch_server_list.reset()
         self.settings_switch_server_list.addItems([server])
 
@@ -5768,7 +5780,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Where Right or Select enters a page: the control left last, else
         the page's first control (6). Not checked for visibility: a page shown
         a moment ago still reads as hidden, and its rows do not come and go."""
-        if key == "account" and self.getProperty("settings_household_row") \
+        if key == "account" and self.getProperty("settings_household_row") == "enable" \
                 and key not in self._settings_last_control:
             return self.SETTINGS_HOUSEHOLD_ID
         return (self._settings_last_control.get(key)
@@ -6370,7 +6382,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- the left column's info panel (app 2.0) -----------------------
     #: Row controls that are not segmented pills, by info key.
     SETTINGS_INFO_KEYS = {
-        8105: "household", 8110: "switch_profile", 8115: "switch_server", 8120: "sign_out",
+        8105: "household", 8106: "household_off", 8110: "switch_profile", 8115: "switch_server", 8120: "sign_out",
         8130: "direct_only", 8710: "setup_device",
         8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
         8550: "sub_lang2", 8530: "always_subs",
@@ -6590,7 +6602,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         for i in range(3):
             self.setProperty("settings_info_body{0}".format(i + 1),
                              lines[i] if i < len(lines) else "")
-        note = textmetrics.wrap_lines(info.note, T.SETTINGS_INFO_W, 2, 23)
+        note_text = info.note
+        if key == "switch_profile" and household.load_grant() is not None:
+            note_text = "Household viewing is on: pick someone here to hand them the TV."
+        note = textmetrics.wrap_lines(note_text, T.SETTINGS_INFO_W, 2, 23)
         for i in range(2):
             self.setProperty("settings_info_note{0}".format(i + 1),
                              note[i] if i < len(note) else "")
@@ -6945,6 +6960,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if self._settings_identity is not None:
             return self._settings_identity
         self._settings_identity = {}
+        if household.active_viewer() is not None:
+            # The cloud login is the TV owner's; a member's name comes from
+            # their own server account instead.
+            return self._settings_identity
         try:
             from .. import signin
             tok = auth.load()
@@ -7018,9 +7037,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
         if not available and not enabled:
             return
-        item = self.settings_household_list.getListItem(0)
-        item.setLabel("Disable Household Viewing" if enabled else "Enable Household Viewing")
-        self.setProperty("settings_household_row", "1")
+        self.setProperty("settings_household_row", "disable" if enabled else "enable")
         self._settings_wire_account_nav()
 
     def _settings_household_clicked(self):
@@ -7048,7 +7065,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_fill_household(self._settings_active_profile())
         if household.load_grant() is not None:
             self._household_start()
-        self._settings_sync_info(self.SETTINGS_HOUSEHOLD_ID)
+        # The row pressed is hidden now; land on the one that replaced it.
+        target = (self.SETTINGS_HOUSEHOLD_OFF_ID if household.load_grant() is not None
+                  else self.SETTINGS_HOUSEHOLD_ID)
+        self.waitAndSetFocus(target)
+        self._settings_sync_info(target)
 
     def _settings_wire_account_nav(self):
         """The Account pane's rows are GRANDCHILDREN of its grouplist too, so
@@ -7070,9 +7091,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Only the rows on screen: the household row is the owner's, and a
         # household member has no Switch Server or Sign Out.
         member = bool(self.getProperty("household_member"))
-        chain = ([self.getControl(self.SETTINGS_HOUSEHOLD_ID)]
-                 if self.getProperty("settings_household_row") else [])
-        chain += [profile] + ([] if member else [server, out]) + [direct]
+        row = self.getProperty("settings_household_row")
+        chain = [self.getControl(self.SETTINGS_HOUSEHOLD_ID)] if row == "enable" else []
+        chain += [profile] + ([] if member else [server])
+        if row == "disable":
+            chain.append(self.getControl(self.SETTINGS_HOUSEHOLD_OFF_ID))
+        chain += ([] if member else [out]) + [direct]
         chain[0].controlUp(self.getControl(self.SETTINGS_NAV_ID))
         for above, below in zip(chain, chain[1:]):
             above.controlDown(below)

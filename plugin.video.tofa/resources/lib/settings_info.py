@@ -36,6 +36,11 @@ ROWS: dict[str, Info] = {
         "Lets the people in your household watch here as themselves, with "
         "their own history and watchlist, without signing you out.",
         note="Only the account owner can turn this on or off."),
+    "household_off": Info(
+        "Disable Household Viewing",
+        "Turns household viewing off on this TV. Members can no longer pick "
+        "themselves here; their accounts and history stay as they are.",
+        note="Only the account owner can turn this on or off."),
     "switch_server": Info(
         "Switch Server",
         "Choose which of your tofa servers this device plays from."),
