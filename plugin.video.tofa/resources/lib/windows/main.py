@@ -2235,11 +2235,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._section_down_targets["home"] = active_list_ids[0] if active_list_ids else self.NAV_LIST_ID
 
         chain = [self.getControl(self.NAV_LIST_ID)] + [self.getControl(cid) for cid in active_list_ids]
+        # The nav bar is shared: a late Home load must not re-aim its Down
+        # while another section shows, or Down lands on a hidden row.
+        on_home = self.getProperty("active_section") == "home"
         for i, ctrl in enumerate(chain):
             down = chain[i + 1] if i + 1 < len(chain) else ctrl
             up = chain[i - 1] if i > 0 else ctrl
             try:
-                ctrl.controlDown(down)
+                if i > 0 or on_home:
+                    ctrl.controlDown(down)
                 if i > 0:
                     ctrl.controlUp(up)
             except Exception:
@@ -3072,6 +3076,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Back from a view to the landing, onto the tile it came from."""
         if not self.getProperty("browse_view"):
             return False
+        self._browse_focus_after_load = False
         self.setProperty("browse_sort_open", "")
         self.setProperty("browse_view", "")
         self.setProperty("nav_hidden", "")
@@ -4403,7 +4408,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_finish_facets(pending)
         if self._browse_focus_after_load:
             self._browse_focus_after_load = False
-            self._browse_focus_view()
+            # A Back while it loaded closed the view: its grid is hidden now.
+            if self.getProperty("browse_view"):
+                self._browse_focus_view()
 
     def _browse_surprise_me_clicked(self, scoped: bool = False):
         """Open one random unwatched title: from the view's library when
