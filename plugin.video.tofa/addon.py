@@ -19,6 +19,10 @@ from resources.lib import (addonref, api, artcache, auth, branding, cloud, home_
 from resources.lib.api import MediaServerClient
 from resources.lib.profile import CapabilityProfile
 from resources.lib.windows import profile_select
+from resources.lib import settings_options
+
+# Reduce motion for windows opened from here (launch_home.py does the same).
+settings_options.apply_reduce_motion()
 
 # Both lazy, see resources/lib/addonref.py.
 ADDON = addonref.ADDON

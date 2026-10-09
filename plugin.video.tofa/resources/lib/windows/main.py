@@ -522,6 +522,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_EPISODES_ID = 8310
     SETTINGS_SPOILERS_ID = 8315
     SETTINGS_WATCHED_ID = 8312
+    SETTINGS_PAUSESCREEN_ID = 8495      # Playback > PLAYER (device)
+    SETTINGS_MOTION_ID = 8295           # Appearance > MOTION (device)
     SETTINGS_SPOTLIGHT_ID = 8320
     #: ADD A ROW: "Add a Discover row", "Add a genre row" (app 2.0).
     SETTINGS_ADD_ROW_ID = 8340
@@ -905,6 +907,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_SPOILERS_ID, 1)
         self.settings_watched_list = kodigui.ManagedControlList(
             self, self.SETTINGS_WATCHED_ID, 1)
+        self.settings_pausescreen_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_PAUSESCREEN_ID, 1)
+        self.settings_motion_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_MOTION_ID, 1)
         self.settings_spotlight_list = kodigui.ManagedControlList(
             self, self.SETTINGS_SPOTLIGHT_ID, 1)
         self.settings_homerow_lists = [
@@ -1258,6 +1264,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_spoilers_clicked()
         elif controlID == self.SETTINGS_WATCHED_ID:
             self._settings_watched_clicked()
+        elif controlID == self.SETTINGS_PAUSESCREEN_ID:
+            settings_options.set_pause_screen(not settings_options.pause_screen())
+            self._settings_fill_device_toggles()
+        elif controlID == self.SETTINGS_MOTION_ID:
+            settings_options.set_reduce_motion(not settings_options.reduce_motion())
+            self._settings_fill_device_toggles()
         elif controlID == self.SETTINGS_SPOTLIGHT_ID:
             self._settings_spotlight_clicked()
         elif controlID in settings_options.CHOICE_BY_ID:
@@ -5758,6 +5770,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_fill_home_screen()
         self._settings_fill_add_rows()
         self._settings_fill_media_cards()
+        self._settings_fill_device_toggles()
         self._settings_fill_playback()
         self._settings_fill_quality()
         self._settings_fill_audio()
@@ -6304,6 +6317,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         8510: "audio_lang", 8540: "audio_lang2", 8520: "sub_lang",
         8550: "sub_lang2", 8530: "always_subs",
         8205: "fox", 8310: "episodes_remaining", 8312: "watched_marks", 8315: "hide_spoilers",
+        8495: "pause_screen", 8295: "reduce_motion",
         8360: "region", 8320: "spotlight", 8340: "add_discover", 8345: "add_genre",
         8620: "licences", 8720: "art_budget", 8730: "art_clear",
     }
@@ -6460,6 +6474,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "episodes_remaining": lambda: checked(self.settings_episodes_list),
             "hide_spoilers": lambda: checked(self.settings_spoilers_list),
             "watched_marks": lambda: checked(self.settings_watched_list),
+            "pause_screen": lambda: checked(self.settings_pausescreen_list),
+            "reduce_motion": lambda: checked(self.settings_motion_list),
             "region": lambda: prop("settings_region"),
             "spotlight": lambda: checked(self.settings_spotlight_list),
             "home_rows": lambda: prop("settings_home_rows_count"),
@@ -6767,6 +6783,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             rating.controlUp(foxes)
             rating.controlDown(episodes)
             episodes.controlUp(rating)
+            commercial, pause = get(ids["commercial"]), get(self.SETTINGS_PAUSESCREEN_ID)
+            commercial.controlDown(pause)
+            pause.controlUp(commercial)
             add_row = get(self.SETTINGS_ADD_ROW_ID)
             add_row.controlDown(add_row)
         except Exception:                                       # noqa: BLE001
@@ -6953,13 +6972,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # foxes <-> rating <-> episodes is joined by _settings_wire_choices.
             spoilers = self.getControl(self.SETTINGS_SPOILERS_ID)
             watched = self.getControl(self.SETTINGS_WATCHED_ID)
+            motion = self.getControl(self.SETTINGS_MOTION_ID)
             region = self.getControl(self.SETTINGS_REGION_ID)
             episodes.controlDown(watched)
             watched.controlUp(episodes)
             watched.controlDown(spoilers)
             spoilers.controlUp(watched)
-            spoilers.controlDown(region)
-            region.controlUp(spoilers)
+            spoilers.controlDown(motion)
+            motion.controlUp(spoilers)
+            motion.controlDown(region)
+            region.controlUp(motion)
         except Exception:
             pass
         # Privacy & About needs no cross-group hop: its PRIVACY group is a
@@ -7190,6 +7212,16 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def _settings_playback(self) -> dict:
         return dict(self._ensure_preferences().get("playback") or {})
+
+    def _settings_fill_device_toggles(self):
+        """Pause screen and Reduce motion: this device's own settings."""
+        for mlist, label, on in (
+                (self.settings_pausescreen_list, "Pause screen", settings_options.pause_screen()),
+                (self.settings_motion_list, "Reduce motion", settings_options.reduce_motion())):
+            item = kodigui.ManagedListItem(label=label)
+            item.setProperty("checked", "1" if on else "")
+            mlist.reset()
+            mlist.addItems([item])
 
     def _settings_fill_playback(self):
         playback = self._settings_playback()

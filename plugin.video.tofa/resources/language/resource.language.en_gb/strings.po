@@ -69,6 +69,14 @@ msgctxt "#30036"
 msgid "Direct connections only (internal)"
 msgstr ""
 
+msgctxt "#30037"
+msgid "Pause screen (internal)"
+msgstr ""
+
+msgctxt "#30038"
+msgid "Reduce motion (internal)"
+msgstr ""
+
 msgctxt "#30020"
 msgid "Advanced"
 msgstr ""

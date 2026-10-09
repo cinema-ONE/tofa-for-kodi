@@ -18,8 +18,11 @@ window UI (e.g. a Favourite) without going through this script entry.
 """
 from __future__ import annotations
 
-from resources.lib import artcache, http, prefetch, stereoscopic
+from resources.lib import artcache, http, prefetch, settings_options, stereoscopic
 from resources.lib.windows import splash
+
+# Reduce motion before anything animates, the splash included.
+settings_options.apply_reduce_motion()
 
 # The splash goes up FIRST, before the heavy imports below. main.py is the
 # largest module in the add-on and importing it (plus cards, theme, kodigui,

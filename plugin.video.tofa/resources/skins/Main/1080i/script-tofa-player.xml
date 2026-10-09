@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- COPIED from resources/lib/skin/static/script-tofa-player.xml and processed.
-     hash=6936c1794665. DO NOT HAND-EDIT: edit the file under static/,
+     hash=f12bfb5b3d21. DO NOT HAND-EDIT: edit the file under static/,
      which keeps every comment; this copy has them stripped and its
      capsules and rounded rects swapped for resolution-free art. -->
 <window type="dialog">
@@ -1958,7 +1958,7 @@
                 <aspectratio>keep</aspectratio>
                 <texture>$INFO[Window.Property(player_logo)]</texture>
                 <visible>!String.IsEmpty(Window.Property(player_logo))</visible>
-                <animation effect="zoom" start="100" end="104.5" center="auto" time="900" pulse="true" reversible="true" condition="true">Conditional</animation>
+                <animation effect="zoom" start="100" end="104.5" center="auto" time="900" pulse="true" reversible="true" condition="[true] + String.IsEmpty(Window(Home).Property(tofa_reduce_motion))">Conditional</animation>
                 <animation effect="fade" start="94" end="100" time="900" pulse="true" reversible="true" condition="true">Conditional</animation>
             </control>
             <control type="label">
@@ -1985,7 +1985,7 @@
         <control type="group" id="9700">
             <visible>!String.IsEmpty(Window.Property(player_next_up))</visible>
             <animation effect="fade" start="0" end="100" time="340">Visible</animation>
-            <animation effect="slide" start="0,40" end="0,0" time="340" tween="cubic" easing="out">Visible</animation>
+            <animation effect="slide" start="0,40" end="0,0" time="340" tween="cubic" easing="out" condition="String.IsEmpty(Window(Home).Property(tofa_reduce_motion))">Visible</animation>
             <animation effect="fade" start="100" end="0" time="250">Hidden</animation>
             <control type="group">
                 <visible>String.IsEqual(Window.Property(nextup_style),compact)</visible>
@@ -3313,8 +3313,8 @@
         </control>
         <control type="group" id="9750">
             <visible>!String.IsEmpty(Window.Property(player_skip))</visible>
-            <animation effect="slide" start="0,0" end="0,-106" time="200" tween="cubic" easing="out" condition="!String.IsEmpty(Window.Property(player_chrome))">Conditional</animation>
-            <animation effect="slide" start="40,0" end="0,0" time="200" tween="cubic" easing="out">Visible</animation>
+            <animation effect="slide" start="0,0" end="0,-106" time="200" tween="cubic" easing="out" condition="[!String.IsEmpty(Window.Property(player_chrome))] + String.IsEmpty(Window(Home).Property(tofa_reduce_motion))">Conditional</animation><animation effect="slide" start="0,0" end="0,-106" condition="[!String.IsEmpty(Window.Property(player_chrome))] + !String.IsEmpty(Window(Home).Property(tofa_reduce_motion))" time="0">Conditional</animation>
+            <animation effect="slide" start="40,0" end="0,0" time="200" tween="cubic" easing="out" condition="String.IsEmpty(Window(Home).Property(tofa_reduce_motion))">Visible</animation>
             <animation effect="fade" start="0" end="100" time="200">Visible</animation>
             <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
             <control type="image" id="9752">
@@ -3416,7 +3416,7 @@
         <control type="group" id="9800">
             <visible>!String.IsEmpty(Window.Property(player_episodes))</visible>
             <animation effect="fade" start="0" end="100" time="250">Visible</animation>
-            <animation effect="slide" start="0,60" end="0,0" time="250" tween="cubic" easing="out">Visible</animation>
+            <animation effect="slide" start="0,60" end="0,0" time="250" tween="cubic" easing="out" condition="String.IsEmpty(Window(Home).Property(tofa_reduce_motion))">Visible</animation>
             <animation effect="fade" start="100" end="0" time="200">Hidden</animation>
             <control type="image">
                 <posx>0</posx>
@@ -3787,7 +3787,7 @@
                 </itemlayout>
                 <focusedlayout width="456" height="330">
                         <control type="group">
-                            <animation effect="zoom" start="100" end="105.8" center="208,248" time="140" tween="cubic" easing="out" condition="Control.HasFocus(9802)">Conditional</animation>
+                            <animation effect="zoom" start="100" end="105.8" center="208,248" time="140" tween="cubic" easing="out" condition="[Control.HasFocus(9802)] + String.IsEmpty(Window(Home).Property(tofa_reduce_motion))">Conditional</animation>
                             <control type="image">
                                 <posy>14</posy>
                                 <width>416</width>
@@ -3889,7 +3889,7 @@
         </control>
         <control type="group" id="9900">
             <visible>!String.IsEmpty(Window.Property(player_panel))</visible>
-            <animation effect="zoom" start="94" end="100" center="1862,872" time="200" tween="cubic" easing="out">Visible</animation>
+            <animation effect="zoom" start="94" end="100" center="1862,872" time="200" tween="cubic" easing="out" condition="String.IsEmpty(Window(Home).Property(tofa_reduce_motion))">Visible</animation>
             <animation effect="fade" start="0" end="100" time="200">Visible</animation>
             <animation effect="fade" start="100" end="0" time="180">Hidden</animation>
             <control type="image" id="9901">

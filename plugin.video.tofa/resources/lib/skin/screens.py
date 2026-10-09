@@ -230,6 +230,8 @@ def render_main() -> str:
     settings_spoilers_item, settings_spoilers_focused = fragments.settings_toggle_row(8315)
     settings_watched_item, settings_watched_focused = fragments.settings_toggle_row(8312)
     settings_spotlight_item, settings_spotlight_focused = fragments.settings_toggle_row(8320)
+    settings_pausescreen_item, settings_pausescreen_focused = fragments.settings_toggle_row(8495)
+    settings_motion_item, settings_motion_focused = fragments.settings_toggle_row(8295)
     settings_homerow_editors = "".join(
         fragments.settings_home_row_editor(i, gid, lid) for i, (gid, lid) in enumerate(
             zip(home_rows.HOME_ROW_EDIT_GROUP_IDS, home_rows.HOME_ROW_EDIT_IDS)))
@@ -347,6 +349,16 @@ def render_main() -> str:
         settings_region_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="REGION",
             indent="                        "),
+        settings_motion_eyebrow=fragments.settings_group_eyebrow(
+            posy=T.SETTINGS_SECTION_BAND, label="MOTION",
+            indent="                        "),
+        settings_player_eyebrow=fragments.settings_group_eyebrow(
+            posy=T.SETTINGS_SECTION_BAND, label="PLAYER",
+            indent="                        "),
+        settings_pausescreen_item=settings_pausescreen_item,
+        settings_pausescreen_focused=settings_pausescreen_focused,
+        settings_motion_item=settings_motion_item,
+        settings_motion_focused=settings_motion_focused,
         settings_privacy_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="PRIVACY",
             indent="                        "),
