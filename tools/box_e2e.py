@@ -511,8 +511,10 @@ def main() -> int:
     run = Run(box, out)
     started = time.time()
     log_from = int(box.sh(f"stat -c %s {LOG}").strip() or 0)
-    version = box.sh("grep -m1 -o 'version=\"[0-9.]*\"' /storage/.kodi/addons/plugin.video.tofa/addon.xml")
-    print(f"box {args.host}: Kodi {box.label('System.BuildVersion')}, add-on {version.strip()}")
+    version = box.sh("grep -m1 -o '<addon [^>]*version=\"[0-9.]*\"' "
+                     "/storage/.kodi/addons/plugin.video.tofa/addon.xml | grep -o '[0-9][0-9.]*\"$'"
+                     ).strip().strip('"')
+    print(f"box {args.host}: Kodi {box.label('System.BuildVersion')}, add-on {version}")
 
     if launch(run, args.switch_profile):
         for step in (test_home, test_browse, test_collections, test_history, test_discover,
