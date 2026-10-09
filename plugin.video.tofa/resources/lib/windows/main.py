@@ -1158,6 +1158,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Log why every section will be empty, and say so once per window."""
         where = tok.server if tok else "the token refresh"
         log.warning("main: no client, {0}: [{1}] {2}".format(where, exc.error, exc.message))
+        if isinstance(exc, household.ViewerEnded):
+            return  # _on_household_ended tells the viewer itself
         if not self._no_client_told:
             self._no_client_told = True
             toast.show(profile_select.failure_message(exc))

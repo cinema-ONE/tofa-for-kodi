@@ -12,7 +12,7 @@ import kodi_stubs  # noqa: F401  -- installs the Kodi stubs
 from kodi_stubs import NOTIFICATIONS, PLUGIN, PROPERTY_WRITES
 import xbmc
 
-from resources.lib import auth, http, toast
+from resources.lib import auth, household, http, toast
 from resources.lib import profiles as profiles_api
 from resources.lib.windows import main, profile_select
 from resources.lib.windows.main import MainWindow
@@ -115,6 +115,15 @@ main.auth.ensure_fresh = lambda session: TOK
 reset(profile_select.ProfileCanceled())
 FakeWindow()._get_client()
 check("a cancelled picker is not reported", (warnings(), toasts()), ([], []))
+
+reset(TOK)
+main.api.client_for = lambda session, tok: (_ for _ in ()).throw(household.ViewerEnded("ended"))
+w = FakeWindow()
+w._get_client()
+check("an ended member session is logged", len(warnings()), 1)
+check("but left to household viewing's own toast", toasts(), [])
+check("so a later outage is still told", w._no_client_told, False)
+main.api.client_for = lambda session, tok: CLIENT
 
 reset(TOK)
 w = FakeWindow()
