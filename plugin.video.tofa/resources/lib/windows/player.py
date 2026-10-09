@@ -827,6 +827,9 @@ class PlayerWindow(kodigui.ControlledDialog):
         # could be observed half-updated.
         self._chrome_deadline = 0.0     # monotonic; 0 = chrome is down
         self._pause_card_deadline = 0.0  # monotonic; 0 = not armed
+        # Settings > Playback > Pause screen. Off: the controls stay up while
+        # paused and the card never comes.
+        self._pause_screen = settings_options.pause_screen()
         self._stream_url = ""           # what play() was handed, for updateInfoTag
         # The one-shot audio confirmation: when to check, and against what.
         # See _confirm_audio_slot.
@@ -4535,7 +4538,7 @@ class PlayerWindow(kodigui.ControlledDialog):
         self.setFocusId(self.SURFACE_ID)
         # 8.8's pause card is revealed 5.0s AFTER the chrome goes, not 5.0s
         # after the pause -- so it is armed here, not in onPlayBackPaused.
-        if self.getProperty("player_state") == self.STATE_PAUSED:
+        if self.getProperty("player_state") == self.STATE_PAUSED and self._pause_screen:
             self._pause_card_deadline = time.monotonic() + PAUSE_CARD_DELAY_S
 
     def on_paused(self):
@@ -4559,8 +4562,17 @@ class PlayerWindow(kodigui.ControlledDialog):
         self._hold_next_up()
         if self._chrome_deadline:
             return          # chrome is up -- hide_chrome() arms it as usual
-        if self.getProperty("player_state") == self.STATE_PAUSED:
+        if self.getProperty("player_state") != self.STATE_PAUSED:
+            return
+        if self._pause_screen:
             self._pause_card_deadline = time.monotonic() + PAUSE_CARD_DELAY_S
+        else:
+            self.reveal_chrome()        # no pause screen: the controls stay up
+
+    def _paused_without_card(self) -> bool:
+        """Paused with the pause screen switched off: the chrome stays."""
+        return (not self._pause_screen
+                and self.getProperty("player_state") == self.STATE_PAUSED)
 
     def hide_pause_card(self):
         self._pause_card_deadline = 0.0
@@ -5390,7 +5402,8 @@ class PlayerWindow(kodigui.ControlledDialog):
         # races reveal_chrome(). One tick later everything has settled.
         if self._stereo_pending and not self.getProperty("player_panel"):
             self.offer_stereo_mode()
-        if self._chrome_deadline and not self._modal and now >= self._chrome_deadline:
+        if (self._chrome_deadline and not self._modal and now >= self._chrome_deadline
+                and not self._paused_without_card()):
             self.hide_chrome()
         if self._stats_mode and now >= self._stats_next_refresh:
             self._stats_next_refresh = now + STATS_REFRESH_S

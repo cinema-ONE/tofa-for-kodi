@@ -667,12 +667,53 @@ def _stop_wraps(body: str, filename: str) -> tuple[str, int]:
     return body, fixed
 
 
+#: True unless Settings > Appearance > Reduce motion is on (settings_options).
+MOTION_OK = "String.IsEmpty(Window(Home).Property(tofa_reduce_motion))"
+_ANIMATION_RE = re.compile(r'<animation([^>]*)>(\w+)</animation>')
+
+
+def _gate_motion(body: str) -> tuple[str, int]:
+    """Make every zoom, slide and drift run only while motion is allowed.
+
+    Fades stay (they do not move), as do instant layout animations and the
+    loading spinner. A Conditional move that places something gets an instant
+    twin for Reduce motion, so the screen still lands where it should."""
+    count = 0
+
+    def gate(m):
+        nonlocal count
+        attrs, kind = m.group(1), m.group(2)
+        effect = (re.search(r'effect="(\w+)"', attrs) or [None, ""])[1]
+        timed = re.search(r'time="(\d+)"', attrs)
+        if effect == "fade" or not timed or timed.group(1) == "0":
+            return m.group(0)
+        if effect == "rotate" and "loop=" in attrs:
+            return m.group(0)
+        cond = re.search(r'condition="([^"]*)"', attrs)
+        if cond:
+            new = attrs.replace(cond.group(0), f'condition="[{cond.group(1)}] + {MOTION_OK}"')
+        else:
+            new = attrs + f' condition="{MOTION_OK}"'
+        count += 1
+        out = f"<animation{new}>{kind}</animation>"
+        lift = effect == "zoom" and "HasFocus" in (cond.group(1) if cond else "")
+        if (kind == "Conditional" and cond and not lift
+                and "loop=" not in attrs and "pulse=" not in attrs and "pin_shake" not in attrs):
+            twin = re.sub(r'\s(?:time|delay|tween|easing)="[^"]*"', "", attrs)
+            twin = twin.replace(cond.group(0), f'condition="[{cond.group(1)}] + !{MOTION_OK}"')
+            out += f'<animation{twin} time="0">{kind}</animation>'
+        return out
+
+    return _ANIMATION_RE.sub(gate, body), count
+
+
 def _write(output_path: str, render_fn, content_hash: str) -> None:
     body = render_fn()
     _check_comments(body, render_fn.__name__)
     body, _pill_stats = _slice_pills(body)
     body, _rect_stats = _swap_exact_rects(body)
     body, _ = _stop_wraps(body, os.path.basename(output_path))
+    body, _ = _gate_motion(body)
     # Header comment must follow the XML declaration line, not precede it,
     # and is added AFTER stripping so it survives -- it is the one comment
     # the output needs, since it carries the staleness hash and the
@@ -691,6 +732,7 @@ def _copy_static(filename: str, content_hash: str) -> None:
     body, _ = _slice_pills(body)
     body, _ = _swap_exact_rects(body)
     body, _ = _stop_wraps(body, filename)
+    body, _ = _gate_motion(body)
     decl, _, rest = body.partition("\n")
     header = (f"<!-- COPIED from resources/lib/skin/static/{filename} and processed.\n"
               f"     hash={content_hash}. DO NOT HAND-EDIT: edit the file under static/,\n"

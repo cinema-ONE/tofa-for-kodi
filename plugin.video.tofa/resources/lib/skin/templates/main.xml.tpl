@@ -1981,6 +1981,28 @@
                         </control>
                     </control>
 
+                    <!-- MOTION -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_ONE_ROW_GROUP_H}</height>
+{settings_motion_eyebrow}
+                        <control type="list" id="8295">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8295</onleft>
+                            <onright>8295</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_motion_item}
+
+{settings_motion_focused}
+                        </control>
+                    </control>
+
                     <!-- REGION -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>
@@ -2102,6 +2124,28 @@
 {settings_seg_preview_group}
 {settings_seg_outro_group}
 {settings_seg_commercial_group}
+                    </control>
+
+                    <!-- PLAYER -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_ONE_ROW_GROUP_H}</height>
+{settings_player_eyebrow}
+                        <control type="list" id="8495">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8495</onleft>
+                            <onright>8495</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_pausescreen_item}
+
+{settings_pausescreen_focused}
+                        </control>
                     </control>
                 </control>
             </control>

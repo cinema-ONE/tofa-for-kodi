@@ -66,6 +66,11 @@ ROWS: dict[str, Info] = {
                  ("Minimal", "One slim bar; Play Next fills as it counts."),
                  ("Lower third", "A band along the bottom with the season."),
                  ("Full", "A column with a large still."))),
+    "pause_screen": Info(
+        "Pause screen",
+        "Five seconds into a pause, the controls give way to what you are "
+        "watching, the time, and how long is left.",
+        note="When off, the controls stay up while paused."),
     "intro": Info("Intros", "The opening titles of an episode.",
                   options=_SEGMENT_OPTIONS),
     "recap": Info("Recaps", "The part that catches you up on earlier "
@@ -111,6 +116,10 @@ ROWS: dict[str, Info] = {
     "hide_spoilers": Info(
         "Hide episode spoilers",
         "Hides the stills and synopses of episodes you have not seen yet."),
+    "reduce_motion": Info(
+        "Reduce motion",
+        "Holds tofa still: no zooms, slides or moving backgrounds.",
+        note="Applies to this device only."),
     "region": Info(
         "Region",
         "Where release dates and streaming availability come from."),

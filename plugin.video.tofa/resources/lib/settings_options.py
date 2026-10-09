@@ -188,6 +188,56 @@ def set_next_up_style(value: str) -> None:
         log.warning("settings: could not persist nextup_style")
 
 
+def _device_bool(key: str, default: bool) -> bool:
+    import xbmcaddon
+    try:
+        value = xbmcaddon.Addon().getSetting(key)
+    except Exception:                                        # noqa: BLE001
+        return default
+    return default if value == "" else value == "true"
+
+
+def _set_device_bool(key: str, value: bool) -> None:
+    import xbmcaddon
+    try:
+        xbmcaddon.Addon().setSettingBool(key, value)
+    except Exception:                                        # noqa: BLE001
+        from . import log
+        log.warning("settings: could not persist %s" % key)
+
+
+def pause_screen() -> bool:
+    """Whether the pause screen takes over five seconds into a pause."""
+    return _device_bool("pause_screen", True)
+
+
+def set_pause_screen(value: bool) -> None:
+    _set_device_bool("pause_screen", value)
+
+
+#: Home's window property every motion animation checks (skin/build.py).
+REDUCE_MOTION_PROPERTY = "tofa_reduce_motion"
+
+
+def reduce_motion() -> bool:
+    return _device_bool("reduce_motion", False)
+
+
+def set_reduce_motion(value: bool) -> None:
+    _set_device_bool("reduce_motion", value)
+    apply_reduce_motion()
+
+
+def apply_reduce_motion() -> None:
+    """Publish the switch where every window's animations can read it."""
+    import xbmcgui
+    try:
+        xbmcgui.Window(10000).setProperty(REDUCE_MOTION_PROPERTY,
+                                          "1" if reduce_motion() else "")
+    except Exception:                                        # noqa: BLE001
+        pass
+
+
 # preferences.playback.auto_play_next (server 0.9.27). Labels are the web
 # app's own wording for the same three choices. The server rejects anything
 # outside this enum with 400, and a MISSING key means "auto" -- so a viewer

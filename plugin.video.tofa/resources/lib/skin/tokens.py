@@ -1147,6 +1147,8 @@ SETTINGS_ARTCACHE_ROW1_Y = settings_stack_row_y(1)
 # Its row is an ACTION-height list (it opens a picker), not a value row --
 # they were 29px apart and the region card was clipped by exactly that.
 SETTINGS_REGION_GROUP_H = SETTINGS_SECTION_BAND + SETTINGS_ACTION_ROW_H + SETTINGS_GROUP_TRAIL
+# One toggle under an eyebrow: PLAYER's Pause screen, MOTION's Reduce motion.
+SETTINGS_ONE_ROW_GROUP_H = SETTINGS_REGION_GROUP_H
 
 SETTINGS_RAIL_PANEL_H = 430
 SETTINGS_RAIL_RADIUS = 24

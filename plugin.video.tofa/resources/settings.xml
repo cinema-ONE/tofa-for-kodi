@@ -137,6 +137,20 @@
                     </constraints>
                     <control type="edit" format="string"/>
                 </setting>
+                <!-- Device settings (app 2.0 Settings rows): the pause screen,
+                     and Reduce motion ("only on this Apple TV"). -->
+                <setting id="pause_screen" type="boolean" label="30037">
+                    <level>0</level>
+                    <default>true</default>
+                    <visible>false</visible>
+                    <control type="toggle"/>
+                </setting>
+                <setting id="reduce_motion" type="boolean" label="30038">
+                    <level>0</level>
+                    <default>false</default>
+                    <visible>false</visible>
+                    <control type="toggle"/>
+                </setting>
                 <!-- Stable X-Tofa-Device-Id, minted once by auth.py and
                      shown read-only on Settings > This Device. Editing it by
                      hand would orphan the pairing. -->
