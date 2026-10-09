@@ -5709,7 +5709,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_switch_profile_list.reset()
         self.settings_switch_profile_list.addItems([switch])
         hh = kodigui.ManagedListItem(label="Enable Household Viewing")
-        hh.setProperty("icon_glyph", chr(icon_glyphs.USERS))
+        hh.setProperty("icon_glyph", chr(icon_glyphs.HOUSE))
         hh.setProperty("summary", "")
         self.settings_household_list.reset()
         self.settings_household_list.addItems([hh])
@@ -6562,8 +6562,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("settings_info", "")
             self.setProperty("settings_preview", "")
             page = self.getProperty("settings_page")
-            rows = [r for r in settings_info.SUMMARIES.get(page, ())
-                    if r[1] != "household" or self._settings_value("household")]
+            rows = settings_info.SUMMARIES.get(page, ())
             for i in range(settings_info.MAX_SUMMARY):
                 eyebrow, vkey = rows[i] if i < len(rows) else ("", "")
                 self.setProperty("settings_sum{0}_key".format(i + 1), eyebrow)
@@ -7006,12 +7005,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("settings_household_state", "On" if enabled else "Off")
         if member or not (profile and profile.is_primary):
             return
+        self._household_needs_signin = False
         try:
             tok = auth.load()
             available = household.status(http.new_session(), tok).get("available")
-        except (http.ApiError, auth.NotSignedIn, auth.TokenLoadError) as exc:
+        except http.ApiError as exc:
             log.warning(f"settings: household status unavailable: {exc}")
-            available = enabled
+            # A dead cloud login still shows the row, so Select can say why.
+            self._household_needs_signin = exc.status in (401, 403)
+            available = enabled or self._household_needs_signin
+        except (auth.NotSignedIn, auth.TokenLoadError):
+            return
         if not available and not enabled:
             return
         item = self.settings_household_list.getListItem(0)
@@ -7021,6 +7025,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def _settings_household_clicked(self):
         """Turn household viewing on or off for this TV."""
+        if getattr(self, "_household_needs_signin", False) and household.load_grant() is None:
+            toast.show("Sign out and sign in again on this TV to turn this on")
+            return
         session = http.new_session()
         try:
             tok = auth.load()

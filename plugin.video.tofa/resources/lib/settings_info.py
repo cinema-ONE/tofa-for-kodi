@@ -160,8 +160,7 @@ ROWS: dict[str, Info] = {
 #: The tab-focused summary per page: (eyebrow, value key) pairs, the value
 #: resolved by windows/main.py.
 SUMMARIES: dict[str, tuple] = {
-    "account": (("SERVER", "server"), ("CONNECTION", "connection"),
-                ("HOUSEHOLD VIEWING", "household")),
+    "account": (("SERVER", "server"), ("CONNECTION", "connection")),
     "playback": (("STREAMING QUALITY", "quality"), ("NEXT EPISODE", "nextup"),
                  ("NEXT UP STYLE", "nextupstyle"), ("INTROS", "intro")),
     "audio": (("AUDIO", "audio_pair"), ("SUBTITLES", "sub_pair"),
