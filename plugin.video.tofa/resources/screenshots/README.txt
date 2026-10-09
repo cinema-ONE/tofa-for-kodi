@@ -12,7 +12,7 @@ add-on browser.
   03-detail.jpg    a title page's hero (Tears of Steel)
   04-episodes.jpg  a show's episodes on the title page (Pioneer One)
   05-player.jpg    the player controls over playback (Big Buck Bunny)
-  06-settings.jpg  Settings > Account, with Household Viewing focused
+  06-settings.jpg  Settings > Appearance: choosing a fox, with its preview
 
 WHAT IS IN THEM. Only material that can be published. They were taken
 against tofa's demo library: public-domain films (Charade, Nosferatu and that
@@ -25,9 +25,9 @@ and a screenshot is republished far more widely than a screen a user scrolls
 past once. That is why 04 shows a show's episodes rather than a film's Cast &
 Crew: on this library a film's cast is always followed by that shelf.
 
-06-settings.jpg needs no redaction. With a row focused, the left column shows
-that row's explanation instead of the account email, and the account QR only
-appears while Manage account is focused.
+06-settings.jpg needs no redaction: Appearance carries no account details.
+Settings > Account would show the account email in its left column unless a
+row is focused, and the account QR while Manage account is focused.
 
 RETAKING THEM. 1920x1080, JPEG q90. Shoot with Kodi's own screenshot action
 (a desktop capture will not match), and check `debug.showloginfo` is off and
