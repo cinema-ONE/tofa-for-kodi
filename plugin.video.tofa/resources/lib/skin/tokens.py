@@ -781,6 +781,29 @@ PERSON_FILM_PITCH = 66
 PERSON_FILM_ROWS = 10
 PERSON_FILM_DIM = "0xCC030B10"
 
+# ------------------------------------------------- Who's watching (app 2.0) --
+# Three 220 portraits a row on a 311 pitch, rows 335 apart, the last row
+# centred; the block sits on the screen's centre with the title above it.
+# The PIN pad: a 116 portrait, four dots, 96 keys on a 116 pitch.
+WHO_TILE = 220
+WHO_CELL_W, WHO_CELL_H = 311, 300
+WHO_TILE_X, WHO_TILE_Y = (WHO_CELL_W - WHO_TILE) // 2, 10
+WHO_ROW_PITCH = 335
+WHO_ROWS = 3
+WHO_TITLE_ABOVE = 127           # title box top, above the first portrait
+WHO_CANCEL_X, WHO_CANCEL_Y = 904, 940
+WHO_CANCEL_W, WHO_CANCEL_H = 112, 64
+PIN_AVATAR = 116
+PIN_AVATAR_X, PIN_AVATAR_Y = 902, 139
+PIN_HEADING_Y = 271
+PIN_DOT, PIN_DOT_Y = 18, 329
+PIN_DOT_X = (883, 928, 973, 1018)
+PIN_KEY = 96
+PIN_KEY_X = (796, 912, 1028)
+PIN_KEY_Y = (367, 483, 599, 715)
+PIN_ERROR_Y = 822
+PIN_BACK_X, PIN_BACK_Y, PIN_BACK_W, PIN_BACK_H = 825, 874, 270, 68
+
 # ------------------------------------------------------------ settings (9) --
 # A three-column page: sidebar / detail / optional right rail. Every number
 # measured off internal-docs/atv-reference/settings-account.png (native 1080p,
@@ -1297,6 +1320,9 @@ FONT_CARD_META = "tofa_font_card_meta"
 FONT_FEATURE_TITLE = "tofa_font_feature_title"
 FONT_PERSON_NAME = "tofa_font_person_name"
 FONT_PERSON_PANEL = "tofa_font_person_panel"
+FONT_WHOS_WATCHING = "tofa_font_whos_watching"
+FONT_PROFILE_INITIALS = "tofa_font_profile_initials"
+FONT_PIN_DIGIT = "tofa_font_pin_digit"
 FONT_BROWSE_TITLE = "tofa_font_player_title"   # bold 45, by ink width
 FONT_BODY = "tofa_font_body"
 FONT_METADATA = "tofa_font_metadata"

@@ -29,6 +29,7 @@ SCREENS = {
     "script-tofa-editions.xml": screens.render_editions,
     "script-tofa-alert.xml": screens.render_alert,
     "script-tofa-splash.xml": screens.render_splash,
+    "script-tofa-profile.xml": screens.render_profile,
 }
 
 # Screens written by hand rather than assembled from fragments. They are
@@ -45,7 +46,6 @@ STATIC_SCREENS = (
     "script-tofa-player.xml",
     "script-tofa-picker.xml",
     "script-tofa-requestseasons.xml",
-    "script-tofa-profile.xml",
     "script-tofa-signin.xml",
     "script-tofa-serverpicker.xml",
 )

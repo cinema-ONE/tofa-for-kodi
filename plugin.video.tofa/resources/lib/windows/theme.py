@@ -262,6 +262,12 @@ def remember_accent() -> None:
     _accent_rgb()
 
 
+def last_known_accent() -> str:
+    """Kodi colordiffuse hex for the accent written down on the last run,
+    without resolving the live one (the profile gate has no profile yet)."""
+    return "0xFF" + _local_accent_hex().lstrip("#").upper()[-6:]
+
+
 def _local_accent_hex() -> str:
     try:
         return kodigui.ADDON.getSettingString("accent_color") or DEFAULT_ACCENT

@@ -80,7 +80,7 @@ from . import addonref, log
 #: <import> and resource.font.tofa's own id.
 FONT_ADDON_ID = "resource.font.tofa"
 
-FONT_SET_VERSION = 33
+FONT_SET_VERSION = 36
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
 # All lazy, see addonref.py -- this module's import-time Addon lookup is the
@@ -158,6 +158,10 @@ FONTS: dict[str, tuple[str, int, str]] = {
     # The person page's name, and its Filmography panel's title (app 2.0).
     "tofa_font_person_name": ("inter_tight_bold.ttf", 52, "Regular"),
     "tofa_font_person_panel": ("inter_tight_bold.ttf", 42, "Regular"),
+    # Who's watching (app 2.0): its title, and the PIN pad's digits.
+    "tofa_font_whos_watching": ("inter_tight_bold.ttf", 70, "Regular"),
+    "tofa_font_profile_initials": ("inter_tight_bold.ttf", 94, "Regular"),
+    "tofa_font_pin_digit": ("inter_tight_regular.ttf", 37, "Regular"),
     "tofa_font_micro": ("inter_tight_regular.ttf", 16, "Regular"),
     # eyebrow: section labels -- design spec calls for letterspacing, which
     # Kodi has no control for, so only size/weight are replicated. metadata:

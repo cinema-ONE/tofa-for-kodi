@@ -969,3 +969,253 @@ def render_splash() -> str:
     </controls>
 </window>
 """
+
+
+def render_profile() -> str:
+    """Who's watching (app 2.0) and its PIN pad (windows/profile_select.py).
+
+    Three portraits a row, one list per row: Python sizes and centres each
+    row (a short last row centres itself) and moves between rows by column.
+    The PIN pad is a state of the same window, as it is in the app."""
+    W, TX, TY = T.WHO_TILE, T.WHO_TILE_X, T.WHO_TILE_Y
+    CW, CH = T.WHO_CELL_W, T.WHO_CELL_H
+    picker = "String.IsEqual(Window.Property(state),picker)"
+    pin = "String.IsEqual(Window.Property(state),pin)"
+
+    def img(x, y, w, h, texture, colour="", vis="", extra=""):
+        c = f"<colordiffuse>{colour}</colordiffuse>" if colour else ""
+        v = f"\n                    <visible>{vis}</visible>" if vis else ""
+        return f"""
+                <control type="image">{v}
+                    <posx>{x}</posx><posy>{y}</posy><width>{w}</width><height>{h}</height>{c}{extra}
+                    <texture>{texture}</texture>
+                </control>"""
+
+    def label(x, y, w, h, font, colour, text, vis="", align="center"):
+        v = f"\n                    <visible>{vis}</visible>" if vis else ""
+        return f"""
+                <control type="label">{v}
+                    <posx>{x}</posx><posy>{y}</posy><width>{w}</width><height>{h}</height>
+                    <align>{align}</align><aligny>center</aligny>
+                    <font>{font}</font>
+                    <textcolor>{colour}</textcolor>
+                    <label>{text}</label>
+                </control>"""
+
+    white = "$INFO[Window.Property(text_primary)]"
+    accent = "$INFO[Window.Property(accent_color)]"
+
+    def portrait(x, y, size, src, initials_font):
+        """Disc, then the photo, the preset (150 of 220) or the initials on
+        the profile's own gradient. `src` is "ListItem.Property" or a
+        Window.Property prefix ("Window.Property(pin_avatar_")."""
+        if src == "item":
+            photo, preset = "ListItem.Property(photo_url)", "ListItem.Property(avatar_texture)"
+            mono, initial = "ListItem.Property(monogram_texture)", "ListItem.Property(initial)"
+        else:
+            photo, preset = "Window.Property(pin_avatar_photo_url)", "Window.Property(pin_avatar_texture)"
+            mono, initial = "Window.Property(pin_avatar_monogram)", "Window.Property(pin_avatar_initial)"
+        no_photo = f"String.IsEmpty({photo})"
+        bare = f"{no_photo} + String.IsEmpty({preset})"
+        inset = round(size * 35 / 220)
+        mask = '<aspectratio scalediffuse="false">scale</aspectratio>'
+        return (img(x, y, size, size, "circle.png", "0xFF0C151C")
+                + img(x, y, size, size, f"$INFO[{mono}]", vis=bare)
+                + img(x, y, size, size, f"$INFO[{photo}]", vis=f"!{no_photo}", extra=mask)
+                       .replace("<texture>$INFO", '<texture diffuse="circle.png">$INFO')
+                + img(x + inset, y + inset, size - 2 * inset, size - 2 * inset,
+                      f"$INFO[{preset}]", vis=f"{no_photo} + !String.IsEmpty({preset})", extra=mask)
+                       .replace("<texture>$INFO", '<texture diffuse="circle.png">$INFO')
+                + label(x, y, size, size, initials_font, white, f"$INFO[{initial}]", vis=bare))
+
+    def lock_chip(x, y):
+        """A glass disc at the portrait's lower right, a filled white lock."""
+        locked = "!String.IsEmpty(ListItem.Property(locked))"
+        return (img(x, y, 75, 75, "circle.png", "0x0FFFFFFF", vis=locked)
+                + img(x, y, 75, 75, "hairline-ring-75.png", "0x24FFFFFF", vis=locked)
+                + img(x + 25, y + 37, 25, 17, "white-square.png", "0xFFFFFFFF", vis=locked)
+                + label(x, y, 75, 75, T.FONT_ICON_36, white,
+                        f"&#x{icon_glyphs.LOCK:04X};", vis=locked))
+
+    def zoom(xml):
+        z = (f'\n                    <animation effect="zoom" start="100" end="108" '
+             f'center="{TX + W // 2},{TY + W // 2}" time="140" tween="cubic" easing="out">Focus</animation>')
+        return xml.replace("\n                </control>", z + "\n                </control>")
+
+    tile = portrait(TX, TY, W, "item", T.FONT_PROFILE_INITIALS)
+    hairline = img(TX, TY, W, W, "hairline-ring-220.png", "0x3BFFFFFF")
+    active = img(TX, TY, W, W, "active-ring-220.png", "0xE6FFFFFF",
+                 vis="!String.IsEmpty(ListItem.Property(active))")
+    chip = lock_chip(TX + 143, TY + 142)
+    name = label(0, TY + W + 16, CW, 30, T.FONT_CARD_TITLE, white, "$INFO[ListItem.Property(name)]")
+    glow = img(TX - 10, TY - 10, W + 20, W + 20, "ring-glow-220.png", accent)
+    rim = img(TX - 2, TY - 2, W + 4, W + 4, "outer-rim-220.png", accent)
+    rest = tile + hairline + active + chip + name
+
+    def gated(xml, gate):
+        """Every top-level control in `xml` also needs `gate` to show."""
+        out = []
+        for part in xml.split("\n                <control ")[1:]:
+            part = "\n                <control " + part
+            if "<visible>" in part.split("</control>")[0] and part.count("<visible>") >= 1:
+                part = part.replace("<visible>", f"<visible>{gate} + [", 1).replace(
+                    "</visible>", "]</visible>", 1)
+            else:
+                part = part.replace(">", f">\n                    <visible>{gate}</visible>", 1)
+            out.append(part)
+        return "".join(out)
+
+    rows = ""
+    for r in range(T.WHO_ROWS):
+        # A list draws its selected item's focused layout even unfocused, so
+        # that layout shows the rest look until the row itself has focus.
+        has = f"Control.HasFocus({800 + r})"
+        focused = (gated(tile + hairline + active + chip, f"!{has}")
+                   + gated(zoom(glow + tile + rim + chip), has) + name)
+        rows += f"""
+        <control type="list" id="{800 + r}">
+            <visible>{picker}</visible>
+            <posx>0</posx><posy>{300 + r * T.WHO_ROW_PITCH}</posy>
+            <width>{3 * CW}</width><height>{CH}</height>
+            <orientation>horizontal</orientation>
+            <itemlayout width="{CW}" height="{CH}">{rest}
+            </itemlayout>
+            <focusedlayout width="{CW}" height="{CH}">{focused}
+            </focusedlayout>
+        </control>"""
+
+    def pill(x, y, w, h, button_id, text, font, nav=""):
+        return f"""
+            <control type="group">
+                <posx>{x}</posx><posy>{y}</posy>
+                <control type="image">
+                    <width>{w}</width><height>{h}</height>
+                    <colordiffuse>0x1AFFFFFF</colordiffuse>
+                    <texture border="{h // 2}">capsule-h{h}.png</texture>
+                </control>
+                <control type="image">
+                    <visible>Control.HasFocus({button_id})</visible>
+                    <width>{w}</width><height>{h}</height>
+                    <colordiffuse>0xFFFFFFFF</colordiffuse>
+                    <texture border="{h // 2}">capsule-h{h}-outline.png</texture>
+                </control>{label(0, 0, w, h, font, white, text)}
+                <control type="button" id="{button_id}">
+                    <width>{w}</width><height>{h}</height>{nav}
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>"""
+
+    cancel = pill(T.WHO_CANCEL_X, T.WHO_CANCEL_Y, T.WHO_CANCEL_W, T.WHO_CANCEL_H, 820,
+                  "$INFO[Window.Property(cancel_label)]", T.FONT_MICRO)
+
+    dots = ""
+    for i, x in enumerate(T.PIN_DOT_X):
+        on = f"String.IsEqual(Window.Property(pin_dot_{i}),1)"
+        dots += (img(x, T.PIN_DOT_Y, T.PIN_DOT, T.PIN_DOT, "circle.png", "white", vis=on)
+                 + img(x, T.PIN_DOT_Y, T.PIN_DOT, T.PIN_DOT, "circle-outline.png", "0x40FFFFFF",
+                       vis=f"!{on}"))
+
+    # The keypad, 1-9 then a gap, 0 and backspace; Up/Down/Left/Right by grid.
+    keys = [str(d) for d in range(1, 10)] + ["", "0", "back"]
+    key_id = {k: (900 + int(k) if k.isdigit() else 910) for k in keys if k}
+    grid = [keys[i:i + 3] for i in range(0, 12, 3)]
+
+    def neighbour(row, col, dr, dc):
+        r, c = row + dr, col + dc
+        while 0 <= r < 4 and 0 <= c < 3:
+            if grid[r][c]:
+                return key_id[grid[r][c]]
+            r, c = r + dr, c + dc
+        return None
+
+    pad = ""
+    for row in range(4):
+        for col in range(3):
+            k = grid[row][col]
+            if not k:
+                continue
+            kid = key_id[k]
+            nav = ""
+            for tag, (dr, dc) in (("onup", (-1, 0)), ("ondown", (1, 0)),
+                                  ("onleft", (0, -1)), ("onright", (0, 1))):
+                target = neighbour(row, col, dr, dc)
+                if target is None and tag == "ondown":
+                    target = 920
+                if tag == "ondown" and k == "0":
+                    target = 920
+                if target is not None:
+                    nav += f"\n                    <{tag}>{target}</{tag}>"
+            focus = f"Control.HasFocus({kid})"
+            text = (f"&#x{icon_glyphs.DELETE:04X};" if k == "back"
+                    else f"$INFO[Window.Property(digit_{k})]")
+            font = T.FONT_ICON_29 if k == "back" else T.FONT_PIN_DIGIT
+            S = T.PIN_KEY
+            pad += f"""
+            <control type="group">
+                <posx>{T.PIN_KEY_X[col]}</posx><posy>{T.PIN_KEY_Y[row]}</posy>
+                <visible>{pin}</visible>{img(0, 0, S, S, "circle.png", "0x12FFFFFF", vis="!" + focus)}{img(0, 0, S, S, "circle.png", "$INFO[Window.Property(accent_pill_fill)]", vis=focus)}{img(0, 0, S, S, "circle-outline.png", accent, vis=focus)}{label(0, 0, S, S, font, white, text, vis="!" + focus)}{label(0, 0, S, S, font, accent, text, vis=focus)}
+                <control type="button" id="{kid}">
+                    <width>{S}</width><height>{S}</height>{nav}
+                    <texturefocus>transparent-6px.png</texturefocus>
+                    <texturenofocus>transparent-6px.png</texturenofocus>
+                    <label></label>
+                </control>
+            </control>"""
+
+    back = pill(T.PIN_BACK_X, T.PIN_BACK_Y, T.PIN_BACK_W, T.PIN_BACK_H, 920,
+                "$INFO[Window.Property(pin_exit_label)]", T.FONT_ROW_TITLE,
+                nav="\n                    <onup>900</onup>")
+    pin_avatar = portrait(T.PIN_AVATAR_X, T.PIN_AVATAR_Y, T.PIN_AVATAR,
+                          "pin", T.FONT_TOP_RESULT_TITLE)
+    pin_pane = f"""
+        <!-- The whole pane shakes on a wrong PIN: profile_select flips
+             pin_shake, and a conditional slide runs each leg. -->
+        <control type="group">
+            <animation effect="slide" start="0,0" end="13,0" time="45" tween="sine" condition="!String.IsEmpty(Window.Property(pin_shake))">Conditional</animation>
+            <control type="group">
+                <visible>{pin}</visible>{pin_avatar}{label(0, T.PIN_HEADING_Y, 1920, 40, T.FONT_SETTINGS_ROW, white, "$INFO[Window.Property(pin_heading)]")}{dots}
+                <control type="label">
+                    <visible>!String.IsEmpty(Window.Property(pin_error))</visible>
+                    <posx>0</posx><posy>{T.PIN_ERROR_Y}</posy><width>1920</width><height>40</height>
+                    <align>center</align><aligny>center</aligny>
+                    <font>tofa_font_caption</font>
+                    <textcolor>0xFFF87171</textcolor>
+                    <label>$INFO[Window.Property(pin_error)]</label>
+                    <animation effect="fade" start="0" end="100" time="140">Visible</animation>
+                </control>
+            </control>{pad}
+            <control type="group">
+                <visible>{pin}</visible>{back}
+            </control>
+        </control>"""
+
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<window>
+    <defaultcontrol always="true">666</defaultcontrol>
+    <backgroundcolor>0x00000000</backgroundcolor>
+    <coordinates>
+        <system>0</system>
+    </coordinates>
+    <controls>{img(0, 0, 1920, 1080, "white-square.png", T.CANVAS)}
+        <control type="label" id="810">
+            <visible>{picker}</visible>
+            <posx>0</posx><posy>{300 - T.WHO_TITLE_ABOVE}</posy><width>1920</width><height>100</height>
+            <align>center</align><aligny>center</aligny>
+            <font>{T.FONT_WHOS_WATCHING}</font>
+            <textcolor>{white}</textcolor>
+            <label>$INFO[Window.Property(heading)]</label>
+        </control>{rows}
+        <control type="group">
+            <visible>{picker}</visible>{cancel}
+        </control>{pin_pane}
+        <!-- kodigui framework sentinel. -->
+        <control type="label" id="666">
+            <visible>false</visible>
+            <width>1</width>
+            <height>1</height>
+        </control>
+    </controls>
+</window>
+"""
