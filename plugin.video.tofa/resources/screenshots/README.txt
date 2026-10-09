@@ -8,55 +8,34 @@ deciding to install -- and draws the fanart, heavily dimmed, behind the
 add-on browser.
 
   01-home.jpg      Home: the hero and Continue Watching
-  02-browse.jpg    Browse: the library grid and its sidebar
-  03-detail.jpg    a title's detail hero
-  04-cast.jpg      the same title's Cast & Crew page
-  05-player.jpg    the player chrome over playback
-  06-settings.jpg  Settings > Account
+  02-browse.jpg    Browse: the landing, with the library's poster wall
+  03-detail.jpg    a title page's hero (Tears of Steel)
+  04-episodes.jpg  a show's episodes on the title page (Pioneer One)
+  05-player.jpg    the player controls over playback (Big Buck Bunny)
+  06-settings.jpg  Settings > Account, with Household Viewing focused
 
 WHAT IS IN THEM. Only material that can be published. They were taken
-against tofa's public-domain demo library -- Charade (1963), Nosferatu
-(1922) and that shelf -- plus the Blender Foundation's open movies (Big Buck
-Bunny, Tears of Steel), which are CC-BY.
+against tofa's demo library: public-domain films (Charade, Nosferatu and that
+shelf), the Blender Foundation's open movies (CC-BY), and Pioneer One
+(Creative Commons BY-NC-SA).
 
-Two screens are deliberately ABSENT. Discover and Search draw current
-commercial studio posters from the metadata provider; nothing else here
-does, and a screenshot is republished far more widely than a screen a user
-scrolls past once.
+Commercial studio posters are deliberately ABSENT. Discover, Search and the
+title page's "More to Discover" shelf draw them from the metadata provider,
+and a screenshot is republished far more widely than a screen a user scrolls
+past once. That is why 04 shows a show's episodes rather than a film's Cast &
+Crew: on this library a film's cast is always followed by that shelf.
 
-06-settings.jpg is REDACTED: the account email in all three places it
-appears, and the QR, which encodes an account-management URL. Blurred rather
-than boxed so the layout still reads.
+06-settings.jpg needs no redaction. With a row focused, the left column shows
+that row's explanation instead of the account email, and the account QR only
+appears while Manage account is focused.
 
-RETAKING THEM. 1920x1080, JPEG q90 -- 14MB of PNG became 1.8MB, which is
-what six full-resolution screens cost the zip. Shoot with Kodi's own
-screenshot action (a desktop capture will not match), and check
-`debug.showloginfo` is off and `input.enablemouse` is false first: both have
-spoiled reference shots before.
+RETAKING THEM. 1920x1080, JPEG q90. Shoot with Kodi's own screenshot action
+(a desktop capture will not match), and check `debug.showloginfo` is off and
+`input.enablemouse` is false first: both have spoiled reference shots before.
+A screenshot of a redesigned screen is stale the moment the screen changes.
 
-03-detail.jpg was retaken on 2026-08-14, same title and same framing. The
-first one showed the action row as it was before the pills went to a uniform
-325 with their contents anchored -- four different widths, each pill's icon
-and text centred as a group -- so it advertised a layout the add-on no longer
-has. Measured on the two files, the old row ran 360/270/269/243 and the new
-one 360/325/325/325. A screenshot of a redesigned screen is stale the moment
-the screen changes; check this row against a live shot after any Detail work.
-
-fanart.jpg was the startup splash's final frame until 2026-08-14. It was
-replaced because the icon is already the fox, so the splash frame said
-nothing the icon had not: a backdrop of the app in use tells a reader more
-than the logo twice. tools/gen_fanart.py, which assembled that frame from
-the shipped splash strips, was retired with it.
-
-Audited again on 2026-08-15 and deliberately NOT retaken. Nothing in them is
-stale for layout: 03-detail.jpg diffs against a live shot at 0.81/255 mean,
-which is JPEG noise. What is stale is the profile picture in the three shots
-that show the top bar -- 01, 02 and 06. It is one of the avatars the add-on
-used to draw for itself, and profile pictures now come from the server.
-
-That one cannot be reshot yet. The demo library's server is a version behind
-the floor this add-on asks for, so it serves no picture catalogue, and both of
-its profiles carry no picture at all. A retake today would put INITIALS where
-an avatar is now, which is worse rather than better. Retake when that server
-is current and its profile has a picture; that also clears the "server needs
-updating" notice from any shot taken on it.
+All six were retaken on 2026-10-09 for the app 2.0 redesign, on the demo
+profile Toby. The demo server was then 0.10.0, one version behind this
+add-on's floor: dismiss the once-per-session "server needs updating" notice
+before shooting. The only visible difference, the Folders button in a
+library view, is in none of these shots.
