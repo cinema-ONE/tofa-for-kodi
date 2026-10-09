@@ -23,6 +23,9 @@ from . import atomicwrite, auth, cloud, http, log
 CAPABILITY = "household.viewing"
 VIEWER_PROPERTY = "tofa.household_viewer"
 AWAY_PROPERTY = "tofa.household_away_since"
+#: Set when a member's session ends in any process; the windows' Renewer
+#: picks it up and asks who's watching.
+ENDED_PROPERTY = "tofa.household_ended"
 #: Back after this long away (Minimize) and the TV asks who's watching again.
 ASK_AFTER_S = 15 * 60
 #: Renew a viewer token this long before it expires; retry this often.
@@ -288,18 +291,16 @@ def renew(session, tok: auth.Tokens, force: bool = False) -> Optional[dict]:
             return viewer
         grant = load_grant(tok.server_id)
         if grant is None:
-            clear_viewer()
-            raise ViewerEnded(REVOKED)
+            _ended(REVOKED)
         try:
             granted = viewer_token(session, tok, grant, viewer["identity_id"])
-        except ViewerEnded:
-            raise
+        except ViewerEnded as exc:
+            _ended(exc.reason)
         except http.ApiError as exc:
             if viewer["expires_at"] > time.time():
                 log.warning(f"household: renewal failed ({exc}); token still good")
                 return viewer
-            clear_viewer()
-            raise ViewerEnded("expired") from None
+            _ended("expired")
         current = active_viewer()
         if current is None or current["identity_id"] != viewer["identity_id"]:
             return current
@@ -324,6 +325,20 @@ def chosen_this_run() -> bool:
 def forget_chosen() -> None:
     """Ask who's watching again next time: tofa closed, or long away."""
     _home().clearProperty(CHOSEN_PROPERTY)
+
+
+def _ended(reason: str):
+    """End the member's session wherever it was noticed, and say so."""
+    clear_viewer()
+    _home().setProperty(ENDED_PROPERTY, reason)
+    raise ViewerEnded(reason)
+
+
+def take_ended() -> str:
+    """The reason a member's session ended since last asked, once."""
+    reason = _home().getProperty(ENDED_PROPERTY)
+    _home().clearProperty(ENDED_PROPERTY)
+    return reason
 
 
 def note_away() -> None:
@@ -366,8 +381,8 @@ class Renewer(threading.Thread):
                 if left <= RENEW_MARGIN_S:
                     try:
                         renew(session, auth.load(), force=True)
-                    except ViewerEnded as exc:
-                        self._on_ended(exc.reason)
+                    except ViewerEnded:
+                        pass                    # take_ended() below reports it
                     except Exception as exc:                 # noqa: BLE001
                         log.warning(f"household: renewer: {exc!r}")
                     viewer = active_viewer()
@@ -375,5 +390,8 @@ class Renewer(threading.Thread):
                     wait = RETRY_S if viewer and left <= RENEW_MARGIN_S else 1.0
                 else:
                     wait = min(5.0, left - RENEW_MARGIN_S)
+            reason = take_ended()
+            if reason:
+                self._on_ended(reason)
             if monitor.waitForAbort(max(wait, 0.5)) or self._halt.is_set():
                 break

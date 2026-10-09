@@ -284,6 +284,35 @@ pick("Adrian")
 profile_select.switch_profile()
 check("picking the owner ends the member's session", household.active_viewer(), None)
 
+# -- an end noticed outside the Renewer still reaches the windows --------------
+http.request_json = fake_request_json
+reset()
+household.take_ended()
+household.save_grant(grant)
+household.set_viewer({"identity_id": "m1", "name": "Sam", "managed": False,
+                      "access_token": "old", "expires_at": time.time() - 1,
+                      "server_id": "srv-1", "profile_id": "sam-p", "profile_token": None,
+                      "profile_token_expires_at": None})
+ANSWERS[("POST", "/v1/household/device/viewer-token")] = http.ApiError(502, "bad_gateway", "")
+try:
+    api.client_for(None, TOK)
+except household.ViewerEnded:
+    pass
+check("a session that ends inside a request is marked as ended",
+      xbmcgui.Window(10000).getProperty(household.ENDED_PROPERTY), "expired")
+TOLD = []
+household.Renewer(TOLD.append).run()
+check("and the windows' Renewer reports it", TOLD, ["expired"])
+check("once", household.take_ended(), "")
+ANSWERS[("POST", "/v1/household/device/viewer-token")] = http.ApiError(
+    403, "household_viewer_unavailable", "")
+try:
+    household.start_viewer(None, TOK, grant, {"identity_id": "m1"})
+except household.ViewerEnded:
+    pass
+check("a failed pick is not an ended session (the picker says so itself)",
+      household.take_ended(), "")
+
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))
 raise SystemExit(1 if failed else 0)
