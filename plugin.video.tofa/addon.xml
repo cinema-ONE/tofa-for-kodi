@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.0.0" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.1.0" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,70 +45,32 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - A new top bar, matching tofa's Apple TV app 2.0: the fox on its own,
-        Home, Browse, Discover and Search as plain tabs, and Settings as a gear
-        beside your profile picture. Select your profile picture to switch
-        profiles.
-      - Discover matches the Apple TV app too: Now, Acclaimed, Genres and Decades
-        are plain tabs that switch as you move across them, the page uses the full
-        width, and the row you are on stays in the same place as you scroll.
-      - New Filters on Discover: hide watched movies, cinema-only movies or
-        upcoming titles, or show only what is in your library.
-      - The title page's second half is now one page you scroll through, as on
-        the Apple TV app: the episode you are on with its synopsis, the seasons
-        and episodes, then Cast &amp; Crew, More Like This, More to Discover and an
-        About card. The episode you are about to resume is no longer hidden as a
-        spoiler, and Specials come after the last season. Its rows use smaller
-        posters, as the Apple TV app's do.
-      - Rows on Home and Discover are spaced like the Apple TV app's.
-      - The player matches the Apple TV app 2.0: an episode's controls start with
-        the episode list, the Playback button (a gauge) adds a Speed setting where
-        Kodi allows it, and the stats button simply shows or hides the stats.
-      - Next Up comes in four styles -- Compact, Minimal, Lower third and Full --
-        chosen for each TV under Settings &gt; Playback &amp; Video.
-      - The stats name how a title is playing in words: Direct Play, Direct Stream
-        or Transcode.
-      - The pause screen and the episode list match the Apple TV app: pausing
-        shows the year, episode and its title on their own lines, and the Episodes
-        button opens a row of episodes along the bottom of the screen.
-      - A title watched for less than a minute offers Play again, not Resume.
-      - Settings matches the Apple TV app 2.0: its pages are tabs along the top,
-        with a new Home tab, and This Device's settings now sit under Account and
-        Privacy &amp; About. The left side describes the setting you are on, every
-        setting fits on one line, and its choices open in a list beside it --
-        Fox accent opens a grid of foxes.
-      - On the Home tab, select a row to move it, hide it or remove one you
-        added, and add a Discover or genre row from the two rows below.
-      - Settings shows a preview for the playback rows, Fox accent and the Home
-        tab, drawn over artwork from your own library.
-      - Browse matches the Apple TV app 2.0: it opens on tiles for your libraries,
-        Watchlist, History, Collections and Surprise me, and each opens full
-        screen with seven posters across, the genres as a row of buttons, and an
-        Unwatched switch beside Sort and Filter.
-      - Collections shows your own collections first, then film series and sets,
-        as wide cards three to a row; yours show four of their posters.
-      - Sort opens as a panel over the view, with the current sort ticked and its
-        direction shown; choose it again to reverse it.
-      - Behind Browse's tiles, a library shows a slowly drifting wall of its own
-        posters, Watchlist and History a row of theirs, Collections one
-        collection with the films of it you have, and Surprise me a blurred wall.
-      - A person's page matches the Apple TV app 2.0: their photo, the part they
-        played, how many credits they have and over which years, and a
-        Filmography button listing every credit by year. All of their credits now
-        appear, where only the first 30 used to.
-      - Show posters say how many episodes you have left, and finished titles
-        carry a tick; Watched marks in Settings turns the ticks off. A title
-        without a tofa score shows its TMDB rating instead.
-      - Hidden episodes follow the Apple TV app: past the first one you have not
-        seen, each you have neither started nor finished keeps its details hidden.
-      - History shows each film or show once, with its year and rating.
-      - Who's watching matches the Apple TV app 2.0: profiles three to a row on a
-        plain background, in your fox's colour, with the app's PIN pad.
-      - New in Settings: Pause screen (turn it off to keep the controls up while
-        paused) and Reduce motion (no zooms, slides or moving backgrounds).
-      - Down from the top bar now works straight away when you move on from
-        Home before it has finished loading.
-      - After updating, tofa asks once to add a new font to your skin.
+      - Household viewing: people in your household who have their own tofa
+        account can now watch on this TV as themselves, with their own history,
+        watchlist and Continue Watching. Turn it on under Settings &gt; Account, on
+        the account owner's own profile; Who's watching then lists them after your
+        profiles. tofa asks who's watching each time it starts, and again after 15
+        minutes away.
+      - When a household member's session ends, tofa goes back to Who's watching
+        from whichever screen you are on.
+      - Settings &gt; Account is laid out as on the Apple TV app: This TV, then
+        Account. Manage account shows the code to scan.
+      - Collections can be sorted by name or by size. Sorted by name, an A-Z rail
+        beside the film series shows just the ones under a letter.
+      - Inside a collection, Unwatched and Filter now work: by watch status,
+        format and year, wherever the collection's titles carry them.
+      - History lists up to 100 titles, so a long run of one show's episodes no
+        longer crowds everything else out. A title that has left your library
+        shows once.
+      - The A-Z rail is now the size of the Apple TV app's.
+      - When the server cannot be reached at start, tofa now says so instead of
+        showing empty screens.
+      - Fixed a TV losing its tofa cloud sign-in, which made the Account page show
+        a username instead of your email address. A TV that already lost it needs
+        signing out and in again once.
+      - Fixed Settings cutting off the last of four choices under a preview.
+      - Fixed Collections drawing the film series heading over your second row of
+        collections.
     </news>
     <assets>
       <icon>icon.png</icon>
