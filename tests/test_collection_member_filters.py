@@ -95,6 +95,25 @@ class FakeWindow:
         self._browse_sort_reversed = False
         self._browse_reset_filters()
         self.grid_list = FakeGrid()
+        self._sources, self._genres = [], []
+        self.props, self.visible, self.loads = {}, {}, 0
+
+    def setProperty(self, key, value):
+        self.props[key] = value
+
+    def getControl(self, cid):
+        win = self
+
+        class Chip:
+            def setVisible(self, on):
+                win.visible[cid] = on
+
+            def setWidth(self, width):
+                pass
+        return Chip()
+
+    def _browse_load_grid(self):
+        self.loads += 1
 
     def _get_client(self):
         return FakeClient()
@@ -104,9 +123,12 @@ class FakeWindow:
 
 
 for _name in ("BROWSE_WATCHED_OPTIONS_BASE", "BROWSE_QUALITY_OPTIONS", "BROWSE_YEAR_OPTIONS",
-              "BROWSE_SORT_OPTIONS", "COLLECTION_WATCHED", "COLLECTION_QUALITY", "ALL_GENRES",
-              "_browse_watched_options", "_browse_quality_options", "_browse_unwatched_idx",
-              "_browse_reset_filters", "_browse_render_collection_members"):
+              "BROWSE_SORT_OPTIONS", "COLLECTION_ANSWERS", "ALL_GENRES", "GENRE_CHIP_IDS",
+              "SORT_ID", "UNWATCHED_ID", "FILTER_ID",
+              "_browse_watched_options", "_browse_quality_options", "_browse_collection_answerable",
+              "_browse_unwatched_idx", "_browse_unwatched_clicked", "_browse_reset_filters",
+              "_browse_render_collection_members", "_browse_sync_chips", "_browse_sort_glyph",
+              "_browse_filter_label", "_browse_chip_width"):
     setattr(FakeWindow, _name, getattr(W, _name))
 
 artcache.prefetch = lambda pairs, *a, **k: 0
@@ -120,7 +142,8 @@ check("a collection offers All, Unwatched, Watched",
       values(inside._browse_watched_options()) == [None, "unwatched", "watched"])
 check("a library still offers 1080p+", "hd1080" in values(library._browse_quality_options()))
 check("a collection leaves 1080p+ out (a member only says 4K or not)",
-      values(inside._browse_quality_options()) == list(W.COLLECTION_QUALITY))
+      values(inside._browse_quality_options())
+      == [None, "uhd4k", "uhd4k_hdr", "dolby_vision", "hdr", "atmos"])
 check("the Unwatched chip still finds its option",
       inside._browse_watched_options()[inside._browse_unwatched_idx()][1] == "unwatched")
 
@@ -137,6 +160,25 @@ inside._browse_quality_idx = values(inside._browse_quality_options()).index("atm
 inside._browse_render_collection_members()
 check("Unwatched + Atmos draws their intersection",
       inside.grid_list.items == ["sdr4k"], str(inside.grid_list.items))
+
+# --- a custom collection whose members never fill `watched` ------------
+custom = FakeWindow({"items": [member("a", is_4k=True, rng="DV"), member("b", is_4k=False)]})
+check("no member fills `watched`: Watch Status offers only All",
+      values(custom._browse_watched_options()) == [None])
+check("...nor Atmos when no member has an audio_format",
+      values(custom._browse_quality_options()) == [None, "uhd4k", "uhd4k_hdr", "dolby_vision", "hdr"])
+custom._browse_sync_chips()
+check("...and the Unwatched chip is hidden",
+      custom.visible.get(W.UNWATCHED_ID) is False and custom.visible.get(W.FILTER_ID) is True,
+      str(custom.visible))
+custom._browse_unwatched_clicked()
+check("...and inert", custom._browse_watched_idx == 0 and custom.loads == 0)
+inside._browse_sync_chips()
+check("a collection that fills `watched` keeps the chip",
+      inside.visible.get(W.UNWATCHED_ID) is True)
+
+unowned = FakeWindow({"items": [UNOWNED]})
+check("all unowned: Format offers only Any", values(unowned._browse_quality_options()) == [None])
 
 print()
 failed = [n for n, ok in RESULTS if not ok]

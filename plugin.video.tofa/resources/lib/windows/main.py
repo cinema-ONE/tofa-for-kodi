@@ -470,10 +470,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ("1080p+", "hd1080"),
         ("Atmos", "atmos"),
     )
-    # The choices a collection member can answer: it carries watched or not
+    # The choices a collection member can answer, and the field that must be
+    # filled on at least one member to offer it. A member says watched or not
     # (nothing partway) and 4K or not (no other resolution).
-    COLLECTION_WATCHED = (None, "unwatched", "watched")
-    COLLECTION_QUALITY = (None, "uhd4k", "uhd4k_hdr", "dolby_vision", "hdr", "atmos")
+    COLLECTION_ANSWERS = {"unwatched": "watched", "watched": "watched",
+                          "uhd4k": "is_4k", "uhd4k_hdr": "is_4k", "dolby_vision": "is_4k",
+                          "hdr": "is_4k", "atmos": "audio_format"}
 
     # Discover section control ids -- 6300-6699 block.
     DISCOVER_ROW_LIST_IDS = home_rows.DISCOVER_ROW_LIST_IDS
@@ -2701,15 +2703,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         options = list(self.BROWSE_WATCHED_OPTIONS_BASE)
         if "media.watched_played" in self._server_capabilities:
             options.append(("Played", "played"))
-        if self._browse_collection is not None:
-            options = [o for o in options if o[1] in self.COLLECTION_WATCHED]
-        return tuple(options)
+        return self._browse_collection_answerable(options)
 
     def _browse_quality_options(self) -> tuple:
         """(label, api `quality` value) tuples for the Filter dialog's Format axis."""
+        return self._browse_collection_answerable(self.BROWSE_QUALITY_OPTIONS)
+
+    def _browse_collection_answerable(self, options) -> tuple:
+        """`options` minus what the open collection's members cannot answer."""
         if self._browse_collection is None:
-            return self.BROWSE_QUALITY_OPTIONS
-        return tuple(o for o in self.BROWSE_QUALITY_OPTIONS if o[1] in self.COLLECTION_QUALITY)
+            return tuple(options)
+        members = self._browse_collection.get("items") or []
+        # Custom-collection members come with `watched` null on every one.
+        return tuple(o for o in options if o[1] is None or any(
+            m.get(self.COLLECTION_ANSWERS.get(o[1])) is not None for m in members))
 
     def _browse_filter_label(self, skip_unwatched: bool = False) -> str:
         """The whole line on the Filter pill -- every axis that is set, in
@@ -3226,7 +3233,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             sort_label = u"\u2193  Last Watched"
         unwatched = self._browse_unwatched_idx()
         filter_label = self._browse_filter_label(skip_unwatched=True)
-        words = [(self.SORT_ID, sort_label), (self.UNWATCHED_ID, "Unwatched"),
+        words = [(self.SORT_ID, sort_label),
+                 (self.UNWATCHED_ID, "Unwatched" if unwatched >= 0 else ""),
                  (self.FILTER_ID, filter_label)]
         words += [(cid, self._genres[i] if i < len(self._genres) else "")
                   for i, cid in enumerate(self.GENRE_CHIP_IDS)]
@@ -3258,12 +3266,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_quality_idx = 0
 
     def _browse_unwatched_idx(self) -> int:
-        """The Watch status option the Unwatched chip stands for."""
+        """The Watch status option the Unwatched chip stands for; -1 hides the chip."""
         values = [value for _label, value in self._browse_watched_options()]
-        return values.index("unwatched") if "unwatched" in values else 1
+        return values.index("unwatched") if "unwatched" in values else -1
 
     def _browse_unwatched_clicked(self):
         unwatched = self._browse_unwatched_idx()
+        if unwatched < 0:
+            return
         self._browse_watched_idx = 0 if self._browse_watched_idx == unwatched else unwatched
         self._browse_sync_chips()
         self._browse_load_grid()
