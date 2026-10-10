@@ -783,12 +783,16 @@ class MediaServerClient:
         }
         return self._get("/api/v1/discovery/board", params=params)
 
-    def watch_history(self, media_type: Optional[str] = None, limit: Optional[int] = None) -> Any:
-        """`{items: [...]}` -- one entry per PLAY SESSION, not per title
+    def watch_history(self, media_type: Optional[str] = None, limit: Optional[int] = None,
+                      before: Optional[str] = None, before_id: Optional[str] = None) -> Any:
+        """`{items: [...], has_more}` -- one entry per PLAY SESSION, not per title
         (the same title watched 3 times is 3 entries, newest first, each
         carrying its own started_at/ended_at/progress_percent) -- unlike
-        every other listing here, this is not deduplicated by media id."""
-        params = {"media_type": media_type, "limit": limit}
+        every other listing here, this is not deduplicated by media id.
+        At most 200 a page; `before`/`before_id` (the last entry's started_at
+        and id) ask for the page after it."""
+        params = {"media_type": media_type, "limit": limit,
+                  "before": before, "before_id": before_id}
         return self._get("/api/v1/watch/history", params=params)
 
     def collection(self, collection_id: str) -> Any:
