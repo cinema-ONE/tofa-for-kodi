@@ -178,6 +178,16 @@ def collection_member_matches(item: dict, watched, quality, year_from, year_to) 
 HISTORY_TITLES, HISTORY_PAGE, HISTORY_PAGES = 100, 200, 5
 
 
+def _history_key(play: dict):
+    """Which card a play belongs to. A title gone from the library has no
+    media_id, so its plays are told apart by name instead of each by its own."""
+    if play.get("media_id"):
+        return play["media_id"]
+    if play.get("title"):
+        return (play.get("media_type"), play.get("title"))
+    return play.get("id")
+
+
 def history_titles(client, want: int = HISTORY_TITLES) -> list:
     """One card per show or film, keeping its most recent watch, as the app
     2.0 does. /watch/history logs every play, newest first; an episode's
@@ -195,7 +205,7 @@ def history_titles(client, want: int = HISTORY_TITLES) -> list:
             break
         items = resp.get("items") or []
         for it in items:
-            key = it.get("media_id") or it.get("id")
+            key = _history_key(it)
             if key not in seen:
                 seen.add(key)
                 out.append(it)
