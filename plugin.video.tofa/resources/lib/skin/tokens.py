@@ -585,13 +585,19 @@ BROWSE_WALL_TILT = 18   # degrees back, about the X axis
 BROWSE_WALL_SWING = 9   # degrees, about the Y axis
 BROWSE_WALL_TURN = 4   # degrees, about the Z axis
 BROWSE_WALL_CX, BROWSE_WALL_CY = 960, 320
-BROWSE_WALL_PERIOD_MS = 120000         # one period, ~18px a second as the app
+# Speeds timed on the app (JetKVM, 2026-10-10): rows drifting right ~17.9 px/s,
+# rows drifting left ~13.4, the History/Watchlist row ~14.8; ours measured on
+# screen at the centre and scaled to match. Even rows drift left.
+BROWSE_WALL_PERIOD_LEFT_MS = 160000
+BROWSE_WALL_PERIOD_RIGHT_MS = 126000
+# Changing tile dips the backdrop as the app does: out fast, then in.
+BROWSE_WALL_OUT_MS, BROWSE_WALL_IN_MS = 100, 300
 # Watchlist and History: one upright row of their posters, drifting left.
 BROWSE_ROW_POSTER_W, BROWSE_ROW_POSTER_H = 247, 370
 BROWSE_ROW_PITCH = 289
 BROWSE_ROW_Y = 177
 BROWSE_ROW_COLS = 8                    # per period; the row draws two
-BROWSE_ROW_PERIOD_MS = 130000
+BROWSE_ROW_PERIOD_MS = 156000
 # Collections' backdrop: one collection featured, its name, a line, and the
 # posters of the films you have, on its backdrop darkened from the left.
 BROWSE_FEATURE_TITLE_Y = 175
