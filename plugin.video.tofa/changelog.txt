@@ -1,3 +1,31 @@
+1.1.0
+- Household viewing: people in your household who have their own tofa
+  account can now watch on this TV as themselves, with their own history,
+  watchlist and Continue Watching. Turn it on under Settings > Account, on
+  the account owner's own profile; Who's watching then lists them after your
+  profiles. tofa asks who's watching each time it starts, and again after 15
+  minutes away.
+- When a household member's session ends, tofa goes back to Who's watching
+  from whichever screen you are on.
+- Settings > Account is laid out as on the Apple TV app: This TV, then
+  Account. Manage account shows the code to scan.
+- Collections can be sorted by name or by size. Sorted by name, an A-Z rail
+  beside the film series shows just the ones under a letter.
+- Inside a collection, Unwatched and Filter now work: by watch status,
+  format and year, wherever the collection's titles carry them.
+- History lists up to 100 titles, so a long run of one show's episodes no
+  longer crowds everything else out. A title that has left your library
+  shows once.
+- The A-Z rail is now the size of the Apple TV app's.
+- When the server cannot be reached at start, tofa now says so instead of
+  showing empty screens.
+- Fixed a TV losing its tofa cloud sign-in, which made the Account page show
+  a username instead of your email address. A TV that already lost it needs
+  signing out and in again once.
+- Fixed Settings cutting off the last of four choices under a preview.
+- Fixed Collections drawing the film series heading over your second row of
+  collections.
+
 1.0.0
 - A new top bar, matching tofa's Apple TV app 2.0: the fox on its own,
   Home, Browse, Discover and Search as plain tabs, and Settings as a gear
