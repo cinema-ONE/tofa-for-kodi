@@ -121,6 +121,30 @@ def _library_count(lib: dict) -> str:
     return ""
 
 
+def collection_member_matches(item: dict, watched, quality, year_from, year_to) -> bool:
+    """Whether a collection member passes the Filter panel's choices.
+
+    A null field means not owned or unknown, so it never satisfies a filter."""
+    if watched == "unwatched" and item.get("watched") is not False:
+        return False
+    if watched == "watched" and item.get("watched") is not True:
+        return False
+    # Labels on the wire ("DV", "HDR10"), not the enum; null is SDR or unprobed.
+    rng = str(item.get("dynamic_range") or "").lower()
+    if quality in ("uhd4k", "uhd4k_hdr") and item.get("is_4k") is not True:
+        return False
+    if quality in ("uhd4k_hdr", "hdr") and not rng:
+        return False
+    if quality == "dolby_vision" and not (rng == "dv" or "dolby" in rng):
+        return False
+    if quality == "atmos" and "atmos" not in str(item.get("audio_format") or "").lower():
+        return False
+    year = item.get("year")
+    if (year_from or year_to) and not year:
+        return False
+    return not ((year_from and year < year_from) or (year_to and year > year_to))
+
+
 def _history_latest_per_title(items: list) -> list:
     """One card per show or film, keeping its most recent watch, as the app
     2.0 does. /watch/history logs every play, newest first."""
@@ -446,6 +470,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ("1080p+", "hd1080"),
         ("Atmos", "atmos"),
     )
+    # The choices a collection member can answer, and the field that must be
+    # filled on at least one member to offer it. A member says watched or not
+    # (nothing partway) and 4K or not (no other resolution).
+    COLLECTION_ANSWERS = {"unwatched": "watched", "watched": "watched",
+                          "uhd4k": "is_4k", "uhd4k_hdr": "is_4k", "dolby_vision": "is_4k",
+                          "hdr": "is_4k", "atmos": "audio_format"}
 
     # Discover section control ids -- 6300-6699 block.
     DISCOVER_ROW_LIST_IDS = home_rows.DISCOVER_ROW_LIST_IDS
@@ -693,7 +723,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_sort_user_picked = False
         self._browse_watched_idx = 0        # index into _browse_watched_options()
         self._browse_year_idx = 0           # index into BROWSE_YEAR_OPTIONS
-        self._browse_quality_idx = 0        # index into BROWSE_QUALITY_OPTIONS
+        self._browse_quality_idx = 0        # index into _browse_quality_options()
         # The A-Z rail's selection. "" is All; otherwise a single letter or
         # "#", passed to /api/v1/media?letter= verbatim.
         self._browse_letter = ""
@@ -2673,7 +2703,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         options = list(self.BROWSE_WATCHED_OPTIONS_BASE)
         if "media.watched_played" in self._server_capabilities:
             options.append(("Played", "played"))
-        return tuple(options)
+        return self._browse_collection_answerable(options)
+
+    def _browse_quality_options(self) -> tuple:
+        """(label, api `quality` value) tuples for the Filter dialog's Format axis."""
+        return self._browse_collection_answerable(self.BROWSE_QUALITY_OPTIONS)
+
+    def _browse_collection_answerable(self, options) -> tuple:
+        """`options` minus what the open collection's members cannot answer."""
+        if self._browse_collection is None:
+            return tuple(options)
+        members = self._browse_collection.get("items") or []
+        # Custom-collection members come with `watched` null on every one.
+        return tuple(o for o in options if o[1] is None or any(
+            m.get(self.COLLECTION_ANSWERS.get(o[1])) is not None for m in members))
 
     def _browse_filter_label(self, skip_unwatched: bool = False) -> str:
         """The whole line on the Filter pill -- every axis that is set, in
@@ -2712,7 +2755,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 skip_unwatched and self._browse_watched_idx == self._browse_unwatched_idx()):
             parts.append(self._browse_watched_options()[self._browse_watched_idx][0])
         if self._browse_quality_idx != 0:
-            parts.append(self.BROWSE_QUALITY_OPTIONS[self._browse_quality_idx][0])
+            parts.append(self._browse_quality_options()[self._browse_quality_idx][0])
         if self._browse_year_idx != 0:
             parts.append(self.BROWSE_YEAR_OPTIONS[self._browse_year_idx][0])
         return ", ".join(parts) if parts else "Filter"
@@ -3190,7 +3233,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             sort_label = u"\u2193  Last Watched"
         unwatched = self._browse_unwatched_idx()
         filter_label = self._browse_filter_label(skip_unwatched=True)
-        words = [(self.SORT_ID, sort_label), (self.UNWATCHED_ID, "Unwatched"),
+        words = [(self.SORT_ID, sort_label),
+                 (self.UNWATCHED_ID, "Unwatched" if unwatched >= 0 else ""),
                  (self.FILTER_ID, filter_label)]
         words += [(cid, self._genres[i] if i < len(self._genres) else "")
                   for i, cid in enumerate(self.GENRE_CHIP_IDS)]
@@ -3216,13 +3260,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             on = i < len(self._genres) and self._genres[i] == self._active_genre
             self.setProperty("browse_chip_{0}".format(cid), chosen if on else rest)
 
+    def _browse_reset_filters(self):
+        self._browse_watched_idx = 0
+        self._browse_year_idx = 0
+        self._browse_quality_idx = 0
+
     def _browse_unwatched_idx(self) -> int:
-        """The Watch status option the Unwatched chip stands for."""
+        """The Watch status option the Unwatched chip stands for; -1 hides the chip."""
         values = [value for _label, value in self._browse_watched_options()]
-        return values.index("unwatched") if "unwatched" in values else 1
+        return values.index("unwatched") if "unwatched" in values else -1
 
     def _browse_unwatched_clicked(self):
         unwatched = self._browse_unwatched_idx()
+        if unwatched < 0:
+            return
         self._browse_watched_idx = 0 if self._browse_watched_idx == unwatched else unwatched
         self._browse_sync_chips()
         self._browse_load_grid()
@@ -3441,7 +3492,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     order = "asc" if order == "desc" else "desc"
                 _watched_label, watched_value = self._browse_watched_options()[self._browse_watched_idx]
                 _year_label, year_from, year_to = self.BROWSE_YEAR_OPTIONS[self._browse_year_idx]
-                _quality_label, quality_value = self.BROWSE_QUALITY_OPTIONS[self._browse_quality_idx]
+                _quality_label, quality_value = self._browse_quality_options()[self._browse_quality_idx]
                 params = {
                     "library_id": src.get("id"),
                     "sort": sort_value,
@@ -4197,6 +4248,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._genre_counts = counts
         self._genres = [self.ALL_GENRES] + genres
         self._active_genre = self.ALL_GENRES
+        # Each collection starts unfiltered; its option lists are shorter too.
+        self._browse_reset_filters()
         self.setProperty("browse_filterbar", "1")
         self._browse_sync_chips()
         self._browse_grid_geometry(in_collection=True)
@@ -4219,15 +4272,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_layout_header()
 
     def _browse_render_collection_members(self):
-        """Apply the genre pill and the sort to the members, client-side.
+        """Apply the genre pill, the Filter panel and the sort to the members.
 
-        The endpoint hands back every member in one payload with no sort or
-        filter parameters, so both are done here. Only the axes the data
-        actually carries are wired: AnnotatedDiscoveryItem has `genres` and
-        `year` but no quality or watch state, so Quality/Filter stay visible
-        and inert exactly as they already are on Watchlist and History --
-        the same call this section made there, that showing a not-yet-wired
-        control beats hiding it."""
+        The endpoint returns every member in one payload and takes no sort or
+        filter, so all of it is done here, client-side."""
         client = self._get_client()
         if not client or self._browse_collection is None:
             return
@@ -4235,6 +4283,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if self._active_genre and self._active_genre != self.ALL_GENRES:
             items = [i for i in items
                      if self._active_genre in (i.get("genres") or [])]
+        watched = self._browse_watched_options()[self._browse_watched_idx][1]
+        quality = self._browse_quality_options()[self._browse_quality_idx][1]
+        _year_label, year_from, year_to = self.BROWSE_YEAR_OPTIONS[self._browse_year_idx]
+        items = [i for i in items
+                 if collection_member_matches(i, watched, quality, year_from, year_to)]
         label, value, order = self.BROWSE_SORT_OPTIONS[self._browse_sort_idx]
         reverse = (order == "desc") != bool(self._browse_sort_reversed)
         if value == "title":
@@ -4258,6 +4311,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if self._browse_collection is None:
             return False
         self._browse_collection = None
+        self._browse_reset_filters()
         self.setProperty("browse_heading", "")
         self._browse_load_grid()
         # Back onto the card we came from; the series section also shows
@@ -4308,9 +4362,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # their defaults on every source switch rather than carrying a
         # selection over into a library it wasn't chosen for. Sort is
         # deliberately left alone.
-        self._browse_watched_idx = 0
-        self._browse_year_idx = 0
-        self._browse_quality_idx = 0
+        self._browse_reset_filters()
         self._browse_reset_letter()
         self._active_genre = self.ALL_GENRES
         self._browse_sync_chips()
@@ -4603,7 +4655,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # constants below keep the server's name.
             {"key": "quality", "title": "Format",
              "options": [{"label": label, "detail": ""}
-                         for label, _value in self.BROWSE_QUALITY_OPTIONS],
+                         for label, _value in self._browse_quality_options()],
              "selected": self._browse_quality_idx},
             {"key": "year", "title": "Year",
              "options": [{"label": label, "detail": ""}
