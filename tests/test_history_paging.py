@@ -87,6 +87,17 @@ for p in repeat.plays[200:]:
 got = main.history_titles(repeat)
 check("a title already seen is not added again", [g["media_id"] for g in got] == ["p0-t0", "p0-t1", "p0-t2"])
 
+# A title gone from the library: no media_id on any of its plays.
+gone = FakeClient(log(3, 1))
+for p in gone.plays[:6]:
+    p.update(media_id=None, title="Gone", media_type="movie")
+gone.plays[6].update(media_id=None, title=None)
+got = main.history_titles(gone)
+check("a gone title's plays make one card, by name",
+      sum(1 for g in got if g.get("title") == "Gone") == 1 and got[0]["title"] == "Gone")
+check("...and a play with neither id nor name stays on its own",
+      sum(1 for g in got if not g.get("media_id") and not g.get("title")) == 1)
+
 # A later page that fails keeps the first.
 flaky = FakeClient(log(3, 9), fail_page=2)
 got = main.history_titles(flaky)
