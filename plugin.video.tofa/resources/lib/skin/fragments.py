@@ -4710,6 +4710,7 @@ def browse_wall() -> str:
     rows = []
     for r in range(T.BROWSE_WALL_ROWS):
         start, end = (0, -period) if r % 2 == 0 else (-period, 0)
+        time = T.BROWSE_WALL_PERIOD_LEFT_MS if r % 2 == 0 else T.BROWSE_WALL_PERIOD_RIGHT_MS
         posters = "".join(f"""
                         <control type="image">
                             <posx>{c * px}</posx>
@@ -4722,11 +4723,13 @@ def browse_wall() -> str:
                     <control type="group">
                         <posx>{T.BROWSE_WALL_X - (r % 2) * px // 2}</posx>
                         <posy>{T.BROWSE_WALL_Y + r * py}</posy>
-                        <animation effect="slide" start="{start},0" end="{end},0" time="{T.BROWSE_WALL_PERIOD_MS}" loop="true" condition="true">Conditional</animation>{posters}
+                        <animation effect="slide" start="{start},0" end="{end},0" time="{time}" loop="true" condition="true">Conditional</animation>{posters}
                     </control>""")
     return f"""
                 <control type="group" id="6030">
                     <visible>String.IsEqual(Window.Property(browse_wall),tilt)</visible>
+                    <animation effect="fade" end="0" time="{T.BROWSE_WALL_OUT_MS}">Hidden</animation>
+                    <animation effect="fade" start="0" time="{T.BROWSE_WALL_IN_MS}">Visible</animation>
                     <animation effect="rotate" end="{T.BROWSE_WALL_TURN}" center="{T.BROWSE_WALL_CX},{T.BROWSE_WALL_CY}" time="0" condition="true">Conditional</animation>
                     <animation effect="rotatey" end="{T.BROWSE_WALL_SWING}" center="{T.BROWSE_WALL_CX},0" time="0" condition="true">Conditional</animation>
                     <animation effect="rotatex" end="{T.BROWSE_WALL_TILT}" center="{T.BROWSE_WALL_CY},0" time="0" condition="true">Conditional</animation>{"".join(rows)}
@@ -4762,6 +4765,8 @@ def browse_feature() -> str:
     return f"""
                 <control type="group">
                     <visible>String.IsEqual(Window.Property(browse_wall),feature)</visible>
+                    <animation effect="fade" end="0" time="{T.BROWSE_WALL_OUT_MS}">Hidden</animation>
+                    <animation effect="fade" start="0" time="{T.BROWSE_WALL_IN_MS}">Visible</animation>
                     <control type="image">
                         <width>{T.BROWSE_FEATURE_SOLID_W}</width>
                         <height>{T.BROWSE_BACKDROP_H}</height>
@@ -4811,6 +4816,8 @@ def browse_poster_row() -> str:
     return f"""
                 <control type="group" id="6031">
                     <visible>String.IsEqual(Window.Property(browse_wall),row)</visible>
+                    <animation effect="fade" end="0" time="{T.BROWSE_WALL_OUT_MS}">Hidden</animation>
+                    <animation effect="fade" start="0" time="{T.BROWSE_WALL_IN_MS}">Visible</animation>
                     <posy>{T.BROWSE_ROW_Y}</posy>
                     <animation effect="slide" start="0,0" end="-{T.BROWSE_ROW_COLS * px},0" time="{T.BROWSE_ROW_PERIOD_MS}" loop="true" condition="true">Conditional</animation>{posters}
                 </control>"""

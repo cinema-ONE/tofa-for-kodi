@@ -774,6 +774,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_sort_offered: list = []  # the sort menu's rows, as indexes
         self._browse_walls: dict = {}         # library id or kind -> wall posters
         self._browse_wall_shown: list = []    # the posters the wall holds now
+        self._browse_wall_target = None       # (mode, what) the backdrop is going to
+        self._browse_wall_gen = 0             # a newer change cancels a pending one
         self._browse_feature: dict | None = None  # Collections' featured one
         # The sort keys THIS server accepts, straight off the facets response
         # (the whole point of the facets route: render what the server
@@ -3089,28 +3091,56 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         mode = {"library": "tilt", "blur": "tilt", "watchlist": "row",
                 "history": "row"}.get(src.get("kind"), "")
         if not posters or not mode:
-            self.setProperty("browse_wall", "")
+            self._browse_show_wall("", None, None)
             return
-        # Forty writes: only when the wall itself changes, not on every move.
-        if self._browse_wall_shown != posters:
-            self._browse_wall_shown = posters
-            for n in range(T.BROWSE_WALL_POOL):
-                self.setProperty("browse_wall_%d" % n, posters[n % len(posters)])
-        self.setProperty("browse_wall", mode)
+
+        def apply():
+            # Forty writes: only when the wall itself changes, not on every move.
+            if self._browse_wall_shown != posters:
+                self._browse_wall_shown = posters
+                for n in range(T.BROWSE_WALL_POOL):
+                    self.setProperty("browse_wall_%d" % n, posters[n % len(posters)])
+        self._browse_show_wall(mode, tuple(posters), apply)
 
     def _browse_sync_feature(self):
         feature = self._browse_feature
         if not feature:
-            self.setProperty("browse_wall", "")
+            self._browse_show_wall("", None, None)
             return
-        self.setProperty("browse_feature_title", feature["title"])
-        self.setProperty("browse_feature_line", feature["line"])
-        posters = feature["posters"]
-        for i in range(T.BROWSE_FEATURE_MAX):
-            url, year = posters[i] if i < len(posters) else ("", "")
-            self.setProperty("browse_feature_p%d" % i, url)
-            self.setProperty("browse_feature_y%d" % i, year)
-        self.setProperty("browse_wall", "feature")
+
+        def apply():
+            self.setProperty("browse_feature_title", feature["title"])
+            self.setProperty("browse_feature_line", feature["line"])
+            posters = feature["posters"]
+            for i in range(T.BROWSE_FEATURE_MAX):
+                url, year = posters[i] if i < len(posters) else ("", "")
+                self.setProperty("browse_feature_p%d" % i, url)
+                self.setProperty("browse_feature_y%d" % i, year)
+        self._browse_show_wall("feature", feature["title"], apply)
+
+    def _browse_show_wall(self, mode: str, what, apply):
+        """Change the backdrop as the app does: a dip, not a crossfade. The old
+        one fades out ("dip" shows nothing, not even the tile's art), then
+        `apply` writes the new one and it fades in."""
+        if (mode, what) == self._browse_wall_target:
+            return
+        self._browse_wall_target = (mode, what)
+        self._browse_wall_gen += 1
+        gen = self._browse_wall_gen
+        if not mode or self.getProperty("browse_wall") in ("", "dip"):
+            if apply:
+                apply()
+            self.setProperty("browse_wall", mode)
+            return
+        self.setProperty("browse_wall", "dip")
+
+        def later():
+            if gen == self._browse_wall_gen:
+                apply()
+                self.setProperty("browse_wall", mode)
+        timer = threading.Timer(T.BROWSE_WALL_OUT_MS / 1000.0, later)
+        timer.daemon = True
+        timer.start()
 
     @staticmethod
     def _browse_wall_key(src: dict):
