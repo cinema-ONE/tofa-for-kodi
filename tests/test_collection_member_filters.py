@@ -128,8 +128,9 @@ for _name in ("BROWSE_WATCHED_OPTIONS_BASE", "BROWSE_QUALITY_OPTIONS", "BROWSE_Y
               "_browse_watched_options", "_browse_quality_options", "_browse_collection_answerable",
               "_browse_unwatched_idx", "_browse_unwatched_clicked", "_browse_reset_filters",
               "_browse_render_collection_members", "_browse_sync_chips", "_browse_sort_glyph",
-              "_browse_filter_label", "_browse_chip_width"):
+              "_browse_filter_label", "_browse_chip_width", "_browse_on_watchlist"):
     setattr(FakeWindow, _name, getattr(W, _name))
+FakeWindow._sources = []          # not on a source, so not the watchlist
 
 artcache.prefetch = lambda pairs, *a, **k: 0
 library = FakeWindow(None)

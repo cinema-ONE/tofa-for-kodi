@@ -149,6 +149,21 @@ def sort_collections(items: list, by: str, reverse: bool = False) -> list:
     return sorted(items, key=lambda c: collection_name_key(c.get("name")), reverse=reverse)
 
 
+def sort_watchlist(items: list, value: str, reverse: bool, rating, seed=None) -> list:
+    """The watchlist in a Sort's order; the server returns it newest-added
+    first and takes no sort. `rating` maps an item to its card score."""
+    keys = {"added_at": lambda i: i.get("added_at") or "",
+            "title": lambda i: collection_name_key(i.get("title")),
+            "release_date": lambda i: i.get("year") or 0,
+            "rating": rating,
+            "runtime": lambda i: i.get("runtime_minutes") or 0}
+    if value == "random":
+        out = list(items)
+        random.Random(seed).shuffle(out)
+        return out
+    return sorted(items, key=keys.get(value, keys["added_at"]), reverse=reverse)
+
+
 def collection_member_matches(item: dict, watched, quality, year_from, year_to) -> bool:
     """Whether a collection member passes the Filter panel's choices.
 
@@ -465,6 +480,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # Collections' Sort pill and its two orders (our divergence: the app has
     # none). Choosing the order in use again reverses it, as in a library.
     COLL_SORT_ID = 6145
+    # A watchlist item carries when it was added, its year, scores and runtime,
+    # but no play history: Last Watched and Times Watched cannot sort it.
+    WATCHLIST_SORTS = ("added_at", "title", "release_date", "rating", "runtime", "random")
     COLLECTION_SORT_OPTIONS = (("Name", "name", "asc"), ("Size", "size", "desc"))
     #: The view's genre chips, in a horizontal grouplist.
     GENRE_GROUP_ID = 6150
@@ -752,6 +770,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._coll_sort_idx = 0
         self._coll_sort_reversed = False
         self._coll_custom_all: list = []
+        self._browse_watchlist_items: list = []
         self._coll_series_all: list = []
         self._coll_letter_counts: dict = {}
         self._sort_for_collections = False
@@ -2793,11 +2812,48 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """(label, api `quality` value) tuples for the Filter dialog's Format axis."""
         return self._browse_collection_answerable(self.BROWSE_QUALITY_OPTIONS)
 
+    def _browse_on_watchlist(self) -> bool:
+        return (bool(self._sources) and self._browse_collection is None
+                and self._browse_active_source().get("kind") == "watchlist")
+
+    def _browse_watchlist_view(self, items: list) -> list:
+        """The watchlist's genres from its own titles, then the genre pill,
+        Filter and Sort applied here."""
+        counts: dict = {}
+        for it in items:
+            for g in it.get("genres") or []:
+                if g:
+                    counts[g] = counts.get(g, 0) + 1
+        self._genre_counts = counts
+        self._genres = [self.ALL_GENRES] + sorted(counts)
+        if self._active_genre not in self._genres:
+            self._active_genre = self.ALL_GENRES
+        if self.BROWSE_SORT_OPTIONS[self._browse_sort_idx][1] not in self.WATCHLIST_SORTS:
+            self._browse_sort_idx, self._browse_sort_reversed = 0, False   # Date Added
+        self._browse_sync_chips()
+        if self._active_genre != self.ALL_GENRES:
+            items = [i for i in items if self._active_genre in (i.get("genres") or [])]
+        watched = self._browse_watched_options()[self._browse_watched_idx][1]
+        quality = self._browse_quality_options()[self._browse_quality_idx][1]
+        _year_label, year_from, year_to = self.BROWSE_YEAR_OPTIONS[self._browse_year_idx]
+        items = [i for i in items if collection_member_matches(i, watched, quality, year_from, year_to)]
+        _label, value, order = self.BROWSE_SORT_OPTIONS[self._browse_sort_idx]
+        if value == "random" and self._browse_shuffle_seed is None:
+            self._browse_shuffle_seed = random.randint(0, 2 ** 31 - 1)
+        prefs = self._ensure_preferences()
+        score = lambda i: int(theme.card_rating_text(i, prefs) or 0)  # noqa: E731
+        return sort_watchlist(items, value, (order == "desc") != bool(self._browse_sort_reversed),
+                              score, self._browse_shuffle_seed)
+
     def _browse_collection_answerable(self, options) -> tuple:
-        """`options` minus what the open collection's members cannot answer."""
-        if self._browse_collection is None:
+        """`options` minus what the open collection's (or the watchlist's)
+        titles cannot answer."""
+        if self._browse_collection is not None:
+            members = self._browse_collection.get("items") or []
+        elif self._browse_on_watchlist():
+            members = self._browse_watchlist_items
+        else:
             return tuple(options)
-        members = self._browse_collection.get("items") or []
         # Custom-collection members come with `watched` null on every one.
         return tuple(o for o in options if o[1] is None or any(
             m.get(self.COLLECTION_ANSWERS.get(o[1])) is not None for m in members))
@@ -2860,6 +2916,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         but they are logged, so a new one is discoverable rather than silently
         missing.
         """
+        if self._browse_on_watchlist():
+            return [i for i, (_l, v, _o) in enumerate(self.BROWSE_SORT_OPTIONS)
+                    if v in self.WATCHLIST_SORTS]
         if self._browse_server_sorts is None:
             return list(range(len(self.BROWSE_SORT_OPTIONS)))
         offered = [i for i, (_label, value, _order)
@@ -3440,7 +3499,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         wanted = self._browse_filterbar_visible(src)
         self.setProperty("browse_filterbar", "1" if wanted else "")
         self._active_genre = self.ALL_GENRES
-        if not wanted or not client:
+        if not wanted or not client or src["kind"] == "watchlist":
             self._browse_apply_facets([], {})
             return None
 
@@ -3594,11 +3653,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         items: list[dict] = []
         try:
             if src["kind"] == "watchlist":
-                # No sort/filter support on this endpoint (plain bare-array
-                # response, see MediaServerClient.watchlist()) -- Sort/Filter
-                # stay visible+clickable to match the real app, but only
-                # take effect once the user switches to a real library.
+                # The server neither sorts nor filters a watchlist (sort and
+                # order are ignored): the pills work on the device instead.
                 items = client.watchlist() or []
+                items = items if isinstance(items, list) else (items.get("items") or [])
+                self._browse_watchlist_items = items
+                items = self._browse_watchlist_view(items)
             else:
                 _sort_label, sort_value, order = self.BROWSE_SORT_OPTIONS[self._browse_sort_idx]
                 if order and self._browse_sort_reversed:
