@@ -469,13 +469,13 @@
 {custom_focused}
                     </control>
                 </control>
+                <!-- Never hidden: shown again it would slide in from mid-screen.
+                     Above your last row it waits just off the bottom instead. -->
                 <control type="group">
-                    <visible>String.IsEmpty(Window.Property(browse_coll_rows)) | [Control.HasFocus(6210) | Control.HasFocus(6220)] | String.IsEqual(Window.Property(browse_coll_rows),1) | !String.IsEmpty(Window.Property(browse_coll_a_last))</visible>
                     <animation effect="slide" end="0,{COLLECTION_REST_SHIFT}" time="{SCROLLTIME}" condition="String.IsEmpty(Window.Property(browse_coll_rows)) + Integer.IsLess(Container(6210).CurrentItem,2)">Conditional</animation>
                     <animation effect="slide" end="0,{COLLECTION_BELOW_ONE_ROW}" time="{SCROLLTIME}" condition="![Control.HasFocus(6210) | Control.HasFocus(6220)] + String.IsEqual(Window.Property(browse_coll_rows),1)">Conditional</animation>
                     <animation effect="slide" end="0,{COLLECTION_SECTION_GAP}" time="{SCROLLTIME}" condition="![Control.HasFocus(6210) | Control.HasFocus(6220)] + String.IsEqual(Window.Property(browse_coll_rows),2) + !String.IsEmpty(Window.Property(browse_coll_a_last))">Conditional</animation>
-                    <animation effect="fade" end="0" time="{SCROLLTIME}">Hidden</animation>
-                    <animation effect="fade" start="0" time="{SCROLLTIME}">Visible</animation>
+                    <animation effect="slide" end="0,{COLLECTION_BELOW_TWO_ROWS}" time="{SCROLLTIME}" condition="![Control.HasFocus(6210) | Control.HasFocus(6220)] + String.IsEqual(Window.Property(browse_coll_rows),2) + String.IsEmpty(Window.Property(browse_coll_a_last))">Conditional</animation>
                     <control type="label">
                         <visible>Integer.IsLess(Container(6210).CurrentItem,2)</visible>
                         <posx>{BROWSE_LEFT}</posx>
