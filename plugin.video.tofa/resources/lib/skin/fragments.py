@@ -3603,10 +3603,12 @@ def detail_page2(*, cast_cards, collection_cards, similar_cards, discover_cards,
 {_season_pill(False, 6400)}
 {_season_pill(True, 6400)}
                         </control>
+                        <!-- Ends at the screen edge: Kodi lets focus reach every card that
+                             fits the list, so a wider list focused one half off screen. -->
                         <control type="list" id="6410">
                             <posx>{left - _EP_PAD}</posx>
                             <posy>{T.DETAIL_EP_ROW_Y - _EP_PAD}</posy>
-                            <width>{T.SCREEN_W - left + _EP_PAD + EPISODE_CELL_W}</width>
+                            <width>{T.SCREEN_W - left + _EP_PAD}</width>
                             <height>{EPISODE_CELL_H}</height>
                             <orientation>horizontal</orientation>
                             <scrolltime>{T.SCROLLTIME}</scrolltime>
