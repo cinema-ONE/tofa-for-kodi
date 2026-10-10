@@ -173,18 +173,36 @@ def collection_member_matches(item: dict, watched, quality, year_from, year_to) 
     return not ((year_from and year < year_from) or (year_to and year > year_to))
 
 
-def _history_latest_per_title(items: list) -> list:
+#: History pages back until it has this many titles, the log ends, or this
+#: many pages of the server's 200 plays are read: a binge is hundreds of plays.
+HISTORY_TITLES, HISTORY_PAGE, HISTORY_PAGES = 100, 200, 5
+
+
+def history_titles(client, want: int = HISTORY_TITLES) -> list:
     """One card per show or film, keeping its most recent watch, as the app
-    2.0 does. /watch/history logs every play, newest first."""
-    seen = set()
-    out = []
-    for it in items:
-        key = it.get("media_id") or it.get("id")
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(it)
-    return out
+    2.0 does. /watch/history logs every play, newest first; an episode's
+    media_id is its show's. A later page that fails keeps what came first."""
+    out: list = []
+    seen: set = set()
+    cursor: dict = {}
+    for page in range(HISTORY_PAGES):
+        try:
+            resp = client.watch_history(limit=HISTORY_PAGE, **cursor) or {}
+        except http.ApiError:
+            if not page:
+                raise
+            kodigui.ERROR("main.py: history page {0} failed".format(page + 1))
+            break
+        items = resp.get("items") or []
+        for it in items:
+            key = it.get("media_id") or it.get("id")
+            if key not in seen:
+                seen.add(key)
+                out.append(it)
+        if len(out) >= want or not resp.get("has_more") or not items:
+            break
+        cursor = {"before": items[-1].get("started_at"), "before_id": items[-1].get("id")}
+    return out[:want]
 
 
 # Unrecognized ListType keys fall back to a title-cased version of the key
@@ -3182,8 +3200,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             items = client.watchlist() or []
             return items if isinstance(items, list) else (items.get("items") or [])
         if kind == "history":
-            resp = client.watch_history(limit=100) or {}
-            return _history_latest_per_title(resp.get("items") or [])
+            # The row draws BROWSE_ROW_COLS posters; twice that covers titles without one.
+            return history_titles(client, 2 * T.BROWSE_ROW_COLS)
         return []
 
     def _browse_tile_clicked(self):
@@ -4042,11 +4060,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def _browse_load_history_grid(self, client: MediaServerClient):
         try:
-            resp = client.watch_history(limit=200) or {}
+            history = history_titles(client)
         except http.ApiError as exc:
             kodigui.ERROR("main.py: browse watch_history failed: {0}".format(exc))
-            resp = {}
-        history = _history_latest_per_title(resp.get("items") or [])
+            history = []
         artcache.prefetch(client.stage_pairs(history, "poster_path"))
         self._history_counts = (self._show_counts(client)
                                 if any(it.get("media_type") == "tv" for it in history) else {})
