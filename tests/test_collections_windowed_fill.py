@@ -171,7 +171,8 @@ except Exception as exc:                                    # noqa: BLE001
 import re  # noqa: E402
 SRC = open(os.path.join(ROOT, "plugin.video.tofa", "resources", "lib",
                         "windows", "main.py")).read()
-loader = re.search(r"\n    def _browse_load_collections_grid\(.*?\n(.*?)(?=\n    def )",
+# The loader fetches; _browse_render_collections lays the index out.
+loader = re.search(r"\n    def _browse_render_collections\(.*?\n(.*?)(?=\n    def )",
                    SRC, re.S).group(1)
 check("the loader allocates blank rows for the series",
       "_browse_blanks" in loader and "_browse_fill_collection_window" in loader)

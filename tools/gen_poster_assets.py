@@ -102,7 +102,7 @@ DISCOVER_WIDE_W, DISCOVER_WIDE_H = 672, 378
 # The collections card (fragments.py:collection_row) -- the one landscape
 # 16:9 tile in an app of 2:3 portraits. Keep in step with tokens.py's
 # COLLECTION_TILE_W / COLLECTION_TILE_H / COLLECTION_RADIUS.
-COLLECTION_W, COLLECTION_H = 556, 312
+COLLECTION_W, COLLECTION_H = 530, 298
 COLLECTION_RADIUS = 12
 GLOW_ALPHA = 90  # peak opacity (0-255) of the glow's uniform interior --
 # flat translucent wash near the border, falloff reserved for the outer

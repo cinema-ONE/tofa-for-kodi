@@ -679,19 +679,20 @@ ALPHA_KEYS = ("All",) + tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + ("#",)
 ALPHA_MIN_TITLES = 120
 
 # ------------------------------------------ collections view (app 2.0) --
-# "Your collections", then "Film series and sets": three 16:9 cards on a 586
-# pitch, rows 443 apart. Once the view scrolls the focused row holds at
-# y 501 with the row before it clipped at y 140, as in the app.
+# "Your collections", then "Film series and sets": three 16:9 cards, rows
+# 429 apart. Once the view scrolls the focused row holds at y 501 with the
+# row before it clipped at y 140, as in the app. The app's cards are 556 on
+# 586; ours give 26 to the A-Z rail (ours only), ending where a library's do.
 COLLECTION_COLS = 3
-COLLECTION_TILE_W, COLLECTION_TILE_H = 556, 312
+COLLECTION_TILE_W, COLLECTION_TILE_H = 530, 298
 COLLECTION_RADIUS = 12
-COLLECTION_PITCH_X = 586
-COLLECTION_PITCH_Y = 443
+COLLECTION_PITCH_X = 560
+COLLECTION_PITCH_Y = 429
 COLLECTION_PAD = 30                   # room for the focus lift and glow
 COLLECTION_FOCUS_Y = 501              # the held row's card top
 COLLECTION_FIRST_Y = 262              # a section's first row, at rest
 COLLECTION_HEAD_Y = 416               # its heading's cap top, over row 501
-COLLECTION_SECTION_GAP = 565          # last card top to the next section's
+COLLECTION_SECTION_GAP = 551          # last card top to the next section's
 COLLECTION_CLIP_Y = 140               # content scrolls under the title band
 COLLECTION_REST_SHIFT = COLLECTION_FIRST_Y - COLLECTION_FOCUS_Y      # -239
 COLLECTION_LIST_X = BROWSE_LEFT - COLLECTION_PAD

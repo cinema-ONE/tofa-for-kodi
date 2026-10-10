@@ -2297,14 +2297,20 @@ def browse_header_pill(list_id: int, *, glyph: str, label: str,
     return item, focused
 
 
-def browse_chip(control_id: int, *, indent: str = "                ") -> str:
+def browse_chip(control_id: int, *, indent: str = "                ", nav: dict | None = None) -> str:
     """One chip of a Browse view's chip row: a button whose width MainWindow
     sets, its words and resting fill window properties (browse_chip_<id>,
     _label) so a chosen chip reads as chosen. Python's setLabel would reset
-    the font and colours. Focused: the accent's wash."""
+    the font and colours. Focused: the accent's wash. `nav` is for a chip
+    outside the row: {tag: target} or {tag: [(condition, target), ...]}."""
     H = T.BROWSE_CHIP_H
+    moves = ""
+    for tag, target in (nav or {}).items():
+        for cond, dest in (target if isinstance(target, list) else [("", target)]):
+            when = f' condition="{cond}"' if cond else ""
+            moves += f"{indent}    <{tag}{when}>{dest}</{tag}>\n"
     return f"""{indent}<control type="button" id="{control_id}">
-{indent}    <width>{T.BROWSE_CHIP_PAD * 2}</width>
+{moves}{indent}    <width>{T.BROWSE_CHIP_PAD * 2}</width>
 {indent}    <height>{H}</height>
 {indent}    <font>{T.FONT_BODY}</font>
 {indent}    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>

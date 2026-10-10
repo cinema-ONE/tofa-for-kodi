@@ -122,6 +122,10 @@ def render_main() -> str:
     sort_chip = fragments.browse_chip(6110, indent=chip_indent)
     unwatched_chip = fragments.browse_chip(6115, indent=chip_indent)
     filter_chip = fragments.browse_chip(6120, indent=chip_indent)
+    # Down lands on your own collections when there are any, else the series.
+    coll_sort_chip = fragments.browse_chip(6145, indent=chip_indent, nav={
+        "onup": "6145", "onleft": "6145", "onright": "6145",
+        "ondown": [("!String.IsEmpty(Window.Property(browse_coll_rows))", "6215"), ("", "6210")]})
     genre_chips = "\n".join(fragments.browse_chip(6151 + i, indent=chip_indent)
                             for i in range(T.BROWSE_GENRE_CHIPS))
 
@@ -468,6 +472,7 @@ def render_main() -> str:
         sort_chip=sort_chip,
         unwatched_chip=unwatched_chip,
         filter_chip=filter_chip,
+        coll_sort_chip=coll_sort_chip,
         genre_chips=genre_chips,
         # No quality_* pair: the Quality pill went when its axis moved into
         # the Filter dialog, and the template stopped naming it then. The
