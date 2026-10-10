@@ -21,7 +21,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUBJECT_MAX, BODY_MAX, COMMENT_MAX = 65, 8, 4
 TRAILER = re.compile(r"^[A-Za-z-]+: .+")
 CHECKED = (".py", ".tpl", ".xml")
-GENERATED = "plugin.video.tofa/resources/skins/Main/1080i/"
+# Written by tools, not people: the rendered skins, and the update site, whose
+# addons.xml repeats addon.xml's comments in every version it lists.
+GENERATED = ("plugin.video.tofa/resources/skins/Main/1080i/", "docs/")
 
 
 def git(*args: str) -> str:
