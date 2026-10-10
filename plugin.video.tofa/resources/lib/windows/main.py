@@ -15,6 +15,7 @@ import os
 import random
 import threading
 import time
+import unicodedata
 import urllib.parse
 
 import xbmc
@@ -119,6 +120,33 @@ def _library_count(lib: dict) -> str:
         if isinstance(val, int):
             return regional.number(val)
     return ""
+
+
+def collection_name_key(name: str) -> str:
+    """A collection's sort key: accents folded, case ignored, a leading
+    English article dropped (German ones stay: "Die Hard" is not under H)."""
+    folded = unicodedata.normalize("NFKD", name or "")
+    key = "".join(c for c in folded if not unicodedata.combining(c)).casefold().strip()
+    for article in ("the ", "a ", "an "):
+        if key.startswith(article) and key[len(article):].strip():
+            return key[len(article):].lstrip()
+    return key
+
+
+def collection_letter(name: str) -> str:
+    """The rail letter a collection files under: A-Z, else "#"."""
+    first = collection_name_key(name)[:1].upper()
+    return first if "A" <= first <= "Z" else "#"
+
+
+def sort_collections(items: list, by: str, reverse: bool = False) -> list:
+    """Name (A to Z) or Size (most titles first); reversed flips either,
+    and Size breaks a tie by name, A to Z, either way."""
+    if by == "size":
+        sign = 1 if reverse else -1
+        return sorted(items, key=lambda c: (sign * (c.get("item_count") or 0),
+                                            collection_name_key(c.get("name"))))
+    return sorted(items, key=lambda c: collection_name_key(c.get("name")), reverse=reverse)
 
 
 def collection_member_matches(item: dict, watched, quality, year_from, year_to) -> bool:
@@ -406,6 +434,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # for View, which leads the row on a library.
     FOLDERS_ID = 6130
     SURPRISE_PILL_ID = 6140
+    # Collections' Sort pill and its two orders (our divergence: the app has
+    # none). Choosing the order in use again reverses it, as in a library.
+    COLL_SORT_ID = 6145
+    COLLECTION_SORT_OPTIONS = (("Name", "name", "asc"), ("Size", "size", "desc"))
     #: The view's genre chips, in a horizontal grouplist.
     GENRE_GROUP_ID = 6150
     GENRE_CHIP_IDS = tuple(range(6151, 6151 + T.BROWSE_GENRE_CHIPS))
@@ -688,6 +720,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # The collection drilled into, or None while the Collections grid
         # itself is showing.
         self._browse_collection: dict | None = None
+        # The Collections page's sort, for this session; the rail shows under Name.
+        self._coll_sort_idx = 0
+        self._coll_sort_reversed = False
+        self._coll_custom_all: list = []
+        self._coll_series_all: list = []
+        self._coll_letter_counts: dict = {}
+        self._sort_for_collections = False
         # Folder view, per library id, for this session: whether it is on
         # (None = the library's default), the path shown, and every level
         # above it as it was left, so Back restores it without a fetch.
@@ -1383,7 +1422,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_tile_clicked()
         elif controlID == self.ALPHA_RAIL_ID:
             self._browse_alpha_clicked()
-        elif controlID == self.SORT_ID:
+        elif controlID in (self.SORT_ID, self.COLL_SORT_ID):
             self._browse_sort_clicked()
         elif controlID == self.SORT_PANEL_ID:
             self._browse_sort_picked()
@@ -1744,12 +1783,27 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                     self._home_update_hero(item.dataSource)
                 return
 
+        if (action_id == xbmcgui.ACTION_MOVE_LEFT and self.getFocusId() == self.ALPHA_RAIL_ID
+                and self._browse_on_collections_index()):
+            # Ours, not the XML's: Kodi's move would arrive here again as a
+            # card step and land one card short of the row's last.
+            self.setFocusId(self.COLLECTION_GRID_ID)
+            return
+
         if (action_id in (xbmcgui.ACTION_MOVE_UP, xbmcgui.ACTION_MOVE_DOWN,
                           xbmcgui.ACTION_MOVE_LEFT, xbmcgui.ACTION_MOVE_RIGHT)
                 and self.getFocusId() in self.COLLECTION_IDS):
             # Kodi moves between rows; the card within a row is ours.
             step = {xbmcgui.ACTION_MOVE_LEFT: -1, xbmcgui.ACTION_MOVE_RIGHT: 1}.get(action_id, 0)
+            list_id = self.getFocusId()
+            at_end = self._browse_collection_at_end(list_id)
             kodigui.ControlledWindow.onAction(self, action)
+            if self.getFocusId() not in self.COLLECTION_IDS:
+                return
+            if (step == 1 and at_end and list_id == self.COLLECTION_GRID_ID
+                    and self.getProperty("browse_alpha")):
+                self.setFocusId(self.ALPHA_RAIL_ID)
+                return
             self._browse_collection_moved(self.getFocusId(), step)
             return
 
@@ -3209,6 +3263,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.getControl(6132).setPosition(x, T.BROWSE_DIVIDER_Y)
                 x += 14
             self.getControl(self.SURPRISE_PILL_ID).setPosition(x, T.BROWSE_HEAD_Y)
+            self.getControl(self.COLL_SORT_ID).setPosition(x, T.BROWSE_HEAD_Y)
         except RuntimeError:
             pass
 
@@ -4051,29 +4106,54 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             custom = []
         for it in custom:
             it["_custom"] = True
+        self._coll_custom_all, self._coll_series_all = custom, collections
+        self._browse_render_collections(client)
+
+    def _browse_render_collections(self, client: MediaServerClient, *, series_only: bool = False):
+        """Sort both sections, cut the series to the rail's letter, lay out.
+        Your own stay first and are never cut by the rail, so a letter
+        (`series_only`) leaves them, and the rail, exactly where they are."""
+        _label, by, _order = self.COLLECTION_SORT_OPTIONS[self._coll_sort_idx]
+        reverse = self._coll_sort_reversed
+        custom = sort_collections(self._coll_custom_all, by, reverse)
+        collections = sort_collections(self._coll_series_all, by, reverse)
+        if not series_only:
+            counts: dict = {}
+            for it in collections:
+                letter = collection_letter(it.get("name"))
+                counts[letter] = counts.get(letter, 0) + 1
+            self._coll_letter_counts = counts if by == "name" else {}
+            self._browse_fill_alpha_rail()
+        if self._browse_letter:
+            collections = [it for it in collections
+                           if collection_letter(it.get("name")) == self._browse_letter]
+        self._browse_sync_coll_sort_pill()
         started = time.monotonic()
         cols = T.COLLECTION_COLS
-        self._custom_items = custom
         self._collection_items = collections
         self._collection_filled = set()
-        custom_rows = [custom[i:i + cols] for i in range(0, len(custom), cols)]
-        self.setProperty("browse_coll_rows", str(min(len(custom_rows), 2)) if custom_rows else "")
-        self.setProperty("browse_coll_col", "0")
+        # From the rail, Left lands on the row's last card.
+        self.setProperty("browse_coll_col", str(cols - 1) if series_only else "0")
         self.setProperty("browse_collections", "1")
         # A collection's own chips go when Back returns to the index.
         self.setProperty("browse_filterbar", "")
-        total = len(custom) + len(collections)
-
-        # Yours are a handful: built whole. The series run to hundreds, so
-        # they ALLOCATE blank rows and fill a window around the selection.
-        self.custom_collection_list.reset()
-        if custom_rows:
-            self._browse_stage_collection_art(client, custom)
-            self.custom_collection_list.addItems(
-                [self._browse_apply_collection_row(client, kodigui.ManagedListItem(), row)
-                 for row in custom_rows])
-            self.custom_collection_list.selectItem(0)
-        self._browse_sync_custom_last()
+        if not series_only:
+            self._custom_items = custom
+            custom_rows = [custom[i:i + cols] for i in range(0, len(custom), cols)]
+            self.setProperty("browse_coll_rows",
+                             str(min(len(custom_rows), 2)) if custom_rows else "")
+            # Yours are a handful: built whole. The series run to hundreds, so
+            # they ALLOCATE blank rows and fill a window around the selection.
+            self.custom_collection_list.reset()
+            if custom_rows:
+                self._browse_stage_collection_art(client, custom)
+                self.custom_collection_list.addItems(
+                    [self._browse_apply_collection_row(client, kodigui.ManagedListItem(), row)
+                     for row in custom_rows])
+                self.custom_collection_list.selectItem(0)
+            # From the row we selected, not read back: Kodi applies selectItem
+            # late, and a stale "last row" drew the series heading over row two.
+            self.setProperty("browse_coll_a_last", "1" if len(custom_rows) == 1 else "")
         self.collection_list.reset()
         if collections:
             self.collection_list.addItems(
@@ -4081,7 +4161,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.collection_list.selectItem(0)
             self._browse_fill_collection_window(client)
         log.info("browse: %d collection(s) (%d custom) in %.2fs"
-                 % (total, len(custom), time.monotonic() - started))
+                 % (len(custom) + len(collections), len(custom), time.monotonic() - started))
 
     #: Rows of series cards filled around the selection: half behind, all ahead.
     COLLECTION_FILL_ROWS = 6
@@ -4152,6 +4232,28 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             mli.setProperty(c + "_meta", "{0} title{1}".format(count, "" if count == 1 else "s")
                             if isinstance(count, int) else "")
         return mli
+
+    def _browse_sync_coll_sort_pill(self):
+        """The Collections Sort pill: its arrow says which way the order runs."""
+        label, _value, order = self.COLLECTION_SORT_OPTIONS[self._coll_sort_idx]
+        if self._coll_sort_reversed:
+            order = "asc" if order == "desc" else "desc"
+        arrow = u"\u2191" if order == "asc" else u"\u2193"
+        self.setProperty("browse_chip_{0}_label".format(self.COLL_SORT_ID),
+                         u"{0}  {1}".format(arrow, label))
+        self.setProperty("browse_chip_{0}".format(self.COLL_SORT_ID), "0x1AFFFFFF")
+        try:
+            self.getControl(self.COLL_SORT_ID).setWidth(self._browse_chip_width(label) + 31)
+        except RuntimeError:
+            pass
+
+    def _browse_collection_at_end(self, list_id: int) -> bool:
+        """Whether focus is on the last card of its row."""
+        if list_id not in self.COLLECTION_IDS:
+            return False
+        item = self._browse_collection_list(list_id).getSelectedItem()
+        row = (item.dataSource if item else None) or []
+        return bool(row) and self._browse_collection_col(list_id) >= len(row) - 1
 
     def _browse_collection_list(self, list_id: int):
         return (self.custom_collection_list if list_id == self.CUSTOM_COLLECTION_ID
@@ -4229,6 +4331,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # the collection's own genres here (verified on Android TV, whose
         # pills carry no counts inside a collection).
         self.setProperty("browse_collections", "")
+        self.setProperty("browse_alpha", "")
         # Members are AnnotatedDiscoveryItem, the same shape Discover's
         # shelves carry, so its card builder renders owned and requestable
         # alike without a second one.
@@ -4397,6 +4500,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             ALPHA_MIN_TITLES the whole thing is a short scroll, and 28 pills
             beside it read as a second navigation column for nothing.
         """
+        if self._browse_on_collections_index():
+            return bool(self._coll_letter_counts)
         if "media.letter_index" not in self._server_capabilities:
             return False
         if self._browse_collection is not None:
@@ -4406,6 +4511,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if self._browse_in_folders():
             return False
         return sum(self._browse_letter_counts.values()) >= T.ALPHA_MIN_TITLES
+
+    def _browse_on_collections_index(self) -> bool:
+        return (bool(self._sources) and self._browse_collection is None
+                and self._browse_active_source().get("kind") == "collections")
 
     def _browse_fill_alpha_rail(self):
         """Rebuild the rail for the active source, or hide it.
@@ -4440,16 +4549,19 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # A letter that survived into a library which has no titles under it
         # would be an active pill with no cell, and a grid filtered by
         # something the viewer cannot see or clear.
-        if self._browse_letter and not self._browse_letter_counts.get(self._browse_letter):
+        counts = (self._coll_letter_counts if self._browse_on_collections_index()
+                  else self._browse_letter_counts)
+        noun = "collection" if self._browse_on_collections_index() else "title"
+        if self._browse_letter and not counts.get(self._browse_letter):
             self._browse_letter = ""
-        total = sum(self._browse_letter_counts.values())
+        total = sum(counts.values())
         items = []
         for key in T.ALPHA_KEYS:
-            count = total if key == T.ALPHA_KEYS[0] else self._browse_letter_counts.get(key)
+            count = total if key == T.ALPHA_KEYS[0] else counts.get(key)
             if not count:
                 continue
             mli = kodigui.ManagedListItem(
-                label=self._browse_alpha_speech(key, count),
+                label=self._browse_alpha_speech(key, count, noun),
                 data_source=self._alpha_value(key))
             # The DRAWN glyph, separate from the label, because the label is
             # now what a screen reader says. See _browse_alpha_speech.
@@ -4459,7 +4571,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_mark_alpha_active()
 
     @staticmethod
-    def _browse_alpha_speech(key: str, count: int) -> str:
+    def _browse_alpha_speech(key: str, count: int, noun: str = "title") -> str:
         """What a screen reader says for a pill. The count is SPOKEN, never
         drawn: a number beside a 64px glyph is unreadable at ten feet, but
         "F, 15 titles" is exactly what a listener needs to judge the jump.
@@ -4469,7 +4581,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         "#" is spelled OTHER rather than read as "hash", which is the
         server's bucket name, not a word for the non-alphabetic titles."""
-        titles = "{0} title{1}".format(count, "" if count == 1 else "s")
+        titles = "{0} {1}{2}".format(count, noun, "" if count == 1 else "s")
         if key == T.ALPHA_KEYS[0]:
             return "All, {0}".format(titles)
         if key == "#":
@@ -4500,6 +4612,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
         self._browse_letter = item.dataSource
         self._browse_mark_alpha_active()
+        if self._browse_on_collections_index():
+            client = self._get_client()     # no round trip: cut on the device
+            if client:
+                self._browse_render_collections(client, series_only=True)
+            return
         self._settle_delay_ms()
         self._settle.schedule(self._browse_load_grid)
 
@@ -4552,13 +4669,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         do nothing; `_browse_sort_offered` maps a row back to its index."""
         if self._browse_active_source().get("kind") == "history":
             return          # the play log has one order; nothing to offer
-        offered = self._browse_offered_sorts()
+        self._sort_for_collections = self._browse_on_collections_index()
+        if self._sort_for_collections:
+            options, current, reversed_ = (self.COLLECTION_SORT_OPTIONS,
+                                           self._coll_sort_idx, self._coll_sort_reversed)
+            offered = list(range(len(options)))
+        else:
+            options, current, reversed_ = (self.BROWSE_SORT_OPTIONS,
+                                           self._browse_sort_idx, self._browse_sort_reversed)
+            offered = self._browse_offered_sorts()
         self._browse_sort_offered = offered
         items = []
         for i in offered:
-            label, _value, order = self.BROWSE_SORT_OPTIONS[i]
-            active = i == self._browse_sort_idx
-            if active and order and self._browse_sort_reversed:
+            label, _value, order = options[i]
+            active = i == current
+            if active and order and reversed_:
                 order = "asc" if order == "desc" else "desc"
             mli = kodigui.ManagedListItem(label)
             mli.setProperty("current", "1" if active else "")
@@ -4567,8 +4692,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.sort_panel_list.reset()
         self.sort_panel_list.addItems(items)
         self.setProperty("browse_sort_open", "1")
-        self.sort_panel_list.selectItem(
-            offered.index(self._browse_sort_idx) if self._browse_sort_idx in offered else 0)
+        self.sort_panel_list.selectItem(offered.index(current) if current in offered else 0)
         self.setFocusId(self.SORT_PANEL_ID)
 
     def _browse_sort_close(self) -> bool:
@@ -4576,7 +4700,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not self.getProperty("browse_sort_open"):
             return False
         self.setProperty("browse_sort_open", "")
-        self.setFocusId(self.SORT_ID)
+        self.setFocusId(self.COLL_SORT_ID if self._sort_for_collections else self.SORT_ID)
         return True
 
     def _browse_sort_picked(self):
@@ -4587,6 +4711,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if pos < 0 or pos >= len(offered):
             return
         choice = offered[pos]
+        if self._sort_for_collections:
+            self._browse_coll_sort_picked(choice)
+            return
         if choice == self._browse_sort_idx:
             # Shuffle has no direction to flip.
             if self.BROWSE_SORT_OPTIONS[choice][2] is None:
@@ -4606,6 +4733,20 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self._browse_shuffle_seed = None
             self._browse_sync_sort_pill()
         self._browse_load_grid()
+
+    def _browse_coll_sort_picked(self, choice: int):
+        """Collections: a new order applies, the one in use reverses; Size
+        has no rail, so it drops the letter."""
+        if choice == self._coll_sort_idx:
+            self._coll_sort_reversed = not self._coll_sort_reversed
+        else:
+            self._coll_sort_idx = choice
+            self._coll_sort_reversed = False
+        if self.COLLECTION_SORT_OPTIONS[self._coll_sort_idx][1] != "name":
+            self._browse_reset_letter()
+        client = self._get_client()
+        if client:
+            self._browse_render_collections(client)
 
     def _browse_filter_clicked(self):
         """Watch Status, Year and Quality behind ONE collapsed panel.

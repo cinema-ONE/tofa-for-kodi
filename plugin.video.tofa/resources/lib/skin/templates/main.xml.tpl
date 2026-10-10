@@ -426,13 +426,14 @@
 
             <!-- COLLECTIONS: "Your collections" (6215), then "Film series and
                  sets" (6210). A list holds its focused row at y 501; the
-                 slides put a section's first row at y 262, as the app does. -->
+                 slides put a section's first row at y 262, as the app does.
+                 The A-Z rail (6220) filters the series, so it keeps them in view. -->
             <control type="group">
                 <visible>!String.IsEmpty(Window.Property(browse_view)) + !String.IsEmpty(Window.Property(browse_collections))</visible>
                 <control type="group">
-                    <visible>!String.IsEmpty(Window.Property(browse_coll_rows)) + ![Control.HasFocus(6210) + Integer.IsGreater(Container(6210).CurrentItem,1)]</visible>
-                    <animation effect="slide" end="0,{COLLECTION_REST_SHIFT}" time="{SCROLLTIME}" condition="!Control.HasFocus(6210) + Integer.IsLess(Container(6215).CurrentItem,2)">Conditional</animation>
-                    <animation effect="slide" end="0,-{COLLECTION_SECTION_GAP}" time="{SCROLLTIME}" condition="Control.HasFocus(6210)">Conditional</animation>
+                    <visible>!String.IsEmpty(Window.Property(browse_coll_rows)) + ![[Control.HasFocus(6210) | Control.HasFocus(6220)] + Integer.IsGreater(Container(6210).CurrentItem,1)]</visible>
+                    <animation effect="slide" end="0,{COLLECTION_REST_SHIFT}" time="{SCROLLTIME}" condition="![Control.HasFocus(6210) | Control.HasFocus(6220)] + Integer.IsLess(Container(6215).CurrentItem,2)">Conditional</animation>
+                    <animation effect="slide" end="0,-{COLLECTION_SECTION_GAP}" time="{SCROLLTIME}" condition="[Control.HasFocus(6210) | Control.HasFocus(6220)]">Conditional</animation>
                     <animation effect="slide" end="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Hidden</animation>
                     <animation effect="fade" end="0" time="{SCROLLTIME}">Hidden</animation>
                     <animation effect="slide" start="0,-{COLLECTION_PITCH_Y}" time="{SCROLLTIME}">Visible</animation>
@@ -456,7 +457,7 @@
                         <posy>{COLLECTION_LIST_Y}</posy>
                         <width>{COLLECTION_LIST_W}</width>
                         <height>{COLLECTION_LIST_H}</height>
-                        <onup>6215</onup>
+                        <onup>6145</onup>
                         <ondown>6210</ondown>
                         <onleft>6215</onleft>
                         <onright>6215</onright>
@@ -468,13 +469,13 @@
 {custom_focused}
                     </control>
                 </control>
+                <!-- Never hidden: shown again it would slide in from mid-screen.
+                     Above your last row it waits just off the bottom instead. -->
                 <control type="group">
-                    <visible>String.IsEmpty(Window.Property(browse_coll_rows)) | Control.HasFocus(6210) | String.IsEqual(Window.Property(browse_coll_rows),1) | !String.IsEmpty(Window.Property(browse_coll_a_last))</visible>
                     <animation effect="slide" end="0,{COLLECTION_REST_SHIFT}" time="{SCROLLTIME}" condition="String.IsEmpty(Window.Property(browse_coll_rows)) + Integer.IsLess(Container(6210).CurrentItem,2)">Conditional</animation>
-                    <animation effect="slide" end="0,{COLLECTION_BELOW_ONE_ROW}" time="{SCROLLTIME}" condition="!Control.HasFocus(6210) + String.IsEqual(Window.Property(browse_coll_rows),1)">Conditional</animation>
-                    <animation effect="slide" end="0,{COLLECTION_SECTION_GAP}" time="{SCROLLTIME}" condition="!Control.HasFocus(6210) + String.IsEqual(Window.Property(browse_coll_rows),2) + !String.IsEmpty(Window.Property(browse_coll_a_last))">Conditional</animation>
-                    <animation effect="fade" end="0" time="{SCROLLTIME}">Hidden</animation>
-                    <animation effect="fade" start="0" time="{SCROLLTIME}">Visible</animation>
+                    <animation effect="slide" end="0,{COLLECTION_BELOW_ONE_ROW}" time="{SCROLLTIME}" condition="![Control.HasFocus(6210) | Control.HasFocus(6220)] + String.IsEqual(Window.Property(browse_coll_rows),1)">Conditional</animation>
+                    <animation effect="slide" end="0,{COLLECTION_SECTION_GAP}" time="{SCROLLTIME}" condition="![Control.HasFocus(6210) | Control.HasFocus(6220)] + String.IsEqual(Window.Property(browse_coll_rows),2) + !String.IsEmpty(Window.Property(browse_coll_a_last))">Conditional</animation>
+                    <animation effect="slide" end="0,{COLLECTION_BELOW_TWO_ROWS}" time="{SCROLLTIME}" condition="![Control.HasFocus(6210) | Control.HasFocus(6220)] + String.IsEqual(Window.Property(browse_coll_rows),2) + String.IsEmpty(Window.Property(browse_coll_a_last))">Conditional</animation>
                     <control type="label">
                         <visible>Integer.IsLess(Container(6210).CurrentItem,2)</visible>
                         <posx>{BROWSE_LEFT}</posx>
@@ -495,7 +496,7 @@
                         <width>{COLLECTION_LIST_W}</width>
                         <height>{COLLECTION_LIST_H}</height>
                         <onup condition="!String.IsEmpty(Window.Property(browse_coll_rows))">6215</onup>
-                        <onup>{NAV_STOP}</onup>
+                        <onup>6145</onup>
                         <ondown>6210</ondown>
                         <onleft>6210</onleft>
                         <onright>6210</onright>
@@ -583,6 +584,11 @@
 {surprise_item}
 {surprise_focused}
                 </control>
+                <!-- Collections' only pill: Name or Size (ours, not the app's). -->
+                <control type="group">
+                    <visible>!String.IsEmpty(Window.Property(browse_collections))</visible>
+{coll_sort_chip}
+                </control>
 
                 <!-- One row, laid out by Kodi: a grouplist sizes nothing itself,
                      so MainWindow sets each chip's words and width. -->
@@ -637,7 +643,9 @@
                 <posy>{ALPHA_RAIL_Y}</posy>
                 <width>{ALPHA_PILL_W}</width>
                 <height>{ALPHA_RAIL_H}</height>
+                <onup condition="!String.IsEmpty(Window.Property(browse_collections))">6145</onup>
                 <onup>6110</onup>
+                <onleft condition="!String.IsEmpty(Window.Property(browse_collections))">{NAV_STOP}</onleft>
                 <onleft>6200</onleft>
                 <orientation>vertical</orientation>
                 <itemwidth>{ALPHA_PILL_W}</itemwidth>

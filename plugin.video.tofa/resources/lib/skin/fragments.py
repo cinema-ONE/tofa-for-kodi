@@ -2108,38 +2108,41 @@ def glass_pill(
 
 
 def alpha_rail_pill(list_id: int) -> tuple[str, str]:
-    """One entry of Browse's A-Z rail (app 2.0): a small grey letter, "All"
-    first and "#" last. The chosen letter sits in a grey disc and the focused
-    one in the accent's. The layout is a whole pitch tall: a list steps by
-    its itemlayout's height, not by <itemheight>."""
-    W, D = T.ALPHA_PILL_W, T.ALPHA_PITCH
+    """One entry of Browse's A-Z rail (app 2.0): a grey letter, "All" first
+    and "#" last. The chosen one sits in a rimmed grey disc, white; the
+    focused one in the accent's. The layout is a whole pitch tall: a list
+    steps by its itemlayout's height, not by <itemheight>."""
+    W, H, D = T.ALPHA_PILL_W, T.ALPHA_PILL_H, T.ALPHA_PITCH
     active = "String.IsEqual(ListItem.Property(active),1)"
+    word = "String.IsEqual(ListItem.Property(glyph),All)"
 
-    def _disc(colour: str, vis: str) -> str:
+    def _disc(texture: str, colour: str, vis: str) -> str:
         return f"""
                     <control type="image">
                         <visible>{vis}</visible>
-                        <posx>{(W - D) // 2}</posx>
-                        <width>{D}</width>
-                        <height>{D}</height>
+                        <posy>{(D - H) // 2}</posy>
+                        <width>{W}</width>
+                        <height>{H}</height>
                         <colordiffuse>{colour}</colordiffuse>
-                        <texture>circle.png</texture>
+                        <texture>{texture}</texture>
                     </control>"""
 
     def _glyph(colour: str, vis: str) -> str:
-        return f"""
+        # "All" is a word in the disc, so smaller and bold, as the app's.
+        return "".join(f"""
                     <control type="label">
-                        <visible>{vis}</visible>
+                        <visible>{vis} + {gate}{word}</visible>
                         <width>{W}</width>
                         <height>{D}</height>
                         <align>center</align>
                         <aligny>center</aligny>
-                        <font>{T.FONT_MICRO}</font>
+                        <font>{font}</font>
                         <textcolor>{colour}</textcolor>
                         <label>$INFO[ListItem.Property(glyph)]</label>
-                    </control>"""
+                    </control>""" for gate, font in (("", T.FONT_EYEBROW), ("!", T.FONT_METADATA)))
 
-    rest = (_disc("0x4DFFFFFF", active)
+    rest = (_disc("circle.png", "0x29FFFFFF", active)
+            + _disc("alpha-disc-rim.png", "0x5CFFFFFF", active)
             + _glyph("$INFO[Window.Property(text_primary)]", active)
             + _glyph("$INFO[Window.Property(text_secondary)]", "!" + active))
     focus = f"Control.HasFocus({list_id})"
@@ -2148,7 +2151,7 @@ def alpha_rail_pill(list_id: int) -> tuple[str, str]:
     focused = f"""                <focusedlayout width="{W}" height="{D}">
                     <control type="group">
                         <visible>!{focus}</visible>{rest}
-                    </control>{_disc("$INFO[Window.Property(accent_color)]", focus)}{_glyph(
+                    </control>{_disc("circle.png", "$INFO[Window.Property(accent_color)]", focus)}{_glyph(
                         "$INFO[Window.Property(on_accent_color)]", focus)}
                 </focusedlayout>"""
     return item, focused
@@ -2297,14 +2300,20 @@ def browse_header_pill(list_id: int, *, glyph: str, label: str,
     return item, focused
 
 
-def browse_chip(control_id: int, *, indent: str = "                ") -> str:
+def browse_chip(control_id: int, *, indent: str = "                ", nav: dict | None = None) -> str:
     """One chip of a Browse view's chip row: a button whose width MainWindow
     sets, its words and resting fill window properties (browse_chip_<id>,
     _label) so a chosen chip reads as chosen. Python's setLabel would reset
-    the font and colours. Focused: the accent's wash."""
+    the font and colours. Focused: the accent's wash. `nav` is for a chip
+    outside the row: {tag: target} or {tag: [(condition, target), ...]}."""
     H = T.BROWSE_CHIP_H
+    moves = ""
+    for tag, target in (nav or {}).items():
+        for cond, dest in (target if isinstance(target, list) else [("", target)]):
+            when = f' condition="{cond}"' if cond else ""
+            moves += f"{indent}    <{tag}{when}>{dest}</{tag}>\n"
     return f"""{indent}<control type="button" id="{control_id}">
-{indent}    <width>{T.BROWSE_CHIP_PAD * 2}</width>
+{moves}{indent}    <width>{T.BROWSE_CHIP_PAD * 2}</width>
 {indent}    <height>{H}</height>
 {indent}    <font>{T.FONT_BODY}</font>
 {indent}    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>

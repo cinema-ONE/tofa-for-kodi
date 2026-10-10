@@ -102,7 +102,7 @@ DISCOVER_WIDE_W, DISCOVER_WIDE_H = 672, 378
 # The collections card (fragments.py:collection_row) -- the one landscape
 # 16:9 tile in an app of 2:3 portraits. Keep in step with tokens.py's
 # COLLECTION_TILE_W / COLLECTION_TILE_H / COLLECTION_RADIUS.
-COLLECTION_W, COLLECTION_H = 556, 312
+COLLECTION_W, COLLECTION_H = 530, 298
 COLLECTION_RADIUS = 12
 GLOW_ALPHA = 90  # peak opacity (0-255) of the glow's uniform interior --
 # flat translucent wash near the border, falloff reserved for the outer
@@ -531,6 +531,18 @@ def gen_collection_assets() -> None:
 SORT_ROW_W, SORT_ROW_H, SORT_ROW_RADIUS = 572, 56, 12
 
 
+# The A-Z rail's disc (tokens.py ALPHA_PILL_W/H): its 2px rim, as the app's.
+ALPHA_DISC_W, ALPHA_DISC_H, ALPHA_DISC_RIM = 48, 44, 2
+
+
+def gen_alpha_disc_rim() -> None:
+    """The rim the A-Z rail's chosen letter wears round its disc."""
+    w, h = ALPHA_DISC_W * S, ALPHA_DISC_H * S
+    im = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    ImageDraw.Draw(im).ellipse([0, 0, w - 1, h - 1], outline="white", width=ALPHA_DISC_RIM * S)
+    _save(im, "alpha-disc-rim.png", (ALPHA_DISC_W, ALPHA_DISC_H))
+
+
 def gen_sort_row_assets() -> None:
     """A sort option's fill, its 1px rim and its 2px focus rim."""
     w, h, r = SORT_ROW_W * S, SORT_ROW_H * S, SORT_ROW_RADIUS * S
@@ -692,6 +704,7 @@ def main() -> None:
     gen_browse_tile_assets()
     gen_avatar_shadow()
     gen_collection_assets()
+    gen_alpha_disc_rim()
     gen_sort_row_assets()
     gen_feature_poster_mask()
     gen_person_assets()

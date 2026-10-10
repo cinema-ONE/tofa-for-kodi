@@ -642,13 +642,14 @@ BROWSE_SORT_DIM = "0xAA030B10"
 #
 # Height and pitch are still the app's, so only the axis that had to move
 # has moved.
-# App 2.0 (Apple TV): a slim rail right of the seventh column, small letters
-# with "All" in a disc, all 28 on screen at once.
-ALPHA_PILL_W = 46
-ALPHA_PILL_H = 26
-ALPHA_PITCH = 28
-ALPHA_RAIL_X = 1773
-ALPHA_RAIL_Y = 225
+# App 2.0 (Apple TV), measured off 2026-10-08-browse-grid-library.png: a rail
+# right of the seventh column, 23px letters on a 46 pitch (it scrolls), the
+# chosen one in a 48x44 disc with a light rim, centred on x 1796.
+ALPHA_PILL_W = 48
+ALPHA_PILL_H = 44
+ALPHA_PITCH = 46
+ALPHA_RAIL_X = 1772
+ALPHA_RAIL_Y = 223
 #: The pill is 58 tall in a 68 box, so every item CARRIES its own 10px
 #: trailing pad and the list needs no itemgap. That is what lets the rail
 #: run to the screen edge while the pill that comes to rest at the bottom
@@ -679,19 +680,20 @@ ALPHA_KEYS = ("All",) + tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + ("#",)
 ALPHA_MIN_TITLES = 120
 
 # ------------------------------------------ collections view (app 2.0) --
-# "Your collections", then "Film series and sets": three 16:9 cards on a 586
-# pitch, rows 443 apart. Once the view scrolls the focused row holds at
-# y 501 with the row before it clipped at y 140, as in the app.
+# "Your collections", then "Film series and sets": three 16:9 cards, rows
+# 429 apart. Once the view scrolls the focused row holds at y 501 with the
+# row before it clipped at y 140, as in the app. The app's cards are 556 on
+# 586; ours give 26 to the A-Z rail (ours only), ending where a library's do.
 COLLECTION_COLS = 3
-COLLECTION_TILE_W, COLLECTION_TILE_H = 556, 312
+COLLECTION_TILE_W, COLLECTION_TILE_H = 530, 298
 COLLECTION_RADIUS = 12
-COLLECTION_PITCH_X = 586
-COLLECTION_PITCH_Y = 443
+COLLECTION_PITCH_X = 560
+COLLECTION_PITCH_Y = 429
 COLLECTION_PAD = 30                   # room for the focus lift and glow
 COLLECTION_FOCUS_Y = 501              # the held row's card top
 COLLECTION_FIRST_Y = 262              # a section's first row, at rest
 COLLECTION_HEAD_Y = 416               # its heading's cap top, over row 501
-COLLECTION_SECTION_GAP = 565          # last card top to the next section's
+COLLECTION_SECTION_GAP = 551          # last card top to the next section's
 COLLECTION_CLIP_Y = 140               # content scrolls under the title band
 COLLECTION_REST_SHIFT = COLLECTION_FIRST_Y - COLLECTION_FOCUS_Y      # -239
 COLLECTION_LIST_X = BROWSE_LEFT - COLLECTION_PAD
@@ -703,6 +705,8 @@ COLLECTION_LIST_H = SCREEN_H - COLLECTION_LIST_Y - COLLECTION_REST_SHIFT
 COLLECTION_HEAD_LABEL_Y = COLLECTION_HEAD_Y - 15
 # With one row of your own, the series section starts in view below it.
 COLLECTION_BELOW_ONE_ROW = COLLECTION_FIRST_Y + COLLECTION_SECTION_GAP - COLLECTION_FOCUS_Y
+# Your first of two rows at rest: the series' first row lands 1242, off screen.
+COLLECTION_BELOW_TWO_ROWS = COLLECTION_BELOW_ONE_ROW + COLLECTION_PITCH_Y
 COLLECTION_CAPTION_Y = 11             # card bottom to the name's label box
 COLLECTION_META_DY = 34               # name box top to the count's
 # An empty card: white 4% over the canvas, opaque so the focus glow stays out.
