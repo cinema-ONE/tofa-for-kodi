@@ -35,7 +35,8 @@ check("a 5-line comment fails",
 check("an XML comment counts its lines",
       len(B.comment_problems("s", diff("t.tpl", "<!-- a", "b", "c", "d", "e -->"))) == 1)
 check("rendered skin XML is not checked",
-      B.comment_problems("s", diff(B.GENERATED + "x.xml", *["<!-- a -->"] * 9)) == [])
+      all(B.comment_problems("s", diff(g + "x.xml", *["<!-- a -->"] * 9)) == []
+          for g in B.GENERATED))
 check("a shebang and coding line are not comments",
       B.comment_problems("s", diff("a.py", "#!/usr/bin/env python3", "# -*- coding: utf-8 -*-",
                                    "# a", "# b", "# c", "# d")) == [])
