@@ -59,6 +59,9 @@ class Browse:
     _browse_sync_sort_pill = MW._browse_sync_sort_pill
     _browse_sort_glyph = MW._browse_sort_glyph
 
+    def _browse_on_watchlist(self):
+        return False
+
     def _browse_sync_chips(self):
         # What MainWindow._browse_sync_chips writes on the sort chip.
         self.sort_list[0].setProperty("sort_label", OPTIONS[self._browse_sort_idx][0])
