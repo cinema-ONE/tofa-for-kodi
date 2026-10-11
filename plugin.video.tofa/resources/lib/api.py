@@ -23,6 +23,11 @@ from .profile import CapabilityProfile
 #: gateway that phrases it differently.
 _RELAY_DOWN = ("server_relay_not_connected", "server_offline")
 
+#: Posters are asked for at most this wide: the server snaps it up to a bucket,
+#: keeps the shape and never enlarges. A clip library's "poster" can be a 4K
+#: frame (1.1 MB); our largest poster draws ~600 px wide on a 4K screen.
+POSTER_FETCH_W = 720
+
 
 def _rfc3339_epoch(value: Optional[str]) -> Optional[float]:
     """`"2026-08-15T12:34:56Z"` -> a POSIX timestamp, or None.
@@ -429,12 +434,13 @@ class MediaServerClient:
         """
         if not path:
             return None
+        size = f"&w={POSTER_FETCH_W}" if "images/posters/" in path else ""
         if path.startswith("http"):
             if self._is_own_host(path):
-                return f"{path}?st={self.image_token()}"
+                return f"{path}?st={self.image_token()}{size}"
             return path
         cache_path = path if path.startswith("/cache/") else f"/cache/{path.lstrip('/')}"
-        return f"{self.resolve_url(cache_path)}?st={self.image_token()}"
+        return f"{self.resolve_url(cache_path)}?st={self.image_token()}{size}"
 
     def stage_pair(self, path: Optional[str], include_cdn: bool = False):
         """`(remote_url, staging key)` for an image worth FETCHING NOW.
