@@ -3290,9 +3290,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if src.get("media_type"):
                 params["media_type"] = src["media_type"]
             items = (client._get("/api/v1/media", params=params) or {}).get("items") or []
-            # A library of clips has few posters at random; its newest has more.
-            if len({it.get("poster_path") for it in items if it.get("poster_path")}) < 8:
-                params.update(sort="added_at", order="desc")
+            # A library of clips has few posters, and they sit among its newest
+            # titles (Videos: all 44 of 2962 in the newest 200), so read those.
+            if len({it.get("poster_path") for it in items if it.get("poster_path")}) < T.BROWSE_WALL_POOL // 2:
+                params.update(sort="added_at", order="desc", per_page=200)
                 items += (client._get("/api/v1/media", params=params) or {}).get("items") or []
             return items
         if kind == "watchlist":
