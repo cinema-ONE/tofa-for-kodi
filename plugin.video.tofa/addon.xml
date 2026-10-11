@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.1.0" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.1.1" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,32 +45,14 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Household viewing: people in your household who have their own tofa
-        account can now watch on this TV as themselves, with their own history,
-        watchlist and Continue Watching. Turn it on under Settings &gt; Account, on
-        the account owner's own profile; Who's watching then lists them after your
-        profiles. tofa asks who's watching each time it starts, and again after 15
-        minutes away.
-      - When a household member's session ends, tofa goes back to Who's watching
-        from whichever screen you are on.
-      - Settings &gt; Account is laid out as on the Apple TV app: This TV, then
-        Account. Manage account shows the code to scan.
-      - Collections can be sorted by name or by size. Sorted by name, an A-Z rail
-        beside the film series shows just the ones under a letter.
-      - Inside a collection, Unwatched and Filter now work: by watch status,
-        format and year, wherever the collection's titles carry them.
-      - History lists up to 100 titles, so a long run of one show's episodes no
-        longer crowds everything else out. A title that has left your library
-        shows once.
-      - The A-Z rail is now the size of the Apple TV app's.
-      - When the server cannot be reached at start, tofa now says so instead of
-        showing empty screens.
-      - Fixed a TV losing its tofa cloud sign-in, which made the Account page show
-        a username instead of your email address. A TV that already lost it needs
-        signing out and in again once.
-      - Fixed Settings cutting off the last of four choices under a preview.
-      - Fixed Collections drawing the film series heading over your second row of
-        collections.
+      - The posters behind Browse's tiles drift at the Apple TV app's pace, and
+        the picture dips briefly as you move between tiles, as on the Apple TV.
+      - Watchlist can be sorted (Date Added, Title, Year, Rating, Runtime or
+        Shuffle) and narrowed by genre or year.
+      - Posters download much smaller where the server holds a large image, and
+        the Videos library's backdrop shows many more different posters.
+      - Fixed the title page's episode row moving focus onto a card that was
+        mostly off the screen.
     </news>
     <assets>
       <icon>icon.png</icon>
