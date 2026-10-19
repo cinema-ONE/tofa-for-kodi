@@ -2838,7 +2838,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if picked in (cardoptions.WATCHLIST_ADD, cardoptions.WATCHLIST_REMOVE):
             self._toggle_watchlist()
         else:
-            titlemarks.apply(client, picked, disc, self.content_media_type, self.tmdb_id)
+            titlemarks.apply(client, picked, disc, self.content_media_type, self.tmdb_id,
+                             title=self.getProperty("hero_title"))
         return True
 
     def _primary_label(self, verb: str) -> str:

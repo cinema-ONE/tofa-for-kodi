@@ -112,9 +112,8 @@ CHEVRON_UP = 0xE070
 MINUS_CIRCLE = 0xE07E
 CIRCLE_X = 0xE084
 CHECK = 0xE06C
-# Card options: "Not Interested", and "Show in Suggestions" to undo it.
+# Card options: "Not Interested", and "Hidden from Suggestions" once set.
 CIRCLE_SLASH = 0xE402
-EYE = 0xE0BA
 ARROW_UP = 0xE04A
 ARROW_DOWN = 0xE042
 TAG = 0xE17F

@@ -53,6 +53,10 @@ titlemarks.apply(client, co.NOT_INTERESTED_REMOVE, item)
 check("undo is a DELETE on not-interested",
       CALLS[-1] == ("DELETE", "/api/v1/users/me/not-interested/movie/263472"), str(CALLS))
 check("every choice confirms with a toast", len(TOASTS) == 2, str(TOASTS))
+check("...naming the title, in tofa web's words",
+      TOASTS[0] == "Marked this title as seen", TOASTS[0])
+titlemarks.apply(client, co.NOT_INTERESTED_ADD, item, title="Knock Knock")
+check("a caller's title wins", TOASTS[-1] == "We'll stop suggesting Knock Knock", TOASTS[-1])
 check("other keys are left to the caller", not titlemarks.apply(client, co.PLAY, item))
 
 def refuse(path, *a, **k):
@@ -61,7 +65,7 @@ client._put = refuse
 item = dict(NOT_HELD)
 titlemarks.apply(client, co.SEEN_ADD, item)
 check("a failure changes nothing", item["seen"] is False)
-check("...and says so", TOASTS[-1].startswith("Couldn't"), TOASTS[-1])
+check("...and says so", TOASTS[-1] == "Couldn't update Seen it, try again later", TOASTS[-1])
 
 print()
 failed = [n for n, ok in RESULTS if not ok]

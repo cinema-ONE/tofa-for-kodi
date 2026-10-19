@@ -12,12 +12,13 @@ from typing import Optional
 from . import cardoptions, kodigui
 from .. import http, toast
 
-#: Toast per choice; nothing on the card changes, so this is the confirmation.
+#: Toast per choice, in tofa web's words where it has them; nothing on the
+#: card changes, so this is the confirmation.
 _DONE = {
-    cardoptions.SEEN_ADD: "Marked as seen",
-    cardoptions.SEEN_REMOVE: "No longer marked as seen",
-    cardoptions.NOT_INTERESTED_ADD: "You won't see this in suggestions",
-    cardoptions.NOT_INTERESTED_REMOVE: "This can be suggested again",
+    cardoptions.SEEN_ADD: "Marked {0} as seen",
+    cardoptions.SEEN_REMOVE: "{0} is no longer marked as seen",
+    cardoptions.NOT_INTERESTED_ADD: "We'll stop suggesting {0}",
+    cardoptions.NOT_INTERESTED_REMOVE: "{0} can be suggested again",
 }
 KEYS = frozenset(_DONE)
 
@@ -38,7 +39,7 @@ def offered(data: dict, media_type: Optional[str] = None,
 
 
 def apply(client, picked: str, data: dict, media_type: Optional[str] = None,
-          tmdb_id=None) -> bool:
+          tmdb_id=None, title: str = "") -> bool:
     """Carry out one mark choice and record it in `data`. False if `picked`
     is not a mark."""
     if picked not in KEYS:
@@ -54,8 +55,9 @@ def apply(client, picked: str, data: dict, media_type: Optional[str] = None,
             client.set_not_interested(media_type, tmdb_id, on)
     except http.ApiError as exc:
         kodigui.ERROR("titlemarks: {0} failed: {1}".format(picked, exc))
-        toast.show("Couldn't save that, try again later")
+        toast.show("Couldn't update {0}, try again later".format(
+            "Seen it" if seen_row else "Not interested"))
         return True
     data["seen" if seen_row else "not_interested"] = on
-    toast.show(_DONE[picked])
+    toast.show(_DONE[picked].format(title or data.get("title") or "this title"))
     return True

@@ -5364,7 +5364,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.open_detail(discovery_id=str(tmdb_id),
                                  media_type=media_type)
             return
-        if titlemarks.apply(client, picked, data):
+        if titlemarks.apply(client, picked, data, title=item.getLabel()):
             return
 
         try:
