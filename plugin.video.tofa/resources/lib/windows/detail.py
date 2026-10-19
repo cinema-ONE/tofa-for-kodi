@@ -197,6 +197,25 @@ def _season_watched_line(season: dict | None, watched: int, playable: int) -> st
     return "{0}/{1} watched".format(watched, playable)
 
 
+def _watchlist_has(client: MediaServerClient, media_id, tmdb_id) -> bool:
+    """Whether the watchlist holds this title; False if it cannot be asked.
+
+    Media id first: a library title's `tmdb_id` is often null, and matching
+    on it alone drew ADD on a title already saved."""
+    try:
+        entries = client.watchlist() or []
+    except http.ApiError:
+        return False
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        if media_id and e.get("media_id") == media_id:
+            return True
+        if tmdb_id and e.get("tmdb_id") == tmdb_id:
+            return True
+    return False
+
+
 class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # See home.py's HomeWindow for why this is needed now that screens open
     # each other directly in-process.
@@ -1230,24 +1249,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return self._preferences
 
     def _is_on_watchlist(self, client: MediaServerClient) -> bool:
-        """Match on media id first, tmdb id second.
-
-        Entries carry both keys and a library title's `tmdb_id` is often
-        null, so matching on tmdb_id alone reported "not on the watchlist"
-        for something sitting right there in it -- which then drew the
-        pill's ADD glyph on a title already saved."""
-        try:
-            entries = client.watchlist() or []
-        except http.ApiError:
-            return False
-        for e in entries:
-            if not isinstance(e, dict):
-                continue
-            if self.media_id and e.get("media_id") == self.media_id:
-                return True
-            if self.tmdb_id and e.get("tmdb_id") == self.tmdb_id:
-                return True
-        return False
+        return _watchlist_has(client, self.media_id, self.tmdb_id)
 
     # ------------------------------------------------------------------
     # page 2 -- cast + about
@@ -2031,7 +2033,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # hide them when there is no score, or when the profile turned either
         # off. See windows/cards.py.
         # offscreen: built detached, handed to addItems. The one later write is
-        # _card_options_picked's watched/watchlisted, the same accepted
+        # _apply_shelf_option's watched/progress_fill, the same accepted
         # residual Home carries -- see main.py's note and issue #11.
         prefs = self._ensure_preferences()
         if not format_badges:
@@ -3125,26 +3127,58 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             data = item.dataSource
             media_id = (data.get("id") or data.get("media_id")
                         or (data.get("in_library") and data.get("local_media_id")))
-            keys = cardoptions.option_keys(
+            tmdb_id = data.get("tmdb_id")
+            listable = bool(media_id or (tmdb_id and (data.get("media_type") or data.get("type"))))
+            seen, not_interested = titlemarks.offered(data)
+            # Asked, as Home asks: the card's `watchlisted` means in-library.
+            keys = [k for k in cardoptions.option_keys(
                 in_library=bool(media_id),
                 fully_watched=bool(item.getProperty("watched")),
                 has_progress=False,
-                on_watchlist=bool(item.getProperty("watchlisted")),
+                on_watchlist=listable and _watchlist_has(client, media_id, tmdb_id),
                 in_continue_watching=False,
-            )
+                seen=seen,
+                not_interested=not_interested,
+            ) if listable or k not in (cardoptions.WATCHLIST_ADD, cardoptions.WATCHLIST_REMOVE)]
             picked = cardoptions.show(
                 title=item.getLabel() or "",
                 subtitle=item.getProperty("caption_meta") or "",
                 keys=keys,
             )
-            # Every remaining action on a related title is really "go look at
-            # it", so both routes land on its own detail screen rather than
-            # reimplementing play/watchlist against a card we do not own.
+            # Play opens the title's own page, which owns version and resume.
             if picked in (cardoptions.PLAY, cardoptions.DETAILS):
                 self._similar_clicked(focus_id)
+            elif picked:
+                self._apply_shelf_option(client, picked, data, item, media_id)
             return True
 
         return False
+
+    def _apply_shelf_option(self, client: MediaServerClient, picked: str, data: dict,
+                            item, media_id) -> None:
+        """A shelf card's watchlist, watched or mark choice, done as Home does it."""
+        if titlemarks.apply(client, picked, data, title=item.getLabel()):
+            return
+        media_type = data.get("media_type") or data.get("type")
+        try:
+            if picked in (cardoptions.MARK_WATCHED, cardoptions.MARK_UNWATCHED):
+                watched = picked == cardoptions.MARK_WATCHED
+                if progress.mark_title(client, media_id, watched):
+                    # The menu reads its toggle off the card.
+                    item.setProperty("watched", "1" if watched else "")
+                    if watched:
+                        item.setProperty("progress_fill", "")
+            elif picked in (cardoptions.WATCHLIST_ADD, cardoptions.WATCHLIST_REMOVE):
+                adding = picked == cardoptions.WATCHLIST_ADD
+                # A held title by media id (its tmdb_id is often null), else by content.
+                if media_id:
+                    (client.watchlist_add if adding else client.watchlist_remove)(media_id)
+                elif adding:
+                    client.watchlist_add_content(media_type, data.get("tmdb_id"))
+                else:
+                    client.watchlist_remove_content(media_type, data.get("tmdb_id"))
+        except http.ApiError as exc:
+            kodigui.ERROR("detail.py: shelf option {0} failed: {1}".format(picked, exc))
 
     def _episode_files(self, f: dict) -> list:
         """The available files of the episode (or film) `f` belongs to."""
