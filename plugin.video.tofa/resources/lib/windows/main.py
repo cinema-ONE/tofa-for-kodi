@@ -21,6 +21,7 @@ import urllib.parse
 import xbmc
 import xbmcaddon
 import xbmcgui
+import xbmcvfs
 
 from . import (cardoptions, cards, focusmemory, kodigui, navbar, profile_select,
                splash, theme, titlemarks)
@@ -28,7 +29,7 @@ from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http,
                 textmetrics,
                 playbackprefs, prefetch, progress, regional, search_history,
                 serverversion, settings_info, settings_options, settings_pages,
-                signin)
+                signin, universe)
 from .. import avatar_presets
 from .. import household
 from .. import toast
@@ -752,6 +753,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # controlID -> "cw" | "library" | "discovery", for slots actually
         # populated this load.
         self._row_kinds: dict[int, str] = {}
+        self._saga_universes: dict[str, dict] = {}
 
         # ---- browse section state ----
         self.tiles_list: kodigui.ManagedControlList | None = None
@@ -2001,7 +2003,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 if not label_id:
                     log.debug(f"main.py: skipping unknown home_screen builtin row id={row_id}")
                     continue
-                row_kind = "cw" if row_id == "continue_watching" else "library"
+                if row_id == "continue_saga" and not home_rows.shows_universes(
+                        self._ensure_preferences()):
+                    continue
+                row_kind = {"continue_watching": "cw", "continue_saga": "saga"}.get(row_id, "library")
                 row_title = _(label_id)
                 items = self._home_fetch_builtin_row(client, row_id)
                 # A Suggested row the server could not personalise (thin
@@ -2055,10 +2060,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # four workers, against ~1s one image at a time. A no-op unless
             # artcache is enabled, and anything that misses the deadline just
             # falls back to the remote URL. See artcache.prefetch.
-            artcache.prefetch(self._row_art(client, items))
             build_started = time.monotonic()
-            managed = [self._home_build_row_managed_item(client, it, row_kind) for it in items]
+            if row_kind == "saga":
+                managed = self._home_build_saga_items(client, items)
+            else:
+                artcache.prefetch(self._row_art(client, items))
+                managed = [self._home_build_row_managed_item(client, it, row_kind) for it in items]
             build_s += time.monotonic() - build_started
+            # Before the items: the slot's wide layout is picked by this.
+            self.setProperty("row{0}_kind".format(slot), "saga" if row_kind == "saga" else "")
             mlist.reset()
             if managed:
                 mlist.addItems(managed)
@@ -2093,6 +2103,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # doesn't linger from before.
         for idx in range(slot, len(self.ROW_LIST_IDS)):
             self.setProperty("row{0}_title".format(idx), "")
+            self.setProperty("row{0}_kind".format(idx), "")
             self.row_lists[self.ROW_LIST_IDS[idx]].reset()
 
         # The hero was already dressed from the first row above, as soon as
@@ -2276,6 +2287,71 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 shelves[lt] = {"title": _discover_list_title(lt),
                                "items": named.get("items") or []}
         return shelves
+
+    def _home_build_saga_items(self, client: MediaServerClient,
+                               universes: list) -> list:
+        """Continue the saga's cards (app 2.1.0): the next title over its
+        backdrop, the universe's strip along the bottom, the universe's name
+        and progress under the card. The data source is the hero's title."""
+        artcache.prefetch(client.stage_pairs(
+            [{"backdrop_path": universe.card_art(u)} for u in universes], "backdrop_path"))
+        cards_out, keep = [], set()
+        for u in universes:
+            rest, nxt = self._saga_strip_files(u)
+            keep.update((rest, nxt))
+            hero = dict(universe.hero_item(u), saga_id=u["id"])
+            mli = kodigui.ManagedListItem(label=u["name"], label2=universe.card_line(u),
+                                          data_source=hero, offscreen=True)
+            mli.setProperty("saga_title", universe.card_title(u))
+            mli.setArt({"thumb": client.resolve_image_url(universe.card_art(u)) or "",
+                        "strip": rest, "strip_next": nxt})
+            cards_out.append(mli)
+        self._saga_universes = {u["id"]: u for u in universes}
+        self._saga_prune(keep)
+        return cards_out
+
+    def _open_universe(self, universe_id) -> None:
+        """A saga card's universe page (app 2.1.0)."""
+        from . import universepage
+        u = self._saga_universes.get(universe_id)
+        if u:
+            universepage.show(u, self._get_client())
+
+    #: The strip's picture, at the skin's 2x: a 556x5 band, the card's corners.
+    SAGA_STRIP_PX = (2 * T.SAGA_CARD_W, 2 * T.SAGA_STRIP_H, 2 * T.SAGA_CARD_RADIUS)
+
+    @staticmethod
+    def _saga_dir() -> str:
+        return os.path.join(xbmcvfs.translatePath(
+            xbmcaddon.Addon().getAddonInfo("profile")), "saga")
+
+    def _saga_strip_files(self, u: dict) -> tuple:
+        """(strip, up-next segment) PNG paths for a universe, named by their
+        bytes so Kodi's texture cache never shows a stale one."""
+        width, height, radius = self.SAGA_STRIP_PX
+        folder = self._saga_dir()
+        os.makedirs(folder, exist_ok=True)
+        paths = []
+        for up_next in (False, True):
+            data = universe.strip_png(u, width, height, radius=radius, up_next=up_next)
+            path = os.path.join(folder, "strip-{0}.png".format(hashlib.sha1(data).hexdigest()[:16]))
+            if not os.path.exists(path):
+                with open(path + ".tmp", "wb") as fh:
+                    fh.write(data)
+                os.replace(path + ".tmp", path)
+            paths.append(path)
+        return tuple(paths)
+
+    def _saga_prune(self, keep: set) -> None:
+        """Delete strips no card draws any more."""
+        folder = self._saga_dir()
+        for name in os.listdir(folder) if os.path.isdir(folder) else ():
+            path = os.path.join(folder, name)
+            if name.startswith("strip-") and path not in keep:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
 
     def _home_build_row_managed_item(self, client: MediaServerClient, item: dict, row_kind: str) -> kodigui.ManagedListItem:
         """Unified poster-card builder for every row kind. row_kind gates
@@ -2682,6 +2758,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _home_detail_clicked(self, mlist, row_kind: str):
         item = mlist.getSelectedItem()
         if not item or not item.dataSource:
+            return
+        if row_kind == "saga":
+            self._open_universe(item.dataSource.get("saga_id"))
             return
         if row_kind == "discovery":
             # Opened directly (not RunPlugin) so Detail layers over this
@@ -5336,6 +5415,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         title and none of 7.2's options apply to one."""
         for lists, kind in ((self.row_lists, "home"), (self.discover_rows, "discover")):
             mcl = (lists or {}).get(control_id)
+            if kind == "home" and self._row_kinds.get(control_id) == "saga":
+                return None, None, None     # a universe has no card menu (app 2.1.0)
             if mcl is not None:
                 item = mcl.getSelectedItem()
                 if item is not None and item.dataSource:

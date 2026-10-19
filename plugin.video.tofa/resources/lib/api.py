@@ -819,7 +819,8 @@ class MediaServerClient:
         unlike media's `poster_path`) and `item_count`. Still route through
         resolve_image_url() for the `?st=` token -- it has a branch for
         already-absolute paths that skips the `/cache/` rewrite."""
-        params = {"curated": curated}
+        # The server reads only `true`/`false`; requests would send "True".
+        params = {} if curated is None else {"curated": "true" if curated else "false"}
         return self._get("/api/v1/collections", params=params)
 
     def custom_collections(self) -> Any:

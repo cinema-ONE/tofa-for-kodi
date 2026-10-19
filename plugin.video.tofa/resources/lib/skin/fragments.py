@@ -413,6 +413,33 @@ def watchlist_badge_item(size: PosterSize = POSTER_STD) -> str:
                     </control>"""
 
 
+def this_title_tag(size: PosterSize = POSTER_STD) -> str:
+    """"This title" on a universe shelf's card for the page's own title (app 2.1.0)."""
+    y = size.h - 8 - 28
+    return f"""
+                    <control type="image">
+                        <visible>!String.IsEmpty(ListItem.Property(this_title))</visible>
+                        <posx>8</posx>
+                        <posy>{y}</posy>
+                        <width>100</width>
+                        <height>28</height>
+                        <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
+                        <texture border="14">capsule-h28.png</texture>
+                    </control>
+                    <control type="label">
+                        <visible>!String.IsEmpty(ListItem.Property(this_title))</visible>
+                        <posx>8</posx>
+                        <posy>{y}</posy>
+                        <width>100</width>
+                        <height>28</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_ACCOUNT}</font>
+                        <textcolor>{T.CANVAS}</textcolor>
+                        <label>This title</label>
+                    </control>"""
+
+
 def watchlist_badge_focused(size: PosterSize = POSTER_STD) -> str:
     """The SAME badge as watchlist_badge_item(): dark chip, soft outline,
     white glyph. A focusedlayout needs its own copy of the markup, which is
@@ -2430,6 +2457,236 @@ def empty_state(
 {indent}        <label>{message}</label>
 {indent}    </control>
 {indent}</control>"""
+
+
+def saga_card(list_id: int) -> tuple[str, str]:
+    """Continue the saga's card (app 2.1.0): the next title's backdrop under
+    a dark fade with that title over it, the universe's strip along the
+    bottom edge, and the universe's name and progress under the card."""
+    W, H = T.SAGA_CARD_W, T.SAGA_CARD_H
+    focus = f"Control.HasFocus({list_id})"
+
+    def card(extra: str) -> str:
+        return f"""
+                    <control type="group">
+                        <posx>{T.HPAD}</posx>
+                        <posy>{T.SAGA_CARD_Y}</posy>{extra}
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>0xFF16222B</colordiffuse>
+                            <texture diffuse="saga-card-mask.png">white-square.png</texture>
+                        </control>
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <aspectratio scalediffuse="false">scale</aspectratio>
+                            <texture diffuse="saga-card-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                        </control>
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>0xCC000000</colordiffuse>
+                            <texture diffuse="saga-card-mask.png">fade-bottom.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{T.SAGA_TITLE_X}</posx>
+                            <posy>{T.SAGA_TITLE_Y}</posy>
+                            <width>{W - 2 * T.SAGA_TITLE_X}</width>
+                            <height>{T.SAGA_TITLE_H}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_BUTTON}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Property(saga_title)]</label>
+                        </control>
+                        <control type="image">
+                            <posy>{H - T.SAGA_STRIP_H}</posy>
+                            <width>{W}</width>
+                            <height>{T.SAGA_STRIP_H}</height>
+                            <texture>$INFO[ListItem.Art(strip)]</texture>
+                        </control>
+                        <control type="image">
+                            <posy>{H - T.SAGA_STRIP_H}</posy>
+                            <width>{W}</width>
+                            <height>{T.SAGA_STRIP_H}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>$INFO[ListItem.Art(strip_next)]</texture>
+                        </control>{rim if extra else ""}
+                    </control>"""
+
+    rim = f"""
+                        <control type="image">
+                            <visible>{focus}</visible>
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>saga-card-border.png</texture>
+                        </control>"""
+    glow = f"""
+                        <control type="image">
+                            <posx>-10</posx>
+                            <posy>-10</posy>
+                            <width>{W + 20}</width>
+                            <height>{H + 20}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>saga-card-glow.png</texture>
+                        </control>"""
+    captions = f"""
+                    <control type="label">
+                        <posx>{T.HPAD}</posx>
+                        <posy>{T.SAGA_CARD_Y + T.SAGA_NAME_Y}</posy>
+                        <width>{W}</width>
+                        <height>{T.SAGA_NAME_H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_POSTER_TITLE}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <posx>{T.HPAD}</posx>
+                        <posy>{T.SAGA_CARD_Y + T.SAGA_LINE_Y}</posy>
+                        <width>{W}</width>
+                        <height>{T.SAGA_LINE_H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_METADATA}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                    </control>"""
+    zoom = (f'\n                        <animation effect="zoom" start="100" end="104" '
+            f'center="{W // 2},{H // 2}" time="150" tween="cubic" easing="out" '
+            f'condition="{focus}">Conditional</animation>')
+    focused_card = card(zoom + f"""
+                        <control type="group">
+                            <visible>{focus}</visible>{glow}
+                        </control>""")
+    item = f"""                <itemlayout width="{T.SAGA_CELL_W}" height="{T.CELL_H}">{card("")}{captions}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout width="{T.SAGA_CELL_W}" height="{T.CELL_H}">{focused_card}{captions}
+                </focusedlayout>"""
+    return item, focused
+
+
+def universe_pill(group_id: int, button_id: int, *, visible: str, label_property: str,
+                  glyph: int | None = None, nav: dict | None = None) -> str:
+    """One pill on the universe page (app 2.1.0): glass at rest, the accent's
+    wash, rim and text focused. A button, so universepage.py can set its
+    width and the group's x at runtime without the build slicing it."""
+    text_x = T.UNI_PILL_PAD + (T.UNI_PILL_ICON_W + T.UNI_PILL_ICON_GAP if glyph else 0)
+    moves = "".join(
+        f"""
+                    <{tag}{f' condition="{cond}"' if cond else ""}>{dest}</{tag}>"""
+        for tag, target in (nav or {}).items()
+        for cond, dest in (target if isinstance(target, list) else [("", target)]))
+    # The words are labels of their own: a button keeps textoffsetx clear on
+    # BOTH sides of its text, which would leave the icon's room on the right.
+    words = "".join(f"""
+                <control type="label">
+                    <visible>{gate}</visible>
+                    <posx>{text_x}</posx>
+                    <width>1400</width>
+                    <height>{T.UNI_PILL_H}</height>
+                    <aligny>center</aligny>
+                    <font>{T.FONT_CAPTION}</font>
+                    <textcolor>{colour}</textcolor>
+                    <label>$INFO[Window.Property({label_property})]</label>
+                </control>""" for colour, gate in (
+        ("$INFO[Window.Property(text_primary)]", f"!Control.HasFocus({button_id})"),
+        ("$INFO[Window.Property(accent_color)]", f"Control.HasFocus({button_id})")))
+    icon = "" if glyph is None else "".join(f"""
+                <control type="label">
+                    <visible>{gate}</visible>
+                    <posx>{T.UNI_PILL_PAD}</posx>
+                    <width>{T.UNI_PILL_ICON_W}</width>
+                    <height>{T.UNI_PILL_H}</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>{T.FONT_ICON_24}</font>
+                    <textcolor>{colour}</textcolor>
+                    <label>&#x{glyph:04X};</label>
+                </control>""" for colour, gate in (
+        ("$INFO[Window.Property(text_primary)]", f"!Control.HasFocus({button_id})"),
+        ("$INFO[Window.Property(accent_color)]", f"Control.HasFocus({button_id})")))
+    return f"""            <control type="group" id="{group_id}">
+                <visible>{visible}</visible>
+                <posx>{T.UNI_LEFT}</posx>
+                <posy>{T.UNI_PILL_Y}</posy>
+                <control type="button" id="{button_id}">
+                    <width>{2 * T.UNI_PILL_PAD}</width>
+                    <height>{T.UNI_PILL_H}</height>{moves}
+                    <texturefocus border="{T.UNI_PILL_H // 2}" colordiffuse="$INFO[Window.Property(accent_color)]">universe-pill-focus.png</texturefocus>
+                    <texturenofocus border="{T.UNI_PILL_H // 2}">universe-pill.png</texturenofocus>
+                    <label></label>
+                </control>{icon}{words}
+            </control>"""
+
+
+def universe_strip_item(list_id: int) -> tuple[str, str]:
+    """A poster in the universe page's strip: faint when not in the library,
+    a dot over the one up next, the chapter's name under its first poster.
+    Focused, it grows from its bottom edge and takes the accent's rim."""
+    X, Y = T.UNI_STRIP_X, T.UNI_STRIP_Y - T.UNI_STRIP_TOP
+    W, H = T.UNI_POSTER_W, T.UNI_POSTER_H
+    focus = f"Control.HasFocus({list_id})"
+    poster = f"""
+                    <control type="image">
+                        <posx>{X}</posx>
+                        <posy>{Y}</posy>
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <colordiffuse>0xFF16222B</colordiffuse>
+                        <texture diffuse="poster-mask.png">white-square.png</texture>
+                    </control>
+                    <control type="image">
+                        <posx>{X}</posx>
+                        <posy>{Y}</posy>
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
+                        <colordiffuse>$INFO[ListItem.Property(tint)]</colordiffuse>
+                        <texture diffuse="poster-mask.png" background="true">$INFO[ListItem.Art(poster)]</texture>
+                    </control>"""
+    rim = f"""
+                    <control type="image">
+                        <visible>{focus}</visible>
+                        <posx>{X}</posx>
+                        <posy>{Y}</posy>
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>poster-border.png</texture>
+                    </control>"""
+    marks = f"""
+                    <control type="image">
+                        <visible>!String.IsEmpty(ListItem.Property(up_next))</visible>
+                        <posx>{X + W // 2 - 4}</posx>
+                        <posy>{Y - 17}</posy>
+                        <width>8</width>
+                        <height>8</height>
+                        <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
+                        <texture>circle.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>{X}</posx>
+                        <posy>{Y + H + T.UNI_CHAPTER_GAP}</posy>
+                        <width>400</width>
+                        <height>24</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_CARD_META}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(chapter)]</label>
+                    </control>"""
+    zoom = (f'<animation effect="zoom" start="100" end="{T.UNI_STRIP_ZOOM}" '
+            f'center="{X + W // 2},{Y + H}" time="150" tween="cubic" easing="out" '
+            f'condition="{focus}">Conditional</animation>')
+    height = T.SCREEN_H - T.UNI_STRIP_TOP
+    item = f"""                <itemlayout width="{T.UNI_STRIP_PITCH}" height="{height}">{marks}{poster}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout width="{T.UNI_STRIP_PITCH}" height="{height}">{marks}
+                    <control type="group">
+                        {zoom}{poster}{rim}
+                    </control>
+                </focusedlayout>"""
+    return item, focused
 
 
 def poster_row(

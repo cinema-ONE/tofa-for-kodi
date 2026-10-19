@@ -58,6 +58,9 @@ class List:
     def getSelectedItem(self):
         return self.selected
 
+    def selectItem(self, index):
+        self.selected = self.items[index]
+
 
 class Control:
     def __init__(self, cid):
@@ -78,6 +81,7 @@ class Control:
 
 class Fake:
     _render_collection_strip = DetailWindow._render_collection_strip
+    _render_universe_strip = DetailWindow._render_universe_strip
     _similar_card = DetailWindow._similar_card
     _wire_more_shelves = DetailWindow._wire_more_shelves
     _p2_shown = DetailWindow._p2_shown
@@ -90,8 +94,10 @@ class Fake:
         DetailWindow.DISCOVER_LIST, DetailWindow.ABOUT_BUTTON)
     MORE_SHELF_IDS = DetailWindow.MORE_SHELF_IDS
 
-    def __init__(self, collection_id=645):
-        self.media = {"id": HERE, "tmdb_collection_id": collection_id}
+    def __init__(self, collection_id=645, universes=False):
+        self.media = {"id": HERE, "tmdb_collection_id": collection_id, "tmdb_id": 658,
+                      "media_type": "movie"}
+        self.universes = universes
         self.props, self.controls = {}, {}
         self.collection_list, self.similar_list, self.discover_list = List(), List(), List()
 
@@ -105,7 +111,7 @@ class Fake:
         return self.controls.setdefault(cid, Control(cid))
 
     def _ensure_preferences(self):
-        return {"show_format_badges": True}
+        return {"show_format_badges": True, "show_universes": self.universes}
 
 
 def run():
@@ -157,6 +163,38 @@ def run():
     check("a missing member opens the out-of-library Detail with its card",
           opened[1].get("discovery_id") == 36670 and opened[1].get("media_type") == "movie"
           and opened[1].get("discovery_item", {}).get("title") == "Never Say Never Again", repr(opened[1]))
+
+    # App 2.1.0: a universe the title is part of takes the shelf.
+    from resources.lib import universe as U
+    U.forget()
+
+    class UniverseClient(Client):
+        def collections(self, curated=None):
+            return {"collections": [{"id": "bond", "kind": "curated"}]}
+
+        def collection(self, cid):
+            if cid == "bond":
+                return {"id": "bond", "kind": "curated", "name": "007",
+                        "items": [dict(m) for m in MEMBERS]}
+            return Client.collection(self, cid)
+
+    uni = Fake(universes=None)
+    uni._render_collection_strip(UniverseClient(), HERE)
+    tagged = [mli.getLabel() for mli in uni.collection_list.items if mli.getProperty("this_title")]
+    check("a universe the title is in takes the shelf, all of it",
+          uni.props.get("collection_row_title") == "Part of 007 · 2 of 3"
+          and len(uni.collection_list.items) == 3, repr(uni.props.get("collection_row_title")))
+    check("...with this title tagged", tagged == ["Goldfinger"], repr(tagged))
+    uni._p2_layout()
+    check("...and the hint calls it the universe",
+          uni.props.get("detail_tabs_hint", "").startswith("UNIVERSE"),
+          repr(uni.props.get("detail_tabs_hint")))
+    U.forget()
+    off = Fake(universes=False)
+    off._render_collection_strip(UniverseClient(), HERE)
+    check("universes switched off: the franchise as before",
+          off.props.get("collection_row_title") == "Part of James Bond Collection")
+    U.forget()
 
     failed_n = [n for n, ok in RESULTS if not ok]
     print()

@@ -23,7 +23,8 @@ import xbmcgui
 
 from . import (cardoptions, cards, focusmemory, kodigui, person, playoptions, profile_select,
                theme, titlemarks)
-from .. import api, artcache, auth, badges as fmt_badges, capabilities, http, log
+from .. import api, artcache, auth, badges as fmt_badges, capabilities, home_rows, http, log
+from .. import universe
 from .. import playbackprefs
 from .. import episodes as episodes_fmt
 from .. import parts, playback, prefs, progress, regional, textmetrics, toast, tracks
@@ -2027,9 +2028,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         title on screen; ones the library lacks keep their not-in-library
         badge. No format badges: they belong to library grids, not here."""
         self.setProperty("collection_row_title", "")
+        self.setProperty("collection_is_universe", "")
         if self.collection_list is None:
             return False
         self.collection_list.reset()
+        if self._render_universe_strip(client, media_id):
+            return True
         collection_id = (self.media or {}).get("tmdb_collection_id")
         if not collection_id:
             return False
@@ -2047,6 +2051,38 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                                 format_badges=False) for it in members])
         self.setProperty("collection_row_title",
                          "Part of {0}".format(collection.get("name") or "a collection"))
+        return True
+
+    def _render_universe_strip(self, client: MediaServerClient, media_id: str) -> bool:
+        """App 2.1.0: the universe this title is part of, all of it, in story
+        order and with this title tagged, in place of its franchise."""
+        if not home_rows.shows_universes(self._ensure_preferences()):
+            return False
+        media = self.media or {}
+        try:
+            found = universe.everything(client)
+        except http.ApiError as exc:
+            log.warning("detail: universes failed: {0}".format(exc))
+            return False
+        for u in found:
+            mine = universe.entries(u, media_id, media.get("tmdb_id"), media.get("media_type"))
+            if mine:
+                break
+        else:
+            return False
+        keys = {m["key"] for m in mine}
+        cards_out = []
+        for member in u["members"]:
+            mli = self._similar_card(client, member["item"], in_library=member["owned"],
+                                     format_badges=False)
+            if member["key"] in keys:
+                mli.setProperty("this_title", "1")
+            cards_out.append(mli)
+        self.collection_list.addItems(cards_out)
+        self.collection_list.selectItem(mine[0]["position"] - 1)
+        self.setProperty("collection_row_title", "Part of {0} · {1} of {2}".format(
+            u["name"], regional.number(mine[0]["position"]), regional.number(len(u["members"]))))
+        self.setProperty("collection_is_universe", "1")
         return True
 
     def _similar_card(self, client: MediaServerClient, item: dict, *,
@@ -2481,7 +2517,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "discover": bool(self.getProperty("discover_row_title")),
             "about": True,
         }
-        return [sec for sec in self.P2_SECTIONS if keys[sec[0]]]
+        universe_shelf = bool(self.getProperty("collection_is_universe"))
+        return [sec[:4] + ("UNIVERSE", "UNIVERSE") if universe_shelf and sec[0] == "collection"
+                else sec for sec in self.P2_SECTIONS if keys[sec[0]]]
 
     def _p2_layout(self) -> None:
         """Size page 2's blocks so every focused section's header lands at
