@@ -945,6 +945,16 @@ class MediaServerClient:
     def watchlist_remove_content(self, media_type: str, tmdb_id: int) -> Any:
         return self._delete(f"/api/v1/users/me/watchlist/content/{media_type}/{tmdb_id}")
 
+    def set_seen(self, media_type: str, tmdb_id: int, seen: bool) -> Any:
+        """Seen it: watched somewhere else (0.12.0). Per profile, idempotent."""
+        path = f"/api/v1/users/me/seen/{media_type}/{tmdb_id}"
+        return self._put(path) if seen else self._delete(path)
+
+    def set_not_interested(self, media_type: str, tmdb_id: int, on: bool) -> Any:
+        """Not interested: suggestions stop offering it (0.12.0). Idempotent."""
+        path = f"/api/v1/users/me/not-interested/{media_type}/{tmdb_id}"
+        return self._put(path) if on else self._delete(path)
+
     def media_list(self, media_type: str, **kwargs: Any) -> Any:
         return self._get("/api/v1/media", params={"media_type": media_type, **kwargs})
 

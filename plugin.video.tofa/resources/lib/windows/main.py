@@ -23,7 +23,7 @@ import xbmcaddon
 import xbmcgui
 
 from . import (cardoptions, cards, focusmemory, kodigui, navbar, profile_select,
-               splash, theme)
+               splash, theme, titlemarks)
 from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http, langcodes, log,
                 textmetrics,
                 playbackprefs, prefetch, progress, regional, search_history,
@@ -1971,6 +1971,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 # the flag rides with the items (prefetch.SuggestedItems).
                 if row_id == "suggested" and getattr(items, "personalized", True) is False:
                     row_title = _(31124)
+                if row_id == "suggested":
+                    # Suggestions leave out titles marked Not interested, so
+                    # every card here is unmarked and can offer it.
+                    for it in items or []:
+                        it.setdefault("not_interested", False)
             elif row_type == "discovery":
                 list_type = row.get("discoveryList")
                 if not list_type:
@@ -5296,6 +5301,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         completed = bool(item.getProperty("watched"))
         has_progress = bool(item.getProperty("progress_pct")) or bool(item.getProperty("progress_fill"))
         on_watchlist = self._card_on_watchlist(client, data, kind)
+        seen, not_interested = titlemarks.offered(data)
 
         keys = cardoptions.option_keys(
             in_library=in_library,
@@ -5303,6 +5309,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             has_progress=has_progress,
             on_watchlist=on_watchlist,
             in_continue_watching=(kind == "cw"),
+            seen=seen,
+            not_interested=not_interested,
         )
         picked = cardoptions.show(
             title=item.getLabel() or "",
@@ -5338,6 +5346,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             elif tmdb_id is not None and media_type:
                 self.open_detail(discovery_id=str(tmdb_id),
                                  media_type=media_type)
+            return
+        if titlemarks.apply(client, picked, data):
             return
 
         try:

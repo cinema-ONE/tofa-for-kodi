@@ -21,7 +21,8 @@ import time
 import xbmc
 import xbmcgui
 
-from . import cardoptions, cards, focusmemory, kodigui, person, playoptions, profile_select, theme
+from . import (cardoptions, cards, focusmemory, kodigui, person, playoptions, profile_select,
+               theme, titlemarks)
 from .. import api, artcache, auth, badges as fmt_badges, capabilities, http, log
 from .. import playbackprefs
 from .. import episodes as episodes_fmt
@@ -2779,6 +2780,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         the menu should not have to close it again to reach an action the
         menu is plainly about."""
         client = self._get_client()
+        if client and not self.media and self.discovery_detail:
+            return self._open_discovery_options(client)
         if not client or not self.media:
             return False
         media_id = self.media.get("id") or self.media_id
@@ -2813,6 +2816,29 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # Re-render so the hero drops Resume/Rewatch immediately, the
             # same state _is_dismissed() would compute on a fresh open.
             self._render_actions(client, self.media)
+        return True
+
+    def _open_discovery_options(self, client: MediaServerClient) -> bool:
+        """The hero menu on a title the library does not hold: Watchlist,
+        Seen it and Not interested."""
+        disc = self.discovery_detail
+        seen, not_interested = titlemarks.offered(
+            disc, self.content_media_type, self.tmdb_id)
+        keys = [k for k in cardoptions.option_keys(
+            in_library=False, fully_watched=False, has_progress=False,
+            on_watchlist=self.on_watchlist, in_continue_watching=False,
+            detail_variant=True, seen=seen, not_interested=not_interested,
+        ) if k != cardoptions.DETAILS]
+        picked = cardoptions.show(
+            title=self.getProperty("hero_title") or disc.get("title") or "",
+            subtitle=self.getProperty("hero_meta_line") or "",
+            eyebrow="OPTIONS",
+            keys=keys,
+        )
+        if picked in (cardoptions.WATCHLIST_ADD, cardoptions.WATCHLIST_REMOVE):
+            self._toggle_watchlist()
+        else:
+            titlemarks.apply(client, picked, disc, self.content_media_type, self.tmdb_id)
         return True
 
     def _primary_label(self, verb: str) -> str:
