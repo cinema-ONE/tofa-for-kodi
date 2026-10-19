@@ -52,13 +52,25 @@ def _playable_file_ids(seasons: list) -> list:
     return ids
 
 
-def _movie_file(files: list, prefer_id=None):
-    """The film file to offer: the caller's (Continue Watching's edition) when
-    available, since each edition keeps its own place (server 0.12.0), else
-    the first available file, else the first file."""
+def _movie_file(files: list, prefer_id=None, records: dict | None = None):
+    """The film file to offer; each edition keeps its own place (server 0.12.0).
+
+    Continue Watching's edition when it is part way, else the part-way edition
+    watched last, else the caller's, else the first available file."""
     available = [f for f in files if f.get("available")]
+    records = records or {}
+
+    def part_way(f):
+        position_ms, completed = progress.position_of(records.get(f.get("id")))
+        return bool(position_ms) and not completed
+
     preferred = next((f for f in available
                       if prefer_id and str(f.get("id")) == str(prefer_id)), None)
+    if preferred and part_way(preferred):
+        return preferred
+    started = [f for f in available if part_way(f)]
+    if started:
+        return max(started, key=lambda f: (records.get(f.get("id")) or {}).get("updated_at") or "")
     return preferred or (available[0] if available else (files[0] if files else None))
 
 
@@ -1113,8 +1125,11 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # after the pack now, next to the other page-2 work.
             return
 
-        # --- Movie: Continue Watching's edition, else the first available file ---
-        chosen = _movie_file(media.get("files") or [], self.prefer_file_id)
+        # --- Movie: the edition to resume (_movie_file), from one batch over all ---
+        files = media.get("files") or []
+        records = progress.fetch_many(
+            client, [f.get("id") for f in files if f.get("available") and f.get("id")])
+        chosen = _movie_file(files, self.prefer_file_id, records)
         # Before the early return below: play_file_id is what the pill reads,
         # and "no file at all" still has to clear it.
         self.play_file_id = chosen.get("id") if chosen else None
