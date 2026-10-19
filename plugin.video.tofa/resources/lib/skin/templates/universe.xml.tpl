@@ -40,6 +40,33 @@
         </control>
 
         <control type="group">
+            <visible>String.IsEmpty(Window.Property(u_grid))</visible>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
+            <control type="label">
+                <posy>{UNI_ALL_Y}</posy>
+                <width>{SCREEN_W}</width>
+                <height>26</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>{FONT_EYEBROW}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(u_all_label)]</label>
+            </control>
+            <control type="label">
+                <posy>{ALL_CHEVRON_Y}</posy>
+                <width>{SCREEN_W}</width>
+                <height>24</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>{FONT_ICON_19}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>{CHEVRON_DOWN}</label>
+            </control>
+        </control>
+
+        <control type="group">
+            <visible>String.IsEmpty(Window.Property(u_grid))</visible>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
             <animation effect="slide" start="0,0" end="0,{UNI_NO_CHAPTERS_DY}" time="0" condition="String.IsEmpty(Window.Property(u_chapters))">Conditional</animation>
 
             <!-- The universe. -->
@@ -151,6 +178,48 @@
                 <scrolltime>{SCROLLTIME}</scrolltime>
 {strip_item}
 {strip_focused}
+            </control>
+        </control>
+
+        <!-- The grid: every member by chapter, over the plain canvas. -->
+        <control type="group">
+            <visible>!String.IsEmpty(Window.Property(u_grid))</visible>
+            <animation effect="fade" start="0" end="100" time="200">Visible</animation>
+            <control type="image">
+                <width>{SCREEN_W}</width>
+                <height>{SCREEN_H}</height>
+                <colordiffuse>{CANVAS}</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="label">
+                <posy>14</posy>
+                <width>{SCREEN_W}</width>
+                <height>24</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>{FONT_ICON_19}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>{CHEVRON_UP}</label>
+            </control>
+            <control type="label">
+                <posy>{UNI_GRID_TITLE_Y}</posy>
+                <width>{SCREEN_W}</width>
+                <height>28</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>{FONT_EYEBROW}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(u_name_upper)]</label>
+            </control>
+            <control type="grouplist" id="{GRID_LIST_ID}">
+                <posx>{UNI_GRID_X}</posx>
+                <posy>{UNI_GRID_TOP}</posy>
+                <width>{GRID_W}</width>
+                <height>{GRID_H}</height>
+                <orientation>vertical</orientation>
+                <itemgap>0</itemgap>
+                <scrolltime>{SCROLLTIME}</scrolltime>
+{grid_blocks}
             </control>
         </control>
 

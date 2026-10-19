@@ -164,6 +164,14 @@ cut = P.two_lines(long).split("[CR]")
 check("a long overview is two lines, the second ending in an ellipsis",
       len(cut) == 2 and cut[1].endswith("\u2026"), str(cut))
 check("a short one is left alone", P.two_lines("A short line.") == "A short line.")
+blocks = P.grid_blocks(u, P.STORY)
+check("the grid has a block per chapter, in story order",
+      [(n, [m["position"] for m in ms]) for n, ms in blocks]
+      == [("Origins", [1, 2]), ("Assemble", [3, 4, 5]), ("", [6])], str(blocks))
+check("release order is one block", len(P.grid_blocks(u, P.RELEASE)) == 1)
+check("a season says so in the grid",
+      P.grid_status(dict(u["members"][4], item=dict(u["members"][4]["item"], season_number=1)),
+                    None).startswith("Season 1 · "))
 check("a pill with an icon is wider than its text by the pads and the icon",
       P.pill_width("Play", True) - P.pill_width("Play", False) == 56)
 
