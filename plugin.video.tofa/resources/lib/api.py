@@ -749,17 +749,15 @@ class MediaServerClient:
         once; treat empty as "axis doesn't exist", not an error."""
         return self._get("/api/v1/discovery/genres")
 
-    def person_filmography(self, name: str) -> Any:
-        """A person's filmography from the cloud -- the NOT-in-your-library
-        half only, for 7.4's second section.
+    def person_page(self, name: str, person_id=None) -> Any:
+        """A person's PersonPage: bio facts plus every credit, owned ones
+        flagged `in_library` with `local_media_id`.
 
-        Matched on the exact name string (there is no person id anywhere in
-        the API), best-known titles first, rating-gated to the profile, and
-        with titles you already own removed server-side. That last part is
-        why the two halves of 7.4 can simply be concatenated: the in-library
-        half comes from `media_list(cast=name)` and the server guarantees
-        they don't overlap. The default page is 30; ask for all of them."""
-        return self._get("/api/v1/discovery/person", params={"name": name, "limit": 200})
+        By id when the caller has one; library cast carries none on 0.12.0
+        (measured), so by name is the usual route. 404 means nobody by that name."""
+        if person_id:
+            return self._get(f"/api/v1/discovery/people/{person_id}")
+        return self._get("/api/v1/discovery/people/by-name", params={"name": name})
 
     def discovery_board(
         self,

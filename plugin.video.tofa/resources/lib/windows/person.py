@@ -4,15 +4,9 @@
 Opened by clicking a face in the detail screen's Cast or Crew grid, which
 was a dead end before this existed.
 
-Two sources, concatenated into one grid:
-
-  in library      GET /media?cast=<name>            (per media_type)
-  not in library  GET /discovery/person?name=<name>
-
-The server strips owned titles out of the discovery half, so the two never
-overlap and no client-side dedupe is needed. There is no person ID anywhere
-in the API -- both calls match on the exact name string, which is also why
-this window takes a name rather than an id.
+One source, split into two sections: the server's PersonPage (0.12.0),
+by person id when the cast entry has one, else by name. Its credits cover
+crew as well as cast and flag the owned ones with `local_media_id`.
 
 The layout's one deliberate divergence (sticky section label instead of two
 inline headings) is explained in the template header, not repeated here.
@@ -57,6 +51,18 @@ def _titles_phrase(n: int) -> str:
     return "1 title" if n == 1 else "{0} titles".format(regional.number(n))
 
 
+def split_credits(credits) -> tuple[list, list]:
+    """(owned, not owned). An owned credit gets `id` = its local_media_id,
+    so it opens and badges like a library card."""
+    owned, discover = [], []
+    for it in credits or []:
+        if it.get("in_library") and it.get("local_media_id"):
+            owned.append(dict(it, id=it["local_media_id"]))
+        else:
+            discover.append(it)
+    return owned, discover
+
+
 class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     xmlFile = "script-tofa-person.xml"
     # Same as DetailWindow/MainWindow: actually remove the native Kodi window
@@ -75,6 +81,7 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def __init__(self, *args, **kwargs):
         self.person_name = kwargs.pop("name", "") or ""
+        self.person_id = kwargs.pop("person_id", "") or ""
         # From the cast entry that opened this page: who they played there.
         self.person_role = kwargs.pop("role", "") or ""
         self.from_title = kwargs.pop("title", "") or ""
@@ -156,8 +163,18 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                             "Check the connection and try again.")
             return
 
-        owned, owned_failed = self._load_owned(client)
-        discover, discover_failed = self._load_discover(client)
+        try:
+            page = client.person_page(self.person_name, self.person_id) or {}
+            failed = False
+        except http.ApiError as exc:
+            # 404 is the server's "nobody by that name": the empty state.
+            if exc.status != 404:
+                kodigui.ERROR("person.py: person page failed: {0}".format(exc))
+            page, failed = {}, exc.status != 404
+        owned, discover = split_credits(page.get("credits"))
+        if not self.person_photo and page.get("profile_url"):
+            self.person_photo = client.resolve_image_url(page["profile_url"]) or ""
+            self.setProperty("person_photo", self.person_photo)
         # The app lists what you have by title, "The" set aside.
         owned.sort(key=lambda it: _sort_title(it.get("title") or ""))
         # Newest first, and A to Z within a year.
@@ -186,13 +203,9 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.grid.addItems(items)
             self.grid.selectItem(0)
 
-        # 7.4: the empty state appears only when BOTH halves resolve empty.
-        # A half that FAILED is not a half that is empty, so a partial
-        # failure shows the loaded half plus a quiet note rather than the
-        # full-page empty state.
         if items:
             self._set_state("", "", "")
-        elif owned_failed or discover_failed:
+        elif failed:
             self._set_state("error", "Couldn't load this filmography",
                             "Something went wrong reaching the server. Try again later.")
         else:
@@ -200,52 +213,12 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                             "We don't have any credits for {0} yet.".format(
                                 self.person_name))
 
-        self.setProperty("person_subtitle", self._subtitle(owned_failed, discover_failed))
+        self.setProperty("person_subtitle", "{0} in your library".format(
+            _titles_phrase(self._counts[IN_LIBRARY])))
         self._section_shown = None
         self._sync_section_label()
         if items:
             self.setFocusId(self.GRID_ID)
-
-    def _subtitle(self, owned_failed: bool, discover_failed: bool) -> str:
-        n = self._counts[IN_LIBRARY]
-        if owned_failed:
-            return "Couldn't load your library"
-        base = "{0} in your library".format(_titles_phrase(n))
-        # Don't silently imply the discover half is empty when it errored.
-        return base + "  ·  rest unavailable" if discover_failed else base
-
-    def _load_owned(self, client: MediaServerClient) -> tuple[list[dict], bool]:
-        """The in-library half. /media takes one media_type per call, so
-        movies and shows are two requests merged newest-first-ish by the
-        order the server returns them."""
-        out: list[dict] = []
-        failed = False
-        for media_type in ("movie", "tv"):
-            try:
-                resp = client.media_list(media_type, cast=self.person_name, per_page=100)
-            except http.ApiError as exc:
-                kodigui.ERROR("person.py: media?cast={0} ({1}) failed: {2}".format(
-                    self.person_name, media_type, exc))
-                failed = True
-                continue
-            items = resp.get("items") if isinstance(resp, dict) else resp
-            for it in (items or []):
-                it.setdefault("media_type", media_type)
-                out.append(it)
-        return out, failed
-
-    def _load_discover(self, client: MediaServerClient) -> tuple[list[dict], bool]:
-        try:
-            resp = client.person_filmography(self.person_name)
-        except http.ApiError as exc:
-            kodigui.ERROR("person.py: discovery/person failed: {0}".format(exc))
-            return [], True
-        items = resp.get("items") if isinstance(resp, dict) else resp
-        # Defensive: the endpoint is documented to drop owned titles, and the
-        # probe agreed, but it still returns an `in_library` flag. Honour it
-        # rather than trusting the contract, so a server-side change can't
-        # put a title in both halves.
-        return [it for it in (items or []) if not it.get("in_library")], False
 
     # ------------------------------------------------------------------
     # items
@@ -416,11 +389,12 @@ class PersonWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
 
 def show(name: str, client: MediaServerClient | None = None, *, role: str = "",
-         title: str = "", photo: str = "") -> None:
+         title: str = "", photo: str = "", person_id: str = "") -> None:
     """Open the filmography for `name`. Silently does nothing without a
     name: a cast entry can carry an empty name string, and looking that up
     would just render a confusing empty page."""
     if not name:
         return
-    w = PersonWindow.open(name=name, client=client, role=role, title=title, photo=photo)
+    w = PersonWindow.open(name=name, client=client, role=role, title=title, photo=photo,
+                          person_id=person_id)
     del w
