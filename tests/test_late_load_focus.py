@@ -22,13 +22,15 @@ def check(name, got, want):
 class FakeWindow:
     _browse_load_source_content = MainWindow._browse_load_source_content
     _browse_close_view = MainWindow._browse_close_view
-    TILES_ID = MainWindow.TILES_ID
+    _browse_tile_list = MainWindow._browse_tile_list
+    TILES_ID, FIXED_TILES_ID = MainWindow.TILES_ID, MainWindow.FIXED_TILES_ID
+    BROWSE_FIXED_SOURCE_COUNT = MainWindow.BROWSE_FIXED_SOURCE_COUNT
 
-    def __init__(self, view_open):
+    def __init__(self, view_open, active=3):
         self.props = {"browse_view": "1" if view_open else ""}
         self._browse_focus_after_load = True
         self.focused = []
-        self.tiles_list, self._active_source_idx = [], 0
+        self.tiles_list, self.fixed_tiles_list, self._active_source_idx = [], [], active
 
     def getProperty(self, key):
         return self.props.get(key, "")
@@ -68,6 +70,10 @@ w._browse_close_view()
 check("closing a view drops its pending focus", w._browse_focus_after_load, False)
 w._browse_load_source_content()
 check("so a late load focuses nothing in it", w.focused, [6020])
+
+w = FakeWindow(view_open=True, active=0)
+w._browse_close_view()
+check("closing Watchlist's view lands on the fixed row", w.focused, [6021])
 
 
 

@@ -406,16 +406,34 @@
                     <texture>fade-top.png</texture>
                 </control>
 {browse_feature}
-                <control type="panel" id="6020">
+                <!-- App 2.1.0: the server's sections in one row of wide tiles,
+                     the four fixed tiles in a row of their own below. -->
+                <control type="list" id="6020">
+                    <posx>{BROWSE_LEFT}</posx>
+                    <posy>{BROWSE_SECTIONS_Y}</posy>
+                    <width>{BROWSE_SECTIONS_W}</width>
+                    <height>{BROWSE_SECTIONS_H}</height>
+                    <onup>3000</onup>
+                    <onleft>6020</onleft>
+                    <onright>6020</onright>
+                    <ondown>6021</ondown>
+                    <orientation>horizontal</orientation>
+                    <itemwidth>{BROWSE_SECTION_PITCH_X}</itemwidth>
+                    <itemheight>{BROWSE_SECTIONS_H}</itemheight>
+                    <scrolltime>{SCROLLTIME}</scrolltime>
+{section_item}
+{section_focused}
+                </control>
+                <control type="list" id="6021">
                     <posx>{BROWSE_LEFT}</posx>
                     <posy>{BROWSE_TILES_Y}</posy>
                     <width>{BROWSE_TILES_W}</width>
                     <height>{BROWSE_TILES_H}</height>
-                    <onup>3000</onup>
-                    <onleft>6020</onleft>
-                    <onright>6020</onright>
-                    <ondown>6020</ondown>
-                    <orientation>vertical</orientation>
+                    <onup>6020</onup>
+                    <onleft>6021</onleft>
+                    <onright>6021</onright>
+                    <ondown>6021</ondown>
+                    <orientation>horizontal</orientation>
                     <itemwidth>{BROWSE_TILE_PITCH_X}</itemwidth>
                     <itemheight>{BROWSE_TILE_PITCH_Y}</itemheight>
                     <scrolltime>{SCROLLTIME}</scrolltime>

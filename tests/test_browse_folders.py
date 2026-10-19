@@ -45,7 +45,7 @@ class FakeWindow:
     _browse_folder_up = MainWindow._browse_folder_up
     _browse_folder_root = MainWindow._browse_folder_root
     _FOLDER_TRAIL_CHARS = MainWindow._FOLDER_TRAIL_CHARS
-    NAV_LIST_ID, TILES_ID, GRID_ID = 3000, 6020, 6200
+    NAV_LIST_ID, TILES_ID, FIXED_TILES_ID, GRID_ID = 3000, 6020, 6021, 6200
 
     def __init__(self, src, caps=("library.folders",)):
         self.src, self._server_capabilities = src, set(caps)
