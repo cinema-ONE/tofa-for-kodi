@@ -1284,7 +1284,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                   + [(m, m.get("job")) for m in crew])
         self.cast_list.reset()
         cast_managed = [
-            self._person_card_item(m.get("name"), role, m.get("profile_url"), client)
+            self._person_card_item(m.get("name"), role, m.get("profile_url"), client,
+                                   m.get("person_id"))
             for m, role in people
         ]
         if cast_managed:
@@ -1308,7 +1309,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setProperty("fact_{0}_value".format(i + 1), value)
 
     @staticmethod
-    def _person_card_item(name, role, profile_url, client: MediaServerClient) -> "kodigui.ManagedListItem":
+    def _person_card_item(name, role, profile_url, client: MediaServerClient,
+                          person_id=None) -> "kodigui.ManagedListItem":
         # No URL disambiguation needed for a person appearing in both Cast
         # and Crew -- the same plain image URL renders correctly for both,
         # given fragments.py:person_card()'s scalediffuse="false".
@@ -1326,6 +1328,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             mli.setProperty("has_photo", "")
         mli.setProperty("initials", _initials(name))
         mli.setProperty("role", role or "")
+        mli.setProperty("person_id", str(person_id or ""))
         return mli
 
     def _about_facts(self, media: dict, aspect_chip: str = "") -> list:
@@ -2672,8 +2675,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._person_clicked()
 
     def _person_clicked(self):
-        """7.4's filmography page. The lookup is on the name string because
-        the API has no person id.
+        """7.4's filmography page, by person id when the cast entry has one.
 
         The client is handed over so the new window doesn't re-run the
         profile gate on an already-signed-in session."""
@@ -2684,7 +2686,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if item is None:
             return
         person.show(item.getLabel(), self._get_client(), role=item.getProperty("role"),
-                    title=self.getProperty("p2_title"), photo=item.getProperty("photo"))
+                    title=self.getProperty("p2_title"), photo=item.getProperty("photo"),
+                    person_id=item.getProperty("person_id"))
 
     def _open_playback_options(self) -> bool:
         """7.7's pre-play options: Quality / Audio / Subtitles for the file
