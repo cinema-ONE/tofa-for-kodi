@@ -133,6 +133,20 @@ check("curated goes on the wire as `true`, the only spelling the server reads",
 api.MediaServerClient.collections(wire)
 check("...and is left off when not asked", wire.sent[1] == {}, str(wire.sent))
 
+check("a title is found by its library id",
+      [m["key"] for m in U.entries(u, media_id="m4")] == [u["members"][3]["key"]])
+check("...or by TMDB id and kind, a show matching tv/series alike",
+      len(U.entries(u, tmdb_id=5, media_type="series")) == 1
+      and not U.entries(u, tmdb_id=5, media_type="movie"))
+U.forget()
+calls = FakeClient({"a": SAGA})
+U.everything(calls); U.everything(calls)
+check("the universes are fetched once a minute, not per call", calls.asked == ["a"], str(calls.asked))
+U.forget()
+U.everything(calls)
+check("...and again once forgotten", calls.asked == ["a", "a"], str(calls.asked))
+U.forget()
+
 from resources.lib.windows import universepage as P   # noqa: E402
 
 check("Continue names the position and the title",

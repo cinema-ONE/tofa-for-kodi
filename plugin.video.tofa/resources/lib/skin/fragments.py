@@ -413,6 +413,33 @@ def watchlist_badge_item(size: PosterSize = POSTER_STD) -> str:
                     </control>"""
 
 
+def this_title_tag(size: PosterSize = POSTER_STD) -> str:
+    """"This title" on a universe shelf's card for the page's own title (app 2.1.0)."""
+    y = size.h - 8 - 28
+    return f"""
+                    <control type="image">
+                        <visible>!String.IsEmpty(ListItem.Property(this_title))</visible>
+                        <posx>8</posx>
+                        <posy>{y}</posy>
+                        <width>100</width>
+                        <height>28</height>
+                        <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
+                        <texture border="14">capsule-h28.png</texture>
+                    </control>
+                    <control type="label">
+                        <visible>!String.IsEmpty(ListItem.Property(this_title))</visible>
+                        <posx>8</posx>
+                        <posy>{y}</posy>
+                        <width>100</width>
+                        <height>28</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_ACCOUNT}</font>
+                        <textcolor>{T.CANVAS}</textcolor>
+                        <label>This title</label>
+                    </control>"""
+
+
 def watchlist_badge_focused(size: PosterSize = POSTER_STD) -> str:
     """The SAME badge as watchlist_badge_item(): dark chip, soft outline,
     white glyph. A focusedlayout needs its own copy of the markup, which is

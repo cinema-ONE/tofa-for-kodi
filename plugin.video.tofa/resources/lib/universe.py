@@ -10,6 +10,8 @@ from __future__ import annotations
 import datetime
 import math
 import struct
+import threading
+import time
 import zlib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
@@ -110,11 +112,22 @@ def _chapters(members: list) -> list:
     return out
 
 
-def continuing(client, workers: int = 4) -> list:
-    """The universes Continue the saga shows, in the server's order.
+#: Every universe, per server and profile, for a minute (the web's own staleness).
+_CACHE: dict = {}
+_CACHE_LOCK = threading.Lock()
+CACHE_S = 60
+
+
+def everything(client, workers: int = 4) -> list:
+    """Every universe with members, in the server's order, cached a minute.
 
     One request per universe, as the web app makes them; a few at a time,
     since Home waits on this row."""
+    key = (getattr(client, "base_url", None), getattr(client, "profile_id", None))
+    with _CACHE_LOCK:
+        hit = _CACHE.get(key)
+    if hit and time.monotonic() - hit[0] < CACHE_S:
+        return hit[1]
     ids = from_payload(client.collections(curated=True))
 
     def one(collection_id):
@@ -126,8 +139,29 @@ def continuing(client, workers: int = 4) -> list:
         return build(data) if data.get("kind") == "curated" else None
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        built = list(pool.map(one, ids))
-    return [u for u in built if u and u["members"] and continues(u)]
+        built = [u for u in pool.map(one, ids) if u and u["members"]]
+    with _CACHE_LOCK:
+        _CACHE[key] = (time.monotonic(), built)
+    return built
+
+
+def forget() -> None:
+    """Drop the cache: a title was marked, so up next may have moved."""
+    with _CACHE_LOCK:
+        _CACHE.clear()
+
+
+def continuing(client, workers: int = 4) -> list:
+    """The universes Continue the saga shows, in the server's order."""
+    return [u for u in everything(client, workers) if continues(u)]
+
+
+def entries(universe: dict, media_id=None, tmdb_id=None, media_type=None) -> list:
+    """The members that are this title: by library id, else TMDB id and type."""
+    return [m for m in universe["members"]
+            if (media_id is not None and m["item"].get("local_media_id") == media_id)
+            or (tmdb_id is not None and m["item"].get("tmdb_id") == tmdb_id
+                and _is_show(m["item"].get("type")) == _is_show(media_type))]
 
 
 def hero_item(universe: dict) -> dict:

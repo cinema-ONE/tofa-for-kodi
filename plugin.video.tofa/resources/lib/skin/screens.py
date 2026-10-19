@@ -543,8 +543,9 @@ def render_detail() -> str:
     )
     collection_cards = fragments.poster_card(
         6320, has_progress=False, caption_field="caption_meta", size=compact,
-        extra_item_xml=fragments.watchlist_badge_item(compact),
-        extra_focused_xml=fragments.watchlist_badge_focused(compact),
+        extra_item_xml=fragments.watchlist_badge_item(compact) + fragments.this_title_tag(compact),
+        extra_focused_xml=(fragments.watchlist_badge_focused(compact)
+                           + fragments.this_title_tag(compact)),
     )
     page2 = fragments.detail_page2(
         cast_cards=cast_cards, collection_cards=collection_cards,
