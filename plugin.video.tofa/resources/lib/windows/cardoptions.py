@@ -80,10 +80,12 @@ _CATALOG = {
     WATCHLIST_ADD: ("Add to Watchlist", icon_glyphs.BOOKMARK, False),
     WATCHLIST_REMOVE: ("Remove from Watchlist", icon_glyphs.BOOKMARK_OFF, False),
     REMOVE_FROM_CW: ("Remove from Continue Watching", icon_glyphs.CIRCLE_X, True),
-    SEEN_ADD: ("Mark as Seen", icon_glyphs.CHECK, False),
-    SEEN_REMOVE: ("Mark as Not Seen", icon_glyphs.MINUS_CIRCLE, False),
+    # tofa web's words and icons. A set mark reads as its state, as the web's
+    # toggle does, and choosing it clears the mark.
+    SEEN_ADD: ("Seen It", icon_glyphs.CHECK, False),
+    SEEN_REMOVE: ("Seen", icon_glyphs.CHECK, False),
     NOT_INTERESTED_ADD: ("Not Interested", icon_glyphs.CIRCLE_SLASH, False),
-    NOT_INTERESTED_REMOVE: ("Show in Suggestions", icon_glyphs.EYE, False),
+    NOT_INTERESTED_REMOVE: ("Hidden from Suggestions", icon_glyphs.CIRCLE_SLASH, False),
     PLAY_SEASON: ("Play Season", icon_glyphs.PLAY, False),
     MARK_SEASON_WATCHED: ("Mark Season as Watched", icon_glyphs.CHECK, False),
     MARK_SEASON_UNWATCHED: ("Mark Season as Unwatched", icon_glyphs.MINUS_CIRCLE, False),
