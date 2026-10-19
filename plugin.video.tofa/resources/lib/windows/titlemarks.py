@@ -12,15 +12,8 @@ from typing import Optional
 from . import cardoptions, kodigui
 from .. import http, toast
 
-#: Toast per choice, in tofa web's words where it has them; nothing on the
-#: card changes, so this is the confirmation.
-_DONE = {
-    cardoptions.SEEN_ADD: "Marked {0} as seen",
-    cardoptions.SEEN_REMOVE: "{0} is no longer marked as seen",
-    cardoptions.NOT_INTERESTED_ADD: "We'll stop suggesting {0}",
-    cardoptions.NOT_INTERESTED_REMOVE: "{0} can be suggested again",
-}
-KEYS = frozenset(_DONE)
+KEYS = frozenset((cardoptions.SEEN_ADD, cardoptions.SEEN_REMOVE,
+                  cardoptions.NOT_INTERESTED_ADD, cardoptions.NOT_INTERESTED_REMOVE))
 
 
 def offered(data: dict, media_type: Optional[str] = None,
@@ -39,11 +32,13 @@ def offered(data: dict, media_type: Optional[str] = None,
 
 
 def apply(client, picked: str, data: dict, media_type: Optional[str] = None,
-          tmdb_id=None, title: str = "") -> bool:
-    """Carry out one mark choice and record it in `data`. False if `picked`
-    is not a mark."""
+          tmdb_id=None) -> Optional[bool]:
+    """Carry out one mark choice and record it in `data`: True when it was
+    saved, False when the server refused, None when `picked` is not a mark.
+
+    Success is silent, as on the Apple TV app (2.1.0); a failure says so."""
     if picked not in KEYS:
-        return False
+        return None
     media_type = media_type or data.get("type") or data.get("media_type")
     tmdb_id = tmdb_id or data.get("tmdb_id")
     on = picked in (cardoptions.SEEN_ADD, cardoptions.NOT_INTERESTED_ADD)
@@ -57,7 +52,6 @@ def apply(client, picked: str, data: dict, media_type: Optional[str] = None,
         kodigui.ERROR("titlemarks: {0} failed: {1}".format(picked, exc))
         toast.show("Couldn't update {0}, try again later".format(
             "Seen it" if seen_row else "Not interested"))
-        return True
+        return False
     data["seen" if seen_row else "not_interested"] = on
-    toast.show(_DONE[picked].format(title or data.get("title") or "this title"))
     return True

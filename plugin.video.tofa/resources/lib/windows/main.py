@@ -5330,14 +5330,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             not_interested=not_interested,
         )
         picked = cardoptions.show(
+            # The title alone: the app's card menu carries no year (2.1.0).
             title=item.getLabel() or "",
-            subtitle=item.getProperty("caption_meta") or "",
             keys=keys,
             # Same title, same action, same word as the detail hero.
             resume=has_progress and not completed,
         )
         if picked:
             self._apply_card_option(picked, client, data, item, kind)
+            # Not interested takes the card off its row at once, as on the app.
+            if picked == cardoptions.NOT_INTERESTED_ADD and data.get("not_interested") is True:
+                mcl.removeManagedItem(item)
         return True
 
     def _apply_card_option(self, picked, client, data, item, kind):
@@ -5364,7 +5367,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.open_detail(discovery_id=str(tmdb_id),
                                  media_type=media_type)
             return
-        if titlemarks.apply(client, picked, data, title=item.getLabel()):
+        if titlemarks.apply(client, picked, data) is not None:
             return
 
         try:

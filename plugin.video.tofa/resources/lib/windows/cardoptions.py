@@ -22,7 +22,7 @@ from __future__ import annotations
 import xbmcgui
 
 from . import kodigui, theme
-from ..skin import icon_glyphs
+from ..skin import fragments, icon_glyphs
 from ..skin import tokens as T
 
 # Action keys returned via `picked`. Strings rather than an enum so a caller
@@ -74,20 +74,20 @@ _CATALOG = {
     # progress data, not about labels -- see the dismissed-title divergence
     # noted in the commit that added this.
     PLAY: ("Play", icon_glyphs.PLAY, False),
-    DETAILS: ("Go to Details", icon_glyphs.CHEVRON_RIGHT, False),
-    MARK_WATCHED: ("Mark as Watched", icon_glyphs.CHECK, False),
+    DETAILS: ("Go to Details", icon_glyphs.INFO, False),
+    MARK_WATCHED: ("Mark as Watched", icon_glyphs.CIRCLE_CHECK, False),
     MARK_UNWATCHED: ("Mark as Unwatched", icon_glyphs.MINUS_CIRCLE, False),
     WATCHLIST_ADD: ("Add to Watchlist", icon_glyphs.BOOKMARK, False),
     WATCHLIST_REMOVE: ("Remove from Watchlist", icon_glyphs.BOOKMARK_OFF, False),
     REMOVE_FROM_CW: ("Remove from Continue Watching", icon_glyphs.CIRCLE_X, True),
-    # tofa web's words and icons. A set mark reads as its state, as the web's
-    # toggle does, and choosing it clears the mark.
-    SEEN_ADD: ("Seen It", icon_glyphs.CHECK, False),
-    SEEN_REMOVE: ("Seen", icon_glyphs.CHECK, False),
-    NOT_INTERESTED_ADD: ("Not Interested", icon_glyphs.CIRCLE_SLASH, False),
-    NOT_INTERESTED_REMOVE: ("Hidden from Suggestions", icon_glyphs.CIRCLE_SLASH, False),
+    # The Apple TV app's words (2.1.0). A set mark reads as its state, and
+    # choosing it clears the mark.
+    SEEN_ADD: ("Seen it", icon_glyphs.CIRCLE_CHECK, False),
+    SEEN_REMOVE: ("Seen", icon_glyphs.CIRCLE_CHECK, False),
+    NOT_INTERESTED_ADD: ("Not interested", icon_glyphs.THUMBS_DOWN, False),
+    NOT_INTERESTED_REMOVE: ("Hidden from suggestions", icon_glyphs.THUMBS_DOWN, False),
     PLAY_SEASON: ("Play Season", icon_glyphs.PLAY, False),
-    MARK_SEASON_WATCHED: ("Mark Season as Watched", icon_glyphs.CHECK, False),
+    MARK_SEASON_WATCHED: ("Mark Season as Watched", icon_glyphs.CIRCLE_CHECK, False),
     MARK_SEASON_UNWATCHED: ("Mark Season as Unwatched", icon_glyphs.MINUS_CIRCLE, False),
     CANCEL: ("Cancel", icon_glyphs.CIRCLE_X, False),
     # Exit confirmation. Not a card action, but this IS the app's "floating
@@ -156,9 +156,10 @@ def option_keys(
         keys.append(MARK_WATCHED)
     if in_library and (has_progress or fully_watched):
         keys.append(MARK_UNWATCHED)
-    keys.append(WATCHLIST_REMOVE if on_watchlist else WATCHLIST_ADD)
+    # Seen it sits above Watchlist and Not interested below, as on the app.
     if seen is not None:
         keys.append(SEEN_REMOVE if seen else SEEN_ADD)
+    keys.append(WATCHLIST_REMOVE if on_watchlist else WATCHLIST_ADD)
     if not_interested is not None:
         keys.append(NOT_INTERESTED_REMOVE if not_interested else NOT_INTERESTED_ADD)
     if in_continue_watching:
@@ -228,7 +229,25 @@ class CardOptionsDialog(kodigui.BaseDialog):
             self.option_list.addItems(items)
             if self._focus_key in self._keys:
                 self.option_list.selectItem(self._keys.index(self._focus_key))
+        self._fit(len(items))
         self.setFocusId(self.LIST_ID)
+
+    def _fit(self, row_count: int) -> None:
+        """Shrink the panel to its rows and header lines, as the app's menu does.
+        A failure leaves the tallest layout, which still works."""
+        g = fragments.cardoptions_geometry(
+            row_count, eyebrow=bool(self._eyebrow), subtitle=bool(self._subtitle))
+        try:
+            self.getControl(200).setPosition(g["PANEL_X"], g["PANEL_Y"])
+            self.getControl(201).setHeight(g["SHADOW_H"])
+            for control_id in (202, 203):
+                self.getControl(control_id).setHeight(g["PANEL_H"])
+            self.getControl(204).setPosition(fragments.OPTIONS_PAD, g["TITLE_Y"])
+            self.getControl(205).setPosition(fragments.OPTIONS_PAD, g["SUBTITLE_Y"])
+            self.getControl(self.LIST_ID).setPosition(fragments.OPTIONS_PAD, g["ROWS_Y"])
+            self.getControl(self.LIST_ID).setHeight(g["ROWS_H"])
+        except Exception as exc:                     # noqa: BLE001
+            kodigui.ERROR("cardoptions: could not fit the panel: {0!r}".format(exc))
 
     def onClick(self, controlID):
         if controlID != self.LIST_ID or self.option_list is None:
