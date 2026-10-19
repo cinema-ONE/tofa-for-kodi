@@ -2157,12 +2157,17 @@ def alpha_rail_pill(list_id: int) -> tuple[str, str]:
     return item, focused
 
 
-def browse_tile(list_id: int) -> tuple[str, str]:
+def browse_tile(list_id: int, wide: bool = False) -> tuple[str, str]:
     """A tile of Browse's landing (app 2.0): art from the library under a
     dark fade, the name and a count (or the last title watched). The focused
-    tile grows a little and takes an accent rim and glow."""
-    W, H = T.BROWSE_TILE_W, T.BROWSE_TILE_H
-    CW, CH = T.BROWSE_TILE_PITCH_X, T.BROWSE_TILE_PITCH_Y
+    tile grows a little and takes an accent rim and glow. `wide` is a
+    section's tile, a row of them above the fixed four (app 2.1.0)."""
+    if wide:
+        W, H, asset = T.BROWSE_SECTION_W, T.BROWSE_SECTION_H, "browse-section"
+        CW, CH = T.BROWSE_SECTION_PITCH_X, T.BROWSE_SECTIONS_H
+    else:
+        W, H, asset = T.BROWSE_TILE_W, T.BROWSE_TILE_H, "browse-tile"
+        CW, CH = T.BROWSE_TILE_PITCH_X, T.BROWSE_TILE_PITCH_Y
 
     def _tile(rim: str) -> str:
         return f"""
@@ -2170,19 +2175,19 @@ def browse_tile(list_id: int) -> tuple[str, str]:
                         <width>{W}</width>
                         <height>{H}</height>
                         <colordiffuse>0xFF16222B</colordiffuse>
-                        <texture diffuse="browse-tile-mask.png">white-square.png</texture>
+                        <texture diffuse="{asset}-mask.png">white-square.png</texture>
                     </control>
                     <control type="image">
                         <width>{W}</width>
                         <height>{H}</height>
                         <aspectratio scalediffuse="false">scale</aspectratio>
-                        <texture diffuse="browse-tile-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                        <texture diffuse="{asset}-mask.png">$INFO[ListItem.Art(thumb)]</texture>
                     </control>
                     <control type="image">
                         <width>{W}</width>
                         <height>{H}</height>
                         <colordiffuse>0xB3000000</colordiffuse>
-                        <texture diffuse="browse-tile-mask.png">fade-bottom.png</texture>
+                        <texture diffuse="{asset}-mask.png">fade-bottom.png</texture>
                     </control>
                     <control type="label">
                         <visible>String.IsEqual(ListItem.Property(kind),surprise_me)</visible>
@@ -2224,7 +2229,7 @@ def browse_tile(list_id: int) -> tuple[str, str]:
                         <width>{W}</width>
                         <height>{H}</height>
                         <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture>browse-tile-border.png</texture>
+                        <texture>{asset}-border.png</texture>
                     </control>"""
     glow = f"""
                     <control type="image">
@@ -2234,7 +2239,7 @@ def browse_tile(list_id: int) -> tuple[str, str]:
                         <width>{W + 20}</width>
                         <height>{H + 20}</height>
                         <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
-                        <texture>browse-tile-glow.png</texture>
+                        <texture>{asset}-glow.png</texture>
                     </control>"""
     zoom = (f'<animation effect="zoom" start="100" end="103.5" center="{W // 2},{H // 2}" '
             f'time="150" tween="cubic" easing="out" condition="{focus}">Conditional</animation>')

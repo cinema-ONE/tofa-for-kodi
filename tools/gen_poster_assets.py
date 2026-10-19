@@ -433,12 +433,15 @@ SAGA_CARD_W, SAGA_CARD_H = 556, 313
 GRID_POSTER_W, GRID_POSTER_H = 212, 318
 # Browse's landing tiles (app 2.0): 411x176, the poster's corner radius.
 BROWSE_TILE_W, BROWSE_TILE_H = 411, 176
+# Its section tiles (app 2.1.0): one row of 556x236 above the fixed four.
+BROWSE_SECTION_W, BROWSE_SECTION_H = 556, 236
 
 
 def gen_browse_tile_assets() -> None:
     """The landing tile's mask, focus border and glow, and Surprise me's art:
     soft blobs of colour of our own making, under a dark wash."""
     gen_card_set(BROWSE_TILE_W, BROWSE_TILE_H, "browse-tile")
+    gen_card_set(BROWSE_SECTION_W, BROWSE_SECTION_H, "browse-section")
     w, h = BROWSE_TILE_W * S, BROWSE_TILE_H * S
     art = Image.new("RGB", (w, h), (24, 32, 52))
     draw = ImageDraw.Draw(art)

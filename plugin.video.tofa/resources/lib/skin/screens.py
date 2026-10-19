@@ -127,7 +127,8 @@ def render_main() -> str:
 
     # Browse (app 2.0): the landing's tiles, the view's two header pills and
     # its chip row. Chip words and widths are MainWindow's (_browse_sync_chips).
-    tile_item, tile_focused = fragments.browse_tile(6020)
+    section_item, section_focused = fragments.browse_tile(6020, wide=True)
+    tile_item, tile_focused = fragments.browse_tile(6021)
     folders_item, folders_focused = fragments.browse_header_pill(
         6130, glyph="$INFO[ListItem.Property(view_glyph)]",
         label="$INFO[ListItem.Property(view_label)]", width=T.BROWSE_FOLDERS_W)
@@ -490,6 +491,8 @@ def render_main() -> str:
         grid_focused=grid_focused,
         tile_item=tile_item,
         tile_focused=tile_focused,
+        section_item=section_item,
+        section_focused=section_focused,
         surprise_item=surprise_item,
         surprise_focused=surprise_focused,
         sort_chip=sort_chip,

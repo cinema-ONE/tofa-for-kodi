@@ -279,43 +279,50 @@ def test_saga(run: Run):
               b.wait(lambda: b.cond(f"Control.HasFocus({list_id})"), 8))
 
 
+#: The landing's rows: the server's sections, then the fixed four (app 2.1.0).
+ON_TILES = "Control.HasFocus(6020) | Control.HasFocus(6021)"
+
+
 def into_tiles(b: Box) -> bool:
     """Down from the top bar once the landing has its tiles (slow at first)."""
-    b.wait(lambda: b.num_items(6020) > 0, 30)
-    return bool(b.wait(lambda: b.cond("Control.HasFocus(6020)") or b.key("Down", pause=1), 8, 0.5))
+    b.wait(lambda: b.num_items(6021) > 0, 30)
+    return bool(b.wait(lambda: b.cond(ON_TILES) or b.key("Down", pause=1), 8, 0.5))
+
+
+def _tile_rows(b: Box):
+    """Each row's tiles from its left end, focus moving along: yields (row, label)."""
+    if b.cond("Control.HasFocus(6021)") and b.num_items(6020):
+        b.key("Up", pause=0.4)
+    for row in (6020, 6021):
+        if not b.cond("Control.HasFocus({0})".format(row)):
+            continue
+        b.key("Left", times=b.num_items(row), pause=0.3)
+        last = None
+        while True:
+            label = b.label("System.CurrentControl")
+            if label == last:
+                break
+            yield row, label
+            last = label
+            b.key("Right", pause=0.6)
+        if row == 6020:
+            b.key("Down", pause=0.6)
 
 
 def walk_tiles(b: Box):
-    """Every landing tile in order, as (label, wall mode): top-left first,
-    four to a row, focus left on the last tile."""
-    b.wait(lambda: b.cond("Control.HasFocus(6020)"), 5)
-    b.key("Left", times=4, pause=0.3)
-    if int(b.label("Container(6020).CurrentItem") or 1) > 4:
-        b.key("Up")
+    """Every landing tile in order, as (label, wall mode): the sections'
+    row first, then the fixed one; focus left on the last tile."""
+    b.wait(lambda: b.cond(ON_TILES), 5)
     seen = []
-    for row in range(3):
-        for col in range(4):
-            label = b.label("System.CurrentControl")
-            if label in [t for t, _ in seen]:
-                return seen
-            seen.append((label, b.wait(lambda: b.label("Window.Property(browse_wall)"), 12) or ""))
-            if col < 3:
-                b.key("Right", pause=0.8)
-        b.key("Down", pause=0.6)
-        b.key("Left", times=3, pause=0.3)
+    for _row, label in _tile_rows(b):
+        seen.append((label, b.wait(lambda: b.label("Window.Property(browse_wall)"), 12) or ""))
     return seen
 
 
 def go_to_tile(b: Box, name: str) -> bool:
-    b.key("Left", times=4, pause=0.3)
-    b.key("Up") if int(b.label("Container(6020).CurrentItem") or 1) > 4 else None
-    for _ in range(2):
-        for _ in range(4):
-            if b.label("System.CurrentControl") == name:
-                return True
-            b.key("Right", pause=0.4)
-        b.key("Down", pause=0.4)
-        b.key("Left", times=3, pause=0.3)
+    for _row, label in _tile_rows(b):
+        if label == name:
+            return True
     return b.label("System.CurrentControl") == name
 
 
@@ -335,7 +342,7 @@ def test_browse(run: Run):
     run.shot("02-browse-landing")
     # The first tile's view.
     go_to_tile(b, first)
-    b.select_if("Control.HasFocus(6020)")
+    b.select_if(ON_TILES)
     run.check("Browse: a library view opens", b.wait(lambda: b.label("Window.Property(browse_view)") == "1", 10))
     run.check("Browse: its grid fills", b.wait(lambda: b.num_items(6200) > 0, 30), str(b.num_items(6200)))
     run.shot("03-browse-grid")
@@ -351,7 +358,7 @@ def test_browse(run: Run):
 
 
 def open_tile(b: Box, name: str) -> bool:
-    return go_to_tile(b, name) and b.select_if("Control.HasFocus(6020)")
+    return go_to_tile(b, name) and b.select_if(ON_TILES)
 
 
 def test_collections(run: Run):
@@ -443,7 +450,7 @@ def test_title_and_person(run: Run):
     if not run.check("Title page: the TV Shows tile", go_to_tile(b, "TV Shows"),
                      b.label("System.CurrentControl")):
         return
-    b.select_if("Control.HasFocus(6020)")
+    b.select_if(ON_TILES)
     b.wait(lambda: b.num_items(6200) > 0, 30)
     b.wait(lambda: b.cond("Control.HasFocus(6200)") or b.key("Down"), 6, 0.6)
     b.select_if("Control.HasFocus(6200)")

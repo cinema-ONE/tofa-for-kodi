@@ -466,8 +466,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     # Browse section control ids -- 6000-6299 block, kept collision-free
     # from Home's 4000-5899/9000 block.
-    #: The landing's tiles (app 2.0); each opens a full-width view.
+    #: The landing's tiles: the server's sections, then the fixed four
+    #: in a row of their own (app 2.1.0); each opens a full-width view.
     TILES_ID = 6020
+    FIXED_TILES_ID = 6021
     GRID_ID = 6200
     ALPHA_RAIL_ID = 6220
     SORT_ID = 6110
@@ -755,6 +757,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
         # ---- browse section state ----
         self.tiles_list: kodigui.ManagedControlList | None = None
+        self.fixed_tiles_list: kodigui.ManagedControlList | None = None
         self._browse_loaded_idx: int | None = None   # the source on screen
         self._browse_focus_after_load = False
         self.grid_list: kodigui.ManagedControlList | None = None
@@ -957,6 +960,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.CUSTOM_COLLECTION_ID: self.custom_collection_list,
             self.ALPHA_RAIL_ID: self.alpha_list,
             self.TILES_ID: self.tiles_list,
+            self.FIXED_TILES_ID: self.fixed_tiles_list,
             self.TOP_RESULT_LIST_ID: self.top_result_list,
             self.MOVIES_LIST_ID: self.movies_list,
             self.SHOWS_LIST_ID: self.shows_list,
@@ -1029,6 +1033,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Down-navigation target (see _section_down_targets) even before
         # Browse is first shown.
         self.tiles_list = kodigui.ManagedControlList(self, self.TILES_ID, 8)
+        self.fixed_tiles_list = kodigui.ManagedControlList(self, self.FIXED_TILES_ID, 4)
         self.surprise_list = kodigui.ManagedControlList(self, self.SURPRISE_PILL_ID, 1)
         self.folders_list = kodigui.ManagedControlList(self, self.FOLDERS_ID, 1)
         self.alpha_list = kodigui.ManagedControlList(
@@ -1493,7 +1498,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_artbudget_clicked()
         elif controlID == self.SETTINGS_ARTCLEAR_ID:
             self._settings_artclear_clicked()
-        elif controlID == self.TILES_ID:
+        elif controlID in (self.TILES_ID, self.FIXED_TILES_ID):
             self._browse_tile_clicked()
         elif controlID == self.ALPHA_RAIL_ID:
             self._browse_alpha_clicked()
@@ -1610,7 +1615,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 self.getControl(self.GRID_ID).controlUp(self.getControl(controlID))
             except Exception:
                 pass
-        if controlID == self.TILES_ID:
+        if controlID in (self.TILES_ID, self.FIXED_TILES_ID):
             self._browse_sync_backdrop()
 
         mlist = self.row_lists.get(controlID)
@@ -1727,7 +1732,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # A Browse view's Back returns to the landing's tiles.
             return
 
-        if self.getFocusId() == self.TILES_ID:
+        if self.getFocusId() in (self.TILES_ID, self.FIXED_TILES_ID):
             self._browse_sync_backdrop()
 
         picking = (self._settings_picker
@@ -3110,9 +3115,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                    else icon_glyphs.ARROW_UP)
 
     def _browse_build_sidebar(self):
-        """The landing's tiles (app 2.0): the server's Browse sections, then
-        Watchlist, History, Collections and Surprise me, each with art and a
-        line under its name (a count, or the last title watched)."""
+        """The landing's tiles: the server's Browse sections, then a row of
+        Watchlist, History, Collections and Surprise me (app 2.1.0), each
+        with art and a line under its name (a count, or the last title)."""
         client = self._get_client()
         self._sources = [
             {"kind": "watchlist", "name": "Watchlist", "glyph": icon_glyphs.BOOKMARK},
@@ -3135,21 +3140,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # A library first, where there is one, else Watchlist.
             self._active_source_idx = (self.BROWSE_FIXED_SOURCE_COUNT
                                        if len(self._sources) > self.BROWSE_FIXED_SOURCE_COUNT else 0)
-        order = (list(range(self.BROWSE_FIXED_SOURCE_COUNT, len(self._sources)))
-                 + list(range(self.BROWSE_FIXED_SOURCE_COUNT)) + [None])
-        tiles = []
-        for idx in order:
-            src = self._sources[idx] if idx is not None else {"kind": "surprise_me"}
-            name = src.get("name") or "Surprise me"
-            mli = kodigui.ManagedListItem(label=name, label2=self._browse_tile_line(src),
-                                          data_source=idx)
-            mli.setProperty("kind", src["kind"])
-            mli.setArt({"thumb": src.get("art") or ("browse-surprise.png" if idx is None else "")})
-            tiles.append(mli)
-        self.tiles_list.reset()
-        self.tiles_list.addItems(tiles)
-        self.tiles_list.selectItem(order.index(self._active_source_idx)
-                                   if self._active_source_idx in order else 0)
+        rows = ((self.tiles_list, list(range(self.BROWSE_FIXED_SOURCE_COUNT, len(self._sources)))),
+                (self.fixed_tiles_list, list(range(self.BROWSE_FIXED_SOURCE_COUNT)) + [None]))
+        for mcl, order in rows:
+            tiles = []
+            for idx in order:
+                src = self._sources[idx] if idx is not None else {"kind": "surprise_me"}
+                name = src.get("name") or "Surprise me"
+                mli = kodigui.ManagedListItem(label=name, label2=self._browse_tile_line(src),
+                                              data_source=idx)
+                mli.setProperty("kind", src["kind"])
+                mli.setArt({"thumb": src.get("art") or ("browse-surprise.png" if idx is None else "")})
+                tiles.append(mli)
+            mcl.reset()
+            mcl.addItems(tiles)
+            mcl.selectItem(order.index(self._active_source_idx)
+                           if self._active_source_idx in order else 0)
         self._browse_sync_backdrop()
         if client:
             self._browse_start_walls(client)
@@ -3178,7 +3184,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """The line under a tile's name."""
         kind = src.get("kind")
         if kind == "surprise_me":
-            return "A random title you haven't seen"
+            return "Something unwatched"
         if kind == "history":
             return src.get("last_title") or ""
         count = src.get("count") or ""
@@ -3254,9 +3260,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         except http.ApiError as exc:
             kodigui.ERROR("main.py: browse collections count failed: {0}".format(exc))
 
+    def _browse_tile_list(self, idx: int | None) -> kodigui.ManagedControlList | None:
+        """The row holding source `idx`'s tile (None is Surprise me)."""
+        if idx is not None and idx >= self.BROWSE_FIXED_SOURCE_COUNT:
+            return self.tiles_list
+        return self.fixed_tiles_list
+
+    def _browse_focused_tile(self):
+        """The landing's current tile: the focused row's, else the active source's."""
+        focus = self.getFocusId()
+        mcl = {self.TILES_ID: self.tiles_list, self.FIXED_TILES_ID: self.fixed_tiles_list}.get(
+            focus) or self._browse_tile_list(self._active_source_idx)
+        return mcl.getSelectedItem() if mcl is not None else None
+
     def _browse_sync_backdrop(self):
         """The landing's backdrop follows the focused tile."""
-        item = self.tiles_list.getSelectedItem() if self.tiles_list else None
+        item = self._browse_focused_tile()
         art = ""
         if item is not None:
             idx = item.dataSource
@@ -3437,7 +3456,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def _browse_tile_clicked(self):
         """Open the focused tile: its view, or Surprise me's title."""
-        item = self.tiles_list.getSelectedItem()
+        item = self._browse_focused_tile()
         if item is None:
             return
         if item.dataSource is None:
@@ -3483,12 +3502,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.setProperty("browse_sort_open", "")
         self.setProperty("browse_view", "")
         self.setProperty("nav_hidden", "")
-        for pos, item in enumerate(self.tiles_list or []):
+        mcl = self._browse_tile_list(self._active_source_idx)
+        for pos, item in enumerate(mcl if mcl is not None else []):
             if item.dataSource == self._active_source_idx:
-                self.tiles_list.selectItem(pos)
+                mcl.selectItem(pos)
                 break
+        self.setFocusId(self.TILES_ID if mcl is self.tiles_list else self.FIXED_TILES_ID)
         self._browse_sync_backdrop()
-        self.setFocusId(self.TILES_ID)
         return True
 
     def _browse_layout_header(self):
@@ -3736,11 +3756,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_wire_nav_down()
 
     def _browse_wire_nav_down(self):
-        """Down out of the top bar lands on the landing's tiles."""
-        self._section_down_targets["browse"] = self.TILES_ID
+        """Down out of the top bar lands on the landing's first row of tiles."""
+        target = (self.TILES_ID if self.tiles_list is not None and len(self.tiles_list)
+                  else self.FIXED_TILES_ID)
+        self._section_down_targets["browse"] = target
         if self._current_target == "browse_window":
             try:
-                down = self.getControl(self.TILES_ID)
+                down = self.getControl(target)
                 self.getControl(self.NAV_LIST_ID).controlDown(down)
                 self.getControl(self.NAV_AVATAR_ID).controlDown(down)
             except RuntimeError:
@@ -4255,7 +4277,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Back inside a sub-folder: up one level, as it was left and onto
         the folder we came out of. False when there is nothing to go up from."""
         if (self.getProperty("active_section") != "browse"
-                or self.getFocusId() in (self.NAV_LIST_ID, self.TILES_ID)):
+                or self.getFocusId() in (self.NAV_LIST_ID, self.TILES_ID, self.FIXED_TILES_ID)):
             return False
         src = self._browse_active_source()
         lib_id = src.get("id")
