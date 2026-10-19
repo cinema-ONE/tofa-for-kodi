@@ -52,6 +52,16 @@ def _playable_file_ids(seasons: list) -> list:
     return ids
 
 
+def _movie_file(files: list, prefer_id=None):
+    """The film file to offer: the caller's (Continue Watching's edition) when
+    available, since each edition keeps its own place (server 0.12.0), else
+    the first available file, else the first file."""
+    available = [f for f in files if f.get("available")]
+    preferred = next((f for f in available
+                      if prefer_id and str(f.get("id")) == str(prefer_id)), None)
+    return preferred or (available[0] if available else (files[0] if files else None))
+
+
 def _dot_join(*parts) -> str:
     return u" • ".join(p for p in parts if p)
 
@@ -272,11 +282,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         #: was. /discovery/detail carries availability only, so this is the
         #: sole source of hero metadata for a title the server does not hold.
         self.discovery_item = kwargs.pop("discovery_item", None) or {}
-        # The exact episode to offer, when the caller already knows it.
-        # Continue Watching does: its card IS one episode's file. Every
-        # other entry point (Browse, Search, Discover, a library row) opens
-        # a show with no episode in mind, so this is None there and
-        # _next_up_episode() works it out.
+        # The exact episode or film edition to offer, when the caller knows
+        # it. Continue Watching does: its card IS one file. Every other entry
+        # point opens the title with no file in mind, so this is None there
+        # and _next_up_episode() or _movie_file() works it out.
         self.prefer_file_id = kwargs.pop("play_file_id", None)
         kodigui.ControlledWindow.__init__(self, *args, **kwargs)
         self.client: MediaServerClient | None = None
@@ -1104,9 +1113,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # after the pack now, next to the other page-2 work.
             return
 
-        # --- Movie: pick the first available file, read progress ---
-        files = media.get("files") or []
-        chosen = next((f for f in files if f.get("available")), files[0] if files else None)
+        # --- Movie: Continue Watching's edition, else the first available file ---
+        chosen = _movie_file(media.get("files") or [], self.prefer_file_id)
         # Before the early return below: play_file_id is what the pill reads,
         # and "no file at all" still has to clear it.
         self.play_file_id = chosen.get("id") if chosen else None
