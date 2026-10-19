@@ -35,6 +35,11 @@ MARK_UNWATCHED = "mark_unwatched"
 WATCHLIST_ADD = "watchlist_add"
 WATCHLIST_REMOVE = "watchlist_remove"
 REMOVE_FROM_CW = "remove_from_cw"
+# The profile's own marks (server 0.12.0); see titlemarks.py.
+SEEN_ADD = "seen_add"
+SEEN_REMOVE = "seen_remove"
+NOT_INTERESTED_ADD = "not_interested_add"
+NOT_INTERESTED_REMOVE = "not_interested_remove"
 # Season-scoped variants, for the panel the season sidebar opens. Separate
 # keys rather than reusing PLAY/MARK_WATCHED because the caller acts on a
 # whole season, and a shared key would make the two indistinguishable at the
@@ -75,6 +80,10 @@ _CATALOG = {
     WATCHLIST_ADD: ("Add to Watchlist", icon_glyphs.BOOKMARK, False),
     WATCHLIST_REMOVE: ("Remove from Watchlist", icon_glyphs.BOOKMARK_OFF, False),
     REMOVE_FROM_CW: ("Remove from Continue Watching", icon_glyphs.CIRCLE_X, True),
+    SEEN_ADD: ("Mark as Seen", icon_glyphs.CHECK, False),
+    SEEN_REMOVE: ("Mark as Not Seen", icon_glyphs.MINUS_CIRCLE, False),
+    NOT_INTERESTED_ADD: ("Not Interested", icon_glyphs.CIRCLE_SLASH, False),
+    NOT_INTERESTED_REMOVE: ("Show in Suggestions", icon_glyphs.EYE, False),
     PLAY_SEASON: ("Play Season", icon_glyphs.PLAY, False),
     MARK_SEASON_WATCHED: ("Mark Season as Watched", icon_glyphs.CHECK, False),
     MARK_SEASON_UNWATCHED: ("Mark Season as Unwatched", icon_glyphs.MINUS_CIRCLE, False),
@@ -124,6 +133,8 @@ def option_keys(
     on_watchlist: bool,
     in_continue_watching: bool,
     detail_variant: bool = False,
+    seen: bool | None = None,
+    not_interested: bool | None = None,
 ) -> list[str]:
     """7.2's conditional option set, in its stated order.
 
@@ -133,7 +144,8 @@ def option_keys(
     (so a never-started title doesn't offer to un-watch itself); Remove from
     Continue Watching only on the row it belongs to; Cancel only on the
     Detail variant, where the panel was opened from a button rather than by
-    a context key that also dismisses it."""
+    a context key that also dismisses it. `seen` and `not_interested` add
+    their toggle when not None (titlemarks.offered decides)."""
     keys = []
     if in_library:
         keys.append(PLAY)
@@ -143,6 +155,10 @@ def option_keys(
     if in_library and (has_progress or fully_watched):
         keys.append(MARK_UNWATCHED)
     keys.append(WATCHLIST_REMOVE if on_watchlist else WATCHLIST_ADD)
+    if seen is not None:
+        keys.append(SEEN_REMOVE if seen else SEEN_ADD)
+    if not_interested is not None:
+        keys.append(NOT_INTERESTED_REMOVE if not_interested else NOT_INTERESTED_ADD)
     if in_continue_watching:
         keys.append(REMOVE_FROM_CW)
     if detail_variant:

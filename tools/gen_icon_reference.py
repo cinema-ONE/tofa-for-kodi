@@ -141,6 +141,8 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("CHEVRON_RIGHT", "“Go to Details” row (SF chevron.right)"),
         ("MINUS_CIRCLE", "“Mark as Unwatched” row (SF minus.circle)"),
         ("CIRCLE_X", "“Remove from Continue Watching” and “Cancel” rows (SF xmark.circle)"),
+        ("CIRCLE_SLASH", "“Not Interested” row"),
+        ("EYE", "“Show in Suggestions” row"),
     ]),
     ("Player transport (8.1)", "resources/skins/Main/1080i/script-tofa-player.xml", [
         ("PAUSE", "Prominent play/pause button, playing state (SF pause.fill)"),
