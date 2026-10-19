@@ -72,7 +72,10 @@ from . import log
 
 #: 0.11.0: search returns collections and a first More Like This answer is
 #: final (vault #242, #222), so our own stand-ins for both are gone.
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 11, 0)
+
+#: 0.12.0: Seen it / Not interested, the server's next-up episode, missing
+#: episodes per profile, subtitle roles, person pages by id, Browse sections.
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 12, 0)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,
