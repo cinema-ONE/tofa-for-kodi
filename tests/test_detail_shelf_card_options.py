@@ -162,7 +162,8 @@ check("...and removed by content", c.calls[-1] == ("remove_content", "movie", 69
 c = Client()
 win = Fake(c, MEMBER_MISSING, DetailWindow.COLLECTION_LIST)
 check("a missing collection member offers Seen it and Not interested",
-      win.menu()[-2:] == [co.SEEN_ADD, co.NOT_INTERESTED_ADD], str(win.menu()))
+      win.menu() == [co.DETAILS, co.SEEN_ADD, co.WATCHLIST_ADD, co.NOT_INTERESTED_ADD],
+      str(win.menu()))
 win.menu(co.SEEN_ADD)
 check("Seen it is written", c.calls[-1] == ("seen", "movie", 36670, True), str(c.calls))
 check("...and the reopened menu offers its undo", co.SEEN_REMOVE in win.menu())

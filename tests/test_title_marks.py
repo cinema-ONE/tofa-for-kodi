@@ -16,12 +16,15 @@ BASE = dict(in_library=False, fully_watched=False, has_progress=False,
             on_watchlist=False, in_continue_watching=False)
 check("no marks offered: the panel is as before",
       co.option_keys(**BASE) == [co.DETAILS, co.WATCHLIST_ADD])
-check("both offered, after Watchlist",
+check("the app's order: Seen it above Watchlist, Not interested below",
       co.option_keys(**BASE, seen=False, not_interested=False)
-      == [co.DETAILS, co.WATCHLIST_ADD, co.SEEN_ADD, co.NOT_INTERESTED_ADD])
+      == [co.DETAILS, co.SEEN_ADD, co.WATCHLIST_ADD, co.NOT_INTERESTED_ADD])
+check("the app's words", [co._CATALOG[k][0] for k in (co.SEEN_ADD, co.SEEN_REMOVE,
+      co.NOT_INTERESTED_ADD, co.NOT_INTERESTED_REMOVE)]
+      == ["Seen it", "Seen", "Not interested", "Hidden from suggestions"])
 check("a set mark offers its undo",
-      co.option_keys(**BASE, seen=True, not_interested=True)[-2:]
-      == [co.SEEN_REMOVE, co.NOT_INTERESTED_REMOVE])
+      co.option_keys(**BASE, seen=True, not_interested=True)
+      == [co.DETAILS, co.SEEN_REMOVE, co.WATCHLIST_ADD, co.NOT_INTERESTED_REMOVE])
 check("every new key has a label and glyph",
       all(k in co._CATALOG for k in titlemarks.KEYS))
 
@@ -45,25 +48,22 @@ client._put = lambda path, *a, **k: CALLS.append(("PUT", path))
 client._delete = lambda path, *a, **k: CALLS.append(("DELETE", path))
 
 item = dict(NOT_HELD)
-check("a mark is handled", titlemarks.apply(client, co.SEEN_ADD, item))
+check("a mark is handled", titlemarks.apply(client, co.SEEN_ADD, item) is True)
 check("...as a PUT on the seen route",
       CALLS[-1] == ("PUT", "/api/v1/users/me/seen/movie/263472"), str(CALLS))
 check("...recorded on the card's data, so the menu offers the undo", item["seen"] is True)
 titlemarks.apply(client, co.NOT_INTERESTED_REMOVE, item)
 check("undo is a DELETE on not-interested",
       CALLS[-1] == ("DELETE", "/api/v1/users/me/not-interested/movie/263472"), str(CALLS))
-check("every choice confirms with a toast", len(TOASTS) == 2, str(TOASTS))
-check("...naming the title, in tofa web's words",
-      TOASTS[0] == "Marked this title as seen", TOASTS[0])
-titlemarks.apply(client, co.NOT_INTERESTED_ADD, item, title="Knock Knock")
-check("a caller's title wins", TOASTS[-1] == "We'll stop suggesting Knock Knock", TOASTS[-1])
-check("other keys are left to the caller", not titlemarks.apply(client, co.PLAY, item))
+check("success is silent, as on the app", TOASTS == [], str(TOASTS))
+check("and reports it was saved", titlemarks.apply(client, co.NOT_INTERESTED_ADD, item) is True)
+check("other keys are left to the caller", titlemarks.apply(client, co.PLAY, item) is None)
 
 def refuse(path, *a, **k):
     raise http.ApiError(500, "boom", "")
 client._put = refuse
 item = dict(NOT_HELD)
-titlemarks.apply(client, co.SEEN_ADD, item)
+check("a failure reports False", titlemarks.apply(client, co.SEEN_ADD, item) is False)
 check("a failure changes nothing", item["seen"] is False)
 check("...and says so", TOASTS[-1] == "Couldn't update Seen it, try again later", TOASTS[-1])
 

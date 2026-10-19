@@ -75,7 +75,7 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("MINIMIZE", "“Minimize” row (add-on keeps running behind Kodi's home)"),
     ]),
     ("Detail screen", "resources/lib/skin/templates/detail.xml.tpl", [
-        ("INFO", "“Plays as X” audio caveat line"),
+        ("INFO", "“Plays as X” audio caveat line; the “Go to Details” menu row"),
         ("BOOKMARK_OFF", "Watchlist pill, title already saved (paired with BOOKMARK)"),
         ("USERS", "Cast &amp; Crew tab, empty state (matches the Apple TV app)"),
         ("GALLERY_VERTICAL_END", "More Like This tab, empty state (matches the Apple TV app)"),
@@ -138,10 +138,10 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("PLAY", "Primary Play/Resume pill icon"),
     ]),
     ("Card options panel (7.2)", "resources/lib/windows/cardoptions.py", [
-        ("CHEVRON_RIGHT", "“Go to Details” row (SF chevron.right)"),
+        ("CIRCLE_CHECK", "“Mark as Watched” and “Seen it” rows (app 2.1.0)"),
         ("MINUS_CIRCLE", "“Mark as Unwatched” row (SF minus.circle)"),
         ("CIRCLE_X", "“Remove from Continue Watching” and “Cancel” rows (SF xmark.circle)"),
-        ("CIRCLE_SLASH", "“Not Interested” and “Hidden from Suggestions” rows"),
+        ("THUMBS_DOWN", "“Not interested” and “Hidden from suggestions” rows"),
     ]),
     ("Player transport (8.1)", "resources/skins/Main/1080i/script-tofa-player.xml", [
         ("PAUSE", "Prominent play/pause button, playing state (SF pause.fill)"),
@@ -170,6 +170,7 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
     ("Settings account rows", "resources/lib/windows/main.py – Account page", [
         ("SERVER", "“Switch Server” row; Lucide's rack unit, not hard-drive (a disk)\n"
                    "            and not globe (the cloud account, which is the row above)"),
+        ("CHEVRON_RIGHT", "A settings row's trailing chevron, where choosing it opens a picker"),
     ]),
     ("Fox picker (9.4)", "resources/lib/skin/fragments.py \u2013 settings_fox_tile()", [
         ("STAR", "\u201cThe original\u201d badge on the default Tofa Fox tile; a star\n"

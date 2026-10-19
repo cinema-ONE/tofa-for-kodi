@@ -1134,6 +1134,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # and "no file at all" still has to clear it.
         self.play_file_id = chosen.get("id") if chosen else None
         self._render_version_pill()
+        # The hero drew the first file's badges; they describe what Play plays.
+        if chosen:
+            self._render_format_badges(chosen)
         if not chosen:
             self.is_playable = False
             self.setProperty("primary_label", "Unavailable")
@@ -2863,8 +2866,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if picked in (cardoptions.WATCHLIST_ADD, cardoptions.WATCHLIST_REMOVE):
             self._toggle_watchlist()
         else:
-            titlemarks.apply(client, picked, disc, self.content_media_type, self.tmdb_id,
-                             title=self.getProperty("hero_title"))
+            titlemarks.apply(client, picked, disc, self.content_media_type, self.tmdb_id)
         return True
 
     def _primary_label(self, verb: str) -> str:
@@ -3180,7 +3182,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _apply_shelf_option(self, client: MediaServerClient, picked: str, data: dict,
                             item, media_id) -> None:
         """A shelf card's watchlist, watched or mark choice, done as Home does it."""
-        if titlemarks.apply(client, picked, data, title=item.getLabel()):
+        if titlemarks.apply(client, picked, data) is not None:
             return
         media_type = data.get("media_type") or data.get("type")
         try:

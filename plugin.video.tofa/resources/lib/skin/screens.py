@@ -719,40 +719,24 @@ def render_detail() -> str:
 def render_cardoptions() -> str:
     """7.2's card-options panel (windows/cardoptions.py:CardOptionsDialog).
 
-    Height is fixed rather than sized to the row count: Kodi resolves a
-    window's geometry once at load, so a panel that grew per invocation would
-    need a re-render per open. The list simply scrolls if an option set ever
-    exceeds MAX_VISIBLE_ROWS, which today's six-option maximum does not."""
+    Laid out for the tallest case; the dialog shrinks it to its rows
+    (fragments.cardoptions_geometry). More rows than the maximum scroll."""
     LIST_ID = 100
-    MAX_VISIBLE_ROWS = 6
-
     pad = fragments.OPTIONS_PAD
-    panel_w = fragments.OPTIONS_PANEL_W
-    row_pitch = fragments.OPTIONS_ROW_H + fragments.OPTIONS_ROW_GAP
-
-    title_y = pad + 30
-    subtitle_y = title_y + 48
-    rows_y = subtitle_y + 40
-    rows_h = row_pitch * MAX_VISIBLE_ROWS
-    panel_h = rows_y + rows_h + pad - fragments.OPTIONS_ROW_GAP
-
     option_row, option_row_focused = fragments.option_row(LIST_ID)
     return _load("cardoptions.xml.tpl").format(
         **T.template_kwargs(),
+        **fragments.cardoptions_geometry(fragments.OPTIONS_MAX_ROWS),
         LIST_ID=LIST_ID,
-        PANEL_W=panel_w,
-        PANEL_H=panel_h,
-        SHADOW_W=panel_w + 84,
-        SHADOW_H=panel_h + 84,
-        PANEL_X=(T.SCREEN_W - panel_w) // 2,
-        PANEL_Y=(T.SCREEN_H - panel_h) // 2,
+        GROUP_ID=200,
+        SHADOW_ID=201,
+        FILL_ID=202,
+        OUTLINE_ID=203,
+        TITLE_ID=204,
+        SUBTITLE_ID=205,
         PAD=pad,
-        INNER_W=panel_w - pad * 2,
-        TITLE_Y=title_y,
-        SUBTITLE_Y=subtitle_y,
-        ROWS_Y=rows_y,
-        ROWS_H=rows_h,
-        OPT_ROW_PITCH=row_pitch,
+        INNER_W=fragments.OPTIONS_PANEL_W - pad * 2,
+        OPT_ROW_PITCH=fragments.OPTIONS_ROW_H + fragments.OPTIONS_ROW_GAP,
         option_row=option_row,
         option_row_focused=option_row_focused,
     )
