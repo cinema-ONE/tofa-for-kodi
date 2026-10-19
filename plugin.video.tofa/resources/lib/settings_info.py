@@ -129,6 +129,10 @@ ROWS: dict[str, Info] = {
     "hide_spoilers": Info(
         "Hide episode spoilers",
         "Hides the stills and synopses of episodes you have not seen yet."),
+    "missing_episodes": Info(
+        "Missing episodes",
+        "Automatic hides episodes you don't have for daily shows like talk "
+        "shows and soaps."),
     "reduce_motion": Info(
         "Reduce motion",
         "Holds tofa still: no zooms, slides or moving backgrounds.",
