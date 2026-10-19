@@ -88,6 +88,22 @@ def gen_height_capsule(height: int) -> None:
         print(f"saved {name}  ({size}x{size}, radius {radius}, use border={b})")
 
 
+def gen_glass_pill(name: str, height: int, fill: int, rim: int) -> None:
+    """A capsule with its fill and rim in one texture, for a button whose
+    width is set at runtime (the build only slices image controls). White,
+    so colordiffuse picks the colour: the universe page's pills, app 2.1.0."""
+    b = height // 2
+    size = height + 2
+    sz = size * S
+    im = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([0, 0, sz - 1, sz - 1], radius=(b + 1) * S, fill=(255, 255, 255, fill))
+    d.rounded_rectangle([0, 0, sz - 1, sz - 1], radius=(b + 1) * S,
+                        outline=(255, 255, 255, rim), width=OUTLINE_STROKE * S)
+    im.resize((size, size), Image.LANCZOS).save(os.path.join(_MEDIA_DIR, name))
+    print(f"saved {name}  ({size}x{size}, use border={b})")
+
+
 def _ninepatch(src: Image.Image, w: int, h: int, b: int) -> Image.Image:
     """Kodi's 9-patch, reproduced: CORNERS ARE DRAWN UNSCALED, only the
     edge/middle strips stretch. That one fact is the whole trap this file
@@ -206,3 +222,6 @@ if __name__ == "__main__":
     for _h in _HEIGHTS:
         gen_height_capsule(_h)
         verify(_h)
+    # Measured on the app's universe page: glass at rest, the accent focused.
+    gen_glass_pill("universe-pill.png", 66, fill=16, rim=56)
+    gen_glass_pill("universe-pill-focus.png", 66, fill=84, rim=235)

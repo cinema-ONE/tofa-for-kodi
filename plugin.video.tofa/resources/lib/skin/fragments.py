@@ -2534,6 +2534,129 @@ def saga_card(list_id: int) -> tuple[str, str]:
     return item, focused
 
 
+def universe_pill(group_id: int, button_id: int, *, visible: str, label_property: str,
+                  glyph: int | None = None, nav: dict | None = None) -> str:
+    """One pill on the universe page (app 2.1.0): glass at rest, the accent's
+    wash, rim and text focused. A button, so universepage.py can set its
+    width and the group's x at runtime without the build slicing it."""
+    text_x = T.UNI_PILL_PAD + (T.UNI_PILL_ICON_W + T.UNI_PILL_ICON_GAP if glyph else 0)
+    moves = "".join(
+        f"""
+                    <{tag}{f' condition="{cond}"' if cond else ""}>{dest}</{tag}>"""
+        for tag, target in (nav or {}).items()
+        for cond, dest in (target if isinstance(target, list) else [("", target)]))
+    # The words are labels of their own: a button keeps textoffsetx clear on
+    # BOTH sides of its text, which would leave the icon's room on the right.
+    words = "".join(f"""
+                <control type="label">
+                    <visible>{gate}</visible>
+                    <posx>{text_x}</posx>
+                    <width>1400</width>
+                    <height>{T.UNI_PILL_H}</height>
+                    <aligny>center</aligny>
+                    <font>{T.FONT_CAPTION}</font>
+                    <textcolor>{colour}</textcolor>
+                    <label>$INFO[Window.Property({label_property})]</label>
+                </control>""" for colour, gate in (
+        ("$INFO[Window.Property(text_primary)]", f"!Control.HasFocus({button_id})"),
+        ("$INFO[Window.Property(accent_color)]", f"Control.HasFocus({button_id})")))
+    icon = "" if glyph is None else "".join(f"""
+                <control type="label">
+                    <visible>{gate}</visible>
+                    <posx>{T.UNI_PILL_PAD}</posx>
+                    <width>{T.UNI_PILL_ICON_W}</width>
+                    <height>{T.UNI_PILL_H}</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>{T.FONT_ICON_24}</font>
+                    <textcolor>{colour}</textcolor>
+                    <label>&#x{glyph:04X};</label>
+                </control>""" for colour, gate in (
+        ("$INFO[Window.Property(text_primary)]", f"!Control.HasFocus({button_id})"),
+        ("$INFO[Window.Property(accent_color)]", f"Control.HasFocus({button_id})")))
+    return f"""            <control type="group" id="{group_id}">
+                <visible>{visible}</visible>
+                <posx>{T.UNI_LEFT}</posx>
+                <posy>{T.UNI_PILL_Y}</posy>
+                <control type="button" id="{button_id}">
+                    <width>{2 * T.UNI_PILL_PAD}</width>
+                    <height>{T.UNI_PILL_H}</height>{moves}
+                    <texturefocus border="{T.UNI_PILL_H // 2}" colordiffuse="$INFO[Window.Property(accent_color)]">universe-pill-focus.png</texturefocus>
+                    <texturenofocus border="{T.UNI_PILL_H // 2}">universe-pill.png</texturenofocus>
+                    <label></label>
+                </control>{icon}{words}
+            </control>"""
+
+
+def universe_strip_item(list_id: int) -> tuple[str, str]:
+    """A poster in the universe page's strip: faint when not in the library,
+    a dot over the one up next, the chapter's name under its first poster.
+    Focused, it grows from its bottom edge and takes the accent's rim."""
+    X, Y = T.UNI_STRIP_X, T.UNI_STRIP_Y - T.UNI_STRIP_TOP
+    W, H = T.UNI_POSTER_W, T.UNI_POSTER_H
+    focus = f"Control.HasFocus({list_id})"
+    poster = f"""
+                    <control type="image">
+                        <posx>{X}</posx>
+                        <posy>{Y}</posy>
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <colordiffuse>0xFF16222B</colordiffuse>
+                        <texture diffuse="poster-mask.png">white-square.png</texture>
+                    </control>
+                    <control type="image">
+                        <posx>{X}</posx>
+                        <posy>{Y}</posy>
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <aspectratio scalediffuse="false">scale</aspectratio>
+                        <colordiffuse>$INFO[ListItem.Property(tint)]</colordiffuse>
+                        <texture diffuse="poster-mask.png" background="true">$INFO[ListItem.Art(poster)]</texture>
+                    </control>"""
+    rim = f"""
+                    <control type="image">
+                        <visible>{focus}</visible>
+                        <posx>{X}</posx>
+                        <posy>{Y}</posy>
+                        <width>{W}</width>
+                        <height>{H}</height>
+                        <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                        <texture>poster-border.png</texture>
+                    </control>"""
+    marks = f"""
+                    <control type="image">
+                        <visible>!String.IsEmpty(ListItem.Property(up_next))</visible>
+                        <posx>{X + W // 2 - 4}</posx>
+                        <posy>{Y - 17}</posy>
+                        <width>8</width>
+                        <height>8</height>
+                        <colordiffuse>$INFO[Window.Property(text_primary)]</colordiffuse>
+                        <texture>circle.png</texture>
+                    </control>
+                    <control type="label">
+                        <posx>{X}</posx>
+                        <posy>{Y + H + T.UNI_CHAPTER_GAP}</posy>
+                        <width>400</width>
+                        <height>24</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_CARD_META}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Property(chapter)]</label>
+                    </control>"""
+    zoom = (f'<animation effect="zoom" start="100" end="{T.UNI_STRIP_ZOOM}" '
+            f'center="{X + W // 2},{Y + H}" time="150" tween="cubic" easing="out" '
+            f'condition="{focus}">Conditional</animation>')
+    height = T.SCREEN_H - T.UNI_STRIP_TOP
+    item = f"""                <itemlayout width="{T.UNI_STRIP_PITCH}" height="{height}">{marks}{poster}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout width="{T.UNI_STRIP_PITCH}" height="{height}">{marks}
+                    <control type="group">
+                        {zoom}{poster}{rim}
+                    </control>
+                </focusedlayout>"""
+    return item, focused
+
+
 def poster_row(
     *,
     group_id: int,

@@ -125,6 +125,9 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("ARROW_UP", "Sort: ascending \u2014 on the picker's active row AND on the\n            Browse Sort pill itself"),
         ("ARROW_DOWN", "Sort: descending \u2014 on the picker's active row AND on the\n            Browse Sort pill itself"),
     ]),
+    ("Universe page", "resources/skins/Main/1080i/script-tofa-universe.xml", [
+        ("ARROW_UP_DOWN", "Story order / Release order pill (app 2.1.0)"),
+    ]),
     ("Profile picker & PIN entry", "resources/skins/Main/1080i/script-tofa-profile.xml", [
         ("LOCK", "Locked-profile badge"),
         ("DELETE", "PIN keypad backspace key"),

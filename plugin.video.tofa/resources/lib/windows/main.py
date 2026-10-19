@@ -2306,14 +2306,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         return cards_out
 
     def _open_universe(self, universe_id) -> None:
-        """A saga card's universe. Until its page exists, the title up next."""
+        """A saga card's universe page (app 2.1.0)."""
+        from . import universepage
         u = self._saga_universes.get(universe_id)
-        item = universe.hero_item(u) if u else {}
-        if item.get("local_media_id"):
-            self.open_detail(media_id=item["local_media_id"])
-        elif item.get("tmdb_id"):
-            self.open_detail(media_id=None, discovery_id=item["tmdb_id"],
-                             media_type=item.get("type"), discovery_item=item)
+        if u:
+            universepage.show(u, self._get_client())
 
     #: The strip's picture, at the skin's 2x: a 556x5 band, the card's corners.
     SAGA_STRIP_PX = (2 * T.SAGA_CARD_W, 2 * T.SAGA_STRIP_H, 2 * T.SAGA_CARD_RADIUS)

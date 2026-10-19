@@ -116,6 +116,7 @@ CIRCLE_CHECK = 0xE226
 THUMBS_DOWN = 0xE189
 ARROW_UP = 0xE04A
 ARROW_DOWN = 0xE042
+ARROW_UP_DOWN = 0xE37D                  # the universe page's Story/Release order
 TAG = 0xE17F
 LOCK = 0xE10B
 DELETE = 0xE0AE

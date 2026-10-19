@@ -133,6 +133,37 @@ check("curated goes on the wire as `true`, the only spelling the server reads",
 api.MediaServerClient.collections(wire)
 check("...and is left off when not asked", wire.sent[1] == {}, str(wire.sent))
 
+from resources.lib.windows import universepage as P   # noqa: E402
+
+check("Continue names the position and the title",
+      P.play_label(u) == "Continue · 4 Film 4", P.play_label(u))
+check("...or the show and its episode", P.play_label(series) == "Continue · 2 Show 2 S1 E1",
+      P.play_label(series))
+check("caught up: no Continue pill", P.play_label(caught_up) == "")
+check("release order says so", P.summary(u, P.RELEASE).startswith("6 titles in release order"),
+      P.summary(u, P.RELEASE))
+check("a poster's meta line: year and status",
+      P.member_meta(u["members"][3], u["next_up"]["key"]) == "2004 · Up next, in progress",
+      P.member_meta(u["members"][3], u["next_up"]["key"]))
+long = " ".join(["word"] * 200)
+cut = P.two_lines(long).split("[CR]")
+check("a long overview is two lines, the second ending in an ellipsis",
+      len(cut) == 2 and cut[1].endswith("\u2026"), str(cut))
+check("a short one is left alone", P.two_lines("A short line.") == "A short line.")
+check("a pill with an icon is wider than its text by the pads and the icon",
+      P.pill_width("Play", True) - P.pill_width("Play", False) == 56)
+
+from resources.lib.skin import build   # noqa: E402
+
+xml = """<control type="list" id="1">
+    <onup condition="A">2</onup>
+    <onup condition="!A">3</onup>
+    <ondown>4</ondown>
+</control>"""
+out, _n = build._stop_wraps(xml, "test.xml")
+check("the wrap stop leaves conditional-only targets alone",
+      "<onup>" not in out and "<onleft>" in out and "<ondown>4</ondown>" in out, out)
+
 failed = [n for n, ok in RESULTS if not ok]
 print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
 raise SystemExit(1 if failed else 0)

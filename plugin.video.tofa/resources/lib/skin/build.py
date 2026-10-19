@@ -25,6 +25,7 @@ SCREENS = {
     "script-tofa-detail.xml": screens.render_detail,
     "script-tofa-cardoptions.xml": screens.render_cardoptions,
     "script-tofa-person.xml": screens.render_person,
+    "script-tofa-universe.xml": screens.render_universe,
     "script-tofa-playoptions.xml": screens.render_playoptions,
     "script-tofa-editions.xml": screens.render_editions,
     "script-tofa-alert.xml": screens.render_alert,
@@ -651,6 +652,9 @@ def _stop_wraps(body: str, filename: str) -> tuple[str, int]:
         additions = []
         for tag in _NAV_TAGS:
             present = re.search(rf"<{tag}>\s*(.*?)\s*</{tag}>", head)
+            if present is None and re.search(rf"<{tag} condition=", head):
+                # Conditional targets only: a stop would win over them.
+                continue
             if present is None:
                 additions.append(f"{indent}<{tag}>{tokens.NAV_STOP}</{tag}>")
                 fixed += 1

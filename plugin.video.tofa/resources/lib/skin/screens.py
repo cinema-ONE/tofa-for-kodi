@@ -912,6 +912,39 @@ def render_person() -> str:
     )
 
 
+def render_universe() -> str:
+    """A universe's page (windows/universe.py:UniverseWindow), app 2.1.0."""
+    CONTINUE_ID, ORDER_ID, DETAILS_ID, STRIP_ID = 9101, 9102, 9103, 9200
+    universe_state = "String.IsEmpty(Window.Property(u_state))"
+    title_state = "String.IsEqual(Window.Property(u_state),title)"
+    pills = "\n".join((
+        fragments.universe_pill(
+            9151, CONTINUE_ID, visible="!String.IsEmpty(Window.Property(u_play_label))",
+            label_property="u_play_label", glyph=icon_glyphs.PLAY,
+            nav={"onright": [(universe_state, ORDER_ID), (title_state, DETAILS_ID)],
+                 "onleft": CONTINUE_ID, "onup": CONTINUE_ID, "ondown": STRIP_ID}),
+        fragments.universe_pill(
+            9152, ORDER_ID, visible=universe_state, label_property="u_order_label",
+            glyph=icon_glyphs.ARROW_UP_DOWN,
+            nav={"onleft": CONTINUE_ID, "onright": ORDER_ID, "onup": ORDER_ID,
+                 "ondown": STRIP_ID}),
+        fragments.universe_pill(
+            9153, DETAILS_ID, visible=title_state, label_property="u_details_label",
+            nav={"onleft": CONTINUE_ID, "onright": DETAILS_ID, "onup": DETAILS_ID,
+                 "ondown": STRIP_ID}),
+    ))
+    strip_item, strip_focused = fragments.universe_strip_item(STRIP_ID)
+    return _load("universe.xml.tpl").format(
+        **T.template_kwargs(),
+        CONTINUE_ID=CONTINUE_ID, ORDER_ID=ORDER_ID, DETAILS_ID=DETAILS_ID,
+        STRIP_ID=STRIP_ID, CONTINUE_GROUP_ID=9151,
+        STRIP_X=T.UNI_LEFT - T.UNI_STRIP_X,
+        STRIP_W=T.SCREEN_W - T.UNI_LEFT + T.UNI_STRIP_X,
+        STRIP_H=T.SCREEN_H - T.UNI_STRIP_TOP,
+        pills=pills, strip_item=strip_item, strip_focused=strip_focused,
+    )
+
+
 def render_splash() -> str:
     """The cold-start splash (windows/splash.py).
 

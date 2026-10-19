@@ -278,6 +278,26 @@ SAGA_TITLE_X, SAGA_TITLE_Y, SAGA_TITLE_H = 24, 250, 40
 SAGA_NAME_Y, SAGA_NAME_H = 328, 32
 SAGA_LINE_Y, SAGA_LINE_H = 361, 28
 
+# The universe page (app 2.1.0 capture): a hero over the up-next title's
+# backdrop, two pills, and a strip of every member's poster with chapters.
+# Without chapter labels (release order) the app sets it all 34px lower.
+UNI_LEFT = 96
+UNI_TITLE_Y, UNI_TITLE_H = 356, 120
+UNI_SUMMARY_Y, UNI_SUMMARY_H = 488, 40
+UNI_OVERVIEW_Y, UNI_OVERVIEW_H, UNI_OVERVIEW_W = 538, 70, 920
+UNI_EYEBROW_Y, UNI_EYEBROW_H = 283, 30
+UNI_COUNT_Y, UNI_COUNT_H = 335, 32
+UNI_META_Y = 492
+UNI_PILL_Y, UNI_PILL_H, UNI_PILL_GAP = 645, 66, 29
+UNI_PILL_PAD, UNI_PILL_ICON_W, UNI_PILL_ICON_GAP = 44, 32, 24
+UNI_NO_CHAPTERS_DY = 34
+UNI_POSTER_W, UNI_POSTER_H, UNI_STRIP_PITCH = 76, 114, 84
+UNI_STRIP_Y = 836                       # a poster's top
+UNI_STRIP_TOP = UNI_STRIP_Y - 84        # the list's, with room for the zoom
+UNI_STRIP_X = 30                        # a poster's left inside its item
+UNI_STRIP_ZOOM = 171                    # focused: 130x195, from the bottom
+UNI_CHAPTER_GAP = 8
+
 # Where the Home row region sits, and how much of the screen it gets. TWO
 # geometries, because "Featured spotlight" (preferences.home_screen.show_hero)
 # hides the hero's FOREGROUND and gives the rows the space it was using.

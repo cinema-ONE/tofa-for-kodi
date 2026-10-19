@@ -256,6 +256,29 @@ def test_home(run: Run):
     run.shot("01-home")
 
 
+def test_saga(run: Run):
+    """Continue the saga (app 2.1.0): its wide cards, and a universe's page."""
+    b = run.box
+    slot = next((i for i in range(16) if b.label(f"Window.Property(row{i}_kind)") == "saga"), None)
+    if not run.check("Saga: the row is on Home", slot is not None and b.label(
+            f"Window.Property(row{slot}_title)"), "no saga row (nothing in progress?)"):
+        return
+    list_id = 4110 + 20 * slot
+    ok = b.wait(lambda: b.cond(f"Control.HasFocus({list_id})") or b.key("Down", pause=1.2), 12, 0.4)
+    run.check("Saga: a card has focus", ok and b.label("ListItem.Property(saga_title)"),
+              b.label("System.CurrentControl"))
+    b.select_if(f"Control.HasFocus({list_id})")
+    run.check("Saga: Select opens the universe page",
+              b.wait(lambda: b.cond("Control.HasFocus(9101) | Control.HasFocus(9102)"), 10))
+    run.shot("13-universe")
+    b.key("Down", pause=1.5)
+    run.check("Universe: the strip turns the hero into a title",
+              b.wait(lambda: b.label("Window.Property(u_state)") == "title", 5))
+    b.back_if("Control.HasFocus(9200)")
+    run.check("Universe: Back returns to Home",
+              b.wait(lambda: b.cond(f"Control.HasFocus({list_id})"), 8))
+
+
 def into_tiles(b: Box) -> bool:
     """Down from the top bar once the landing has its tiles (slow at first)."""
     b.wait(lambda: b.num_items(6020) > 0, 30)
@@ -517,8 +540,8 @@ def main() -> int:
     print(f"box {args.host}: Kodi {box.label('System.BuildVersion')}, add-on {version}")
 
     if launch(run, args.switch_profile):
-        for step in (test_home, test_browse, test_collections, test_history, test_discover,
-                     test_search):
+        for step in (test_home, test_saga, test_browse, test_collections, test_history,
+                     test_discover, test_search):
             try:
                 step(run)
             except Exception as exc:                         # noqa: BLE001
