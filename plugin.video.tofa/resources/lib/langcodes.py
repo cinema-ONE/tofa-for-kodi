@@ -262,8 +262,10 @@ def _subtitle_rank(track: dict) -> tuple:
 
     Ordered by how much each property changes what the viewer gets:
 
+    0. COMMENTARY -- none of the film's dialogue at all, so it is never
+       the default while anything else is offered.
     1. FORCED -- not "subtitles on" at all, just the odd translated line.
-       Wrong content, so it loses to everything.
+       Wrong content, so it loses to everything but commentary.
     2. SDH -- the right dialogue plus sound description. Right content in a
        fuller form than most viewers asked for.
     3. BITMAP -- the same content, drawn as pictures. Kodi renders PGS fine,
@@ -274,7 +276,24 @@ def _subtitle_rank(track: dict) -> tuple:
     one both exist on Mars Attacks!, and the plain one is the better answer
     even though it is the picture one.
     """
-    return (bool(track.get("forced")), _is_sdh(track), _is_bitmap(track))
+    return (is_commentary(track), is_forced(track), _is_sdh(track),
+            _is_bitmap(track))
+
+
+def is_forced(track: dict) -> bool:
+    """The container's forced flag, or the server's `role` (0.12.0).
+
+    The role also covers forced tracks whose container flag is off."""
+    return bool(track.get("forced")) or _role(track) == "forced"
+
+
+def is_commentary(track: dict) -> bool:
+    """A commentary track: someone talking about the film, not its dialogue."""
+    return _role(track) == "commentary"
+
+
+def _role(track: dict) -> str:
+    return str(track.get("role") or "").strip().lower()
 
 
 def forced_subtitle_for(track_list: list, audio_language) -> Optional[dict]:
@@ -287,12 +306,15 @@ def forced_subtitle_for(track_list: list, audio_language) -> Optional[dict]:
     them on. Matched to the AUDIO's language, not to any subtitle preference,
     because that is the pairing that makes sense.
 
-    Prefers a real `forced` flag over a title that merely says so, since the
-    flag is the container's own answer. Mirrors the web app's own rule.
+    Prefers a real `forced` flag or role over a title that merely says so,
+    since those are the container's and the server's answers. Mirrors the
+    web app's own rule.
     """
     best, best_rank = None, 0
     for track in matching(track_list, audio_language):
-        flagged = bool(track.get("forced"))
+        if is_commentary(track):
+            continue
+        flagged = is_forced(track)
         titled = _has_word(track.get("title"), _FORCED_WORDS)
         rank = 2 if flagged else (1 if titled else 0)
         if rank > best_rank:
