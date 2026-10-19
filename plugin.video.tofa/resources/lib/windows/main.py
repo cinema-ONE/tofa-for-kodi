@@ -755,7 +755,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.grid_list: kodigui.ManagedControlList | None = None
         # each: {"kind": "watchlist"|"history"|"collections"|"library", ...}
         # -- always exactly BROWSE_FIXED_SOURCE_COUNT fixed entries first,
-        # in that order, then one per real library. "Surprise Me" is
+        # in that order, then one per Browse section (kind "library"; `id` is
+        # None for a section spanning several libraries). "Surprise Me" is
         # deliberately NOT in this list -- see BROWSE_SURPRISE_ME_LIST_POS.
         self._sources: list[dict] = []
         self._genres: list[str] = []        # includes ALL_GENRES at index 0
@@ -2993,9 +2994,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                    else icon_glyphs.ARROW_UP)
 
     def _browse_build_sidebar(self):
-        """The landing's tiles (app 2.0): every library, then Watchlist,
-        History, Collections and Surprise me, each with art from the library
-        and a line under its name (a count, or the last title watched)."""
+        """The landing's tiles (app 2.0): the server's Browse sections, then
+        Watchlist, History, Collections and Surprise me, each with art and a
+        line under its name (a count, or the last title watched)."""
         client = self._get_client()
         self._sources = [
             {"kind": "watchlist", "name": "Watchlist", "glyph": icon_glyphs.BOOKMARK},
@@ -3004,20 +3005,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         ]
         if client:
             try:
-                libs = client.libraries() or []
+                sections = (client.browse_sections() or {}).get("sections") or []
             except http.ApiError as exc:
-                kodigui.ERROR("main.py: browse libraries failed: {0}".format(exc))
-                libs = []
-            for lib in libs:
-                media_type = lib.get("media_type")
-                glyph = {"movie": icon_glyphs.CLAPPERBOARD, "tv": icon_glyphs.TV}.get(
-                    media_type, icon_glyphs.VIDEO)
-                count, art = self._browse_library_count_art(client, lib)
-                self._sources.append({
-                    "kind": "library", "id": lib.get("id"),
-                    "name": lib.get("name") or "Library", "media_type": media_type,
-                    "glyph": glyph, "count": _library_count(lib) or count, "art": art,
-                })
+                kodigui.ERROR("main.py: browse sections failed: {0}".format(exc))
+                sections = []
+            for sec in sections:
+                src = self._browse_section_source(sec)
+                count, art = self._browse_library_count_art(client, src)
+                src.update(count=src["count"] or count, art=art)
+                self._sources.append(src)
             self._browse_fixed_tile_facts(client)
         if self._active_source_idx is None or self._active_source_idx >= len(self._sources):
             # A library first, where there is one, else Watchlist.
@@ -3041,6 +3037,23 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_sync_backdrop()
         if client:
             self._browse_start_walls(client)
+
+    @staticmethod
+    def _browse_section_source(sec: dict) -> dict:
+        """A Browse section as a tile source, count from its `total`.
+
+        A section of one library browses as that library, folders included;
+        one spanning several is filtered by type alone, as on tofa's web app."""
+        media_type = sec.get("media_type")
+        libs = sec.get("libraries") or []
+        return {
+            "kind": "library", "key": sec.get("key"),
+            "id": sec.get("library_id") or (libs[0].get("id") if len(libs) == 1 else None),
+            "name": sec.get("name") or "Library", "media_type": media_type,
+            "glyph": {"movie": icon_glyphs.CLAPPERBOARD, "tv": icon_glyphs.TV}.get(
+                media_type, icon_glyphs.VIDEO),
+            "count": _library_count(sec),
+        }
 
     #: The count's noun on a library tile, by media type.
     _TILE_NOUN = {"movie": "titles", "tv": "shows"}
@@ -3203,7 +3216,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     @staticmethod
     def _browse_wall_key(src: dict):
-        return src.get("id") if src.get("kind") == "library" else src.get("kind")
+        if src.get("kind") == "library":
+            return src.get("key") or src.get("id")
+        return src.get("kind")
 
     def _browse_start_walls(self, client: MediaServerClient):
         """Fetch every tile's wall posters off the UI thread; a library's are
@@ -3989,7 +4004,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     _FOLDER_TRAIL_CHARS = 52
 
     def _browse_folders_offered(self, src: dict) -> bool:
-        return (src.get("kind") == "library"
+        # Folders belong to ONE library, so a section spanning several has none.
+        return (src.get("kind") == "library" and bool(src.get("id"))
                 and "library.folders" in self._server_capabilities)
 
     def _browse_in_folders(self, src: dict | None = None) -> bool:
@@ -4767,6 +4783,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         src = self._browse_active_source() if scoped and self._sources else {}
         if src.get("kind") == "library":
             params["library_id"] = src.get("id")
+            params["media_type"] = src.get("media_type")
         try:
             resp = client._get("/api/v1/media", params=params)
         except http.ApiError as exc:

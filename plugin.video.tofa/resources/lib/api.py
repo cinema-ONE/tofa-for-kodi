@@ -666,6 +666,11 @@ class MediaServerClient:
         token, no admin scope."""
         return self._get("/api/v1/libraries")
 
+    def browse_sections(self) -> Any:
+        """Browse's tabs (0.12.0): `{sections: [{key, kind "type"|"library",
+        media_type, name, total, libraries: [{id, name}], library_id}]}`."""
+        return self._get("/api/v1/browse/sections")
+
     def discovery_list(self, list_type: str) -> Any:
         """One of the 7 fixed `ListType` values (trending-movies, trending-tv,
         popular-movies, popular-tv, top-rated-movies, top-rated-tv,
