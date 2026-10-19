@@ -2427,6 +2427,113 @@ def empty_state(
 {indent}</control>"""
 
 
+def saga_card(list_id: int) -> tuple[str, str]:
+    """Continue the saga's card (app 2.1.0): the next title's backdrop under
+    a dark fade with that title over it, the universe's strip along the
+    bottom edge, and the universe's name and progress under the card."""
+    W, H = T.SAGA_CARD_W, T.SAGA_CARD_H
+    focus = f"Control.HasFocus({list_id})"
+
+    def card(extra: str) -> str:
+        return f"""
+                    <control type="group">
+                        <posx>{T.HPAD}</posx>
+                        <posy>{T.SAGA_CARD_Y}</posy>{extra}
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>0xFF16222B</colordiffuse>
+                            <texture diffuse="saga-card-mask.png">white-square.png</texture>
+                        </control>
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <aspectratio scalediffuse="false">scale</aspectratio>
+                            <texture diffuse="saga-card-mask.png">$INFO[ListItem.Art(thumb)]</texture>
+                        </control>
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>0xCC000000</colordiffuse>
+                            <texture diffuse="saga-card-mask.png">fade-bottom.png</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{T.SAGA_TITLE_X}</posx>
+                            <posy>{T.SAGA_TITLE_Y}</posy>
+                            <width>{W - 2 * T.SAGA_TITLE_X}</width>
+                            <height>{T.SAGA_TITLE_H}</height>
+                            <aligny>center</aligny>
+                            <font>{T.FONT_BUTTON}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[ListItem.Property(saga_title)]</label>
+                        </control>
+                        <control type="image">
+                            <posy>{H - T.SAGA_STRIP_H}</posy>
+                            <width>{W}</width>
+                            <height>{T.SAGA_STRIP_H}</height>
+                            <texture>$INFO[ListItem.Art(strip)]</texture>
+                        </control>
+                        <control type="image">
+                            <posy>{H - T.SAGA_STRIP_H}</posy>
+                            <width>{W}</width>
+                            <height>{T.SAGA_STRIP_H}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>$INFO[ListItem.Art(strip_next)]</texture>
+                        </control>{rim if extra else ""}
+                    </control>"""
+
+    rim = f"""
+                        <control type="image">
+                            <visible>{focus}</visible>
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>saga-card-border.png</texture>
+                        </control>"""
+    glow = f"""
+                        <control type="image">
+                            <posx>-10</posx>
+                            <posy>-10</posy>
+                            <width>{W + 20}</width>
+                            <height>{H + 20}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>saga-card-glow.png</texture>
+                        </control>"""
+    captions = f"""
+                    <control type="label">
+                        <posx>{T.HPAD}</posx>
+                        <posy>{T.SAGA_CARD_Y + T.SAGA_NAME_Y}</posy>
+                        <width>{W}</width>
+                        <height>{T.SAGA_NAME_H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_POSTER_TITLE}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="label">
+                        <posx>{T.HPAD}</posx>
+                        <posy>{T.SAGA_CARD_Y + T.SAGA_LINE_Y}</posy>
+                        <width>{W}</width>
+                        <height>{T.SAGA_LINE_H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_METADATA}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                    </control>"""
+    zoom = (f'\n                        <animation effect="zoom" start="100" end="104" '
+            f'center="{W // 2},{H // 2}" time="150" tween="cubic" easing="out" '
+            f'condition="{focus}">Conditional</animation>')
+    focused_card = card(zoom + f"""
+                        <control type="group">
+                            <visible>{focus}</visible>{glow}
+                        </control>""")
+    item = f"""                <itemlayout width="{T.SAGA_CELL_W}" height="{T.CELL_H}">{card("")}{captions}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout width="{T.SAGA_CELL_W}" height="{T.CELL_H}">{focused_card}{captions}
+                </focusedlayout>"""
+    return item, focused
+
+
 def poster_row(
     *,
     group_id: int,

@@ -60,17 +60,30 @@ CLAUDE_CODE = {  # the real profile, 2026-09-03: ten rows, no recently_released_
 }
 norm = home_rows.normalize_home_screen(CLAUDE_CODE)
 ids = [r["id"] for r in norm["rows"]]
+stored = [r["id"] for r in CLAUDE_CODE["rows"]]
 check("the profile's ten rows keep their order",
-      ids[:10] == [r["id"] for r in CLAUDE_CODE["rows"]], str(ids))
+      [i for i in ids if i != "continue_saga"][:10] == stored, str(ids))
+check("the saga row is slotted in under Continue Watching, as the web does",
+      ids[:2] == ["continue_watching", "continue_saga"], str(ids[:3]))
 check("...and the two defaults it lacks are appended, at the END, in the apps' order",
-      ids[10:] == ["recently_released_movies", "recently_released_tv"], str(ids[10:]))
-check("appended rows are enabled builtins",
+      ids[11:] == ["recently_released_movies", "recently_released_tv"], str(ids[11:]))
+check("added rows are enabled builtins",
       all(r == {"id": i, "type": "builtin", "enabled": True}
-          for r, i in zip(norm["rows"][10:], ids[10:])))
+          for r, i in zip(norm["rows"][11:], ids[11:]))
+      and norm["rows"][1] == {"id": "continue_saga", "type": "builtin", "enabled": True})
+no_cw = home_rows.normalize_home_screen({"rows": [{"id": "suggested", "type": "builtin"}]})
+check("with no Continue Watching the saga row goes first",
+      no_cw["rows"][0]["id"] == "continue_saga", str(no_cw["rows"][:2]))
+off = home_rows.normalize_home_screen({"rows": [
+    {"id": "continue_saga", "type": "builtin", "enabled": False},
+    {"id": "continue_watching", "type": "builtin"}]})
+check("a stored saga row keeps its place and its switch",
+      off["rows"][0] == {"id": "continue_saga", "type": "builtin", "enabled": False}
+      and [r["id"] for r in off["rows"]].count("continue_saga") == 1)
 check("the input is not mutated", len(CLAUDE_CODE["rows"]) == 10)
 
 empty = home_rows.normalize_home_screen(None)
-check("no preference at all -> the ten defaults, hero on",
+check("no preference at all -> the eleven defaults, hero on",
       [r["id"] for r in empty["rows"]] == list(home_rows.HOME_ROW_DEFAULT_BUILTINS)
       + list(home_rows.HOME_ROW_DEFAULT_DISCOVERY) and empty["show_hero"] is True,
       str(empty))
@@ -89,12 +102,13 @@ odd = home_rows.normalize_home_screen({"rows": [
     {"no": "id"},                                         # dropped
     {"id": "discover-popular-tv", "type": "discovery", "discoveryList": "popular-tv"},
 ]})
+odd_suggested = next(r for r in odd["rows"] if r["id"] == "suggested")
 check("a row without a type is read as builtin, as the web reads it",
-      odd["rows"][0] == {"id": "suggested", "type": "builtin", "enabled": False})
+      odd_suggested == {"id": "suggested", "type": "builtin", "enabled": False})
 check("a row without an id is dropped",
-      all("no" not in r for r in odd["rows"]) and len(odd["rows"]) == 3 + 9)
+      all("no" not in r for r in odd["rows"]) and len(odd["rows"]) == 3 + 10)
 check("a switched-off row stays switched off",
-      odd["rows"][0]["enabled"] is False)
+      odd_suggested["enabled"] is False)
 check("...and a present default is not appended again",
       [r["id"] for r in odd["rows"]].count("suggested") == 1
       and [r["id"] for r in odd["rows"]].count("discover-popular-tv") == 1)
@@ -129,8 +143,8 @@ check("...offered by the editor (the caller gates it on the lifecycle capability
 check("...and NOT a default, so it can be removed",
       home_rows.row_removable({"type": "builtin", "id": "leaving_soon"}) is True
       and "leaving_soon" not in home_rows.HOME_ROW_PROTECTED_IDS)
-check("the ten protected rows are unchanged",
-      len(home_rows.HOME_ROW_PROTECTED_IDS) == 10)
+check("the eleven protected rows are unchanged",
+      len(home_rows.HOME_ROW_PROTECTED_IDS) == 11)
 
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))

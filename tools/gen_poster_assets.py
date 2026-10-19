@@ -427,6 +427,8 @@ def gen_top_result_assets() -> None:
     gen_card_set(TOP_RESULT_W, TOP_RESULT_H, "top-result")
 
 
+# Continue the saga's wide card (app 2.1.0): 16:9 at 556x313.
+SAGA_CARD_W, SAGA_CARD_H = 556, 313
 # Browse's grid poster (app 2.0): seven columns of 212x318.
 GRID_POSTER_W, GRID_POSTER_H = 212, 318
 # Browse's landing tiles (app 2.0): 411x176, the poster's corner radius.
@@ -702,6 +704,7 @@ def main() -> None:
     gen_top_result_assets()
     gen_card_set(GRID_POSTER_W, GRID_POSTER_H, "grid-poster")
     gen_browse_tile_assets()
+    gen_card_set(SAGA_CARD_W, SAGA_CARD_H, "saga-card")
     gen_avatar_shadow()
     gen_collection_assets()
     gen_alpha_disc_rim()

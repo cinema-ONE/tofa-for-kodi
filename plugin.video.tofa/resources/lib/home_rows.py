@@ -20,6 +20,8 @@ from __future__ import annotations
 
 BUILTIN_ROW_LABELS: dict[str, int] = {
     "continue_watching": 31000,
+    # Server 0.12.0's universes: the franchises you are part way through.
+    "continue_saga": 31134,
     "recent_movies": 31060,
     "recent_tv": 31061,
     # Server 0.9.27. The web app orders it right after Recently Added TV and
@@ -49,16 +51,17 @@ BUILTIN_ROW_LABELS: dict[str, int] = {
 }
 
 # ------------------------------------------------- the account's DEFAULTS --
-# The ten rows a tofa account starts with. Every tofa app REFUSES to remove
-# one of these -- you can only switch it off -- and Adrian confirmed the rule
-# holds on macOS, the web app, iOS and tvOS alike (2026-08-27).
+# The eleven rows a tofa account starts with (ten before 0.12.0's saga
+# row). Every tofa app REFUSES to remove one of these -- you can only switch
+# it off -- and Adrian confirmed the rule holds on macOS, the web app, iOS
+# and tvOS alike (2026-08-27).
 #
 # Read out of the web app's own bundle rather than inferred from a screenshot,
 # because nothing in the row data marks them: the two trending rows are typed
 # `discovery` exactly like a row a viewer added, and the API has no field
 # telling them apart. The web app carries the list client-side and so must we.
 #
-#     Bn = the eight builtin ids below
+#     Bn = the nine builtin ids below
 #     Hn = the two discovery rows below
 #     Gn = new Set([...Bn, ...Hn.map(e => e.id)])
 #     Kn = e => Gn.has(e.id)          // "is a default row"
@@ -69,6 +72,7 @@ BUILTIN_ROW_LABELS: dict[str, int] = {
 # present.
 HOME_ROW_DEFAULT_BUILTINS: tuple[str, ...] = (
     "continue_watching",
+    "continue_saga",
     "recent_movies",
     "recent_tv",
     "recently_released_movies",
@@ -84,7 +88,7 @@ HOME_ROW_DEFAULT_DISCOVERY: tuple[str, ...] = (
 HOME_ROW_PROTECTED_IDS: frozenset = frozenset(
     HOME_ROW_DEFAULT_BUILTINS + HOME_ROW_DEFAULT_DISCOVERY)
 
-# The builtin rows the editor may OFFER: every one it knows minus the eight
+# The builtin rows the editor may OFFER: every one it knows minus the nine
 # it can never remove. Today that is `recently_released` -- the mixed
 # movies-and-shows row the 0.9.29 split superseded but did not retire -- and
 # `leaving_soon` (0.9.35), which the caller drops on a server without the
@@ -108,8 +112,8 @@ def normalize_home_screen(home: dict | None) -> dict:
     quite as it is stored.
 
     Mirrors the web app's normaliser (`$n` in its bundle, 0.9.35): the stored
-    rows keep their order, and then every one of the ten default rows the
-    profile LACKS is appended at the end, enabled -- the eight builtins first,
+    rows keep their order, and then every one of the default rows the
+    profile LACKS is appended at the end, enabled -- the builtins first,
     then the two trending discovery rows. A profile that predates the
     recently_released split therefore still shows both halves of it, on Home
     and in the editor, on the web, on macOS and here. The first time the
@@ -147,10 +151,21 @@ def normalize_home_screen(home: dict | None) -> dict:
             out["discoveryList"] = row["discoveryList"]
         rows.append(out)
     present = {r["id"] for r in rows}
+    if "continue_saga" not in present:
+        # The web (0.12.0) slots the saga row in under Continue Watching
+        # rather than at the end; with no Continue Watching, first.
+        at = next((i + 1 for i, r in enumerate(rows) if r["id"] == "continue_watching"), 0)
+        rows.insert(at, {"id": "continue_saga", "type": "builtin", "enabled": True})
+        present.add("continue_saga")
     for default in defaults:
         if default["id"] not in present:
             rows.append(dict(default))
     return {"show_hero": show_hero, "rows": rows}
+
+
+def shows_universes(preferences: dict | None) -> bool:
+    """The web's Universes switch (0.12.0): on unless set to false."""
+    return (preferences or {}).get("show_universes") is not False
 
 
 def deslug(list_type: str) -> str:
@@ -162,7 +177,7 @@ def deslug(list_type: str) -> str:
 
 
 def row_is_default(row: dict) -> bool:
-    """Is this one of the ten rows every account starts with?"""
+    """Is this one of the rows every account starts with?"""
     return row.get("id") in HOME_ROW_PROTECTED_IDS
 
 

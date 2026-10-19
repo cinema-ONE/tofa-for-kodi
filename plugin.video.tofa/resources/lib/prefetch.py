@@ -32,7 +32,7 @@ from __future__ import annotations
 import time
 from typing import Any, Optional
 
-from . import api, auth, home_rows, household, http, log
+from . import api, auth, home_rows, household, http, log, universe
 from .api import MediaServerClient
 
 #: Filled by warm(), drained by the window as it builds.
@@ -59,6 +59,9 @@ def fetch_builtin_row(client: MediaServerClient, row_id: str) -> list:
     try:
         if row_id == "continue_watching":
             return client.continue_watching() or []
+        if row_id == "continue_saga":
+            # Universes, not titles: the row draws its own wide cards.
+            return universe.continuing(client)
         if row_id == "suggested":
             resp = client.suggested() or {}
             if isinstance(resp, dict):
@@ -168,6 +171,8 @@ def warm() -> None:
             if row.get("type") != "builtin":
                 continue
             row_id = row.get("id")
+            if row_id == "continue_saga" and not home_rows.shows_universes(preferences):
+                continue
             if row_id and row_id in home_rows.BUILTIN_ROW_LABELS:
                 _rows[row_id] = fetch_builtin_row(client, row_id)
         log.info("prefetch: %d row(s) in %.2fs"

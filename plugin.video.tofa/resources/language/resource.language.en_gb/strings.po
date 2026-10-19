@@ -533,3 +533,7 @@ msgstr ""
 msgctxt "#31133"
 msgid "Lower quality"
 msgstr ""
+
+msgctxt "#31134"
+msgid "Continue the saga"
+msgstr ""

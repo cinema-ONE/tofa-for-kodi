@@ -29,6 +29,13 @@ def _load(name: str) -> str:
         return f.read()
 
 
+def _with_condition(layout: str, condition: str) -> str:
+    """An item or focused layout that applies only while `condition` holds."""
+    for tag in ("<itemlayout ", "<focusedlayout "):
+        layout = layout.replace(tag, '{0}condition="{1}" '.format(tag, condition), 1)
+    return layout
+
+
 def render_main() -> str:
     """The merged Home/Browse/Discover/Search/Settings window (see
     windows/main.py:MainWindow). Renders "home", "browse", "discover" and
@@ -56,6 +63,15 @@ def render_main() -> str:
                 list_id, has_progress=True, caption_field="caption_meta",
                 cell_w=T.ROW_CELL_W,
             )
+            # Continue the saga's wide cards share the slot. Kodi swaps
+            # layouts only when the one in use stops matching, so the two
+            # conditions mirror each other.
+            saga = "String.IsEqual(Window.Property(row{0}_kind),saga)".format(idx)
+            saga_item, saga_focused = fragments.saga_card(list_id)
+            item_xml = (_with_condition(saga_item, saga) + "\n"
+                        + _with_condition(item_xml, "!" + saga))
+            focused_xml = (_with_condition(saga_focused, saga) + "\n"
+                           + _with_condition(focused_xml, "!" + saga))
             prev_id = list_ids[idx - 1] if idx else NAV_LIST_ID
             next_id = list_ids[idx + 1] if idx + 1 < len(list_ids) else list_id
             blocks.append(fragments.poster_row(

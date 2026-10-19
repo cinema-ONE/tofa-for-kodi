@@ -1,4 +1,4 @@
-"""The ten rows an account starts with can be switched off, never removed.
+"""The eleven rows an account starts with can be switched off, never removed.
 
 Adrian checked all four reference apps on 2026-08-27 -- macOS, the web app,
 iOS and tvOS -- and they agree: the default rows offer a switch and the two
@@ -39,18 +39,18 @@ def check(name, ok, detail=""):
 
 # --- the list itself -----------------------------------------------------
 EXPECTED = {
-    "continue_watching", "recent_movies", "recent_tv",
+    "continue_watching", "continue_saga", "recent_movies", "recent_tv",
     "recently_released_movies", "recently_released_tv",
     "top_rated_movies", "top_rated_tv", "suggested",
     "discover-trending-movies", "discover-trending-tv",
 }
-check("exactly ten rows are protected",
-      len(home_rows.HOME_ROW_PROTECTED_IDS) == 10,
+check("exactly eleven rows are protected",
+      len(home_rows.HOME_ROW_PROTECTED_IDS) == 11,
       str(sorted(home_rows.HOME_ROW_PROTECTED_IDS)))
 check("...and they are the ids the reference apps protect",
       set(home_rows.HOME_ROW_PROTECTED_IDS) == EXPECTED,
       str(EXPECTED ^ set(home_rows.HOME_ROW_PROTECTED_IDS)))
-check("two of the ten are DISCOVERY rows, not builtins",
+check("two of the eleven are DISCOVERY rows, not builtins",
       len(home_rows.HOME_ROW_DEFAULT_DISCOVERY) == 2)
 check("every protected builtin has a label to draw",
       all(rid in home_rows.BUILTIN_ROW_LABELS
