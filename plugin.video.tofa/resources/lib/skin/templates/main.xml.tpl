@@ -2065,6 +2065,28 @@
                         </control>
                     </control>
 
+                    <!-- EPISODES (app 2.1.0) -->
+                    <control type="group">
+                        <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                        <height>{SETTINGS_ONE_ROW_GROUP_H}</height>
+{settings_episodesgroup_eyebrow}
+                        <control type="list" id="8366">
+                            <posx>0</posx>
+                            <posy>{SETTINGS_SECTION_BAND}</posy>
+                            <width>{SETTINGS_DETAIL_W_WIDE}</width>
+                            <height>{SETTINGS_ACTION_ROW_H}</height>
+                            <onleft>8366</onleft>
+                            <onright>8366</onright>
+                            <orientation>vertical</orientation>
+                            <itemheight>{SETTINGS_ACTION_ROW_H}</itemheight>
+                            <scrolltime>0</scrolltime>
+
+{settings_missing_item}
+
+{settings_missing_focused}
+                        </control>
+                    </control>
+
                     <!-- MOTION -->
                     <control type="group">
                         <width>{SETTINGS_DETAIL_W_WIDE}</width>

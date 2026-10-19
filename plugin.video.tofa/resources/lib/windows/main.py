@@ -655,6 +655,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_ADD_ROW_ID = 8340
     SETTINGS_ADD_GENRE_ID = 8345
     SETTINGS_REGION_ID = 8360
+    SETTINGS_MISSING_ID = 8366
     # Playback & Video (8400s) and Audio & Subtitles (8500s) each own a
     # scrolling grouplist of their own, 8490 / 8590.
     # One list per segment type, in settings_options.SEGMENT_ROWS order.
@@ -1074,6 +1075,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_ADD_GENRE_ID, 1)
         self.settings_region_list = kodigui.ManagedControlList(
             self, self.SETTINGS_REGION_ID, 1)
+        self.settings_missing_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_MISSING_ID, 1)
         self.settings_audiolang_list = kodigui.ManagedControlList(
             self, self.SETTINGS_AUDIOLANG_ID, 1)
         self.settings_audiolang2_list = kodigui.ManagedControlList(
@@ -1455,6 +1458,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_add_row("genre")
         elif controlID == self.SETTINGS_REGION_ID:
             self._settings_region_clicked()
+        elif controlID == self.SETTINGS_MISSING_ID:
+            self._settings_missing_clicked()
         elif controlID in self.SETTINGS_LANGUAGE_ROWS:
             key, slot = self.SETTINGS_LANGUAGE_ROWS[controlID]
             self._settings_language_clicked(key, slot)
@@ -6150,6 +6155,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._settings_fill_quality()
         self._settings_fill_audio()
         self._settings_fill_region()
+        self._settings_fill_missing()
         self._settings_fill_direct_only()
         self._settings_fill_privacy()
         self._settings_fill_device()
@@ -6708,7 +6714,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         8550: "sub_lang2", 8530: "always_subs",
         8205: "fox", 8310: "episodes_remaining", 8312: "watched_marks", 8315: "hide_spoilers",
         8495: "pause_screen", 8295: "reduce_motion",
-        8360: "region", 8320: "spotlight", 8340: "add_discover", 8345: "add_genre",
+        8360: "region", 8366: "missing_episodes", 8320: "spotlight", 8340: "add_discover", 8345: "add_genre",
         8620: "licences", 8720: "art_budget", 8730: "art_clear",
     }
 
@@ -6868,6 +6874,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             "pause_screen": lambda: checked(self.settings_pausescreen_list),
             "reduce_motion": lambda: checked(self.settings_motion_list),
             "region": lambda: prop("settings_region"),
+            "missing_episodes": lambda: prop("settings_missing_episodes"),
             "spotlight": lambda: checked(self.settings_spotlight_list),
             "home_rows": lambda: prop("settings_home_rows_count"),
             "home_shown": lambda: self._settings_home_tally(True),
@@ -7477,8 +7484,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             watched.controlUp(episodes)
             watched.controlDown(spoilers)
             spoilers.controlUp(watched)
-            spoilers.controlDown(motion)
-            motion.controlUp(spoilers)
+            missing = self.getControl(self.SETTINGS_MISSING_ID)
+            spoilers.controlDown(missing)
+            missing.controlUp(spoilers)
+            missing.controlDown(motion)
+            motion.controlUp(missing)
             motion.controlDown(region)
             region.controlUp(motion)
         except Exception:
@@ -7928,6 +7938,32 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.settings_region_list.reset()
         self.settings_region_list.addItems([li])
         self.setProperty("settings_region", settings_options.region_name(code) or "—")
+
+    #: The profile's Missing episodes choices, as the app names them (2.1.0).
+    MISSING_EPISODES_CHOICES = (("auto", "Automatic"), ("show", "Always show"),
+                                ("hide", "Never show"))
+
+    def _settings_missing_value(self) -> str:
+        value = self._ensure_preferences().get(episodes.MISSING_EPISODES_KEY)
+        return value if value in dict(self.MISSING_EPISODES_CHOICES) else "auto"
+
+    def _settings_fill_missing(self):
+        li = kodigui.ManagedListItem(label="Missing episodes")
+        self.settings_missing_list.reset()
+        self.settings_missing_list.addItems([li])
+        self.setProperty("settings_missing_episodes",
+                         dict(self.MISSING_EPISODES_CHOICES)[self._settings_missing_value()])
+
+    def _settings_missing_clicked(self):
+        choices = self.MISSING_EPISODES_CHOICES
+        selected = [k for k, _l in choices].index(self._settings_missing_value())
+
+        def _pick(index):
+            self._settings_write({episodes.MISSING_EPISODES_KEY: choices[index][0]})
+            self._settings_fill_missing()
+        self._settings_choose(
+            "missing_episodes", settings_info.ROWS["missing_episodes"].title,
+            [{"label": label} for _k, label in choices], selected, _pick)
 
     def _settings_region_clicked(self):
         code = self._ensure_preferences().get("region") or ""

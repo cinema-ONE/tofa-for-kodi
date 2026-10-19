@@ -226,6 +226,8 @@ def render_main() -> str:
     # current choice where the glyph would be.
     settings_region_item, settings_region_focused = fragments.settings_choice_row(
         8360, value_property="settings_region")
+    settings_missing_item, settings_missing_focused = fragments.settings_choice_row(
+        8366, value_property="settings_missing_episodes")
     # The rows picked in the right-column picker, one list each. Up/Down
     # within a group is XML; hops between groups are wired in main.py.
     _chain = [k for k, _l, _p in settings_options.CHOICE_ROWS if k != "rating"]
@@ -342,6 +344,9 @@ def render_main() -> str:
         settings_motion_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="MOTION",
             indent="                        "),
+        settings_episodesgroup_eyebrow=fragments.settings_group_eyebrow(
+            posy=T.SETTINGS_SECTION_BAND, label="EPISODES",
+            indent="                        "),
         settings_player_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="PLAYER",
             indent="                        "),
@@ -400,6 +405,8 @@ def render_main() -> str:
         ),
         settings_region_item=settings_region_item,
         settings_region_focused=settings_region_focused,
+        settings_missing_item=settings_missing_item,
+        settings_missing_focused=settings_missing_focused,
         settings_skip_eyebrow=fragments.settings_group_eyebrow(
             posy=T.SETTINGS_SECTION_BAND, label="SKIP SEGMENTS",
             indent="                        "),
