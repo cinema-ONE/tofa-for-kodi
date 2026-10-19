@@ -200,6 +200,43 @@ def next_up(candidates: list, progress_map: dict, prefer_file_id: Any = None):
     return candidates[0]
 
 
+def mark_title(client: MediaServerClient, media_id: Any, watched: bool,
+               card_file_id: Any = None) -> bool:
+    """Mark a card's title watched/unwatched; False if nothing was marked.
+
+    A movie marks every available file (versions of one thing). A show marks
+    ONE episode: `card_file_id` when the card names it, else next_up()'s, so
+    a card menu and the Detail hero agree. update_watched errors propagate."""
+    if not media_id:
+        return False
+    try:
+        detail = client.media_detail(media_id) or {}
+    except http.ApiError as exc:
+        log.error(f"progress: media_detail for watched-toggle failed: {exc}")
+        return False
+    if detail.get("seasons"):
+        candidates = episode_candidates(detail.get("seasons"))
+        if not candidates:
+            log.error(f"progress: no playable episodes for media {media_id}")
+            return False
+        # required: this read picks the episode WRITTEN; an empty map would
+        # mean "nothing watched" and mark S1 E1 instead.
+        progress_map = fetch_many(
+            client, [c[3].get("id") for c in candidates], required=True)
+        chosen = next_up(candidates, progress_map, card_file_id)
+        file_ids = [chosen[3].get("id")] if chosen else []
+    else:
+        file_ids = [f.get("id") for f in (detail.get("files") or [])
+                    if f.get("available")]
+    file_ids = [f for f in file_ids if f]
+    if not file_ids:
+        log.error(f"progress: no available files to mark for media {media_id}")
+        return False
+    for fid in file_ids:
+        client.update_watched(fid, watched)
+    return True
+
+
 def resume_position_ms(
     client: MediaServerClient, file_id: str, fallback: Optional[int] = None
 ) -> Optional[int]:

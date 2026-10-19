@@ -5370,7 +5370,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         try:
             if picked in (cardoptions.MARK_WATCHED, cardoptions.MARK_UNWATCHED):
                 watched = picked == cardoptions.MARK_WATCHED
-                if self._set_watched(client, data, watched):
+                if progress.mark_title(client, media_id, watched,
+                                       data.get("media_file_id")):
                     # On CONTINUE WATCHING the card must not merely gain a
                     # tick: the row is "what to watch next", and the episode
                     # just marked is no longer that. The server already does
@@ -5517,63 +5518,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self.setFocusId(self.GRID_ID)
         except (RuntimeError, AttributeError):
             pass
-
-    def _set_watched(self, client, data, watched: bool) -> bool:
-        """Mark a card's title watched/unwatched. Returns whether anything
-        was actually marked.
-
-        Per-FILE because that's what the endpoint takes. A MOVIE marks every
-        available file: those are versions of one thing, and the card's
-        watched badge must not depend on which version happened to be played.
-
-        A SHOW marks ONE EPISODE -- the one this card stands for. Continue
-        Watching and Next Up name their own (`media_file_id` on the row), and
-        anything else falls back to the episode the detail hero would offer,
-        via the same progress.next_up() rule, so the menu and the page cannot
-        disagree. This used to mark every episode of every season; see
-        DetailWindow._set_media_watched for what that cost and why the
-        whole-show action now lives only on the season menu.
-
-        Returning False rather than failing silently matters: a no-op here is
-        invisible on screen, which is how this shipped doing nothing at all."""
-        media_id = data.get("id") or data.get("media_id")
-        if not media_id:
-            return False
-        # The row already knows its episode -- an exact answer, and no
-        # detail fetch at all.
-        card_file_id = data.get("media_file_id")
-        try:
-            detail = client.media_detail(media_id) or {}
-        except http.ApiError as exc:
-            kodigui.ERROR("main.py: media_detail for watched-toggle failed: {0}".format(exc))
-            return False
-
-        if detail.get("seasons"):
-            candidates = progress.episode_candidates(detail.get("seasons"))
-            if not candidates:
-                kodigui.ERROR("main.py: no playable episodes for media {0}".format(media_id))
-                return False
-            # required: this read chooses which episode gets WRITTEN. An
-            # empty map on failure means "nothing watched", i.e. episode one
-            # -- so a card menu pressed on a show mid-season would silently
-            # mark S1 E1 instead of the episode the card stands for. A card
-            # that carries its own media_file_id is immune (next_up prefers
-            # it), which is exactly why the ones that don't must not guess.
-            progress_map = progress.fetch_many(
-                client, [c[3].get("id") for c in candidates], required=True)
-            chosen = progress.next_up(candidates, progress_map, card_file_id)
-            file_ids = [chosen[3].get("id")] if chosen else []
-        else:
-            file_ids = [f.get("id") for f in (detail.get("files") or [])
-                        if f.get("available") and f.get("id")]
-
-        file_ids = [f for f in file_ids if f]
-        if not file_ids:
-            kodigui.ERROR("main.py: no available files to mark for media {0}".format(media_id))
-            return False
-        for fid in file_ids:
-            client.update_watched(fid, watched)
-        return True
 
     def _search_key_clicked(self, control_id):
         grid = self.keyboard if control_id == self.KEYBOARD_ID else self.numpad
