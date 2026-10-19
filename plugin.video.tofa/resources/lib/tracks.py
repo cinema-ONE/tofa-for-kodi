@@ -19,7 +19,7 @@ from typing import Any, Optional
 
 import xbmc
 
-from . import regional
+from . import langcodes, regional
 
 # Wire codec name -> what the format is actually called. Only entries where
 # the raw name is wrong or unreadable on screen; anything absent falls
@@ -478,10 +478,12 @@ def subtitle_track_label(track: dict[str, Any]) -> tuple[str, str]:
     language = language_name(track.get("language"))
     title = (track.get("title") or "").strip()
     flags = []
-    if track.get("forced"):
+    if langcodes.is_forced(track):
         flags.append("Forced")
     if track.get("sdh"):
         flags.append("SDH")
+    if langcodes.is_commentary(track):
+        flags.append("Commentary")
     parts = [p for p in (language, shorten_title(title)) if p]
     label = " · ".join(parts) or "Subtitle"
     if flags:
