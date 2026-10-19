@@ -692,6 +692,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         kodigui.ControlledWindow.__init__(self, *args, **kwargs)
         self.client: MediaServerClient | None = None
         self._current_target = start_target
+        #: The Home row that last held focus, for Back from another tab.
+        self._home_last_focus_id: int | None = None
         self._loaded_sections: set[str] = set()
 
         # Down-navigation target from the nav bar, per active section name.
@@ -1379,6 +1381,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             except Exception:
                 pass
 
+    def _back_to_home(self) -> None:
+        """Switch to Home and focus its last row, or the nav bar's Home tab
+        when Home has no rows yet."""
+        try:
+            self.getControl(self.NAV_LIST_ID).selectItem(0)
+        except RuntimeError:
+            pass
+        self._activate_section("home_window")
+        target = self._home_last_focus_id
+        if target not in self.row_lists or "home" not in self._loaded_sections:
+            target = self._section_down_targets.get("home")
+        if target in self.row_lists and "home" in self._loaded_sections:
+            self.setFocusId(target)
+        else:
+            self.setFocusId(self.NAV_LIST_ID)
+
     def _nav_clicked(self):
         target = navbar.resolve_nav_click(self, self.NAV_LIST_ID, self._current_target)
         if target:
@@ -1654,6 +1672,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         action_id = action.getId()
         if self._household_ended and self._household_check():
             return
+        if self.getProperty("active_section") == "home" and self.getFocusId() in self.row_lists:
+            self._home_last_focus_id = self.getFocusId()
 
         if self.getFocusId() == self.QUERY_EDIT_ID:
             # Kodi's edit control already accepts physical-keyboard typing
@@ -1724,6 +1744,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
                 and self.getFocusId() == home_rows.DISCOVER_FILTER_LIST_ID):
             self._discover_filters_close()
+            return
+
+        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self.getProperty("active_section") != "home"):
+            # App 2.1.0: Back on any other main tab goes to Home, on its last
+            # card; from there the next Back reaches the nav bar, then exits.
+            self._back_to_home()
             return
 
         if action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK) and self.getFocusId() != self.NAV_LIST_ID:
