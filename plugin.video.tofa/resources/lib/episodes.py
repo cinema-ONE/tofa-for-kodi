@@ -173,3 +173,38 @@ def season_mark(season: dict, progress_map: dict, *, selected: bool) -> tuple[st
         return SEASON_MARK_COMPLETE, 0
     return SEASON_MARK_LEFT, playable - watched
 
+
+
+#: The profile's "Missing episodes" choice, as the web app stores it.
+MISSING_EPISODES_KEY = "layout.missingEpisodes"
+
+
+def show_missing(preferences: Optional[dict], effective_settings: Optional[dict]) -> bool:
+    """Whether a show page lists episodes the library does not hold.
+
+    "show" and "hide" decide outright; anything else is Automatic, which
+    follows the server's answer for this show (it hides them for daily
+    shows)."""
+    choice = (preferences or {}).get(MISSING_EPISODES_KEY)
+    if choice in ("show", "hide"):
+        return choice == "show"
+    return (effective_settings or {}).get("show_missing_episodes") is not False
+
+
+def listed_seasons(seasons: Any, show_missing_episodes: bool, today: str) -> list:
+    """The seasons and episodes a show page lists.
+
+    Hiding missing episodes keeps any episode with files and any still to
+    air (`today` is an ISO date), and the seasons holding one, as the web
+    app does. Each kept season remembers its full count as `episode_total`."""
+    if show_missing_episodes:
+        return list(seasons or [])
+    out = []
+    for season in seasons or []:
+        episodes = season.get("episodes") or []
+        kept = [e for e in episodes
+                if e.get("files") or str(e.get("air_date") or "") > today]
+        if kept or str(season.get("air_date") or "") > today:
+            out.append(dict(season, episodes=kept,
+                            episode_total=season.get("episode_total", len(episodes))))
+    return out

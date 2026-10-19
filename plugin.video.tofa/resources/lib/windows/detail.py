@@ -13,6 +13,7 @@ sets Window.Property(detailpage) to "page2" and focuses a page-2 control
 """
 from __future__ import annotations
 
+import datetime
 import math
 import threading
 import time
@@ -1537,6 +1538,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         answer that had not changed. Omit them and this resolves its own, which
         is what the season-switch and refresh paths want -- they are repainting
         precisely because the answer MAY have changed."""
+        seasons = self._listed_seasons(seasons)
         self.setProperty("p2_has_episodes", "1" if seasons else "")
         if not seasons:
             if self.season_list is not None:
@@ -1561,6 +1563,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._render_episode_grid(client, seasons, default_season_number,
                                   progress_map=progress_map)
 
+    def _listed_seasons(self, seasons: list) -> list:
+        """`seasons` as this profile lists them (its Missing episodes choice)."""
+        show = episodes_fmt.show_missing(
+            self._ensure_preferences(), (self.media or {}).get("effective_settings"))
+        return episodes_fmt.listed_seasons(seasons, show, datetime.date.today().isoformat())
+
     def _render_season_sidebar(self, seasons: list, active_season_number):
         if self.season_list is None:
             return
@@ -1568,7 +1576,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         active_pos = 0
         active_season = None
         # Specials last, as the app orders its pills.
-        seasons = sorted(seasons, key=lambda s: not (s.get("season_number") or 0))
+        seasons = sorted(self._listed_seasons(seasons),
+                         key=lambda s: not (s.get("season_number") or 0))
         for i, s in enumerate(seasons):
             n = s.get("season_number") or 0
             label = s.get("title") or ("Specials" if n == 0 else "Season {0}".format(n))
@@ -1641,7 +1650,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # plus is explained, now that the row itself carries only the mark.
         string_id = _SEASON_AVAILABILITY.get(episodes_fmt.season_availability(season))
         parts = [kodigui.ADDON.getLocalizedString(string_id)] if string_id else []
-        parts.append("{0} episode{1}".format(len(episodes), "" if len(episodes) == 1 else "s"))
+        total = season.get("episode_total", len(episodes))
+        if total > len(episodes):
+            # Missing episodes are hidden: say how many of the season are here.
+            parts.append("{0} of {1} episodes".format(len(episodes), total))
+        else:
+            parts.append("{0} episode{1}".format(len(episodes), "" if len(episodes) == 1 else "s"))
         year = _year_from(season)
         if year:
             parts.append(year)
@@ -1667,6 +1681,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # left out (issue #11), so the split is what says whether the
         # offscreen build actually landed on the box.
         started = time.monotonic()
+        seasons = self._listed_seasons(seasons)
         season = next((s for s in seasons if (s.get("season_number") or 0) == season_number), None)
         episodes = sorted((season.get("episodes") or []) if season else [], key=lambda e: e.get("episode_number") or 0)
 
