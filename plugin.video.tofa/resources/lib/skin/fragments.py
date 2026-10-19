@@ -4049,6 +4049,36 @@ OPTIONS_PAD = 32
 OPTIONS_ROW_H = 68
 OPTIONS_ROW_GAP = 10
 OPTIONS_ICON = 24
+OPTIONS_MAX_ROWS = 6
+
+
+def cardoptions_geometry(row_count: int, eyebrow: bool = True,
+                         subtitle: bool = True) -> dict[str, int]:
+    """Card-options panel geometry for the rows and header lines it shows.
+
+    The renderer lays the XML out for the tallest case and the dialog shrinks
+    it to fit, as on the app (2.1.0), whose menu ends at its last row."""
+    rows = max(1, min(row_count, OPTIONS_MAX_ROWS))
+    pitch = OPTIONS_ROW_H + OPTIONS_ROW_GAP
+    title_y = OPTIONS_PAD + (30 if eyebrow else 0)
+    subtitle_y = title_y + 48
+    # Without a subtitle the app keeps ~74 px between the title's and the
+    # first row's centres (2.1.0 capture), so the rows start 62 below.
+    rows_y = subtitle_y + 40 if subtitle else title_y + 62
+    rows_h = pitch * rows
+    panel_h = rows_y + rows_h + OPTIONS_PAD - OPTIONS_ROW_GAP
+    return {
+        "PANEL_W": OPTIONS_PANEL_W,
+        "PANEL_H": panel_h,
+        "PANEL_X": (1920 - OPTIONS_PANEL_W) // 2,
+        "PANEL_Y": (1080 - panel_h) // 2,
+        "SHADOW_W": OPTIONS_PANEL_W + 84,
+        "SHADOW_H": panel_h + 84,
+        "TITLE_Y": title_y,
+        "SUBTITLE_Y": subtitle_y,
+        "ROWS_Y": rows_y,
+        "ROWS_H": rows_h,
+    }
 
 
 def option_row(list_id: int) -> tuple[str, str]:

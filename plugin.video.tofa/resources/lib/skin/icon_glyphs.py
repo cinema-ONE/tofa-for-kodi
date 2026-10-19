@@ -101,9 +101,8 @@ CHEVRONS_UP_DOWN = 0xE211
 # refresh-cw, whose two arrowheads read better at 20px than rotate-cw's one.
 CLOCK = 0xE087
 REFRESH_CW = 0xE145
-# Card options rows (7.2). 11's table names these as SF `chevron.right`,
-# `minus.circle` and `xmark.circle`; Lucide's equivalents are chevron-right,
-# circle-minus and circle-x.
+# Card options rows (7.2): Lucide's circle-minus and circle-x for SF
+# `minus.circle` and `xmark.circle`; chevron-right for a row that opens more.
 CHEVRON_RIGHT = 0xE06F
 # Browse's "back to the collection list" pill: a DIRECTION, like
 # CHEVRON_DOWN's scroll hint, not a dropdown affordance.
@@ -112,8 +111,9 @@ CHEVRON_UP = 0xE070
 MINUS_CIRCLE = 0xE07E
 CIRCLE_X = 0xE084
 CHECK = 0xE06C
-# Card options: "Not Interested", and "Hidden from Suggestions" once set.
-CIRCLE_SLASH = 0xE402
+# Card options (app 2.1.0): Seen it and Mark as Watched; Not interested.
+CIRCLE_CHECK = 0xE226
+THUMBS_DOWN = 0xE189
 ARROW_UP = 0xE04A
 ARROW_DOWN = 0xE042
 TAG = 0xE17F

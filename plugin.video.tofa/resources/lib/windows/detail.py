@@ -2863,8 +2863,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if picked in (cardoptions.WATCHLIST_ADD, cardoptions.WATCHLIST_REMOVE):
             self._toggle_watchlist()
         else:
-            titlemarks.apply(client, picked, disc, self.content_media_type, self.tmdb_id,
-                             title=self.getProperty("hero_title"))
+            titlemarks.apply(client, picked, disc, self.content_media_type, self.tmdb_id)
         return True
 
     def _primary_label(self, verb: str) -> str:
@@ -3180,7 +3179,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _apply_shelf_option(self, client: MediaServerClient, picked: str, data: dict,
                             item, media_id) -> None:
         """A shelf card's watchlist, watched or mark choice, done as Home does it."""
-        if titlemarks.apply(client, picked, data, title=item.getLabel()):
+        if titlemarks.apply(client, picked, data) is not None:
             return
         media_type = data.get("media_type") or data.get("type")
         try:

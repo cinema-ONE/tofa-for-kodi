@@ -46,7 +46,7 @@
             <colordiffuse>0x94000000</colordiffuse>
         </control>
 
-        <control type="group">
+        <control type="group" id="{GROUP_ID}">
             <posx>{PANEL_X}</posx>
             <posy>{PANEL_Y}</posy>
 
@@ -56,7 +56,7 @@
                  by the blur on every side and pushed down by the stated y18.
                  Its 9-patch border covers blur + radius so the soft corner
                  is never stretched. -->
-            <control type="image">
+            <control type="image" id="{SHADOW_ID}">
                 <posx>-42</posx>
                 <posy>-24</posy>
                 <width>{SHADOW_W}</width>
@@ -75,7 +75,7 @@
                  asset rather than a 9-patch of a shared capsule, because a
                  9-patch corner draws UNSCALED: the asset's radius must equal
                  the border it is sliced at. See tools/gen_panel_assets.py. -->
-            <control type="image">
+            <control type="image" id="{FILL_ID}">
                 <posx>0</posx>
                 <posy>0</posy>
                 <width>{PANEL_W}</width>
@@ -83,7 +83,7 @@
                 <colordiffuse>{SURFACE_FLOATING}</colordiffuse>
                 <texture border="22">panel-r22.png</texture>
             </control>
-            <control type="image">
+            <control type="image" id="{OUTLINE_ID}">
                 <posx>0</posx>
                 <posy>0</posy>
                 <width>{PANEL_W}</width>
@@ -105,7 +105,7 @@
                 <label>$INFO[Window.Property(options_eyebrow)]</label>
                 <visible>!String.IsEmpty(Window.Property(options_eyebrow))</visible>
             </control>
-            <control type="label">
+            <control type="label" id="{TITLE_ID}">
                 <posx>{PAD}</posx>
                 <posy>{TITLE_Y}</posy>
                 <width>{INNER_W}</width>
@@ -126,7 +126,7 @@
                 <scrollsuffix>   </scrollsuffix>
                 <label>$INFO[Window.Property(options_title)]</label>
             </control>
-            <control type="label">
+            <control type="label" id="{SUBTITLE_ID}">
                 <posx>{PAD}</posx>
                 <posy>{SUBTITLE_Y}</posy>
                 <width>{INNER_W}</width>
