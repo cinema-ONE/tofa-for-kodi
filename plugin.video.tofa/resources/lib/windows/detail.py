@@ -1134,6 +1134,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # and "no file at all" still has to clear it.
         self.play_file_id = chosen.get("id") if chosen else None
         self._render_version_pill()
+        # The hero drew the first file's badges; they describe what Play plays.
+        if chosen:
+            self._render_format_badges(chosen)
         if not chosen:
             self.is_playable = False
             self.setProperty("primary_label", "Unavailable")
