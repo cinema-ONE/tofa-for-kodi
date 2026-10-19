@@ -132,9 +132,8 @@ def season_tally(season: dict, progress_map: dict) -> tuple[int, int]:
 
     Playable is an episode with an available file, and the file is the FIRST
     available one -- the same choice the episode grid and next-up make, so all
-    three count the same thing. The server keeps one timeline per title rather
-    than per version, so which version's record is read does not change the
-    answer (measured 2026-09-20, the 7.7 check).
+    three count the same thing. Since server 0.12.0 each edition keeps its own
+    place, so an episode watched in another edition's file counts as unwatched.
 
     `progress_map` must COVER every playable file here: a file missing from it
     counts as unwatched, which is only true if it was actually asked about.

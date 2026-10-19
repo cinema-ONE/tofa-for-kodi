@@ -96,8 +96,8 @@ def _parse_iso8601(value: str) -> float:
 
 def verify_pin(session, server: str, access_token: str, device_id: str, profile_id: str, pin: str) -> tuple[str, float]:
     """Returns (profile_token, expires_at epoch seconds). Raises
-    http.ApiError (401 unauthorized) on a wrong PIN -- no lockout/
-    rate-limit kicks in after a few wrong attempts."""
+    http.ApiError: 401 on a wrong PIN, 429 once the server stops taking
+    attempts for a while. The PIN is never logged."""
     granted = http.request_json(
         session,
         "POST",
