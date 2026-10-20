@@ -1,3 +1,14 @@
+1.4.0
+- Coming Up shows films as posters, three across each day, and marks
+  the chosen TV episode as the Apple TV app does.
+- Discover remembers your filters: they are kept on your profile, the
+  same as in tofa's web app.
+- Turning a Discover filter on or off no longer moves the focus to the
+  top bar.
+- Who's watching has a profile selected straight away, also on the first
+  start after Kodi opens.
+- After updating, tofa asks once more to install its fonts.
+
 1.3.0
 - Discover follows the Apple TV app: For You, Trending, Coming Up, Best
   Of, Universes and Genres. Coming Up is a week planner for TV shows and
