@@ -524,6 +524,18 @@ def disambiguate(rows: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return out
 
 
+def tier_rate_label(kbps: Optional[int]) -> str:
+    """A tier's rate as the server writes it in its labels: whole Mbps
+    (rounded down) from 10, one decimal below, kbps under one megabit."""
+    if not kbps:
+        return ""
+    if kbps < 1000:
+        return f"{int(kbps)} kbps"
+    if kbps % 1000 == 0 or kbps >= 10000:
+        return f"{int(kbps // 1000)} Mbps"
+    return f"{regional.decimal(kbps / 1000.0, 1)} Mbps"
+
+
 def quality_tier_label(tier: dict[str, Any]) -> tuple[str, str]:
     """(label, detail) for one quality tier.
 
@@ -535,7 +547,9 @@ def quality_tier_label(tier: dict[str, Any]) -> tuple[str, str]:
     throughout, including for the original, where quoting `1920x1080` beside
     a bare `720p` would imply a difference in kind that isn't there."""
     height = tier.get("height") or 0
-    rate = bitrate_label(tier.get("bitrate_kbps"))
+    rate = tier_rate_label(tier.get("bitrate_kbps"))
     if tier.get("is_original"):
         return "Original", " · ".join(p for p in (f"{height}p" if height else "", rate) if p)
-    return (tier.get("tag") or (f"{height}p" if height else "")).strip() or "Quality", rate
+    # The height, as the app titles it: since 0.12 a tag names a NOMINAL rate
+    # ("1080p-18m") that the server may cap below, which the detail line shows.
+    return (f"{height}p" if height else (tier.get("tag") or "").strip()) or "Quality", rate
