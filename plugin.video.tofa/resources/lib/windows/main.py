@@ -30,6 +30,7 @@ from .. import (addonref, api, artcache, auth, cloud, episodes, home_rows, http,
                 playbackprefs, prefetch, progress, regional, search_history,
                 serverversion, settings_info, settings_options, settings_pages,
                 signin, universe)
+from .. import coming_up, discover
 from .. import avatar_presets
 from .. import household
 from .. import toast
@@ -466,6 +467,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     # Browse section control ids -- 6000-6299 block, kept collision-free
     # from Home's 4000-5899/9000 block.
+    #: Discover's grid panels and a genre page's Follow pill (app 2.1.0).
+    DISCOVER_UNIVERSES_ID, DISCOVER_WALL_ID, DISCOVER_FOLLOW_ID = 6600, 6610, 6620
+    #: Coming Up's planner, as skin/screens.py renders it (CU_*).
+    CU_SHOWS_ID, CU_MOVIES_ID, CU_PREV_ID, CU_NEXT_ID, CU_NEXTUP_ID, CU_SCORES_ID = range(7400, 7406)
+    CU_SLOT_ID, CU_ROW_ID, CU_META_ID = 7500, 7700, 7820
+
     #: The landing's tiles: the server's sections, then the fixed four
     #: in a row of their own (app 2.1.0); each opens a full-width view.
     TILES_ID = 6020
@@ -731,6 +738,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # a plain sleep on the settle thread, which would hold that worker
         # and delay the NEXT focus change by the length of the dip.
         self._hero_swap = kodigui.SettleTimer(T.HERO_TEXT_DISSOLVE_MS, "tofa-hero-swap")
+        # Here, not in onInit: onClosed stops it even when Kodi refused the window.
+        self._discover_tab_settle = kodigui.SettleTimer(T.FOCUS_SETTLE_MS, "tofa-discover-tab")
         self._settle_ms_from_prefs = False
 
         # ---- home section state ----
@@ -1139,6 +1148,19 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # Focusing a tab switches to it after a short settle, as in app 2.0.0.
         self._discover_tab = home_rows.DISCOVER_DEFAULT_TAB
         self._discover_shelves_by_tab: dict[str, list[dict]] = {}
+        self._discover_lanes: list = []
+        self._discover_universes: list = []
+        self._discover_page_state: dict | None = None   # an open genre/decade page
+        self._cu: dict | None = None                     # Coming Up's planner
+        self._cu_view: str | None = None    # None until the profile's choice is read
+        self._cu_default_view = None
+        self._cu_saving, self._cu_pending_view = False, None
+        self._cu_seen = None        # focus as the last key left it: Kodi moves first
+        self._cu_props: dict = {}   # what the planner's properties hold now
+        self._cu_sizes: dict = {}
+        self.discover_universe_list = kodigui.ManagedControlList(
+            self, self.DISCOVER_UNIVERSES_ID, 12)
+        self.discover_wall_list = kodigui.ManagedControlList(self, self.DISCOVER_WALL_ID, 20)
         n_tabs = len(home_rows.DISCOVER_TABS)
         self._discover_strip = kodigui.ManagedControlList(
             self, home_rows.DISCOVER_TAB_STRIP_ID, n_tabs + 1)
@@ -1155,8 +1177,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._discover_filter_list = kodigui.ManagedControlList(
             self, home_rows.DISCOVER_FILTER_LIST_ID, len(home_rows.DISCOVER_FILTERS) + 1)
         self._discover_mark_current_tab()
-        self._discover_tab_settle = kodigui.SettleTimer(
-            T.FOCUS_SETTLE_MS, "tofa-discover-tab")
         self._section_down_targets["discover"] = home_rows.DISCOVER_TAB_STRIP_ID
 
         # Search section's own control construction (cheap, no HTTP --
@@ -1522,6 +1542,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._browse_grid_clicked()
         elif controlID in self.discover_rows:
             self._discover_card_clicked(controlID)
+        elif controlID == self.DISCOVER_WALL_ID:
+            item = self.discover_wall_list.getSelectedItem()
+            if item is not None and item.dataSource:
+                self._discover_open_tile(item.dataSource, controlID)
+        elif controlID == self.DISCOVER_UNIVERSES_ID:
+            item = self.discover_universe_list.getSelectedItem()
+            if item is not None and item.dataSource:
+                from . import universepage
+                universepage.show(item.dataSource, self._get_client())
+        elif controlID == self.DISCOVER_FOLLOW_ID:
+            self._discover_follow_clicked()
+        elif controlID in (self.CU_PREV_ID, self.CU_NEXT_ID):
+            self._cu_turn(-1 if controlID == self.CU_PREV_ID else 1)
+        elif controlID == self.CU_NEXTUP_ID or self._cu_slot_of(controlID):
+            self._cu_clicked()
         elif controlID == home_rows.DISCOVER_TAB_STRIP_ID:
             if self._discover_strip.getSelectedPos() == len(home_rows.DISCOVER_TABS):
                 self._discover_filters_open()
@@ -1766,6 +1801,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
 
         if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+                and self.getProperty("active_section") == "discover"
+                and self.getFocusId() != self.NAV_LIST_ID
+                and self._discover_close_page()):
+            # A genre or decade page's Back returns to its tab, on its tile.
+            return
+
+        if (action_id in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
                 and self.getProperty("active_section") != "home"):
             # App 2.1.0: Back on any other main tab goes to Home, on its last
             # card; from there the next Back reaches the nav bar, then exits.
@@ -1803,6 +1845,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 xbmc.executebuiltin("ActivateWindow(10000)")
             elif choice == cardoptions.EXIT:
                 self.closeNow()
+            return
+
+        if self._cu_action(action_id):
             return
 
         if (
@@ -2352,6 +2397,22 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 os.replace(path + ".tmp", path)
             paths.append(path)
         return tuple(paths)
+
+    def _saga_dot_strip_file(self, u: dict) -> str:
+        """The Universes tab's strip with its up-next dot, at the skin's 2x."""
+        width, strip_h = 2 * T.DISCOVER_UNI_W, 2 * 5
+        dot, gap = 2 * 5, 2 * 5
+        folder = self._saga_dir()
+        os.makedirs(folder, exist_ok=True)
+        key = "dot{0}x{1}:{2}".format(width, strip_h, universe.strip_key(u))
+        # Its own prefix: Home's pruning keeps only Home's strips.
+        path = os.path.join(folder, "dotstrip-{0}.png".format(
+            hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]))
+        if not os.path.exists(path):
+            with open(path + ".tmp", "wb") as fh:
+                fh.write(universe.dot_strip_png(u, width, strip_h, dot, gap))
+            os.replace(path + ".tmp", path)
+        return path
 
     def _saga_prune(self, keep: set) -> None:
         """Delete strips no card draws any more."""
@@ -5131,120 +5192,524 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # DISCOVER SECTION
     # ==================================================================
 
-    def _discover_shelves(self, client) -> list[dict]:
-        """Shelves to render, newest server surface first.
-
-        `discovery.page` is the 32-shelf surface added in 0.9.24; servers
-        without it keep the original 7-list endpoint, which is frozen for
-        exactly this reason. Both are normalized to the same
-        {title, items} shape so the render loop doesn't branch.
-
-        Titles come from the shelf's own `title` -- the server names all 32,
-        and since 0.9.25 the Settings home-screen editor can surface any of
-        them, so a client-side label map would silently drop the ones it
-        hadn't been taught."""
-        if self._has_capability("discovery.page"):
-            try:
-                page = client.discovery_page(self._discover_filters) or {}
-                return [
-                    {"title": s.get("title") or _discover_list_title(s.get("key", "")),
-                     "kind": s.get("kind"),
-                     "items": s.get("items") or []}
-                    for s in (page.get("shelves") or [])
-                ]
-            except http.ApiError as exc:
-                kodigui.ERROR("main.py: discovery/page failed: {0}".format(exc))
-
-        try:
-            payload = client.discovery_lists() or {}
-        except http.ApiError as exc:
-            kodigui.ERROR("main.py: discover discovery/lists failed: {0}".format(exc))
-            return []
-        # The frozen 7-list endpoint has no `kind`, so these all fall through
-        # _discover_group_by_tab()'s unknown-kind path into the default tab --
-        # which is right: an old server has no tab axis to group by, and one
-        # populated "Now" tab is the closest thing to its flat list.
-        return [
-            {"title": _discover_list_title(l.get("list_type", "")),
-             "kind": None,
-             "items": l.get("items") or []}
-            for l in (payload.get("lists") or [])
-        ]
-
-    def _discover_group_by_tab(self, shelves: list[dict]) -> dict[str, list[dict]]:
-        """Bucket the flat shelf list into the four tabs by each shelf's `kind`.
-
-        Shelves group by `kind` alone. Within a tab they run in the order
-        DISCOVER_TAB_KINDS lists the kinds, and within a kind they keep the
-        server's own order -- no per-shelf exceptions. An unrecognized kind
-        goes to DISCOVER_UNKNOWN_KIND_TAB rather than disappearing; the spec's
-        rule is "never drop a shelf"."""
-        known = {k for kinds in home_rows.DISCOVER_TAB_KINDS.values() for k in kinds}
-        grouped: dict[str, list[dict]] = {}
-        for tab, kinds in home_rows.DISCOVER_TAB_KINDS.items():
-            ordered: list[dict] = []
-            for kind in kinds:
-                ordered.extend([s for s in shelves if s.get("kind") == kind])
-            grouped[tab] = ordered
-        strays = [s for s in shelves if s.get("kind") not in known]
-        if strays:
-            kodigui.LOG("main.py: discover: {0} shelf(s) with unknown kind {1} -> {2} tab".format(
-                len(strays), sorted({s.get("kind") for s in strays}),
-                home_rows.DISCOVER_UNKNOWN_KIND_TAB))
-            grouped[home_rows.DISCOVER_UNKNOWN_KIND_TAB].extend(strays)
-        return grouped
-
     def _discover_load(self):
+        """The app 2.1.0 Discover (server layout 2): the server's groups, the
+        genre lanes, and Universes, which the client adds before Genres."""
         client = self._get_client()
         if not client:
             return
-
-        shelves = [s for s in self._discover_shelves(client) if s["items"]]
-        self._discover_shelves_by_tab = self._discover_group_by_tab(shelves)
-        self._discover_render_tab(self._discover_tab)
+        try:
+            page = client.discovery_page(self._discover_filters, layout=2,
+                                         coming_up="spotlight") or {}
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: discovery/page failed: {0}".format(exc))
+            page = {}
+        self._discover_shelves_by_tab = discover.group_shelves(page, home_rows.DISCOVER_TABS)
+        self._discover_lanes = discover.lane_tiles(page)
+        self._cu_default_view = page.get("coming_up_view")
+        if self._discover_page_state:
+            self._discover_show_page()
+        else:
+            self._discover_render_tab(self._discover_tab)
 
     def _discover_render_tab(self, tab: str):
-        """Fill the fixed row slots from one tab's shelves.
+        """Fill the screen for one sub-tab: rows, or a grid (Universes, Genres).
 
-        Slots are reused across tabs rather than rebuilt: MAX_DISCOVER_ROWS is
-        sized for the largest tab, so switching is just a repopulate. Titles of
-        unused slots are cleared, which is what hides their groups."""
+        Row slots are reused across tabs rather than rebuilt: MAX_DISCOVER_ROWS
+        is sized for the largest tab, so switching is just a repopulate."""
         client = self._get_client()
         if not client:
             return
         self._discover_tab = tab
         self._discover_mark_current_tab()
-        shelves = self._discover_shelves_by_tab.get(tab, [])[: self.MAX_DISCOVER_ROWS]
+        started = time.monotonic()
+        if tab == "universes":
+            self._discover_fill_rows(client, [])
+            self._discover_fill_universes(client)
+            self._discover_set_view("universes", self.DISCOVER_UNIVERSES_ID)
+        elif tab == "genres":
+            self._discover_fill_rows(client, [])
+            self._discover_fill_wall(client)
+            self._discover_set_view("genres", self.DISCOVER_WALL_ID)
+        elif tab == "coming-up" and self._cu_shelves():
+            self._discover_fill_rows(client, [])
+            self._cu_open(client, self._cu_view or self._cu_saved_view())
+            self._discover_set_view("coming-up", self._cu_pill_id())
+        else:
+            shelves = self._discover_shelves_by_tab.get(tab, [])
+            self._discover_fill_rows(client, shelves)
+            self._discover_set_view("", self.DISCOVER_ROW_LIST_IDS[0] if shelves
+                                    else home_rows.DISCOVER_TAB_STRIP_ID)
+        log.info("discover: %s in %.2fs" % (tab, time.monotonic() - started))
 
+    def _discover_set_view(self, view: str, down: int) -> None:
+        """Show rows or a grid, and point Down from the sub-tabs at it."""
+        self.setProperty("discover_view", view)
+        try:
+            self.getControl(home_rows.DISCOVER_TAB_STRIP_ID).controlDown(self.getControl(down))
+        except Exception:
+            pass
+
+    def _discover_fill_rows(self, client: MediaServerClient, shelves: list) -> None:
+        """One shelf per row slot: cards, numbered where the server ranks the
+        shelf, or picture tiles for a tiles shelf (Genres to Try, By Decade)."""
+        shelves = shelves[: self.MAX_DISCOVER_ROWS]
         for idx in range(self.MAX_DISCOVER_ROWS):
             self.setProperty("discover_row{0}_title".format(idx), "")
-
-        started = time.monotonic()
-        self._discover_stage_first_screenful(client, shelves)
+        self._discover_stage_first_screenful(client, [s for s in shelves if s.get("items")])
         for idx, shelf in enumerate(shelves):
             list_id = self.DISCOVER_ROW_LIST_IDS[idx]
-            self.setProperty("discover_row{0}_title".format(idx), shelf["title"])
+            tiles = discover.is_tiles(shelf)
+            # Before the items: the slot's layouts are picked by this.
+            self.setProperty("discover_row{0}_kind".format(idx), "tiles" if tiles else "")
+            self.setProperty("discover_row{0}_title".format(idx),
+                             shelf.get("title") or _discover_list_title(shelf.get("key", "")))
             mcl = self.discover_rows[list_id]
-            ranked = shelf.get("kind") == "now"
-            artcache.prefetch(client.stage_pairs(shelf["items"], "poster_path"))
-            managed = [
-                self._discover_build_card(client, it, rank=(i + 1) if ranked else None)
-                for i, it in enumerate(shelf["items"])
-            ]
+            if tiles:
+                managed = [self._discover_tile_item(t) for t in shelf.get("tiles") or []]
+            else:
+                ranked = discover.is_ranked(shelf)
+                items = shelf.get("items") or []
+                artcache.prefetch(client.stage_pairs(items, "poster_path"))
+                managed = [self._discover_build_card(client, it, rank=(i + 1) if ranked else None)
+                           for i, it in enumerate(items)]
             mcl.reset()
             if managed:
                 mcl.addItems(managed)
 
-        log.info("discover: %s -- %d shelf/shelves in %.2fs"
-                 % (tab, len(shelves), time.monotonic() - started))
+    @staticmethod
+    def _discover_tile_item(tile: dict) -> kodigui.ManagedListItem:
+        mli = kodigui.ManagedListItem(label=tile.get("title") or "",
+                                      data_source=dict(tile, tile=True), offscreen=True)
+        mli.setArt({"thumb": tile.get("artwork") or ""})
+        return mli
 
-        # Down from the strip must land on a row that exists; with no shelves
-        # it stays on the strip rather than dropping into a hidden control.
-        target = self.DISCOVER_ROW_LIST_IDS[0] if shelves else home_rows.DISCOVER_TAB_STRIP_ID
+    def _discover_fill_universes(self, client: MediaServerClient) -> None:
+        """Every universe with something in it (app 2.1.0's Universes tab)."""
         try:
-            self.getControl(home_rows.DISCOVER_TAB_STRIP_ID).controlDown(self.getControl(target))
+            found = universe.everything(client)
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: universes failed: {0}".format(exc))
+            found = []
+        self._discover_universes = found
+        items = []
+        for u in found:
+            mli = kodigui.ManagedListItem(label=u["name"], label2=universe.grid_line(u),
+                                          data_source=u, offscreen=True)
+            mli.setArt({"thumb": client.resolve_image_url(universe.card_art(u)) or "",
+                        "strip": self._saga_dot_strip_file(u)})
+            items.append(mli)
+        self.discover_universe_list.reset()
+        if items:
+            self.discover_universe_list.addItems(items)
+
+    def _discover_fill_wall(self, client: MediaServerClient) -> None:
+        """One tile per genre lane, as the server lists them."""
+        self.discover_wall_list.reset()
+        tiles = [self._discover_tile_item(t) for t in self._discover_lanes]
+        if tiles:
+            self.discover_wall_list.addItems(tiles)
+
+    # ------------------------------------------------------------ Coming Up
+
+    _CU_DIM = "61FFFFFF"            # a view pill not showing, text at 38%
+    _CU_WEEKEND = "C7FFFFFF"        # Saturday and Sunday's headings, at 78%
+
+    def _cu_shelves(self) -> dict:
+        """{"shows": shelf, "movies": shelf} from the spotlight shelves."""
+        found = {}
+        for shelf in self._discover_shelves_by_tab.get("coming-up", []):
+            if shelf.get("form") == "spotlight":
+                found["movies" if "movie" in (shelf.get("key") or "") else "shows"] = shelf
+        return found
+
+    def _cu_saved_view(self) -> str:
+        """The profile's last view, else the server's default, as the web reads them."""
+        for view in ((self._ensure_preferences() or {}).get("coming_up_view"),
+                     self._cu_default_view):
+            if view in ("shows", "movies"):
+                return view
+        return "shows"
+
+    def _cu_save_view(self, client: MediaServerClient, view: str) -> None:
+        """Remember the view on the profile, off the action thread; the last pick wins."""
+        if self._preferences is not None:
+            self._preferences["coming_up_view"] = view
+        self._cu_pending_view = view
+        if self._cu_saving:
+            return
+        self._cu_saving = True
+
+        def run():
+            try:
+                while self._cu_pending_view:
+                    pick, self._cu_pending_view = self._cu_pending_view, None
+                    try:
+                        client.update_preferences({"coming_up_view": pick})
+                    except http.ApiError as exc:
+                        log.warning("coming up: view not saved: {0}".format(exc))
+            finally:
+                self._cu_saving = False
+
+        threading.Thread(target=run, name="tofa-cu-view", daemon=True).start()
+
+    def _cu_pill_id(self) -> int:
+        return self.CU_MOVIES_ID if self._cu_view == "movies" else self.CU_SHOWS_ID
+
+    def _cu_open(self, client: MediaServerClient, view: str) -> None:
+        """Show one view's first page; the pills say which."""
+        shelves = self._cu_shelves()
+        if view not in shelves:
+            view = "shows" if "shows" in shelves else "movies"
+        shelf = shelves[view]
+        found = coming_up.entries(shelf)
+        win = coming_up.window(shelf, found)
+        pages = coming_up.pages(shelf)
+        self._cu_view = view
+        self._cu = {"pages": pages, "entries": found, "today": win["from"], "page": 0,
+                    "stop": None, "last": coming_up.last_page(
+                        pages, coming_up.beyond(found, win["to"]) is not None)}
+        primary = self.getProperty("text_primary") or "FFFFFFFF"
+        self.setProperty("cu_shows_color", primary if view == "shows" else self._CU_DIM)
+        self.setProperty("cu_movies_color", primary if view == "movies" else self._CU_DIM)
+        self._cu_fill_page(client)
+
+    def _cu_fill_page(self, client: MediaServerClient) -> None:
+        """The current page's seven days, row heights set to their titles."""
+        st = self._cu
+        page = st["pages"][st["page"]]
+        started = time.monotonic()
+        primary = self.getProperty("text_primary") or "FFFFFFFF"
+        secondary = self.getProperty("text_secondary") or "9EFFFFFF"
+        title_w = T.CU_TITLE_WRAP
+        for d, day in enumerate(page["days"]):
+            rel = coming_up.relative(day["iso"], st["today"]) or ""
+            self._cu_prop("cu_{0}_head".format(d), regional.weekday_day(day["iso"]))
+            self._cu_prop("cu_{0}_head_color".format(d),
+                             self._CU_WEEKEND if coming_up.is_weekend(day["iso"]) else primary)
+            self._cu_prop("cu_{0}_rel".format(d), rel)
+            self._cu_prop("cu_{0}_rel_color".format(d), primary if rel == "Today" else secondary)
+            self._cu_prop("cu_{0}_today".format(d), "1" if rel == "Today" else "")
+            self._cu_prop("cu_{0}_empty".format(d),
+                             "Nothing dated" if page["count"] and not day["entries"] else "")
+            rows, more = coming_up.shown(day)
+            for r in range(T.CU_SLOTS):
+                p = "cu_{0}_{1}".format(d, r)
+                title, thumb, glyph, meta, blank, lines = "", "", "", "", "", 1
+                if r < len(rows):
+                    item, release = rows[r]["item"], rows[r]["release"]
+                    wrapped = coming_up.wrap(item.get("title") or "", title_w,
+                                             textmetrics.card_title_width)
+                    title, lines = "[CR]".join(wrapped), len(wrapped)
+                    thumb = client.resolve_image_url(item.get("poster_path")) or ""
+                    meta = coming_up.venue_label(release) or ""
+                    glyph = self._cu_glyph(release) if meta else ""
+                    if not thumb:
+                        blank = chr(icon_glyphs.MONITOR if release.get("venue") == "episode"
+                                    else icon_glyphs.FILM)
+                elif r == len(rows) and more:
+                    title = "[COLOR {0}]{1} more[/COLOR]".format(secondary, more)
+                self._cu_prop(p + "_title", title)
+                self._cu_prop(p + "_thumb", thumb)
+                self._cu_prop(p + "_glyph", glyph)
+                self._cu_prop(p + "_meta", meta)
+                self._cu_prop(p + "_blank", blank)
+                if title:
+                    self._cu_size_slot(d * 16 + r, lines, short=not (thumb or blank))
+        st["nextup"] = None
+        if not page["count"]:
+            st["nextup"] = coming_up.beyond(st["entries"], page["to"])
+        self._cu_prop("cu_nextup", coming_up.next_line(st["nextup"], regional.weekday_day_month)
+                         if st["nextup"] else "")
+        self._cu_prop("cu_has_prev", "1" if st["page"] > 0 else "")
+        self._cu_prop("cu_has_next", "1" if st["page"] < st["last"] else "")
+        stop = st["stop"] if st["stop"] and st["stop"][0] == st["page"] else None
+        self._cu_show(self._cu_entry(stop or coming_up.first_stop(st["pages"], st["page"])))
+        log.info("coming up: page %d in %.2fs" % (st["page"], time.monotonic() - started))
+
+    def _cu_prop(self, key: str, value: str) -> None:
+        """setProperty only on a change: a page is ~500 of them, ~2ms each on a box."""
+        if self._cu_props.get(key) != value:
+            self._cu_props[key] = value
+            self.setProperty(key, value)
+
+    def _cu_size_slot(self, i: int, lines: int, short: bool) -> None:
+        """A row as tall as its title; the meta line sits under the last line."""
+        h = 45 if short else coming_up.row_height(lines)
+        if self._cu_sizes.get(i) == (h, lines):
+            return
+        self._cu_sizes[i] = (h, lines)
+        try:
+            self.getControl(self.CU_SLOT_ID + i).setHeight(h)
+            self.getControl(self.CU_ROW_ID + i).setHeight(h + 5 if not short else h)
+            self.getControl(self.CU_META_ID + i).setPosition(
+                T.CU_ROW_PAD + T.CU_TITLE_DX, int(41 + T.CU_TITLE_LINE * (lines - 1)))
+        except RuntimeError:
+            pass
+
+    @staticmethod
+    def _cu_glyph(release: dict) -> str:
+        venue = release.get("venue")
+        code = {"episode": icon_glyphs.MONITOR, "cinema": icon_glyphs.TICKET,
+                "home": icon_glyphs.HOUSE}.get(venue)
+        return chr(code) if code else ""
+
+    def _cu_entry(self, stop):
+        """The entry a stop stands for: "N more" stands for the last shown."""
+        if not stop or not self._cu:
+            return None
+        page, day, row = stop
+        if day == -1:
+            return self._cu.get("nextup")
+        rows, _more = coming_up.shown(self._cu["pages"][page]["days"][day])
+        return rows[min(row, len(rows) - 1)] if rows else None
+
+    def _cu_show(self, entry) -> None:
+        """The hero: logo (or title), what and when, genres, scores, story."""
+        client = self._get_client()
+        if not entry or not client:
+            return
+        item, release = entry["item"], entry["release"]
+        parts = coming_up.hero_meta(release, self._cu["today"], regional.weekday_day_month)
+        self.setProperty("cu_logo", client.resolve_image_url(item.get("logo_path")) or "")
+        self.setProperty("cu_title", item.get("title") or "")
+        self.setProperty("cu_backdrop", client.resolve_image_url(
+            item.get("backdrop_path") or release.get("still_path")) or "")
+        self.setProperty("cu_glyph", self._cu_glyph(release)
+                         if coming_up.venue_label(release) else "")
+        self.setProperty("cu_meta", "  [COLOR 73FFFFFF]·[/COLOR]  ".join(parts))
+        genres = coming_up.genre_line(item)
+        self.setProperty("cu_genres", genres)
+        scores = ""
+        if release.get("venue") != "episode":
+            pairs = [(item.get("tofa_critics_rating"), "CRITICS"),
+                     (item.get("tofa_audience_rating"), "AUDIENCE")]
+            scores = "   ".join("{0} {1}".format(theme.rating_numeral(v), word)
+                               for v, word in pairs if v is not None)
+        self.setProperty("cu_scores", scores)
+        try:
+            self.getControl(self.CU_SCORES_ID).setPosition(
+                T.CU_LOGO_X + (textmetrics.text_width(genres) + 24 if genres else 0), T.CU_GENRES_Y)
+        except RuntimeError:
+            pass
+        lines = textmetrics.wrap_lines(coming_up.overview(entry), T.CU_OVERVIEW_W, 2)
+        self.setProperty("cu_overview1", lines[0] if lines else "")
+        self.setProperty("cu_overview2", lines[1] if len(lines) > 1 else "")
+
+    def _cu_slot_of(self, control_id: int):
+        """(day, row) for a row button's id, or None."""
+        i = control_id - self.CU_ROW_ID
+        if 0 <= i < 7 * 16 and i % 16 < T.CU_SLOTS:
+            return divmod(i, 16)
+        return None
+
+    def _cu_focus(self, stop) -> None:
+        """Focus a stop, turning the page first when it lies on another."""
+        st = self._cu
+        page, day, row = stop
+        if page != st["page"]:
+            st["page"] = page
+            client = self._get_client()
+            if client:
+                self._cu_fill_page(client)
+        st["stop"] = stop
+        self._cu_set_focus(self.CU_NEXTUP_ID if day == -1 else self.CU_ROW_ID + day * 16 + row)
+        self._cu_show(self._cu_entry(stop))
+
+    def _cu_enter(self) -> None:
+        """Down from the pills: the last row focused on this page, else the first."""
+        st = self._cu
+        stop = st["stop"] if st["stop"] and st["stop"][0] == st["page"] else None
+        self._cu_focus(stop or coming_up.first_stop(st["pages"], st["page"]))
+
+    def _cu_action(self, action_id: int) -> bool:
+        """Arrow keys in the planner; True when handled here."""
+        focus = self.getFocusId()
+        before, self._cu_seen = self._cu_seen, focus
+        direction = {xbmcgui.ACTION_MOVE_LEFT: "left", xbmcgui.ACTION_MOVE_RIGHT: "right",
+                     xbmcgui.ACTION_MOVE_UP: "up", xbmcgui.ACTION_MOVE_DOWN: "down"}.get(action_id)
+        if not direction or not self._cu or self.getProperty("discover_view") != "coming-up":
+            return False
+        if focus == self.CU_NEXTUP_ID or self._cu_slot_of(focus):
+            st = self._cu
+            stop = st["stop"] or coming_up.first_stop(st["pages"], st["page"])
+            moved = coming_up.move(st["pages"], stop, direction, st["last"])
+            if moved[0] == "focus":
+                self._cu_focus(moved[1])
+            elif moved[0] == "leave":
+                self._cu_set_focus(self._cu_pill_id())
+            return True
+        arrived = before != focus
+        if focus in (self.CU_SHOWS_ID, self.CU_MOVIES_ID):
+            if direction == "down" and not arrived:
+                self._cu_enter()
+            elif direction in ("left", "right") and arrived:
+                # Kodi has already moved focus: the pill it landed on is the view.
+                view = "shows" if focus == self.CU_SHOWS_ID else "movies"
+                client = self._get_client()
+                if view != self._cu_view and client:
+                    self._cu_open(client, view)
+                    self._cu_save_view(client, view)
+            return True
+        if focus in (self.CU_PREV_ID, self.CU_NEXT_ID) and direction == "down" and not arrived:
+            self._cu_enter()
+            return True
+        return False
+
+    def _cu_set_focus(self, control_id: int) -> None:
+        self.setFocusId(control_id)
+        self._cu_seen = control_id
+
+    def _cu_turn(self, step: int) -> None:
+        """Previous or next seven days; focus stays on the arrows while they last."""
+        st = self._cu
+        target = st["page"] + step if st else -1
+        if not 0 <= target <= st["last"]:
+            return
+        st["page"], st["stop"] = target, None
+        client = self._get_client()
+        if client:
+            self._cu_fill_page(client)
+        if step == 1 and target == st["last"]:
+            self._cu_set_focus(self.CU_PREV_ID)
+        elif step == -1 and target == 0:
+            self._cu_set_focus(self.CU_NEXT_ID)
+
+    def _cu_clicked(self) -> None:
+        """A row opens its title; "N more" lists the rest of the day."""
+        st = self._cu
+        if not st:
+            return
+        focus = self.getFocusId()
+        if focus == self.CU_NEXTUP_ID:
+            entry = st.get("nextup")
+        else:
+            day, row = self._cu_slot_of(focus)
+            found = st["pages"][st["page"]]["days"][day]
+            rows, more = coming_up.shown(found)
+            entry = rows[row] if row < len(rows) else self._cu_pick_more(found)
+        if entry:
+            item = entry["item"]
+            self.open_detail(media_id=item.get("local_media_id"), discovery_id=item.get("tmdb_id"),
+                             media_type=item.get("type"), discovery_item=item)
+
+    @staticmethod
+    def _cu_pick_more(day: dict):
+        from .picker import PickerDialog
+        rows = [(e["item"].get("title") or "", False, None) for e in day["entries"]]
+        dialog = PickerDialog.open(heading=regional.weekday_day_month(day["iso"]),
+                                   rows=rows, selected_idx=0)
+        if not dialog or dialog.canceled or dialog.picked_idx is None:
+            return None
+        return day["entries"][dialog.picked_idx]
+
+    # ---------------------------------------------------- genre and decade pages
+
+    def _discover_open_tile(self, tile: dict, from_id: int) -> None:
+        """A genre opens its lane's page (with Follow); a decade its shelf's."""
+        self._discover_page_state = {
+            "target": tile.get("target") or "lane", "key": tile.get("key"),
+            "title": tile.get("title") or "", "from_id": from_id,
+            "from_pos": self._discover_list_pos(from_id), "followed": None}
+        self._discover_show_page()
+        self.setFocusId(self.DISCOVER_ROW_LIST_IDS[0])
+
+    def _discover_list_pos(self, control_id: int) -> int:
+        lst = (self.discover_rows.get(control_id)
+               or {self.DISCOVER_WALL_ID: self.discover_wall_list}.get(control_id))
+        try:
+            return lst.getSelectedPos() if lst is not None else 0
+        except Exception:
+            return 0
+
+    def _discover_show_page(self) -> None:
+        state = self._discover_page_state
+        client = self._get_client()
+        if not state or not client:
+            return
+        shelves, followed = [], None
+        try:
+            if state["target"] == "lane":
+                page = client.discovery_lane(state["key"], self._discover_filters) or {}
+                shelves = [s for s in page.get("shelves") or [] if s.get("items")]
+                followed = bool((page.get("lane") or {}).get("followed"))
+            else:
+                shelf = client.discovery_shelf(state["key"]) or {}
+                if shelf.get("items"):
+                    shelves = [dict(shelf, title=shelf.get("title") or state["title"])]
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: discover page {0} failed: {1}".format(state["key"], exc))
+        state["followed"] = followed
+        self.setProperty("discover_page", state["title"])
+        self._discover_sync_follow()
+        self._discover_fill_rows(client, shelves)
+        self._discover_set_view("", self.DISCOVER_ROW_LIST_IDS[0])
+        up = self.DISCOVER_FOLLOW_ID if followed is not None else self.NAV_LIST_ID
+        try:
+            self.getControl(self.DISCOVER_ROW_LIST_IDS[0]).controlUp(self.getControl(up))
         except Exception:
             pass
+
+    def _discover_sync_follow(self) -> None:
+        followed = (self._discover_page_state or {}).get("followed")
+        if followed is None:
+            self.setProperty("discover_follow_label", "")
+            return
+        label = "Following" if followed else "Follow"
+        self.setProperty("discover_follow_label", label)
+        self.setProperty("discover_follow_glyph",
+                         chr(icon_glyphs.CHECK if followed else icon_glyphs.PLUS))
+        # The pill grows leftwards to its words, as the app's does; the caption
+        # font is the plate's face at 25.
+        def text_w(words):
+            return int(textmetrics.plate_text_width(words) * 25 / 20)
+        width = T.DISCOVER_FOLLOW_W + text_w(label) - text_w("Follow")
+        right = T.DISCOVER_FOLLOW_X + T.DISCOVER_FOLLOW_W
+        try:
+            self.getControl(self.DISCOVER_FOLLOW_ID).setWidth(width)
+            self.getControl(self.DISCOVER_FOLLOW_ID + 1).setPosition(right - width, T.DISCOVER_FOLLOW_Y)
+        except RuntimeError:
+            pass
+
+    def _discover_follow_clicked(self) -> None:
+        """Follow a genre (its shelves join For You), or stop following it."""
+        state = self._discover_page_state
+        client = self._get_client()
+        if not state or state.get("followed") is None or not client:
+            return
+        on = not state["followed"]
+        try:
+            client.follow_lane(state["key"], on)
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: follow {0} failed: {1}".format(state["key"], exc))
+            toast.show("Couldn't update {0}, try again later".format(state["title"]))
+            return
+        state["followed"] = on
+        self._discover_sync_follow()
+
+    def _discover_close_page(self) -> bool:
+        """Back from a genre or decade page: the tab, on the tile it came from."""
+        state = self._discover_page_state
+        if not state:
+            return False
+        self._discover_page_state = None
+        self.setProperty("discover_page", "")
+        self.setProperty("discover_follow_label", "")
+        try:
+            self.getControl(self.DISCOVER_ROW_LIST_IDS[0]).controlUp(
+                self.getControl(home_rows.DISCOVER_TAB_STRIP_ID))
+        except Exception:
+            pass
+        self._discover_render_tab(self._discover_tab)
+        lst = (self.discover_rows.get(state["from_id"])
+               or {self.DISCOVER_WALL_ID: self.discover_wall_list}.get(state["from_id"]))
+        if lst is not None:
+            try:
+                lst.selectItem(state["from_pos"])
+            except Exception:
+                pass
+        self.setFocusId(state["from_id"])
+        return True
 
     def _discover_filters_open(self) -> None:
         self._discover_filters_fill(select=0)
@@ -5397,6 +5862,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not item or not item.dataSource:
             return
         data = item.dataSource
+        if data.get("tile"):
+            self._discover_open_tile(data, control_id)
+            return
         # discovery_id is the tmdb_id; media_id is passed only when the
         # payload says the title is already owned. The detail window
         # handles both, opened directly so it layers over this window.

@@ -104,6 +104,19 @@ def gen_glass_pill(name: str, height: int, fill: int, rim: int) -> None:
     print(f"saved {name}  ({size}x{size}, use border={b})")
 
 
+def gen_glass_plate(name: str, radius: int, fill: int, rim: int) -> None:
+    """A rounded plate in glass, white for colordiffuse: a focused Coming Up row."""
+    size = 2 * radius + 4
+    sz = size * S
+    im = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([0, 0, sz - 1, sz - 1], radius=radius * S, fill=(255, 255, 255, fill))
+    d.rounded_rectangle([0, 0, sz - 1, sz - 1], radius=radius * S,
+                        outline=(255, 255, 255, rim), width=OUTLINE_STROKE * S)
+    im.resize((size, size), Image.LANCZOS).save(os.path.join(_MEDIA_DIR, name))
+    print(f"saved {name}  ({size}x{size}, use border={radius + 1})")
+
+
 def _ninepatch(src: Image.Image, w: int, h: int, b: int) -> Image.Image:
     """Kodi's 9-patch, reproduced: CORNERS ARE DRAWN UNSCALED, only the
     edge/middle strips stretch. That one fact is the whole trap this file
@@ -225,3 +238,7 @@ if __name__ == "__main__":
     # Measured on the app's universe page: glass at rest, the accent focused.
     gen_glass_pill("universe-pill.png", 66, fill=16, rim=56)
     gen_glass_pill("universe-pill-focus.png", 66, fill=84, rim=235)
+    # Coming Up (app 2.1.0): the focused view pill, the page turn and a row.
+    gen_glass_pill("cu-pill-57-focus.png", 57, fill=84, rim=235)
+    gen_glass_pill("cu-pill-48-focus.png", 48, fill=84, rim=235)
+    gen_glass_plate("cu-row-focus.png", 15, fill=84, rim=235)

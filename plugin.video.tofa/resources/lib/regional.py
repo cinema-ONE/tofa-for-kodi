@@ -283,6 +283,20 @@ def day_month_year(value, short: bool = True) -> str:
     return f"{month} {parsed.day}, {parsed.year}"
 
 
+def weekday_day(value) -> str:
+    """"Mon 19": a planner day's heading (Coming Up, app 2.1.0)."""
+    parsed = _as_date(value)
+    return f"{_weekday(parsed.weekday(), short=True)} {parsed.day}" if parsed else ""
+
+
+def weekday_day_month(value) -> str:
+    """"Mon 19 Oct": the day a Coming Up release lands."""
+    parsed = _as_date(value)
+    if not parsed:
+        return ""
+    return f"{weekday_day(parsed)} {_month(parsed.month, short=True)}"
+
+
 def _as_date(value):
     import datetime
     if isinstance(value, datetime.datetime):

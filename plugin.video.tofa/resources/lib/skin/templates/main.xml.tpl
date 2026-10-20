@@ -696,6 +696,7 @@
                 <texture>white-square.png</texture>
             </control>
 
+{discover_art}
             <!-- Top nav bar scrim -->
             <control type="image">
                 <posx>0</posx>
@@ -711,6 +712,7 @@
                  shows past it). Padded blocks put a focused row where the app
                  does; see tokens.DISCOVER_FOCUS_ROW_Y. -->
             <control type="grouplist" id="6390">
+{discover_lift}
                 <posx>{DISCOVER_CLIP_X}</posx>
                 <posy>0</posy>
                 <width>{DISCOVER_CLIP_W}</width>
@@ -720,6 +722,7 @@
                 <scrolltime>{SCROLLTIME}</scrolltime>
 {discover_rows}
             </control>
+{discover_panels}
 {discover_filters}
         </control>
 

@@ -22,13 +22,16 @@ STORY, RELEASE = "story", "release"
 
 
 def play_label(u: dict) -> str:
-    """"Continue · 6 The Incredible Hulk", or the next show's episode."""
+    """"Continue · 6 The Incredible Hulk", "Continue · Star Trek S1 E1", or
+    Play when nothing in the universe has been started yet, as tofa's apps word it."""
     member = u["next_up"]
     if member is None:
         return ""
+    verb = "Continue" if member["started"] or u["watched_count"] else "Play"
     code = universe.episode_code(member)
-    title = "{0} {1}".format(member["item"].get("title"), code) if code else member["title"]
-    return "Continue · {0} {1}".format(member["position"], title)
+    if code:
+        return "{0} · {1} {2}".format(verb, member["item"].get("title"), code)
+    return "{0} · {1} {2}".format(verb, member["position"], member["title"])
 
 
 def summary(u: dict, order: str) -> str:

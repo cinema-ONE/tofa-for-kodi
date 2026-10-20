@@ -58,6 +58,9 @@ CLAPPERBOARD = 0xE29B
 TV = 0xE195
 VIDEO = 0xE1A5
 HOUSE = 0xE0F5
+# Coming Up's venues (app 2.1.0): an episode, a cinema release.
+MONITOR = 0xE11D
+TICKET = 0xE20F
 # Settings > Account's "Manage account" row (app 2.0).
 QR_CODE = 0xE1DF
 LAYOUT_GRID = 0xE0FF

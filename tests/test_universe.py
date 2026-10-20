@@ -159,9 +159,17 @@ from resources.lib.windows import universepage as P   # noqa: E402
 
 check("Continue names the position and the title",
       P.play_label(u) == "Continue · 4 Film 4", P.play_label(u))
-check("...or the show and its episode", P.play_label(series) == "Continue · 2 Show 2 S1 E1",
+check("...or the show and its episode", P.play_label(series) == "Continue · Show 2 S1 E1",
       P.play_label(series))
 check("caught up: no Continue pill", P.play_label(caught_up) == "")
+check("nothing started yet: Play, as tofa's apps word it",
+      P.play_label(fresh) == "Play · 1 Film 1", P.play_label(fresh))
+check("the Universes tab's line counts every title",
+      U.grid_line(u) == "4 of 6 in your library · 2 watched", U.grid_line(u))
+_, _, dotted = pixels(U.dot_strip_png(u, 120, 4, 4, 4))
+check("the Universes strip: a dot above up next, the strip under it",
+      len(dotted) == 12 and dotted[1][3 * 20 + 9][3] > 0 and dotted[1][5][3] == 0
+      and dotted[10][5] == (255, 255, 255, 255), str(dotted[1][60:72]))
 check("release order says so", P.summary(u, P.RELEASE).startswith("6 titles in release order"),
       P.summary(u, P.RELEASE))
 check("a poster's meta line: year and status",

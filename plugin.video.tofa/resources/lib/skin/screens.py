@@ -29,6 +29,500 @@ def _load(name: str) -> str:
         return f.read()
 
 
+#: Discover's grid panels and its genre page's Follow pill (app 2.1.0).
+DISCOVER_UNIVERSES_ID, DISCOVER_WALL_ID, DISCOVER_FOLLOW_ID = 6600, 6610, 6620
+DISCOVER_FOLLOW_GROUP_ID = 6621
+
+
+def _discover_page_header() -> str:
+    """A genre or decade page's title where the sub-tabs were, and Follow."""
+    page = "!String.IsEmpty(Window.Property(discover_page))"
+    follow = "!String.IsEmpty(Window.Property(discover_follow_label))"
+    pad = T.UNI_PILL_PAD
+    return f"""
+            <control type="label">
+                <visible>{page}</visible>
+                <posx>{T.DISCOVER_LEFT}</posx>
+                <posy>{T.DISCOVER_PAGE_TITLE_Y}</posy>
+                <width>1400</width>
+                <height>{T.DISCOVER_PAGE_TITLE_H}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_HERO_TITLE}</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(discover_page)]</label>
+            </control>
+            <control type="group" id="{DISCOVER_FOLLOW_GROUP_ID}">
+                <visible>{page} + {follow}</visible>
+                <posx>{T.DISCOVER_FOLLOW_X}</posx>
+                <posy>{T.DISCOVER_FOLLOW_Y}</posy>
+                <control type="button" id="{DISCOVER_FOLLOW_ID}">
+                    <width>{T.DISCOVER_FOLLOW_W}</width>
+                    <height>{T.DISCOVER_FOLLOW_H}</height>
+                    <onup>{NAV_LIST_ID}</onup>
+                    <ondown>{home_rows.DISCOVER_ROW_LIST_IDS[0]}</ondown>
+                    <onleft>{DISCOVER_FOLLOW_ID}</onleft>
+                    <onright>{DISCOVER_FOLLOW_ID}</onright>
+                    <font>{T.FONT_CAPTION}</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <focusedcolor>$INFO[Window.Property(accent_color)]</focusedcolor>
+                    <textoffsetx>{T.DISCOVER_FOLLOW_TEXT_PAD}</textoffsetx>
+                    <align>right</align>
+                    <aligny>center</aligny>
+                    <texturefocus border="{T.DISCOVER_FOLLOW_H // 2}" colordiffuse="$INFO[Window.Property(accent_color)]">universe-pill-focus.png</texturefocus>
+                    <texturenofocus border="{T.DISCOVER_FOLLOW_H // 2}">universe-pill.png</texturenofocus>
+                    <label>$INFO[Window.Property(discover_follow_label)]</label>
+                </control>
+                <control type="label">
+                    <posx>{pad - 6}</posx>
+                    <width>{T.UNI_PILL_ICON_W}</width>
+                    <height>{T.DISCOVER_FOLLOW_H}</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>{T.FONT_ICON_24}</font>
+                    <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                    <label>$INFO[Window.Property(discover_follow_glyph)]</label>
+                </control>
+            </control>"""
+
+
+def _discover_panels(strip_id: int) -> str:
+    """Universes' three-across grid and the Genres wall (app 2.1.0)."""
+    uni_item, uni_focused = fragments.discover_universe_card(DISCOVER_UNIVERSES_ID, x=20, y=10)
+    wall_item, wall_focused = fragments.discover_tile(
+        DISCOVER_WALL_ID, x=20, y=10, cell_w=T.DISCOVER_TILE_PITCH, cell_h=T.DISCOVER_WALL_PITCH_Y)
+    out = []
+    for panel_id, view, y, cols, cell_w, cell_h, item, focused in (
+            (DISCOVER_UNIVERSES_ID, "universes", T.DISCOVER_UNI_Y, 3, T.DISCOVER_UNI_PITCH_X,
+             T.DISCOVER_UNI_PITCH_Y, uni_item, uni_focused),
+            (DISCOVER_WALL_ID, "genres", T.DISCOVER_WALL_Y, T.DISCOVER_WALL_COLS,
+             T.DISCOVER_TILE_PITCH, T.DISCOVER_WALL_PITCH_Y, wall_item, wall_focused)):
+        out.append(f"""            <control type="panel" id="{panel_id}">
+                <visible>String.IsEqual(Window.Property(discover_view),{view})</visible>
+                <posx>{T.DISCOVER_LEFT - 20}</posx>
+                <posy>{y - 10}</posy>
+                <width>{cols * cell_w + 40}</width>
+                <height>{T.SCREEN_H - y + 10}</height>
+                <onup>{strip_id}</onup>
+                <orientation>vertical</orientation>
+                <itemwidth>{cell_w}</itemwidth>
+                <itemheight>{cell_h}</itemheight>
+                <scrolltime>{T.SCROLLTIME}</scrolltime>
+{item}
+{focused}
+            </control>""")
+    return "\n".join(out)
+
+
+#: Coming Up's planner (app 2.1.0); slot ids are base + day * 16 + row.
+CU_GROUP_ID = 7399
+CU_SHOWS_ID, CU_MOVIES_ID, CU_PREV_ID, CU_NEXT_ID, CU_NEXTUP_ID, CU_SCORES_ID = range(7400, 7406)
+CU_COL_ID, CU_SLOT_ID, CU_ROW_ID, CU_META_ID = 7410, 7500, 7700, 7820
+CU_LIFTED = "ControlGroup({0}).HasFocus()".format(CU_GROUP_ID)
+
+
+def cu_day_x(day: int) -> int:
+    return T.DISCOVER_LEFT + int(round(day * T.CU_DAY_PITCH))
+
+
+def _cu_slot(day: int, row: int) -> str:
+    """One row of a day: focus plate, thumb, title, then what and where."""
+    i = day * 16 + row
+    p = "cu_{0}_{1}".format(day, row)
+    pad = T.CU_ROW_PAD
+    return f"""                    <control type="group" id="{CU_SLOT_ID + i}">
+                        <visible>!String.IsEmpty(Window.Property({p}_title))</visible>
+                        <width>{T.CU_DAY_W + 2 * pad}</width>
+                        <height>81</height>
+                        <control type="button" id="{CU_ROW_ID + i}">
+                            <width>{T.CU_DAY_W + 2 * pad}</width>
+                            <height>86</height>
+                            <onup>{CU_ROW_ID + i}</onup>
+                            <ondown>{CU_ROW_ID + i}</ondown>
+                            <onleft>{CU_ROW_ID + i}</onleft>
+                            <onright>{CU_ROW_ID + i}</onright>
+                            <texturefocus border="16" colordiffuse="$INFO[Window.Property(accent_color)]">cu-row-focus.png</texturefocus>
+                            <texturenofocus />
+                            <label />
+                        </control>
+                        <control type="group">
+                            <visible>!String.IsEmpty(Window.Property({p}_blank))</visible>
+                            <posx>{pad}</posx>
+                            <posy>{pad}</posy>
+                            <control type="image">
+                                <width>{T.CU_THUMB_W}</width>
+                                <height>{T.CU_THUMB_H}</height>
+                                <colordiffuse>0DFFFFFF</colordiffuse>
+                                <texture>cu-thumb-mask.png</texture>
+                            </control>
+                            <control type="label">
+                                <width>{T.CU_THUMB_W}</width>
+                                <height>{T.CU_THUMB_H}</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_ICON_19}</font>
+                                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                                <label>$INFO[Window.Property({p}_blank)]</label>
+                            </control>
+                        </control>
+                        <control type="image">
+                            <visible>!String.IsEmpty(Window.Property({p}_thumb))</visible>
+                            <posx>{pad}</posx>
+                            <posy>{pad}</posy>
+                            <width>{T.CU_THUMB_W}</width>
+                            <height>{T.CU_THUMB_H}</height>
+                            <aspectratio>scale</aspectratio>
+                            <texture background="true" diffuse="cu-thumb-mask.png">$INFO[Window.Property({p}_thumb)]</texture>
+                        </control>
+                        <control type="label">
+                            <posx>{pad + T.CU_TITLE_DX}</posx>
+                            <posy>8</posy>
+                            <width>{T.CU_DAY_W - T.CU_TITLE_DX}</width>
+                            <height>120</height>
+                            <font>{T.FONT_CARD_TITLE}</font>
+                            <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                            <label>$INFO[Window.Property({p}_title)]</label>
+                        </control>
+                        <control type="group" id="{CU_META_ID + i}">
+                            <posx>{pad + T.CU_TITLE_DX}</posx>
+                            <posy>36</posy>
+                            <control type="label">
+                                <width>22</width>
+                                <height>24</height>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_ICON_19}</font>
+                                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                                <label>$INFO[Window.Property({p}_glyph)]</label>
+                            </control>
+                            <control type="label">
+                                <posx>29</posx>
+                                <width>{T.CU_DAY_W - T.CU_TITLE_DX - 29}</width>
+                                <height>24</height>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_BROWSE_CAPTION}</font>
+                                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                                <label>$INFO[Window.Property({p}_meta)]</label>
+                            </control>
+                        </control>
+                    </control>"""
+
+
+def _cu_day(day: int) -> str:
+    """A day's header, its rule, and its rows in a grouplist of their own."""
+    x = cu_day_x(day)
+    p = "cu_{0}".format(day)
+    pad = T.CU_ROW_PAD
+    slots = "\n".join(_cu_slot(day, row) for row in range(T.CU_SLOTS))
+    return f"""            <control type="label">
+                <posx>{x}</posx>
+                <posy>{T.CU_HEAD_Y}</posy>
+                <width>{T.CU_DAY_W}</width>
+                <height>{T.CU_HEAD_H}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_DAY_HEADING}</font>
+                <textcolor>$INFO[Window.Property({p}_head_color)]</textcolor>
+                <label>$INFO[Window.Property({p}_head)]</label>
+            </control>
+            <control type="label">
+                <posx>{x}</posx>
+                <posy>{T.CU_REL_Y}</posy>
+                <width>{T.CU_DAY_W}</width>
+                <height>{T.CU_REL_H}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_ACCOUNT}</font>
+                <textcolor>$INFO[Window.Property({p}_rel_color)]</textcolor>
+                <label>$INFO[Window.Property({p}_rel)]</label>
+            </control>
+            <control type="image">
+                <visible>String.IsEmpty(Window.Property({p}_today))</visible>
+                <posx>{x}</posx>
+                <posy>{T.CU_RULE_Y}</posy>
+                <width>{T.CU_DAY_W}</width>
+                <height>1</height>
+                <colordiffuse>14FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="image">
+                <visible>!String.IsEmpty(Window.Property({p}_today))</visible>
+                <posx>{x}</posx>
+                <posy>{T.CU_RULE_Y}</posy>
+                <width>{T.CU_DAY_W}</width>
+                <height>2</height>
+                <colordiffuse>99FFFFFF</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            <control type="label">
+                <visible>!String.IsEmpty(Window.Property({p}_empty))</visible>
+                <posx>{x}</posx>
+                <posy>{T.CU_ROWS_Y - 2}</posy>
+                <width>{T.CU_DAY_W}</width>
+                <height>26</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_BROWSE_CAPTION}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property({p}_empty)]</label>
+            </control>
+            <control type="grouplist" id="{CU_COL_ID + day}">
+                <posx>{x - pad}</posx>
+                <posy>{T.CU_ROWS_Y - pad}</posy>
+                <width>{T.CU_DAY_W + 2 * pad}</width>
+                <height>{T.SCREEN_H - T.CU_ROWS_Y + pad}</height>
+                <orientation>vertical</orientation>
+                <itemgap>0</itemgap>
+                <scrolltime>{T.SCROLLTIME}</scrolltime>
+                <onup>{CU_SHOWS_ID}</onup>
+                <ondown>{CU_COL_ID + day}</ondown>
+{slots}
+            </control>"""
+
+
+def _cu_pill(control_id: int, x: int, w: int, label: str, nav: str) -> str:
+    return f"""            <control type="button" id="{control_id}">
+                <posx>{x}</posx>
+                <posy>{T.CU_PILLS_Y}</posy>
+                <width>{w}</width>
+                <height>{T.CU_PILLS_H}</height>
+{nav}
+                <font>{T.FONT_SETTINGS_PICKER}</font>
+                <textcolor>$INFO[Window.Property(cu_{label}_color)]</textcolor>
+                <focusedcolor>$INFO[Window.Property(text_primary)]</focusedcolor>
+                <textoffsetx>{T.CU_PILL_PAD}</textoffsetx>
+                <aligny>center</aligny>
+                <texturefocus border="28" colordiffuse="$INFO[Window.Property(accent_color)]">cu-pill-57-focus.png</texturefocus>
+                <texturenofocus />
+                <label>{"TV Shows" if label == "shows" else "Movies"}</label>
+            </control>"""
+
+
+def _coming_up_art() -> str:
+    """The focused title's art, behind the sub-tabs as on the app."""
+    lift = (f'<animation effect="slide" end="0,-{T.CU_LIFT}" time="{T.SCROLLTIME}" '
+            f'tween="cubic" easing="out" condition="{CU_LIFTED}">Conditional</animation>')
+    fade_y = T.CU_ART_Y + T.CU_ART_H * 45 // 100
+    solid_y = fade_y + T.CU_ART_H * 58 * 78 // 10000
+    return f"""            <control type="group">
+                <visible>String.IsEqual(Window.Property(discover_view),coming-up)</visible>
+                {lift}
+            <control type="image">
+                <posx>{T.CU_ART_X}</posx>
+                <posy>{T.CU_ART_Y}</posy>
+                <width>{T.CU_ART_W}</width>
+                <height>{T.CU_ART_H}</height>
+                <aspectratio>scale</aspectratio>
+                <fadetime>240</fadetime>
+                <texture background="true">$INFO[Window.Property(cu_backdrop)]</texture>
+            </control>
+            <control type="image">
+                <posx>{T.CU_ART_X}</posx>
+                <posy>{T.CU_ART_Y}</posy>
+                <width>900</width>
+                <height>{T.CU_ART_H}</height>
+                <colordiffuse>{T.CANVAS}</colordiffuse>
+                <texture>fade-left.png</texture>
+            </control>
+            <control type="image">
+                <posx>{T.CU_ART_X}</posx>
+                <posy>{fade_y}</posy>
+                <width>{T.CU_ART_W}</width>
+                <height>{solid_y - fade_y}</height>
+                <colordiffuse>{T.CANVAS}</colordiffuse>
+                <texture>fade-bottom.png</texture>
+            </control>
+            <control type="image">
+                <posx>{T.CU_ART_X}</posx>
+                <posy>{solid_y}</posy>
+                <width>{T.CU_ART_W}</width>
+                <height>{T.CU_ART_Y + T.CU_ART_H - solid_y + 2}</height>
+                <colordiffuse>{T.CANVAS}</colordiffuse>
+                <texture>white-square.png</texture>
+            </control>
+            </control>"""
+
+
+def _coming_up_planner(strip_id: int) -> str:
+    """Coming Up (app 2.1.0): the focused title over its art, the TV Shows /
+    Movies pills, and seven day columns; Python moves focus between rows."""
+    lift = (f'<animation effect="slide" end="0,-{T.CU_LIFT}" time="{T.SCROLLTIME}" '
+            f'tween="cubic" easing="out" condition="{CU_LIFTED}">Conditional</animation>')
+    reflow = 'condition="Control.HasFocus({0})">Conditional</animation>'.format(CU_SHOWS_ID)
+    next_right = (f'<onright condition="Control.IsVisible({CU_PREV_ID})">{CU_PREV_ID}</onright>\n'
+                  f'                <onright condition="!Control.IsVisible({CU_PREV_ID}) + Control.IsVisible({CU_NEXT_ID})">{CU_NEXT_ID}</onright>')
+    shows_nav = (f"                <onup>{strip_id}</onup>\n                <ondown>{CU_SHOWS_ID}</ondown>\n"
+                 f"                <onleft>{CU_SHOWS_ID}</onleft>\n                <onright>{CU_MOVIES_ID}</onright>")
+    movies_nav = (f"                <onup>{strip_id}</onup>\n                <ondown>{CU_MOVIES_ID}</ondown>\n"
+                  f"                <onleft>{CU_SHOWS_ID}</onleft>\n                {next_right}")
+    days = "\n".join(_cu_day(d) for d in range(7))
+    return f"""            <control type="group" id="{CU_GROUP_ID}">
+                <visible>String.IsEqual(Window.Property(discover_view),coming-up)</visible>
+                {lift}
+{_cu_pill(CU_SHOWS_ID, T.CU_SHOWS_X, T.CU_SHOWS_W, "shows", shows_nav)}
+            <control type="label">
+                <posx>{T.CU_DOT_X}</posx>
+                <posy>{T.CU_PILLS_Y}</posy>
+                <width>24</width>
+                <height>{T.CU_PILLS_H}</height>
+                <align>center</align>
+                <aligny>center</aligny>
+                <font>{T.FONT_CAPTION}</font>
+                <textcolor>73FFFFFF</textcolor>
+                <label>·</label>
+                <animation effect="slide" end="18,0" time="{T.SCROLLTIME}" {reflow}
+            </control>
+            <control type="group">
+                <animation effect="slide" end="37,0" time="{T.SCROLLTIME}" {reflow}
+{_cu_pill(CU_MOVIES_ID, T.CU_MOVIES_X, T.CU_MOVIES_W, "movies", movies_nav)}
+            </control>
+            <control type="button" id="{CU_PREV_ID}">
+                <visible>!String.IsEmpty(Window.Property(cu_has_prev))</visible>
+                <posx>{T.CU_PREV_X}</posx>
+                <posy>{T.CU_TURN_Y}</posy>
+                <width>{T.CU_PREV_W}</width>
+                <height>{T.CU_TURN_H}</height>
+                <onup>{strip_id}</onup>
+                <ondown>{CU_PREV_ID}</ondown>
+                <onleft>{CU_MOVIES_ID}</onleft>
+                <onright>{CU_NEXT_ID}</onright>
+                <font>{T.FONT_ICON_19}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <focusedcolor>$INFO[Window.Property(text_primary)]</focusedcolor>
+                <align>center</align>
+                <aligny>center</aligny>
+                <texturefocus border="24" colordiffuse="$INFO[Window.Property(accent_color)]">cu-pill-48-focus.png</texturefocus>
+                <texturenofocus />
+                <label>&#x{icon_glyphs.CHEVRON_LEFT:04X};</label>
+            </control>
+            <control type="group">
+                <visible>!String.IsEmpty(Window.Property(cu_has_next))</visible>
+                <posx>{T.CU_NEXT_X}</posx>
+                <posy>{T.CU_TURN_Y}</posy>
+                <control type="button" id="{CU_NEXT_ID}">
+                    <width>{T.CU_NEXT_W}</width>
+                    <height>{T.CU_TURN_H}</height>
+                    <onup>{strip_id}</onup>
+                    <ondown>{CU_NEXT_ID}</ondown>
+                    <onleft condition="Control.IsVisible({CU_PREV_ID})">{CU_PREV_ID}</onleft>
+                    <onleft condition="!Control.IsVisible({CU_PREV_ID})">{CU_MOVIES_ID}</onleft>
+                    <onright>{CU_NEXT_ID}</onright>
+                    <font>{T.FONT_ACCOUNT}</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <focusedcolor>$INFO[Window.Property(text_primary)]</focusedcolor>
+                    <textoffsetx>34</textoffsetx>
+                    <aligny>center</aligny>
+                    <texturefocus border="24" colordiffuse="$INFO[Window.Property(accent_color)]">cu-pill-48-focus.png</texturefocus>
+                    <texturenofocus />
+                    <label>Next seven days</label>
+                </control>
+                <control type="label">
+                    <posx>{T.CU_NEXT_W - 40}</posx>
+                    <width>24</width>
+                    <height>{T.CU_TURN_H}</height>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <font>{T.FONT_ICON_19}</font>
+                    <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                    <label>&#x{icon_glyphs.CHEVRON_RIGHT:04X};</label>
+                </control>
+            </control>
+            <control type="image">
+                <posx>{T.CU_LOGO_X}</posx>
+                <posy>{T.CU_LOGO_Y}</posy>
+                <width>{T.CU_LOGO_W}</width>
+                <height>{T.CU_LOGO_H}</height>
+                <aspectratio align="left" aligny="bottom">keep</aspectratio>
+                <fadetime>160</fadetime>
+                <texture background="true">$INFO[Window.Property(cu_logo)]</texture>
+            </control>
+            <control type="label">
+                <visible>String.IsEmpty(Window.Property(cu_logo))</visible>
+                <posx>{T.CU_LOGO_X}</posx>
+                <posy>{T.CU_LOGO_Y + 20}</posy>
+                <width>{T.CU_OVERVIEW_W}</width>
+                <height>{T.CU_LOGO_H - 20}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_HERO_TITLE}</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(cu_title)]</label>
+            </control>
+            <control type="label">
+                <posx>{T.CU_LOGO_X}</posx>
+                <posy>{T.CU_META_Y}</posy>
+                <width>30</width>
+                <height>{T.CU_META_H}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_ICON_29}</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(cu_glyph)]</label>
+            </control>
+            <control type="label">
+                <posx>{T.CU_META_TEXT_X}</posx>
+                <posy>{T.CU_META_Y}</posy>
+                <width>1000</width>
+                <height>{T.CU_META_H}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_CAPTION}</font>
+                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                <label>$INFO[Window.Property(cu_meta)]</label>
+            </control>
+            <control type="label">
+                <posx>{T.CU_LOGO_X}</posx>
+                <posy>{T.CU_GENRES_Y}</posy>
+                <width>{T.CU_OVERVIEW_W}</width>
+                <height>{T.CU_GENRES_H}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_METADATA}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <label>$INFO[Window.Property(cu_genres)]</label>
+            </control>
+            <control type="label" id="{CU_SCORES_ID}">
+                <posx>{T.CU_LOGO_X}</posx>
+                <posy>{T.CU_GENRES_Y}</posy>
+                <width>400</width>
+                <height>{T.CU_GENRES_H}</height>
+                <aligny>center</aligny>
+                <font>{T.FONT_CARD_META}</font>
+                <textcolor>8CFFFFFF</textcolor>
+                <label>$INFO[Window.Property(cu_scores)]</label>
+            </control>
+            <control type="label">
+                <posx>{T.CU_LOGO_X}</posx>
+                <posy>{T.CU_OVERVIEW_Y}</posy>
+                <width>{T.CU_OVERVIEW_W}</width>
+                <height>{T.CU_OVERVIEW_H}</height>
+                <font>{T.FONT_METADATA}</font>
+                <textcolor>CCFFFFFF</textcolor>
+                <label>$INFO[Window.Property(cu_overview1)]</label>
+            </control>
+            <control type="label">
+                <posx>{T.CU_LOGO_X}</posx>
+                <posy>{T.CU_OVERVIEW_Y + T.CU_OVERVIEW_PITCH}</posy>
+                <width>{T.CU_OVERVIEW_W}</width>
+                <height>{T.CU_OVERVIEW_H}</height>
+                <font>{T.FONT_METADATA}</font>
+                <textcolor>CCFFFFFF</textcolor>
+                <label>$INFO[Window.Property(cu_overview2)]</label>
+            </control>
+            <control type="button" id="{CU_NEXTUP_ID}">
+                <visible>!String.IsEmpty(Window.Property(cu_nextup))</visible>
+                <posx>{T.DISCOVER_LEFT - T.CU_ROW_PAD}</posx>
+                <posy>{T.CU_ROWS_Y - T.CU_ROW_PAD}</posy>
+                <width>1200</width>
+                <height>48</height>
+                <onup>{CU_SHOWS_ID}</onup>
+                <ondown>{CU_NEXTUP_ID}</ondown>
+                <onleft>{CU_NEXTUP_ID}</onleft>
+                <onright>{CU_NEXTUP_ID}</onright>
+                <font>{T.FONT_BROWSE_CAPTION}</font>
+                <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                <focusedcolor>$INFO[Window.Property(text_primary)]</focusedcolor>
+                <textoffsetx>{T.CU_ROW_PAD}</textoffsetx>
+                <aligny>center</aligny>
+                <texturefocus border="16" colordiffuse="$INFO[Window.Property(accent_color)]">cu-row-focus.png</texturefocus>
+                <texturenofocus />
+                <label>$INFO[Window.Property(cu_nextup)]</label>
+            </control>
+{days}
+            </control>"""
+
+
 def _with_condition(layout: str, condition: str) -> str:
     """An item or focused layout that applies only while `condition` holds."""
     for tag in ("<itemlayout ", "<focusedlayout "):
@@ -100,8 +594,15 @@ def render_main() -> str:
     strip_id = home_rows.DISCOVER_TAB_STRIP_ID
     for idx, list_id in enumerate(home_rows.DISCOVER_ROW_LIST_IDS):
         # Discover's focused card is the wide backdrop one, not the portrait
-        # poster every other row uses -- see fragments.discover_card().
+        # poster every other row uses -- see fragments.discover_card(). A row
+        # of genre or decade tiles (app 2.1.0) swaps in its own layouts.
         item_xml, focused_xml = fragments.discover_card(list_id)
+        tiles = "String.IsEqual(Window.Property(discover_row{0}_kind),tiles)".format(idx)
+        tile_item, tile_focused = fragments.discover_tile(list_id)
+        item_xml = (_with_condition(tile_item, tiles) + "\n"
+                    + _with_condition(item_xml, "!" + tiles))
+        focused_xml = (_with_condition(tile_focused, tiles) + "\n"
+                       + _with_condition(focused_xml, "!" + tiles))
         prev_id = home_rows.DISCOVER_ROW_LIST_IDS[idx - 1] if idx else strip_id
         next_id = (home_rows.DISCOVER_ROW_LIST_IDS[idx + 1]
                    if idx + 1 < len(home_rows.DISCOVER_ROW_LIST_IDS) else list_id)
@@ -118,12 +619,21 @@ def render_main() -> str:
             indent="                    ",
         ))
     strip = fragments.discover_subtab_strip(
-        list_id=strip_id, onup=NAV_LIST_ID, ondown=home_rows.DISCOVER_ROW_LIST_IDS[0])
+        list_id=strip_id, onup=NAV_LIST_ID, ondown=home_rows.DISCOVER_ROW_LIST_IDS[0],
+        visible="String.IsEmpty(Window.Property(discover_page))") + _discover_page_header()
     row_kwargs["discover_rows"] = "\n\n".join(
         fragments.discover_row_block(idx, xml, strip if idx == 0 else "")
         for idx, xml in enumerate(discover_blocks))
     row_kwargs["discover_filters"] = fragments.discover_filters_popover(
         home_rows.DISCOVER_FILTER_LIST_ID)
+    row_kwargs["discover_panels"] = _discover_panels(strip_id) + "\n" + _coming_up_planner(strip_id)
+    # Coming Up's planner scrolls the sub-tabs away while it has focus.
+    row_kwargs["discover_art"] = _coming_up_art()
+    row_kwargs["discover_lift"] = (
+        f'                <animation effect="slide" end="0,-{T.CU_LIFT}" time="{T.SCROLLTIME}" '
+        f'tween="cubic" easing="out" condition="{CU_LIFTED}">Conditional</animation>\n'
+        f'                <animation effect="fade" end="0" time="{T.SCROLLTIME}" '
+        f'condition="{CU_LIFTED}">Conditional</animation>')
 
     # Browse (app 2.0): the landing's tiles, the view's two header pills and
     # its chip row. Chip words and widths are MainWindow's (_browse_sync_chips).
