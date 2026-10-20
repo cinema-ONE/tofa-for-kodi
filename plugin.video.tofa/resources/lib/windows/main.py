@@ -1568,10 +1568,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _sync_nav_collapse(self, control_id) -> None:
         """App 2.0.0 fades the tabs, gear and avatar and shrinks the fox once
         focus goes past a page's first row. Settings and Browse keep the bar."""
+        section = self.getProperty("active_section")
         rows = {"home": self.ROW_LIST_IDS,
                 "discover": self.DISCOVER_ROW_LIST_IDS,
-                "search": self.SEARCH_RESULT_LIST_IDS}.get(self.getProperty("active_section"), ())
-        self.setProperty("nav_collapsed", "1" if control_id in rows[1:] else "")
+                "search": self.SEARCH_RESULT_LIST_IDS}.get(section, ())
+        first = 1
+        if (section == "home" and self.getProperty("row1_kind") == "saga"
+                and self._cw_list_id == rows[0]):
+            # App 2.1.0 keeps the bar over Continue the saga under Continue
+            # Watching; the web draws the two as one section.
+            first = 2
+        self.setProperty("nav_collapsed", "1" if control_id in rows[first:] else "")
 
     def onFocus(self, controlID):
         self._sync_nav_collapse(controlID)
