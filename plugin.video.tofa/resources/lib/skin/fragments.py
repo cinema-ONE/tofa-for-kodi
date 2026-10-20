@@ -3520,7 +3520,7 @@ def settings_tab_strip(*, list_id: int, onup: int, ondown: int) -> str:
             </control>"""
 
 
-def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
+def discover_subtab_strip(*, list_id: int, onup: int, ondown: int, visible: str = "") -> str:
     """Discover's sub-tabs as one list of text tabs, same grammar as the top
     bar: half-white at rest, white when current, an underline on the focused
     tab and a dot under the current one once focus has left the strip."""
@@ -3608,7 +3608,8 @@ def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
     n = len(T.DISCOVER_SUBTAB_CENTRES)
     item = "".join(slot(i, False) for i in range(n)) + filters_slot(False)
     sel = "".join(slot(i, True) for i in range(n)) + filters_slot(True)
-    return f"""            <control type="list" id="{list_id}">
+    gate = f"\n                <visible>{visible}</visible>" if visible else ""
+    return f"""            <control type="list" id="{list_id}">{gate}
                 <posx>0</posx>
                 <posy>0</posy>
                 <width>{T.DISCOVER_SUBTAB_SLOT * (n + 1)}</width>
@@ -3623,7 +3624,7 @@ def discover_subtab_strip(*, list_id: int, onup: int, ondown: int) -> str:
                 <focusedlayout width="{T.DISCOVER_SUBTAB_SLOT}" height="{T.DISCOVER_DIVIDER_Y}">{sel}
                 </focusedlayout>
             </control>
-            <control type="image">
+            <control type="image">{gate}
                 <posx>{T.DISCOVER_LEFT}</posx>
                 <posy>{T.DISCOVER_DIVIDER_Y}</posy>
                 <width>{T.DISCOVER_DIVIDER_W}</width>
@@ -4121,6 +4122,116 @@ def detail_page2(*, cast_cards, collection_cards, similar_cards, discover_cards,
                 <itemgap>{T.DETAIL_P2_GAP}</itemgap>
                 <scrolltime>{T.SCROLLTIME}</scrolltime>{blocks}
             </control>{top}{bottom}"""
+
+
+def _discover_picture(list_id: int, *, w: int, h: int, asset: str, x: int, y: int,
+                      cell_w: int, cell_h: int, below: str) -> tuple[str, str]:
+    """A picture card on Discover (app 2.1.0): art under a rounded mask, what
+    `below` draws under it; focused, it grows a little with the accent's rim."""
+    focus = f"Control.HasFocus({list_id})"
+
+    def art(focused: bool) -> str:
+        glow = f"""
+                        <control type="image">
+                            <visible>{focus}</visible>
+                            <posx>-10</posx>
+                            <posy>-10</posy>
+                            <width>{w + 20}</width>
+                            <height>{h + 20}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>{asset}-glow.png</texture>
+                        </control>""" if focused else ""
+        rim = f"""
+                        <control type="image">
+                            <visible>{focus}</visible>
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>{asset}-border.png</texture>
+                        </control>""" if focused else ""
+        zoom = (f"""
+                        <animation effect="zoom" start="100" end="103.5" center="{w // 2},{h // 2}" """
+                f"""time="150" tween="cubic" easing="out" condition="{focus}">Conditional</animation>"""
+                if focused else "")
+        return f"""
+                    <control type="group">
+                        <posx>{x}</posx>
+                        <posy>{y}</posy>{zoom}{glow}
+                        <control type="image">
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <colordiffuse>0xFF16222B</colordiffuse>
+                            <texture diffuse="{asset}-mask.png">white-square.png</texture>
+                        </control>
+                        <control type="image">
+                            <width>{w}</width>
+                            <height>{h}</height>
+                            <aspectratio scalediffuse="false">scale</aspectratio>
+                            <texture diffuse="{asset}-mask.png" background="true">$INFO[ListItem.Art(thumb)]</texture>
+                        </control>{rim}
+                    </control>"""
+
+    size = f'width="{cell_w}" height="{cell_h}"'
+    return (f"""                <itemlayout {size}>{art(False)}{below}
+                </itemlayout>""",
+            f"""                <focusedlayout {size}>{art(True)}{below}
+                </focusedlayout>""")
+
+
+def discover_tile(list_id: int, *, x: int = T.HPAD, y: int = T.TOP_PAD,
+                  cell_w: int = T.DISCOVER_TILE_PITCH, cell_h: int = T.CELL_H) -> tuple[str, str]:
+    """A genre or decade tile (app 2.1.0): 16:9 art, its name under it."""
+    W, H = T.DISCOVER_TILE_W, T.DISCOVER_TILE_H
+    below = f"""
+                    <control type="label">
+                        <posx>{x + 4}</posx>
+                        <posy>{y + T.DISCOVER_TILE_LABEL_DY - T.DISCOVER_TILE_LABEL_H // 2}</posy>
+                        <width>{W - 8}</width>
+                        <height>{T.DISCOVER_TILE_LABEL_H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_POSTER_TITLE}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>"""
+    return _discover_picture(list_id, w=W, h=H, asset="discover-tile", x=x, y=y,
+                             cell_w=cell_w, cell_h=cell_h, below=below)
+
+
+def discover_universe_card(list_id: int, *, x: int, y: int) -> tuple[str, str]:
+    """A universe on Discover's Universes tab (app 2.1.0): its art, then its
+    name, its strip with a dot over up next, and how much of it you have."""
+    W, H = T.DISCOVER_UNI_W, T.DISCOVER_UNI_H
+    below = f"""
+                    <control type="label">
+                        <posx>{x}</posx>
+                        <posy>{y + T.DISCOVER_UNI_NAME_DY - T.DISCOVER_UNI_NAME_H // 2}</posy>
+                        <width>{W}</width>
+                        <height>{T.DISCOVER_UNI_NAME_H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_POSTER_TITLE}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[ListItem.Label]</label>
+                    </control>
+                    <control type="image">
+                        <posx>{x}</posx>
+                        <posy>{y + T.DISCOVER_UNI_STRIP_DY}</posy>
+                        <width>{W}</width>
+                        <height>{T.DISCOVER_UNI_STRIP_H}</height>
+                        <texture>$INFO[ListItem.Art(strip)]</texture>
+                    </control>
+                    <control type="label">
+                        <posx>{x}</posx>
+                        <posy>{y + T.DISCOVER_UNI_LINE_DY - T.DISCOVER_UNI_LINE_H // 2}</posy>
+                        <width>{W}</width>
+                        <height>{T.DISCOVER_UNI_LINE_H}</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_BROWSE_CAPTION}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <label>$INFO[ListItem.Label2]</label>
+                    </control>"""
+    return _discover_picture(list_id, w=W, h=H, asset="discover-universe", x=x, y=y,
+                             cell_w=T.DISCOVER_UNI_PITCH_X, cell_h=T.DISCOVER_UNI_PITCH_Y,
+                             below=below)
 
 
 def discover_row_block(index: int, row_xml: str, header_xml: str = "") -> str:

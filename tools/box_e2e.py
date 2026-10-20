@@ -404,6 +404,47 @@ def test_discover(run: Run):
     ok = b.wait(lambda: b.label("Window.Property(discover_row0_title)"), 40)
     run.check("Discover: the first shelf loaded", ok, repr(ok))
     run.shot("05-discover")
+    test_discover_tabs(run)
+
+
+def test_discover_tabs(run: Run):
+    """App 2.1.0's sub-tabs: Coming Up's planner, Universes, the Genres wall.
+    Arrows only -- Select on a row would open a title, nothing more."""
+    b = run.box
+    b.key("Down", pause=1.2)
+    if not run.check("Discover: Down reaches the sub-tabs", b.cond("Control.HasFocus(6900)"),
+                     b.label("System.CurrentControlId")):
+        return
+    b.key("Left", times=6, pause=0.4)
+    b.key("Right", times=2, pause=0.6)
+    planner = b.wait(lambda: b.label("Window.Property(discover_view)") == "coming-up"
+                     and b.label("Window.Property(cu_0_head)"), 20)
+    run.check("Coming Up: the planner's seven days", planner,
+              b.label("Window.Property(discover_view)"))
+    run.shot("05b-coming-up")
+    b.key("Down", pause=1.2)
+    run.check("Coming Up: Down from the sub-tabs stops on the view pills",
+              b.label("System.CurrentControlId") in ("7400", "7401"), b.label("System.CurrentControlId"))
+    b.key("Down", pause=1.2)
+    row = b.label("System.CurrentControlId")
+    run.check("Coming Up: then a day's first row, and the hero follows it",
+              row.isdigit() and 7700 <= int(row) < 7812 and b.label("Window.Property(cu_title)"),
+              row + " " + b.label("Window.Property(cu_title)"))
+    run.shot("05c-coming-up-row")
+    b.key("Up", pause=1.0)
+    run.check("Coming Up: Up from the first row returns to the pills",
+              b.label("System.CurrentControlId") in ("7400", "7401"), b.label("System.CurrentControlId"))
+    b.key("Up", pause=1.0)
+    b.key("Right", times=2, pause=0.6)
+    grid = b.wait(lambda: b.label("Window.Property(discover_view)") == "universes"
+                  and b.num_items(6600) > 0, 20)
+    run.check("Universes: the grid of universes", grid, str(b.num_items(6600)))
+    b.key("Right", pause=0.6)
+    wall = b.wait(lambda: b.label("Window.Property(discover_view)") == "genres"
+                  and b.num_items(6610) > 0, 20)
+    run.check("Genres: the wall of genres", wall, str(b.num_items(6610)))
+    run.shot("05d-genres")
+    b.key("Up", pause=1.0)
 
 
 def test_search(run: Run):
