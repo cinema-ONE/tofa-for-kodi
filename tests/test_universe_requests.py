@@ -118,6 +118,43 @@ check("a failure is one sentence; the page refreshes and forgets nothing it aske
 check("the Request pill, once empty, hands focus to the pill before it",
       page.focus == P.UniverseWindow.ORDER_ID, str(page.focus))
 
+# A slow box: the viewer's first key lands while the page fills (AM6B+, 2026-10-20).
+class Opening:
+    onFirstInit = P.UniverseWindow.onFirstInit
+    CONTINUE_ID, ORDER_ID = P.UniverseWindow.CONTINUE_ID, P.UniverseWindow.ORDER_ID
+    STRIP_ID, GRID_PANEL_IDS = P.UniverseWindow.STRIP_ID, P.UniverseWindow.GRID_PANEL_IDS
+
+    def __init__(self, moves_to):
+        self.universe, self.focus, self.moves_to, self.set, self.loaded = {"next_up": {"key": "k"}}, 9101, moves_to, [], []
+
+    def setProperty(self, *a):
+        pass
+
+    def getFocusId(self):
+        return self.focus
+
+    def setFocusId(self, control_id):
+        self.set.append(control_id)
+
+    def _render(self):
+        self.focus = self.moves_to          # Kodi moved focus meanwhile, or not
+
+    def _load_services(self):
+        self.loaded.append(True)
+
+
+real = P.kodigui.ManagedControlList
+P.kodigui.ManagedControlList = lambda *a, **k: None
+try:
+    still = Opening(9101)
+    still.onFirstInit()
+    moved = Opening(P.UniverseWindow.STRIP_ID)
+    moved.onFirstInit()
+finally:
+    P.kodigui.ManagedControlList = real
+check("an untouched page gets its first focus", still.set == [P.UniverseWindow.CONTINUE_ID], str(still.set))
+check("...but a key pressed while it filled keeps the focus it moved", moved.set == [], str(moved.set))
+
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))
 raise SystemExit(1 if failed else 0)
