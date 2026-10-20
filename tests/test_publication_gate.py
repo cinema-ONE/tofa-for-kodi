@@ -210,6 +210,48 @@ except SystemExit as exc:
 check("a squash subject over 65 is refused before anything is sent",
       "subject is 72 chars" in refused, refused)
 
+# --- 11. the squash BODY is held to 8 lines, and composed when not given ---
+subject, body = gh_gate.compose_squash("9", "Title", [
+    "one\n\nfirst\n\nCo-Authored-By: A <a@x>", "two\n\nCo-Authored-By: A <a@x>"])
+check("several commits share one Co-Authored-By, at the end",
+      body == "* one\n\nfirst\n\n* two\n\nCo-Authored-By: A <a@x>", repr(body))
+
+
+def merged(argv, composed):
+    """What gh_gate would run for `argv`, with GitHub and gh stubbed out."""
+    ran = []
+    real = (gh_gate.squash_message, gh_gate.gate, gh_gate.subprocess.run)
+    gh_gate.squash_message = lambda number: composed
+    gh_gate.gate = lambda blobs: None
+    gh_gate.subprocess.run = lambda cmd, **kw: ran.append(cmd) or type("R", (), {"returncode": 0})
+    try:
+        gh_gate.main(argv)
+        return ran[0] if ran else [], ""
+    except SystemExit as exc:
+        return [], str(exc)
+    finally:
+        gh_gate.squash_message, gh_gate.gate, gh_gate.subprocess.run = real
+
+
+cmd, refused = merged(["pr", "merge", "327", "--squash", "--subject", "Short"],
+                      ("Composed (#327)", "One line."))
+check("a --subject alone still gets a composed --body, so GitHub writes none",
+      cmd[-2:] == ["--body", "One line."] and cmd.count("--subject") == 1
+      and cmd[cmd.index("--subject") + 1] == "Short", repr(cmd))
+long_body = "\n".join("line %d" % i for i in range(13))
+cmd, refused = merged(["pr", "merge", "327", "--squash", "--subject", "Short"],
+                      ("Composed (#327)", long_body))
+check("a composed body over 8 lines is refused before gh runs",
+      not cmd and "body is 13 lines" in refused, refused)
+cmd, refused = merged(["pr", "merge", "327", "--squash", "--subject", "Short",
+                       "--body", long_body], ("unused", ""))
+check("...and so is a long --body given by hand", not cmd and "body is 13 lines" in refused,
+      refused)
+cmd, refused = merged(["pr", "merge", "327", "--squash", "--subject", "Short", "--body",
+                       "\n".join("line %d" % i for i in range(8)) + "\n\nCo-Authored-By: A <a@x>"],
+                      ("unused", ""))
+check("eight lines and a trailer pass", cmd and not refused, refused)
+
 print()
 if FAILED:
     print("FAIL: %d of %d" % (FAILED, CHECKS))
