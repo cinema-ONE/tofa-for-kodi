@@ -1448,7 +1448,9 @@ def render_person() -> str:
 def render_universe() -> str:
     """A universe's page (windows/universe.py:UniverseWindow), app 2.1.0."""
     CONTINUE_ID, ORDER_ID, DETAILS_ID, STRIP_ID = 9101, 9102, 9103, 9200
+    REQUEST_ID = 9104
     universe_state = "String.IsEmpty(Window.Property(u_state))"
+    can_request = "!String.IsEmpty(Window.Property(u_request_label))"
     title_state = "String.IsEqual(Window.Property(u_state),title)"
     pills = "\n".join((
         fragments.universe_pill(
@@ -1459,7 +1461,12 @@ def render_universe() -> str:
         fragments.universe_pill(
             9152, ORDER_ID, visible=universe_state, label_property="u_order_label",
             glyph=icon_glyphs.ARROW_UP_DOWN,
-            nav={"onleft": CONTINUE_ID, "onright": ORDER_ID, "onup": ORDER_ID,
+            nav={"onleft": CONTINUE_ID, "onup": ORDER_ID, "ondown": STRIP_ID,
+                 "onright": [(can_request, REQUEST_ID), ("!" + can_request, ORDER_ID)]}),
+        fragments.universe_pill(
+            9154, REQUEST_ID, visible=universe_state + " + " + can_request,
+            label_property="u_request_label", glyph=icon_glyphs.PLUS,
+            nav={"onleft": ORDER_ID, "onright": REQUEST_ID, "onup": REQUEST_ID,
                  "ondown": STRIP_ID}),
         fragments.universe_pill(
             9153, DETAILS_ID, visible=title_state, label_property="u_details_label",

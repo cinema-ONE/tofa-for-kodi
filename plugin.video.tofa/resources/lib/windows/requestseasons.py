@@ -8,7 +8,8 @@ pills and the *arr quality-profile row.
 
 Returns {"seasons": [1, 2, ...]|None, "is4k": bool|None,
 "quality_profile_id": int|None} from ask(), or None when the viewer cancelled
-or ticked nothing.
+or ticked nothing. pick() is the same list for anything else: a universe's
+missing titles.
 """
 from __future__ import annotations
 
@@ -48,6 +49,8 @@ class RequestSeasonsDialog(kodigui.BaseDialog):
         # already filtered to "more than one, so there is a choice".
         self._profiles = kwargs.pop("profiles", [])
         self._profile_idx = kwargs.pop("profile_idx", 0)
+        self._noun = kwargs.pop("noun", "Season")
+        self._all_label = kwargs.pop("all_label", "All Seasons")
         self.result = None
         self.canceled = False
         self._quality = "hd"
@@ -126,6 +129,18 @@ class RequestSeasonsDialog(kodigui.BaseDialog):
             return None
         return dialog.result
 
+    @classmethod
+    def pick(cls, *, heading: str, eyebrow: str, rows: list, noun: str, all_label: str):
+        """Tick from `rows` [(key, label, detail)], all ticked to start. The
+        chosen keys in row order, or None when cancelled or none ticked."""
+        dialog = cls.open(heading=heading, eyebrow=eyebrow,
+                          rows=[(key, label, detail, False) for key, label, detail in rows],
+                          multi=len(rows) > 1, noun=noun, all_label=all_label)
+        if not dialog or dialog.canceled or not dialog.result:
+            return None
+        chosen = set(dialog.result["seasons"] or ())
+        return [key for key, _label, _detail in rows if key in chosen] or None
+
     def onFirstInit(self):
         # A dialog has its own property store and inherits nothing from the
         # window underneath it.
@@ -168,7 +183,7 @@ class RequestSeasonsDialog(kodigui.BaseDialog):
         # "All Seasons" only for a multi-season show -- 7.6, and a single
         # season would make it a second way to press the same thing.
         if self._multi:
-            items.append(self._row(None, "All Seasons", "", False))
+            items.append(self._row(None, self._all_label, "", False))
         for number, label, detail, already in self._rows:
             items.append(self._row(number, label, detail, already))
             if not already:
@@ -219,8 +234,8 @@ class RequestSeasonsDialog(kodigui.BaseDialog):
         count = len(self._checked)
         self.setProperty(
             "request_label",
-            "Request {0} Season{1}".format(count, "" if count == 1 else "s")
-            if count else "Request Seasons")
+            "Request {0} {1}{2}".format(count, self._noun, "" if count == 1 else "s")
+            if count else "Request {0}s".format(self._noun))
         # 7.6 dims the button rather than hiding it when nothing is ticked.
         self.setProperty(
             "request_text",

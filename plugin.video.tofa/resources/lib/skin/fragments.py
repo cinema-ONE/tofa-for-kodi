@@ -2773,7 +2773,7 @@ def universe_grid_card(list_id: int) -> tuple[str, str]:
 def universe_grid_block(index: int, item_xml: str, focused_xml: str) -> str:
     """One chapter of the universe grid: its name, then a panel of posters.
     universepage.py sizes both to the chapter's rows at runtime."""
-    group_id, panel_id = 9300 + 10 * index, 9301 + 10 * index
+    group_id, panel_id, request_id = 9300 + 10 * index, 9301 + 10 * index, 9302 + 10 * index
     return f"""                <control type="group" id="{group_id}">
                     <visible>!String.IsEmpty(Window.Property(u_block{index}))</visible>
                     <height>{T.UNI_GRID_HEAD_H + T.UNI_GRID_ROW_H}</height>
@@ -2785,6 +2785,20 @@ def universe_grid_block(index: int, item_xml: str, focused_xml: str) -> str:
                         <font>{T.FONT_EYEBROW}</font>
                         <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                         <label>$INFO[Window.Property(u_block{index}_name)]</label>
+                    </control>
+                    <control type="button" id="{request_id}">
+                        <visible>!String.IsEmpty(Window.Property(u_block{index}_request))</visible>
+                        <posy>15</posy>
+                        <width>180</width>
+                        <height>38</height>
+                        <font>{T.FONT_CARD_TITLE}</font>
+                        <textcolor>$INFO[Window.Property(text_secondary)]</textcolor>
+                        <focusedcolor>$INFO[Window.Property(accent_color)]</focusedcolor>
+                        <textoffsetx>18</textoffsetx>
+                        <aligny>center</aligny>
+                        <texturefocus border="19" colordiffuse="$INFO[Window.Property(accent_color)]">universe-pill-38-focus.png</texturefocus>
+                        <texturenofocus border="19">universe-pill-38.png</texturenofocus>
+                        <label>$INFO[Window.Property(u_block{index}_request)]</label>
                     </control>
                     <control type="panel" id="{panel_id}">
                         <posx>{-T.UNI_GRID_INSET}</posx>

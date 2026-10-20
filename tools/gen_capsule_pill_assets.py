@@ -238,6 +238,8 @@ if __name__ == "__main__":
     # Measured on the app's universe page: glass at rest, the accent focused.
     gen_glass_pill("universe-pill.png", 66, fill=16, rim=56)
     gen_glass_pill("universe-pill-focus.png", 66, fill=84, rim=235)
+    gen_glass_pill("universe-pill-38.png", 38, fill=16, rim=56)
+    gen_glass_pill("universe-pill-38-focus.png", 38, fill=84, rim=235)
     # Coming Up (app 2.1.0): the focused view pill, the page turn and a row.
     gen_glass_pill("cu-pill-57-focus.png", 57, fill=84, rim=235)
     gen_glass_pill("cu-pill-48-focus.png", 48, fill=84, rim=235)
