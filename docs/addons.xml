@@ -1,5 +1,73 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.4.0" provider-name="cinemaONE">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="script.module.requests" version="2.31.0"/>
+    <!-- The .ttf files our screens name. A dependency, not bundled, because
+         Kodi resolves a font FILE against every enabled kodi.resource.font
+         add-on but never against a plugin's own directory. See
+         resources/lib/fontinstall.py.
+
+         BOTH attributes, and minversion is the load-bearing one. Kodi keeps
+         an already-installed dependency unless it fails
+         CAddonInfo::MeetsVersion(versionMin, version), which is
+             !(versionMin > installed.version || version < installed.minversion)
+         so `version` is an ABI statement about the dependency, and
+         `minversion` is the only floor on it. With minversion absent, a user
+         sitting on an older resource.font.tofa is "good enough" forever, and
+         a newly added font file would reach them only whenever the repo's
+         own update timer happened to notice; until then this add-on names a
+         file that is not there, which draws as tofu.
+
+         SO: adding or changing a font means bumping resource.font.tofa's
+         version AND this minversion to match. tests/test_font_resource_addon.py
+         fails if they drift. -->
+    <import addon="resource.font.tofa" minversion="1.1.0" version="1.0.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="addon.py">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.python.script" library="launch_home.py">
+    <provides>executable</provides>
+  </extension>
+  <extension point="xbmc.service" library="service.py" start="startup"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
+    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
+
+Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
+
+Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
+
+Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
+    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
+    <platform>all</platform>
+    <license>GPL-2.0-only</license>
+    <website>https://tofa.tv</website>
+    <news>
+      - Coming Up shows films as posters, three across each day, and marks
+        the chosen TV episode as the Apple TV app does.
+      - Discover remembers your filters: they are kept on your profile, the
+        same as in tofa's web app.
+      - Turning a Discover filter on or off no longer moves the focus to the
+        top bar.
+      - Who's watching has a profile selected straight away, also on the first
+        start after Kodi opens.
+      - After updating, tofa asks once more to install its fonts.
+    </news>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
+      <screenshot>resources/screenshots/01-home.jpg</screenshot>
+      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
+      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
+      <screenshot>resources/screenshots/04-episodes.jpg</screenshot>
+      <screenshot>resources/screenshots/05-player.jpg</screenshot>
+      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
+    </assets>
+  <size>8775352</size><path>plugin.video.tofa/plugin.video.tofa-1.4.0.zip</path></extension>
+</addon>
 <addon id="plugin.video.tofa" name="tofa for Kodi" version="1.3.0" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
@@ -160,73 +228,6 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
       <screenshot>resources/screenshots/06-settings.jpg</screenshot>
     </assets>
   <size>8615823</size><path>plugin.video.tofa/plugin.video.tofa-1.2.0.zip</path></extension>
-</addon>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.1.1" provider-name="cinemaONE">
-  <requires>
-    <import addon="xbmc.python" version="3.0.0"/>
-    <import addon="script.module.requests" version="2.31.0"/>
-    <!-- The .ttf files our screens name. A dependency, not bundled, because
-         Kodi resolves a font FILE against every enabled kodi.resource.font
-         add-on but never against a plugin's own directory. See
-         resources/lib/fontinstall.py.
-
-         BOTH attributes, and minversion is the load-bearing one. Kodi keeps
-         an already-installed dependency unless it fails
-         CAddonInfo::MeetsVersion(versionMin, version), which is
-             !(versionMin > installed.version || version < installed.minversion)
-         so `version` is an ABI statement about the dependency, and
-         `minversion` is the only floor on it. With minversion absent, a user
-         sitting on an older resource.font.tofa is "good enough" forever, and
-         a newly added font file would reach them only whenever the repo's
-         own update timer happened to notice; until then this add-on names a
-         file that is not there, which draws as tofu.
-
-         SO: adding or changing a font means bumping resource.font.tofa's
-         version AND this minversion to match. tests/test_font_resource_addon.py
-         fails if they drift. -->
-    <import addon="resource.font.tofa" minversion="1.0.0" version="1.0.0"/>
-  </requires>
-  <extension point="xbmc.python.pluginsource" library="addon.py">
-    <provides>video</provides>
-  </extension>
-  <extension point="xbmc.python.script" library="launch_home.py">
-    <provides>executable</provides>
-  </extension>
-  <extension point="xbmc.service" library="service.py" start="startup"/>
-  <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">tofa media server: user interface, plus a browsable video source</summary>
-    <description lang="en_GB">An unofficial client for the tofa media server (tofa.tv), in two parts.
-
-Under Programs, tofa opens a full user interface: Home, Browse, Discover, Search, title detail with cast and episodes, its own player chrome, and Settings.
-
-Under Video add-ons, the same library appears as a browsable source, so it can also be used in widgets, favourites and Kodi's own containers.
-
-Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile so Dolby Vision, TrueHD/DTS-HD passthrough and refresh-rate matching reach it untouched.</description>
-    <disclaimer lang="en_GB">An unofficial tofa client, engineered with the tofa team, who also help support it.</disclaimer>
-    <platform>all</platform>
-    <license>GPL-2.0-only</license>
-    <website>https://tofa.tv</website>
-    <news>
-      - The posters behind Browse's tiles drift at the Apple TV app's pace, and
-        the picture dips briefly as you move between tiles, as on the Apple TV.
-      - Watchlist can be sorted (Date Added, Title, Year, Rating, Runtime or
-        Shuffle) and narrowed by genre or year.
-      - Posters download much smaller where the server holds a large image, and
-        the Videos library's backdrop shows many more different posters.
-      - Fixed the title page's episode row moving focus onto a card that was
-        mostly off the screen.
-    </news>
-    <assets>
-      <icon>icon.png</icon>
-      <fanart>fanart.jpg</fanart>
-      <screenshot>resources/screenshots/01-home.jpg</screenshot>
-      <screenshot>resources/screenshots/02-browse.jpg</screenshot>
-      <screenshot>resources/screenshots/03-detail.jpg</screenshot>
-      <screenshot>resources/screenshots/04-episodes.jpg</screenshot>
-      <screenshot>resources/screenshots/05-player.jpg</screenshot>
-      <screenshot>resources/screenshots/06-settings.jpg</screenshot>
-    </assets>
-  <size>8612529</size><path>plugin.video.tofa/plugin.video.tofa-1.1.1.zip</path></extension>
 </addon>
 <addon id="resource.font.tofa" name="tofa fonts" version="1.1.0" provider-name="cinemaONE">
   <requires>
