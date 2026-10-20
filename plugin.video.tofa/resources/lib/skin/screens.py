@@ -938,6 +938,12 @@ def render_universe() -> str:
                  "ondown": STRIP_ID}),
     ))
     strip_item, strip_focused = fragments.universe_strip_item(STRIP_ID)
+    grid_item, grid_focused = fragments.universe_grid_card(9301)
+    grid_blocks = "\n".join(
+        fragments.universe_grid_block(
+            i, *(layout.replace("Control.HasFocus(9301)", f"Control.HasFocus({9301 + 10 * i})")
+                 for layout in (grid_item, grid_focused)))
+        for i in range(T.UNI_GRID_BLOCKS))
     return _load("universe.xml.tpl").format(
         **T.template_kwargs(),
         CONTINUE_ID=CONTINUE_ID, ORDER_ID=ORDER_ID, DETAILS_ID=DETAILS_ID,
@@ -946,6 +952,12 @@ def render_universe() -> str:
         STRIP_W=T.SCREEN_W - T.UNI_LEFT + T.UNI_STRIP_X,
         STRIP_H=T.SCREEN_H - T.UNI_STRIP_TOP,
         pills=pills, strip_item=strip_item, strip_focused=strip_focused,
+        ALL_CHEVRON_Y=T.UNI_ALL_Y + 22,
+        CHEVRON_DOWN="&#x{0:04X};".format(icon_glyphs.CHEVRON_DOWN),
+        CHEVRON_UP="&#x{0:04X};".format(icon_glyphs.CHEVRON_UP),
+        GRID_LIST_ID=9290, UNI_GRID_X=T.UNI_LEFT + 2,
+        GRID_W=T.SCREEN_W - T.UNI_LEFT, GRID_H=T.SCREEN_H - T.UNI_GRID_TOP,
+        grid_blocks=grid_blocks,
     )
 
 
