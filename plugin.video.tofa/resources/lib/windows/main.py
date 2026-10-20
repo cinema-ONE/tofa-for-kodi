@@ -1155,7 +1155,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._cu: dict | None = None                     # Coming Up's planner
         self._cu_view: str | None = None    # None until the profile's choice is read
         self._cu_default_view = None
-        self._cu_saving, self._cu_pending_view = False, None
+        self._prefs_lock = threading.Lock()   # see _save_preference()
+        self._prefs_saving, self._prefs_pending = False, {}
         self._cu_seen = None        # focus as the last key left it: Kodi moves first
         self._cu_seen_pos = -1      # ...and, on a day's posters, the one it was on
         self._cu_props: dict = {}   # what the planner's properties hold now
@@ -1176,7 +1177,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             kodigui.ManagedListItem(label="Filters", data_source="__filters__", properties={
                 "tab_idx": str(n_tabs), "badge": "",
                 "icon_glyph": chr(icon_glyphs.SLIDERS_HORIZONTAL)})])
-        # Kept for this window's life, like the app's own popover.
+        # Read from the profile when Discover loads, saved on each change (as the web).
         self._discover_filters = {key: False for key, _label in home_rows.DISCOVER_FILTERS}
         self._discover_filter_list = kodigui.ManagedControlList(
             self, home_rows.DISCOVER_FILTER_LIST_ID, len(home_rows.DISCOVER_FILTERS) + 1)
@@ -1324,7 +1325,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SECTION_LOADERS = {
         "home": lambda self: self._home_load(),
         "browse": lambda self: self._browse_load(),
-        "discover": lambda self: self._discover_load(),
+        "discover": lambda self: self._discover_load(restore=True),
         "settings": lambda self: self._settings_load(),
     }
 
@@ -5197,12 +5198,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # DISCOVER SECTION
     # ==================================================================
 
-    def _discover_load(self):
+    def _discover_load(self, restore: bool = False):
         """The app 2.1.0 Discover (server layout 2): the server's groups, the
-        genre lanes, and Universes, which the client adds before Genres."""
+        genre lanes, and Universes, which the client adds before Genres.
+        `restore` first takes the filters from the profile."""
         client = self._get_client()
         if not client:
             return
+        if restore:
+            self._discover_filters = discover.saved_filters(
+                self._ensure_preferences(), [key for key, _label in home_rows.DISCOVER_FILTERS])
+            self._discover_filters_fill()
         try:
             page = client.discovery_page(self._discover_filters, layout=2,
                                          coming_up="spotlight") or {}
@@ -5336,27 +5342,29 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 return view
         return "shows"
 
-    def _cu_save_view(self, client: MediaServerClient, view: str) -> None:
-        """Remember the view on the profile, off the action thread; the last pick wins."""
+    def _save_preference(self, client: MediaServerClient, key: str, value) -> None:
+        """Write one top-level preference off the action thread; the last value per key wins."""
         if self._preferences is not None:
-            self._preferences["coming_up_view"] = view
-        self._cu_pending_view = view
-        if self._cu_saving:
-            return
-        self._cu_saving = True
+            self._preferences[key] = value
+        with self._prefs_lock:
+            self._prefs_pending[key] = value
+            if self._prefs_saving:
+                return
+            self._prefs_saving = True
 
         def run():
-            try:
-                while self._cu_pending_view:
-                    pick, self._cu_pending_view = self._cu_pending_view, None
-                    try:
-                        client.update_preferences({"coming_up_view": pick})
-                    except http.ApiError as exc:
-                        log.warning("coming up: view not saved: {0}".format(exc))
-            finally:
-                self._cu_saving = False
+            while True:
+                with self._prefs_lock:
+                    patch, self._prefs_pending = self._prefs_pending, {}
+                    if not patch:
+                        self._prefs_saving = False
+                        return
+                try:
+                    client.update_preferences(patch)
+                except http.ApiError as exc:
+                    log.warning("preferences not saved: {0}: {1}".format(sorted(patch), exc))
 
-        threading.Thread(target=run, name="tofa-cu-view", daemon=True).start()
+        threading.Thread(target=run, name="tofa-prefs-save", daemon=True).start()
 
     def _cu_pill_id(self) -> int:
         return self.CU_MOVIES_ID if self._cu_view == "movies" else self.CU_SHOWS_ID
@@ -5610,7 +5618,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 client = self._get_client()
                 if view != self._cu_view and client:
                     self._cu_open(client, view)
-                    self._cu_save_view(client, view)
+                    self._save_preference(client, "coming_up_view", view)
             return True
         if focus in (self.CU_PREV_ID, self.CU_NEXT_ID) and direction == "down" and not arrived:
             self._cu_enter()
@@ -5828,10 +5836,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if on:
             items.append(kodigui.ManagedListItem(label="Reset filters", data_source="__reset__",
                                                  properties={"is_reset": "1"}))
-        pos = select if select is not None else (self._discover_filter_list.getSelectedPos() or 0)
-        self._discover_filter_list.reset()
-        self._discover_filter_list.addItems(items)
-        self._discover_filter_list.setSelectedItemByPos(min(pos, len(items) - 1))
+        # In place: a reset() empties the list, and Kodi moves focus off an empty one.
+        self._discover_filter_list.replaceItems(items)
+        if select is not None:
+            self._discover_filter_list.setSelectedItemByPos(min(select, len(items) - 1))
         self.setProperty("discover_filter_count", str(on) if on else "")
         self._discover_strip.getListItem(len(home_rows.DISCOVER_TABS)).setProperty(
             "badge", str(on) if on else "")
@@ -5847,6 +5855,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         else:
             self._discover_filters[item.dataSource] = not self._discover_filters[item.dataSource]
         self._discover_filters_fill(select)
+        client = self._get_client()
+        if client:
+            # The whole object, as the web writes it: the server replaces it wholesale.
+            self._save_preference(client, "discover_filters", dict(self._discover_filters))
         self._discover_load()
 
     def _discover_mark_current_tab(self) -> None:

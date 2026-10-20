@@ -24,6 +24,13 @@ def group_shelves(page: dict, tabs: tuple) -> dict:
     return grouped
 
 
+def saved_filters(prefs: dict | None, keys) -> dict:
+    """The profile's `discover_filters`, read as the web reads them: only a real true is on."""
+    saved = (prefs or {}).get("discover_filters")
+    saved = saved if isinstance(saved, dict) else {}
+    return {key: saved.get(key) is True for key in keys}
+
+
 def is_tiles(shelf: dict) -> bool:
     """A row of picture tiles (Genres to Try, By Decade) rather than titles."""
     return shelf.get("form") == "tiles"
