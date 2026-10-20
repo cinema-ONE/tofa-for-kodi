@@ -5479,8 +5479,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # The title alone: the app's card menu carries no year (2.1.0).
             title=item.getLabel() or "",
             keys=keys,
-            # Same title, same action, same word as the detail hero.
-            resume=has_progress and not completed,
         )
         if picked:
             self._apply_card_option(picked, client, data, item, kind)

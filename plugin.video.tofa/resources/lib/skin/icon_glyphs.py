@@ -114,6 +114,10 @@ CHECK = 0xE06C
 # Card options (app 2.1.0): Seen it and Mark as Watched; Not interested.
 CIRCLE_CHECK = 0xE226
 THUMBS_DOWN = 0xE189
+# Ours, not Lucide's: the filled marks app 2.1.0 shows once set (Seen, Hidden
+# from suggestions), built from the outlines above by tools/gen_filled_glyphs.py.
+CIRCLE_CHECK_FILLED = 0xF8E0
+THUMBS_DOWN_FILLED = 0xF8E1
 ARROW_UP = 0xE04A
 ARROW_DOWN = 0xE042
 ARROW_UP_DOWN = 0xE37D                  # the universe page's Story/Release order

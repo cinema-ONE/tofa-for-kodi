@@ -727,14 +727,14 @@ def render_detail() -> str:
         visible="!String.IsEmpty(Window.Property(show_seen)) + !String.IsEmpty(Window.Property(pills_packed))",
         label_xml=fragments.action_pill_content(
             PILL_W, "$INFO[Window.Property(seen_label)]",
-            "&#x{0:04X};".format(icon_glyphs.CIRCLE_CHECK), height=PILL_H),
+            "$INFO[Window.Property(seen_glyph)]", height=PILL_H),
     )
     not_interested_pill = fragments.glass_pill(
         5280, group_id=5281, x=1399, width=PILL_W, height=PILL_H, ondown=6110, onleft=5270,
         visible="!String.IsEmpty(Window.Property(show_not_interested)) + !String.IsEmpty(Window.Property(pills_packed))",
         label_xml=fragments.action_pill_content(
             PILL_W, "$INFO[Window.Property(not_interested_label)]",
-            "&#x{0:04X};".format(icon_glyphs.THUMBS_DOWN), height=PILL_H,
+            "$INFO[Window.Property(not_interested_glyph)]", height=PILL_H,
             marquee_focus_id=5280),
     )
 

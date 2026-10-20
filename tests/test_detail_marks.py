@@ -52,7 +52,8 @@ check("unset, in the app's words", (w.props["seen_label"], w.props["not_interest
 w._toggle_mark(True)
 check("Seen it marks the title by TMDB id", w.client.calls == [("seen", "movie", 42, True)],
       str(w.client.calls))
-check("...and the pill reads Seen", w.props["seen_label"] == "Seen")
+check("...and the pill reads Seen, with the filled glyph",
+      w.props["seen_label"] == "Seen" and w.props["seen_glyph"] == chr(0xF8E0))
 w._toggle_mark(True)
 check("choosing it again clears it", w.client.calls[-1] == ("seen", "movie", 42, False)
       and w.props["seen_label"] == "Seen it")
