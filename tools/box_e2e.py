@@ -200,9 +200,12 @@ def launch(run: Run, switch_profile: str | None) -> bool:
     for _ in range(2):
         b.builtin("RunScript(plugin.video.tofa)")
         events = []
-        window = b.wait(lambda: b.label("Window.Property(tofa_window)") not in ("", "SplashWindow")
+        # MainWindow is up before it asks who's watching: it counts once a section is active.
+        window = b.wait(lambda: b.dialog() == "ProfileDialog" and "ProfileDialog"
+                        or b.label("Window.Property(tofa_window)") not in ("", "SplashWindow")
+                        and (b.label("Window.Property(tofa_window)") != "MainWindow"
+                             or b.label("Window.Property(active_section)"))
                         and b.label("Window.Property(tofa_window)")
-                        or b.dialog() == "ProfileDialog" and "ProfileDialog"
                         or events.append(answer_dialogs(b))
                         or any("restarted" in (e or "") for e in events) and "restarted", 120, 1)
         for event in filter(None, events):
