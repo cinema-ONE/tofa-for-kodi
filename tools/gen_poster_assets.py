@@ -405,6 +405,29 @@ def gen_mask(w: int, h: int, radius: int, name: str) -> None:
     _save(im, name, (w, h))
 
 
+def gen_ring(w: int, h: int, radius: int, stroke: int, name: str) -> None:
+    """A rounded outline of w x h, white for colordiffuse: a focus ring drawn outside its art."""
+    sz = (w * S, h * S)
+    im = Image.new("RGBA", sz, (0, 0, 0, 0))
+    ImageDraw.Draw(im).rounded_rectangle(
+        [0, 0, sz[0] - 1, sz[1] - 1], radius=radius * S, outline="white", width=stroke * S)
+    _save(im, name, (w, h))
+
+
+def gen_glow(w: int, h: int, radius: int, name: str) -> None:
+    """The soft focus glow around art of w x h, as gen_card_set draws it."""
+    gw, gh = (w + GLOW_PAD * 2) * S, (h + GLOW_PAD * 2) * S
+    mask = Image.new("L", (gw, gh), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        [GLOW_PAD * S, GLOW_PAD * S, GLOW_PAD * S + w * S - 1, GLOW_PAD * S + h * S - 1],
+        radius=radius * S + GLOW_PAD * S // 2, fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(GLOW_PAD * S // 2))
+    mask = mask.point(lambda v: v * GLOW_ALPHA // 255)
+    im = Image.new("RGBA", (gw, gh), (255, 255, 255, 0))
+    im.putalpha(mask)
+    _save(im, name, (w + GLOW_PAD * 2, h + GLOW_PAD * 2))
+
+
 def gen_card_set(w: int, h: int, prefix: str) -> None:
     """Mask, focus border and focus glow for a bare poster of w x h."""
     sz = (w * S, h * S)
@@ -720,6 +743,10 @@ def main() -> None:
     gen_card_set(320, 180, "discover-tile")         # Discover's genre and decade tiles
     gen_card_set(550, 308, "discover-universe")     # Discover's Universes grid
     gen_mask(46, 68, 7, "cu-thumb-mask.png")         # Coming Up's day rows
+    gen_ring(52, 74, 10, 3, "cu-thumb-ring.png")      # ...and its focus ring, 3px outside
+    gen_mask(71, 107, 9, "cu-poster-mask.png")        # Coming Up's films
+    gen_ring(77, 113, 12, 3, "cu-poster-ring.png")
+    gen_glow(71, 107, 9, "cu-poster-glow.png")
     gen_avatar_shadow()
     gen_collection_assets()
     gen_alpha_disc_rim()

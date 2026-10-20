@@ -243,4 +243,4 @@ if __name__ == "__main__":
     # Coming Up (app 2.1.0): the focused view pill, the page turn and a row.
     gen_glass_pill("cu-pill-57-focus.png", 57, fill=84, rim=235)
     gen_glass_pill("cu-pill-48-focus.png", 48, fill=84, rim=235)
-    gen_glass_plate("cu-row-focus.png", 15, fill=84, rim=235)
+    gen_glass_plate("cu-row-plate.png", 15, fill=23, rim=0)   # the app's plate: white at 9%

@@ -80,7 +80,7 @@ from . import addonref, log
 #: <import> and resource.font.tofa's own id.
 FONT_ADDON_ID = "resource.font.tofa"
 
-FONT_SET_VERSION = 37
+FONT_SET_VERSION = 38
 _VERSION_MARKER = f"<!-- tofa-fonts-v{FONT_SET_VERSION} -->"
 
 # All lazy, see addonref.py -- this module's import-time Addon lookup is the
@@ -155,6 +155,8 @@ FONTS: dict[str, tuple[str, int, str]] = {
     "tofa_font_card_meta": ("inter_tight_regular.ttf", 18, "Regular"),
     # Coming Up's day headings, "Mon 19" (app 2.1.0): bold, cap height 18.
     "tofa_font_day_heading": ("inter_tight_bold.ttf", 25, "Regular"),
+    # Coming Up's title where a release has no logo (app 2.1.0): bold, cap height 29.
+    "tofa_font_cu_title": ("inter_tight_bold.ttf", 40, "Regular"),
     # The featured collection's name behind Browse's tiles (app 2.0).
     "tofa_font_feature_title": ("inter_tight_bold.ttf", 70, "Regular"),
     # The person page's name, and its Filmography panel's title (app 2.0).

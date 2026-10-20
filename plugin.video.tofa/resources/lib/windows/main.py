@@ -472,6 +472,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     #: Coming Up's planner, as skin/screens.py renders it (CU_*).
     CU_SHOWS_ID, CU_MOVIES_ID, CU_PREV_ID, CU_NEXT_ID, CU_NEXTUP_ID, CU_SCORES_ID = range(7400, 7406)
     CU_SLOT_ID, CU_ROW_ID, CU_META_ID = 7500, 7700, 7820
+    CU_POSTERS_ID, CU_SOLO_META_ID = 7440, 7450
 
     #: The landing's tiles: the server's sections, then the fixed four
     #: in a row of their own (app 2.1.0); each opens a full-width view.
@@ -1156,11 +1157,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._cu_default_view = None
         self._cu_saving, self._cu_pending_view = False, None
         self._cu_seen = None        # focus as the last key left it: Kodi moves first
+        self._cu_seen_pos = -1      # ...and, on a day's posters, the one it was on
         self._cu_props: dict = {}   # what the planner's properties hold now
         self._cu_sizes: dict = {}
         self.discover_universe_list = kodigui.ManagedControlList(
             self, self.DISCOVER_UNIVERSES_ID, 12)
         self.discover_wall_list = kodigui.ManagedControlList(self, self.DISCOVER_WALL_ID, 20)
+        self._cu_panels = [kodigui.ManagedControlList(self, self.CU_POSTERS_ID + d, 12)
+                           for d in range(7)]
         n_tabs = len(home_rows.DISCOVER_TABS)
         self._discover_strip = kodigui.ManagedControlList(
             self, home_rows.DISCOVER_TAB_STRIP_ID, n_tabs + 1)
@@ -1555,7 +1559,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._discover_follow_clicked()
         elif controlID in (self.CU_PREV_ID, self.CU_NEXT_ID):
             self._cu_turn(-1 if controlID == self.CU_PREV_ID else 1)
-        elif controlID == self.CU_NEXTUP_ID or self._cu_slot_of(controlID):
+        elif (controlID == self.CU_NEXTUP_ID or self._cu_slot_of(controlID)
+              or self._cu_panel_day(controlID) is not None):
             self._cu_clicked()
         elif controlID == home_rows.DISCOVER_TAB_STRIP_ID:
             if self._discover_strip.getSelectedPos() == len(home_rows.DISCOVER_TABS):
@@ -5366,6 +5371,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         win = coming_up.window(shelf, found)
         pages = coming_up.pages(shelf)
         self._cu_view = view
+        self.setProperty("cu_view", view)
         self._cu = {"pages": pages, "entries": found, "today": win["from"], "page": 0,
                     "stop": None, "last": coming_up.last_page(
                         pages, coming_up.beyond(found, win["to"]) is not None)}
@@ -5390,9 +5396,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._cu_prop("cu_{0}_rel".format(d), rel)
             self._cu_prop("cu_{0}_rel_color".format(d), primary if rel == "Today" else secondary)
             self._cu_prop("cu_{0}_today".format(d), "1" if rel == "Today" else "")
-            self._cu_prop("cu_{0}_empty".format(d),
-                             "Nothing dated" if page["count"] and not day["entries"] else "")
-            rows, more = coming_up.shown(day)
+            # As the web: "Nothing dated" is TV Shows' alone.
+            self._cu_prop("cu_{0}_empty".format(d), "Nothing dated" if self._cu_view == "shows"
+                          and page["count"] and not day["entries"] else "")
+            films = self._cu_view == "movies"
+            self._cu_fill_posters(client, d, day["entries"] if films else [])
+            rows, more = coming_up.shown(day) if not films else ([], 0)
             for r in range(T.CU_SLOTS):
                 p = "cu_{0}_{1}".format(d, r)
                 title, thumb, glyph, meta, blank, lines = "", "", "", "", "", 1
@@ -5426,6 +5435,40 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         stop = st["stop"] if st["stop"] and st["stop"][0] == st["page"] else None
         self._cu_show(self._cu_entry(stop or coming_up.first_stop(st["pages"], st["page"])))
         log.info("coming up: page %d in %.2fs" % (st["page"], time.monotonic() - started))
+
+    def _cu_fill_posters(self, client: MediaServerClient, d: int, found: list) -> None:
+        """A day's films as the app draws them: posters three across; a lone one
+        with its title and venue under it."""
+        panel = self._cu_panels[d]
+        keys = [e["key"] for e in found]
+        if self._cu_props.get("panel{0}".format(d)) != keys:
+            self._cu_props["panel{0}".format(d)] = keys
+            items = []
+            for e in found:
+                item, release = e["item"], e["release"]
+                mli = kodigui.ManagedListItem(label=item.get("title") or "", data_source=e,
+                                              offscreen=True)
+                poster = client.resolve_image_url(item.get("poster_path")) or ""
+                mli.setArt({"thumb": poster})
+                mli.setProperty("blank", "" if poster else chr(icon_glyphs.FILM))
+                mli.setProperty("home", "1" if release.get("venue") == "home" else "")
+                items.append(mli)
+            panel.reset()
+            if items:
+                panel.addItems(items)
+        p = "cu_{0}_solo".format(d)
+        solo = found[0] if len(found) == 1 else None
+        lines = coming_up.wrap(solo["item"].get("title") or "", T.CU_DAY_W,
+                               textmetrics.card_title_width) if solo else []
+        self._cu_prop(p + "_title", "[CR]".join(lines))
+        self._cu_prop(p + "_meta", (coming_up.venue_label(solo["release"]) or "") if solo else "")
+        self._cu_prop(p + "_glyph", self._cu_glyph(solo["release"]) if solo else "")
+        if solo:
+            try:
+                self.getControl(self.CU_SOLO_META_ID + d).setPosition(
+                    0, int(T.CU_SOLO_META_DY + T.CU_TITLE_LINE * (len(lines) - 1)))
+            except RuntimeError:
+                pass
 
     def _cu_prop(self, key: str, value: str) -> None:
         """setProperty only on a change: a page is ~500 of them, ~2ms each on a box."""
@@ -5461,6 +5504,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         page, day, row = stop
         if day == -1:
             return self._cu.get("nextup")
+        if self._cu_view == "movies":
+            found = self._cu["pages"][page]["days"][day]["entries"]
+            return found[min(row, len(found) - 1)] if found else None
         rows, _more = coming_up.shown(self._cu["pages"][page]["days"][day])
         return rows[min(row, len(rows) - 1)] if rows else None
 
@@ -5472,7 +5518,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         item, release = entry["item"], entry["release"]
         parts = coming_up.hero_meta(release, self._cu["today"], regional.weekday_day_month)
         self.setProperty("cu_logo", client.resolve_image_url(item.get("logo_path")) or "")
-        self.setProperty("cu_title", item.get("title") or "")
+        lines = coming_up.wrap(item.get("title") or "", T.CU_TITLE_W,
+                               lambda t: textmetrics.hero_title_width(t) * 40 / 61)
+        if len(lines) > 2:
+            lines = [lines[0], " ".join(lines[1:])]
+        self.setProperty("cu_title1", lines[0] if len(lines) == 2 else "")
+        self.setProperty("cu_title2", lines[-1] if lines else "")
         self.setProperty("cu_backdrop", client.resolve_image_url(
             item.get("backdrop_path") or release.get("still_path")) or "")
         self.setProperty("cu_glyph", self._cu_glyph(release)
@@ -5513,7 +5564,12 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if client:
                 self._cu_fill_page(client)
         st["stop"] = stop
-        self._cu_set_focus(self.CU_NEXTUP_ID if day == -1 else self.CU_ROW_ID + day * 16 + row)
+        if day != -1 and self._cu_view == "movies":
+            self._cu_panels[day].selectItem(row)
+            self._cu_set_focus(self.CU_POSTERS_ID + day)
+            self._cu_seen_pos = row
+        else:
+            self._cu_set_focus(self.CU_NEXTUP_ID if day == -1 else self.CU_ROW_ID + day * 16 + row)
         self._cu_show(self._cu_entry(stop))
 
     def _cu_enter(self) -> None:
@@ -5526,10 +5582,15 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """Arrow keys in the planner; True when handled here."""
         focus = self.getFocusId()
         before, self._cu_seen = self._cu_seen, focus
+        before_pos, self._cu_seen_pos = self._cu_seen_pos, self._cu_panel_pos(focus)
         direction = {xbmcgui.ACTION_MOVE_LEFT: "left", xbmcgui.ACTION_MOVE_RIGHT: "right",
                      xbmcgui.ACTION_MOVE_UP: "up", xbmcgui.ACTION_MOVE_DOWN: "down"}.get(action_id)
         if not direction or not self._cu or self.getProperty("discover_view") != "coming-up":
             return False
+        day = self._cu_panel_day(focus)
+        if day is not None:
+            self._cu_poster_moved(day, direction, before == focus and before_pos == self._cu_seen_pos)
+            return True
         if focus == self.CU_NEXTUP_ID or self._cu_slot_of(focus):
             st = self._cu
             stop = st["stop"] or coming_up.first_stop(st["pages"], st["page"])
@@ -5556,6 +5617,40 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return True
         return False
 
+    def _cu_panel_day(self, control_id: int):
+        day = control_id - self.CU_POSTERS_ID
+        return day if 0 <= day < 7 else None
+
+    def _cu_panel_pos(self, control_id: int) -> int:
+        day = self._cu_panel_day(control_id)
+        return self._cu_panels[day].getSelectedPos() if day is not None else -1
+
+    def _cu_poster_moved(self, day: int, direction: str, stuck: bool) -> None:
+        """Kodi moves within a day's grid; at its edge this goes on to the next day
+        with films, on the same row, as the app's focus does."""
+        st = self._cu
+        pos = max(0, self._cu_panels[day].getSelectedPos())
+        if not stuck or direction in ("up", "down"):
+            st["stop"] = (st["page"], day, pos)
+            self._cu_show(self._cu_entry(st["stop"]))
+            return
+        step = 1 if direction == "right" else -1
+        row, page, d = pos // 3, st["page"], day + step
+        while True:
+            days = st["pages"][page]["days"]
+            while 0 <= d < len(days):
+                count = len(days[d]["entries"])
+                if count:
+                    start = min(row * 3, (count - 1) // 3 * 3)
+                    index = start if step == 1 else min(start + 2, count - 1)
+                    self._cu_focus((page, d, index))
+                    return
+                d += step
+            page += step
+            if page < 0 or page > st["last"]:
+                return
+            d = 0 if step == 1 else len(st["pages"][page]["days"]) - 1
+
     def _cu_set_focus(self, control_id: int) -> None:
         self.setFocusId(control_id)
         self._cu_seen = control_id
@@ -5581,7 +5676,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not st:
             return
         focus = self.getFocusId()
-        if focus == self.CU_NEXTUP_ID:
+        day = self._cu_panel_day(focus)
+        if day is not None:
+            item = self._cu_panels[day].getSelectedItem()
+            entry = item.dataSource if item is not None else None
+        elif focus == self.CU_NEXTUP_ID:
             entry = st.get("nextup")
         else:
             day, row = self._cu_slot_of(focus)
