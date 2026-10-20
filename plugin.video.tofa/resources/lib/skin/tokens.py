@@ -297,6 +297,15 @@ UNI_STRIP_TOP = UNI_STRIP_Y - 84        # the list's, with room for the zoom
 UNI_STRIP_X = 30                        # a poster's left inside its item
 UNI_STRIP_ZOOM = 171                    # focused: 130x195, from the bottom
 UNI_CHAPTER_GAP = 8
+# The grid below the strip ("ALL 77"): a block per chapter, seven across.
+UNI_ALL_Y = 1012                        # the hint's label; its chevron under it
+UNI_GRID_TITLE_Y = 38
+UNI_GRID_TOP = 96                       # the blocks' grouplist
+UNI_GRID_BLOCKS = 12
+UNI_GRID_HEAD_H = 64                    # a block's chapter name, above its posters
+UNI_GRID_COLS, UNI_GRID_PITCH, UNI_GRID_ROW_H = 7, 252, 436
+UNI_GRID_POSTER_W, UNI_GRID_POSTER_H = 212, 318
+UNI_GRID_INSET = 10                     # a poster inside its cell, for the zoom
 
 # Where the Home row region sits, and how much of the screen it gets. TWO
 # geometries, because "Featured spotlight" (preferences.home_screen.show_hero)

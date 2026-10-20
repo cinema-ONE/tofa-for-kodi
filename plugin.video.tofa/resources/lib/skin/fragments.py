@@ -2689,6 +2689,118 @@ def universe_strip_item(list_id: int) -> tuple[str, str]:
     return item, focused
 
 
+def universe_grid_card(list_id: int) -> tuple[str, str]:
+    """A poster in the universe page's grid (app 2.1.0): a tick once watched,
+    a plus when not held, then its number, title and status."""
+    X = Y = T.UNI_GRID_INSET
+    W, H = T.UNI_GRID_POSTER_W, T.UNI_GRID_POSTER_H
+    focus = f"Control.HasFocus({list_id})"
+    chip_x = W - CHIP_SIZE - CHIP_INSET
+    poster = f"""
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>0xFF16222B</colordiffuse>
+                            <texture diffuse="poster-mask.png">white-square.png</texture>
+                        </control>
+                        <control type="image">
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <aspectratio scalediffuse="false">scale</aspectratio>
+                            <colordiffuse>$INFO[ListItem.Property(tint)]</colordiffuse>
+                            <texture diffuse="poster-mask.png" background="true">$INFO[ListItem.Art(poster)]</texture>
+                        </control>
+                        <control type="group">
+                            <visible>!String.IsEmpty(ListItem.Property(mark))</visible>
+                            <control type="image">
+                                <posx>{chip_x}</posx>
+                                <posy>8</posy>
+                                <width>28</width>
+                                <height>28</height>
+                                <colordiffuse>{T.BADGE_SCRIM}</colordiffuse>
+                                <texture border="14">capsule-h28.png</texture>
+                            </control>
+                            <control type="label">
+                                <posx>{chip_x}</posx>
+                                <posy>8</posy>
+                                <width>28</width>
+                                <height>28</height>
+                                <align>center</align>
+                                <aligny>center</aligny>
+                                <font>{T.FONT_ICON_19}</font>
+                                <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                                <label>$INFO[ListItem.Property(mark)]</label>
+                            </control>
+                        </control>"""
+    rim = f"""
+                        <control type="image">
+                            <visible>{focus}</visible>
+                            <width>{W}</width>
+                            <height>{H}</height>
+                            <colordiffuse>$INFO[Window.Property(accent_color)]</colordiffuse>
+                            <texture>poster-border.png</texture>
+                        </control>"""
+    lines = "".join(f"""
+                    <control type="label">
+                        <posx>{X}</posx>
+                        <posy>{Y + H + dy}</posy>
+                        <width>{W}</width>
+                        <height>{h}</height>
+                        <aligny>center</aligny>
+                        <font>{font}</font>
+                        <textcolor>$INFO[Window.Property({colour})]</textcolor>
+                        <label>{label}</label>
+                    </control>""" for dy, h, font, colour, label in (
+        (13, 26, T.FONT_CARD_META, "text_secondary", "$INFO[ListItem.Property(number)]"),
+        (37, 32, T.FONT_POSTER_TITLE, "text_primary", "$INFO[ListItem.Label]"),
+        (67, 28, T.FONT_CARD_META, "text_secondary", "$INFO[ListItem.Label2]")))
+    zoom = (f'<animation effect="zoom" start="100" end="103.5" center="{W // 2},{H // 2}" '
+            f'time="150" tween="cubic" easing="out" condition="{focus}">Conditional</animation>')
+    group = """
+                    <control type="group">
+                        <posx>{x}</posx>
+                        <posy>{y}</posy>{zoom}{body}
+                    </control>"""
+    size = f'width="{T.UNI_GRID_PITCH}" height="{T.UNI_GRID_ROW_H}"'
+    item = f"""                <itemlayout {size}>{group.format(x=X, y=Y, zoom="", body=poster)}{lines}
+                </itemlayout>"""
+    focused = f"""                <focusedlayout {size}>{group.format(
+        x=X, y=Y, zoom=chr(10) + "                        " + zoom, body=poster + rim)}{lines}
+                </focusedlayout>"""
+    return item, focused
+
+
+def universe_grid_block(index: int, item_xml: str, focused_xml: str) -> str:
+    """One chapter of the universe grid: its name, then a panel of posters.
+    universepage.py sizes both to the chapter's rows at runtime."""
+    group_id, panel_id = 9300 + 10 * index, 9301 + 10 * index
+    return f"""                <control type="group" id="{group_id}">
+                    <visible>!String.IsEmpty(Window.Property(u_block{index}))</visible>
+                    <height>{T.UNI_GRID_HEAD_H + T.UNI_GRID_ROW_H}</height>
+                    <control type="label">
+                        <posy>19</posy>
+                        <width>1200</width>
+                        <height>30</height>
+                        <aligny>center</aligny>
+                        <font>{T.FONT_EYEBROW}</font>
+                        <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
+                        <label>$INFO[Window.Property(u_block{index}_name)]</label>
+                    </control>
+                    <control type="panel" id="{panel_id}">
+                        <posx>{-T.UNI_GRID_INSET}</posx>
+                        <posy>{T.UNI_GRID_HEAD_H - T.UNI_GRID_INSET}</posy>
+                        <width>{T.UNI_GRID_COLS * T.UNI_GRID_PITCH}</width>
+                        <height>{T.UNI_GRID_ROW_H}</height>
+                        <orientation>vertical</orientation>
+                        <itemwidth>{T.UNI_GRID_PITCH}</itemwidth>
+                        <itemheight>{T.UNI_GRID_ROW_H}</itemheight>
+                        <scrolltime>{T.SCROLLTIME}</scrolltime>
+{item_xml}
+{focused_xml}
+                    </control>
+                </control>"""
+
+
 def poster_row(
     *,
     group_id: int,

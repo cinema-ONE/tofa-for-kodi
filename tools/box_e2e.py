@@ -274,6 +274,14 @@ def test_saga(run: Run):
     b.key("Down", pause=1.5)
     run.check("Universe: the strip turns the hero into a title",
               b.wait(lambda: b.label("Window.Property(u_state)") == "title", 5))
+    b.key("Down", pause=1.5)
+    run.check("Universe: Down again opens the grid by chapter",
+              b.wait(lambda: b.label("Window.Property(u_grid)") == "1", 5)
+              and b.label("Window.Property(u_block0)") == "1")
+    run.shot("14-universe-grid")
+    b.back_if("!String.IsEmpty(Window.Property(u_grid))", pause=1.5)
+    run.check("Universe: Back from the grid returns to the strip",
+              b.wait(lambda: b.cond("Control.HasFocus(9200)"), 5))
     b.back_if("Control.HasFocus(9200)")
     run.check("Universe: Back returns to Home",
               b.wait(lambda: b.cond(f"Control.HasFocus({list_id})"), 8))

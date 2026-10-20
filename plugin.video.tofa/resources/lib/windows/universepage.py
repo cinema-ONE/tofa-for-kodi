@@ -5,9 +5,9 @@ The universe over its up-next title's backdrop, a Continue pill and a Story
 or Release order pill, then a strip of every member's poster. Focusing a
 poster turns the hero into that title, with Play and Details.
 
-Continue and Play open the title's page, as the card menu's Play does: Detail
-owns the edition, resume and request choices. The app's chapter grid and its
-Request missing pill are not here yet.
+Down from the strip opens a grid of every member by chapter. Continue and
+Play open the title's page, as the card menu's Play does: Detail owns the
+edition, resume and request choices. The app's Request missing is not here.
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ import xbmcgui
 
 from . import kodigui, theme
 from .. import http, regional, textmetrics, universe
+from ..skin import icon_glyphs
 from ..skin import tokens as T
 
 STORY, RELEASE = "story", "release"
@@ -40,6 +41,29 @@ def member_meta(member: dict, next_key) -> str:
     """"2008 · Up next" under a focused poster's title."""
     year = member["item"].get("year") or (member["item"].get("release_date") or "")[:4]
     return " · ".join(str(p) for p in (year, universe.member_status(member, next_key)) if p)
+
+
+def grid_status(member: dict, next_key) -> str:
+    """A grid poster's status, its season first when it is one ("Season 1 · Watched")."""
+    status = universe.member_status(member, next_key)
+    season = member["item"].get("season_number")
+    if season is None:
+        return status
+    name = (member["item"].get("season_name") or "").strip() or (
+        "Specials" if season == 0 else "Season {0}".format(season))
+    return "{0} · {1}".format(name, status)
+
+
+def grid_blocks(u: dict, order: str) -> list:
+    """(chapter name, members) per grid block: the chapters in story order,
+    else the whole universe as one unnamed block."""
+    members = universe.ordered(u, order)
+    if order != STORY or not u.get("chapters"):
+        return [("", members)]
+    blocks = [(name, members[start:end + 1]) for name, start, end in u["chapters"]]
+    covered = {m["key"] for _name, ms in blocks for m in ms}
+    rest = [m for m in members if m["key"] not in covered]
+    return blocks + ([("", rest)] if rest else [])
 
 
 def two_lines(text: str) -> str:
@@ -74,6 +98,7 @@ class UniverseWindow(kodigui.ControlledWindow):
 
     CONTINUE_ID, ORDER_ID, DETAILS_ID, STRIP_ID = 9101, 9102, 9103, 9200
     GROUP_IDS = {CONTINUE_ID: 9151, ORDER_ID: 9152, DETAILS_ID: 9153}
+    GRID_PANEL_IDS = tuple(9301 + 10 * i for i in range(T.UNI_GRID_BLOCKS))
 
     def __init__(self, *args, **kwargs):
         self.universe = kwargs.pop("universe", None) or {}
@@ -83,6 +108,11 @@ class UniverseWindow(kodigui.ControlledWindow):
         self.strip: kodigui.ManagedControlList | None = None
         self._shown_key = None
         self._return_focus = None
+        self.panels: list = []
+        self._grid_shown: list = []
+        self._grid_at = (None, None)    # (panel, row) before the last key
+        self._was = None                # focus before the last key: onAction sees it after
+        self._moved_to = None
 
     def onFirstInit(self):
         self.setProperty("accent_color", theme.default_accent())
@@ -91,6 +121,7 @@ class UniverseWindow(kodigui.ControlledWindow):
         self.setProperty("text_tertiary", theme.TEXT_TERTIARY)
         self.setProperty("u_details_label", "Details")
         self.strip = kodigui.ManagedControlList(self, self.STRIP_ID, 30)
+        self.panels = [kodigui.ManagedControlList(self, pid, 21) for pid in self.GRID_PANEL_IDS]
         self._render()
         self.setFocusId(self.CONTINUE_ID if self.universe.get("next_up") else self.ORDER_ID)
 
@@ -103,7 +134,10 @@ class UniverseWindow(kodigui.ControlledWindow):
             fresh = None
         if fresh and fresh.get("items"):
             self.universe = universe.build(fresh)
+            key = self._focused_key()
             self._render(keep=True)
+            if self.getProperty("u_grid"):
+                self._select_in_grid(key)
         if self._return_focus:
             # Kodi refocuses the default control; go back to the one used.
             self.setFocusId(self._return_focus)
@@ -119,7 +153,10 @@ class UniverseWindow(kodigui.ControlledWindow):
         self.setProperty("u_overview", two_lines(u.get("overview")))
         self.setProperty("u_order_label", "Story order" if self.order == STORY else "Release order")
         self.setProperty("u_chapters", "1" if self.order == STORY and u.get("chapters") else "")
+        self.setProperty("u_all_label", "ALL {0}".format(regional.number(len(u.get("members") or []))))
+        self.setProperty("u_name_upper", (u.get("name") or "").upper())
         self._fill_strip(keep)
+        self._fill_grid()
         if not keep or not self.getProperty("u_state"):
             self._show_universe()
 
@@ -146,6 +183,93 @@ class UniverseWindow(kodigui.ControlledWindow):
         self.strip.reset()
         self.strip.addItems(items)
         self.strip.selectItem(select)
+
+    def _fill_grid(self):
+        """One block per chapter, sized to its rows; unused blocks hidden."""
+        next_key = (self.universe.get("next_up") or {}).get("key")
+        blocks = grid_blocks(self.universe, self.order)[:len(self.panels)]
+        number = 0
+        shown = []
+        for index, panel in enumerate(self.panels):
+            panel.reset()
+            if index >= len(blocks):
+                self.setProperty("u_block{0}".format(index), "")
+                continue
+            name, members = blocks[index]
+            items = []
+            for member in members:
+                number += 1
+                items.append(self._grid_item(member, number, next_key))
+            panel.addItems(items)
+            rows = max(1, (len(items) + T.UNI_GRID_COLS - 1) // T.UNI_GRID_COLS)
+            try:
+                self.getControl(self.GRID_PANEL_IDS[index] - 1).setHeight(
+                    T.UNI_GRID_HEAD_H + rows * T.UNI_GRID_ROW_H)
+                self.getControl(self.GRID_PANEL_IDS[index]).setHeight(rows * T.UNI_GRID_ROW_H)
+            except RuntimeError:
+                pass
+            self.setProperty("u_block{0}".format(index), "1")
+            self.setProperty("u_block{0}_name".format(index), name.upper())
+            shown.append(self.GRID_PANEL_IDS[index])
+        self._grid_shown = shown
+        for above, below in zip(shown, shown[1:]):
+            try:
+                self.getControl(above).controlDown(self.getControl(below))
+                self.getControl(below).controlUp(self.getControl(above))
+            except RuntimeError:
+                pass
+
+    def _grid_item(self, member: dict, number: int, next_key) -> kodigui.ManagedListItem:
+        item = member["item"]
+        poster = self.client.resolve_image_url(item.get("poster_path")) if self.client else ""
+        mli = kodigui.ManagedListItem(label=item.get("title") or member["title"],
+                                      label2=grid_status(member, next_key),
+                                      data_source=member, offscreen=True)
+        mli.setArt({"poster": poster or ""})
+        mli.setProperty("number", regional.number(number))
+        dim = member["state"] in ("missing", "upcoming")
+        mli.setProperty("tint", "0xFF4D4D4D" if dim else "0xFFFFFFFF")
+        mark = (icon_glyphs.CHECK if member["watched"]
+                else icon_glyphs.PLUS if member["state"] == "missing" else None)
+        mli.setProperty("mark", chr(mark) if mark else "")
+        return mli
+
+    def _open_grid(self):
+        """Down from the strip: the grid, on the poster the strip was on."""
+        key = self._focused_key()
+        self.setProperty("u_grid", "1")
+        self._select_in_grid(key)
+
+    def _close_grid(self):
+        """Back, or Up from the grid's top row: the hero, on the same title."""
+        key = self._focused_key()
+        self.setProperty("u_grid", "")
+        for index, item in enumerate(self.strip or []):
+            if item.dataSource and item.dataSource["key"] == key:
+                self.strip.selectItem(index)
+                break
+        self._focus(self.STRIP_ID)
+        self._shown_key = None
+        self._sync_member()
+
+    def _select_in_grid(self, key):
+        for pid, panel in zip(self.GRID_PANEL_IDS, self.panels):
+            for index, item in enumerate(panel):
+                if item.dataSource and item.dataSource["key"] == key:
+                    panel.selectItem(index)
+                    self._focus(pid)
+                    self._grid_at = (pid, index // T.UNI_GRID_COLS)
+                    return
+        if self._grid_shown:
+            self._focus(self._grid_shown[0])
+
+    def _focused_key(self):
+        """The key of the member focused in the grid, else in the strip."""
+        focus = self.getFocusId()
+        lists = dict(zip(self.GRID_PANEL_IDS, self.panels))
+        lst = lists.get(focus) or self.strip
+        item = lst.getSelectedItem() if lst is not None else None
+        return item.dataSource["key"] if item is not None and item.dataSource else None
 
     def _show_universe(self):
         """The hero as the page opens: the universe, Continue and the order."""
@@ -201,7 +325,34 @@ class UniverseWindow(kodigui.ControlledWindow):
     # ------------------------------------------------------------------
 
     def onAction(self, action):
+        self._moved_to = None
+        self._on_action(action, self._was)
+        self._was = self._moved_to or self.getFocusId()
+
+    def _focus(self, control_id: int):
+        """setFocusId lands later; remember where focus is going now."""
+        self.setFocusId(control_id)
+        self._moved_to = control_id
+
+    def _on_action(self, action, was):
         back = action.getId() in (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
+        focus = self.getFocusId()
+        if self.getProperty("u_grid"):
+            if back:
+                self._close_grid()
+                return
+            if focus in self.GRID_PANEL_IDS:
+                at, top = (focus, self._grid_row(focus)), (self._grid_shown[:1] or [None])[0]
+                was, self._grid_at = self._grid_at, at
+                if action.getId() == xbmcgui.ACTION_MOVE_UP and at == was == (top, 0):
+                    # Up that went nowhere from the first row: back to the hero.
+                    self._close_grid()
+                    return
+            kodigui.ControlledWindow.onAction(self, action)
+            return
+        if action.getId() == xbmcgui.ACTION_MOVE_DOWN and focus == was == self.STRIP_ID:
+            self._open_grid()
+            return
         if back and self.getProperty("u_state") and self.getFocusId() != self.STRIP_ID:
             # Back from a title's pills returns to the universe, then closes.
             self._show_universe()
@@ -210,6 +361,13 @@ class UniverseWindow(kodigui.ControlledWindow):
         kodigui.ControlledWindow.onAction(self, action)
         if self.getFocusId() == self.STRIP_ID:
             self._sync_member()
+
+    def _grid_row(self, panel_id) -> int:
+        panel = dict(zip(self.GRID_PANEL_IDS, self.panels)).get(panel_id)
+        try:
+            return panel.getSelectedPosition() // T.UNI_GRID_COLS
+        except Exception:
+            return 0
 
     def onFocus(self, controlId):
         if controlId == self.STRIP_ID:
@@ -230,6 +388,10 @@ class UniverseWindow(kodigui.ControlledWindow):
             self._open(member)
         elif controlId in (self.DETAILS_ID, self.STRIP_ID):
             self._open(self._focused_member())
+        elif controlId in self.GRID_PANEL_IDS:
+            panel = dict(zip(self.GRID_PANEL_IDS, self.panels))[controlId]
+            item = panel.getSelectedItem()
+            self._open(item.dataSource if item is not None else None)
 
     def _focused_member(self):
         item = self.strip.getSelectedItem() if self.strip is not None else None
