@@ -78,12 +78,26 @@ class Client:
 class Page:
     _request_listing = P.UniverseWindow._request_listing
     _send_requests = P.UniverseWindow._send_requests
+    REQUEST_ID, ORDER_ID = P.UniverseWindow.REQUEST_ID, P.UniverseWindow.ORDER_ID
+    GRID_REQUEST_IDS = P.UniverseWindow.GRID_REQUEST_IDS
+    GRID_PANEL_IDS = P.UniverseWindow.GRID_PANEL_IDS
 
     def __init__(self, client):
         self.client, self._requested, self._requesting, self.reinit = client, set(), True, 0
+        self.focus, self.props = P.UniverseWindow.REQUEST_ID, {}
 
-    def onReInit(self):
+    def _refresh(self):
         self.reinit += 1
+        self.props["u_request_label"] = ""        # nothing left to ask for
+
+    def getFocusId(self):
+        return self.focus
+
+    def setFocusId(self, control_id):
+        self.focus = control_id
+
+    def getProperty(self, key):
+        return self.props.get(key, "")
 
 
 said = []
@@ -101,6 +115,8 @@ check("one request each, the series with its seasons and TVDB id",
 check("a failure is one sentence; the page refreshes and forgets nothing it asked for",
       said[-1] == "Requested 1 of 2; try the other 1 again" and page.reinit == 1
       and rows[0]["members"][0]["key"] in page._requested and not page._requesting, str(said))
+check("the Request pill, once empty, hands focus to the pill before it",
+      page.focus == P.UniverseWindow.ORDER_ID, str(page.focus))
 
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))

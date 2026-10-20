@@ -140,6 +140,12 @@ class UniverseWindow(kodigui.ControlledWindow):
 
     def onReInit(self):
         """Back from a title's page: watching it may have moved up next."""
+        self._refresh()
+        if self._return_focus:
+            # Kodi refocuses the default control; go back to the one used.
+            self.setFocusId(self._return_focus)
+
+    def _refresh(self):
         try:
             fresh = self.client.collection(self.universe["id"]) if self.client else None
         except http.ApiError as exc:
@@ -151,9 +157,6 @@ class UniverseWindow(kodigui.ControlledWindow):
             self._render(keep=True)
             if self.getProperty("u_grid"):
                 self._select_in_grid(key)
-        if self._return_focus:
-            # Kodi refocuses the default control; go back to the one used.
-            self.setFocusId(self._return_focus)
 
     # ------------------------------------------------------------------
     # drawing
@@ -358,7 +361,14 @@ class UniverseWindow(kodigui.ControlledWindow):
         finally:
             self._requesting = False
         universe.forget()
-        self.onReInit()
+        focus = self.getFocusId()
+        self._refresh()
+        # A pill with nothing left to request goes; focus moves to its neighbour.
+        if focus == self.REQUEST_ID and not self.getProperty("u_request_label"):
+            self.setFocusId(self.ORDER_ID)
+        elif focus in self.GRID_REQUEST_IDS and not self.getProperty(
+                "u_block{0}_request".format(self.GRID_REQUEST_IDS.index(focus))):
+            self.setFocusId(self.GRID_PANEL_IDS[self.GRID_REQUEST_IDS.index(focus)])
 
     def _grid_item(self, member: dict, number: int, next_key) -> kodigui.ManagedListItem:
         item = member["item"]
