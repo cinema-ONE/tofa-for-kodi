@@ -37,7 +37,8 @@ anything local ever seeing it. That is precisely the shape of the 2026-09-20
 failure, one layer up. So this composes the message itself, from the same
 ingredients GitHub would use, gates it, and passes it back with --subject and
 --body, which makes the server compose nothing. The message that is published
-is the message that was checked.
+is the message that was checked -- for quotes, and against check_brevity.py's
+limits, since a long squash body on main trips every later push that merges it.
 
 EXIT STATUS is the gate's when the gate refuses, and `gh`'s otherwise.
 """
@@ -50,6 +51,8 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+from check_brevity import TRAILER, message_problems  # noqa: E402
 CHECKER = os.path.join(ROOT, "tools", "check_public_set.py")
 
 #: Flags whose value is text a human wrote, and which `gh` publishes as-is.
@@ -175,12 +178,30 @@ def compose_squash(number: str, pr_title: str, messages: list) -> tuple[str, str
         head, body = split(messages[0])
     else:
         head = pr_title
-        parts = []
+        parts, trailers = [], []
         for message in messages:
             h, b = split(message)
+            lines = b.splitlines()
+            while lines and (not lines[-1].strip() or TRAILER.match(lines[-1])):
+                line = lines.pop().strip()
+                if line and line not in trailers:
+                    trailers.insert(0, line)
+            b = "\n".join(lines).strip()
             parts.append("* " + h + (("\n\n" + b) if b else ""))
-        body = "\n\n".join(parts)
+        # Each commit's Co-Authored-By once, at the end, where git reads trailers.
+        body = "\n\n".join(parts + (["\n".join(trailers)] if trailers else []))
     return "%s (#%s)" % (head, number), body
+
+
+def squash_brevity(blobs: list[tuple[str, str]]) -> None:
+    """Refuse a squash whose message breaks check_brevity's limits: it lands on
+    main for good, and every later push that merges main trips over it."""
+    subject = next((v for f, v in blobs if f == "--subject"), "")
+    body = next((v for f, v in blobs if f in ("--body", "-b", "--body-file", "-F")), "")
+    problems = message_problems("squash", subject + "\n\n" + body)
+    if problems:
+        sys.exit("gh_gate: %s -- pass a short --body (or --subject) for the squash"
+                 % "; ".join(p.split(": ", 1)[1] for p in problems))
 
 
 def main(argv: list[str]) -> int:
@@ -189,23 +210,29 @@ def main(argv: list[str]) -> int:
 
     argv, blobs = harvest(argv)
 
-    # The special case: a squash merge carries no text, so the text it will
-    # publish has to be built before it can be gated.
-    if argv[:2] == ["pr", "merge"] and "--squash" in argv:
-        has_own = any(a.split("=")[0] in ("--subject", "--body", "--body-file")
-                      for a in argv)
-        number = next((a for a in argv[2:] if a.isdigit()), None)
-        if not has_own and number:
-            subject, body = squash_message(number)
-            argv += ["--subject", subject, "--body", body]
-            blobs += [("--subject", subject), ("--body", body)]
-
     # A PR title becomes the squash subject, and the squash adds " (#N)":
     # check the subject that will land, not only the title.
     long = [(f, v) for f, v in blobs if f in ("--title", "-t", "--subject") and len(v) > 65]
     if long:
         sys.exit("gh_gate: %s is %d chars (max 65, see check_brevity.py)"
                  % (long[0][0].lstrip("-"), len(long[0][1])))
+
+    # The special case: a squash merge carries no text, so the text it will
+    # publish has to be built before it can be gated.
+    if argv[:2] == ["pr", "merge"] and "--squash" in argv:
+        flags = {a.split("=")[0] for a in argv}
+        number = next((a for a in argv[2:] if a.isdigit()), None)
+        # A --subject alone used to leave the BODY to GitHub, which lists every
+        # commit: #327 landed with 13 lines. Compose whatever was not given.
+        if number and not flags & {"--body", "-b", "--body-file", "-F"}:
+            subject, body = squash_message(number)
+            if "--subject" not in flags:
+                argv += ["--subject", subject]
+                blobs.append(("--subject", subject))
+            argv += ["--body", body]
+            blobs.append(("--body", body))
+        squash_brevity(blobs)
+
     gate(blobs)
     return subprocess.run(["gh"] + argv, cwd=ROOT).returncode
 
