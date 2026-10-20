@@ -14,9 +14,9 @@ refresh-rate matching reach it untouched.
 Unofficial means it is not a tofa product and carries no guarantee from them,
 though it is built with the tofa team and against their design.
 
-**This is beta software.** It is in active development, still short of a 1.0,
-and things do change between releases. Expect the occasional rough edge, and
-please [report what you find](https://github.com/cinema-ONE/tofa-for-kodi/issues).
+**It is no longer beta.** Version 1.0 shipped in October 2026, and development
+continues: new releases follow the tofa apps' own features. If something is
+wrong, please [report it](https://github.com/cinema-ONE/tofa-for-kodi/issues).
 
 ## Install
 
