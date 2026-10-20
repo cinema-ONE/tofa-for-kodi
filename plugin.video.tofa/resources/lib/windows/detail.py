@@ -259,6 +259,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     PILL_VERSION = 5240
     PILL_CANCEL_REQUEST = 5250
     PILL_RETRY = 5260
+    PILL_SEEN = 5270
+    PILL_NOT_INTERESTED = 5280
     CAST_LIST = 6200
     SIMILAR_LIST = 6300
     DISCOVER_LIST = 6310
@@ -397,6 +399,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # reused, so this is cleared here rather than relying on it being
         # unset.
         self.setProperty("pills_packed", "")
+        self.setProperty("show_seen", "")
+        self.setProperty("show_not_interested", "")
         self.cast_list = kodigui.ManagedControlList(self, self.CAST_LIST, 6)
         # Capacity, not the item count: a grid shows far more than the
         # single row's 6 did.
@@ -2177,6 +2181,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             # they are different states.
             self.setProperty("watchlist_glyph", chr(
                 icon_glyphs.CHECK if self.on_watchlist else icon_glyphs.PLUS))
+            # Seen it and Not interested, when the server says where they stand.
+            self._marks = dict(self.discovery_item or {}, **{
+                k: disc[k] for k in ("seen", "not_interested") if k in (disc or {})})
+            self._sync_mark_pills()
         self._wire_pill_navigation()
         # Pack the stack for the blocks this page actually has. Without it
         # the synopsis kept the y it would have had under a ratings line, a
@@ -2392,6 +2400,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         5230: (5231, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
         5240: (5241, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
         5250: (5251, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
+        5270: (5271, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
+        5280: (5281, fragments.ACTION_PILL_W, fragments.ACTION_PILL_GAP),
     }
 
     def _layout_action_row(self, pills: list):
@@ -2464,6 +2474,10 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             pills.append(self.PILL_REWATCH)
         if self.getProperty("show_watchlist"):
             pills.append(self.PILL_WATCHLIST)
+        if self.getProperty("show_seen"):
+            pills.append(self.PILL_SEEN)
+        if self.getProperty("show_not_interested"):
+            pills.append(self.PILL_NOT_INTERESTED)
         # The row is LAID OUT from every visible pill but NAVIGATED over only
         # the ones that do something. An inert primary ("Requested", "Coming
         # to library", "Not in library") still holds its place at the head of
@@ -2648,6 +2662,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if aid == xbmcgui.ACTION_MOVE_DOWN and focus in (
             self.PILL_PRIMARY, self.PILL_REWATCH, self.PILL_OPTIONS,
             self.PILL_WATCHLIST, self.PILL_VERSION, self.PILL_CANCEL_REQUEST,
+            self.PILL_SEEN, self.PILL_NOT_INTERESTED,
         ):
             self.setProperty("detailpage", "page2")
             self.setFocusId(self._p2_entry())
@@ -2745,6 +2760,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._open_playback_options()
         elif controlID == self.PILL_WATCHLIST:
             self._toggle_watchlist()
+        elif controlID in (self.PILL_SEEN, self.PILL_NOT_INTERESTED):
+            self._toggle_mark(controlID == self.PILL_SEEN)
         elif controlID == self.PILL_VERSION:
             self._version_clicked()
         elif controlID in self.MORE_SHELF_IDS:
@@ -2755,6 +2772,28 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._episode_clicked()
         elif controlID == self.CAST_LIST:
             self._person_clicked()
+
+    def _sync_mark_pills(self):
+        """The marks' pills and words, as app 2.1.0 words them set and unset."""
+        marks = getattr(self, "_marks", None) or {}
+        for key, prop, on, off in (("seen", "seen", "Seen", "Seen it"),
+                                   ("not_interested", "not_interested",
+                                    "Hidden from suggestions", "Not interested")):
+            self.setProperty("show_" + prop, "1" if key in marks else "")
+            self.setProperty(prop + "_label", on if marks.get(key) else off)
+
+    def _toggle_mark(self, seen_row: bool):
+        """Set or clear Seen it / Not interested; silent unless it fails."""
+        marks = getattr(self, "_marks", None)
+        client = self._get_client()
+        if marks is None or client is None:
+            return
+        key = "seen" if seen_row else "not_interested"
+        picked = ((cardoptions.SEEN_REMOVE if marks.get(key) else cardoptions.SEEN_ADD) if seen_row
+                  else (cardoptions.NOT_INTERESTED_REMOVE if marks.get(key)
+                        else cardoptions.NOT_INTERESTED_ADD))
+        if titlemarks.apply(client, picked, marks, self.content_media_type, self.tmdb_id):
+            self._sync_mark_pills()
 
     def _person_clicked(self):
         """7.4's filmography page, by person id when the cast entry has one.

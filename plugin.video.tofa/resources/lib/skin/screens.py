@@ -721,6 +721,23 @@ def render_detail() -> str:
             height=PILL_H),
     )
 
+    # App 2.1.0's marks on a title the library does not hold, after Watchlist.
+    seen_pill = fragments.glass_pill(
+        5270, group_id=5271, x=1399, width=PILL_W, height=PILL_H, ondown=6110, onleft=5230,
+        visible="!String.IsEmpty(Window.Property(show_seen)) + !String.IsEmpty(Window.Property(pills_packed))",
+        label_xml=fragments.action_pill_content(
+            PILL_W, "$INFO[Window.Property(seen_label)]",
+            "&#x{0:04X};".format(icon_glyphs.CIRCLE_CHECK), height=PILL_H),
+    )
+    not_interested_pill = fragments.glass_pill(
+        5280, group_id=5281, x=1399, width=PILL_W, height=PILL_H, ondown=6110, onleft=5270,
+        visible="!String.IsEmpty(Window.Property(show_not_interested)) + !String.IsEmpty(Window.Property(pills_packed))",
+        label_xml=fragments.action_pill_content(
+            PILL_W, "$INFO[Window.Property(not_interested_label)]",
+            "&#x{0:04X};".format(icon_glyphs.THUMBS_DOWN), height=PILL_H,
+            marquee_focus_id=5280),
+    )
+
     return _load("detail.xml.tpl").format(
         load_error=load_error,
         retry_pill=retry_pill,
@@ -731,6 +748,8 @@ def render_detail() -> str:
         options_pill=options_pill,
         watchlist_pill=watchlist_pill,
         cancel_request_pill=cancel_request_pill,
+        seen_pill=seen_pill,
+        not_interested_pill=not_interested_pill,
         version_pill=version_pill,
         toast=fragments.toast(),
     )
