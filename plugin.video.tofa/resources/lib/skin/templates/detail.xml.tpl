@@ -613,6 +613,8 @@
                         <!-- Watchlist toggle pill (glass). Label +/- driven. -->
 {watchlist_pill}
 {cancel_request_pill}
+{seen_pill}
+{not_interested_pill}
 
                         <!-- Edition / version picker. Hidden on the majority
                              of titles, which have a single file. -->

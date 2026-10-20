@@ -54,7 +54,7 @@ class Pager:
     # Every id and table comes from the real class, so a renumbered control
     # cannot leave this passing against stale ids.
     for _name in ("PILL_PRIMARY", "PILL_RETRY", "PILL_CANCEL_REQUEST",
-                  "PILL_WATCHLIST", "PAGE2_BODY_IDS", "P2_SECTIONS",
+                  "PILL_SEEN", "PILL_NOT_INTERESTED", "PILL_WATCHLIST", "PAGE2_BODY_IDS", "P2_SECTIONS",
                   "CAST_LIST", "EPISODE_GRID_PANEL", "SEASON_SIDEBAR_LIST",
                   "SIMILAR_LIST", "DISCOVER_LIST", "ABOUT_BUTTON",
                   "PILL_REWATCH", "PILL_OPTIONS", "PILL_VERSION"):
