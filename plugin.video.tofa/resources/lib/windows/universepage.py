@@ -7,14 +7,18 @@ poster turns the hero into that title, with Play and Details.
 
 Down from the strip opens a grid of every member by chapter. Continue and
 Play open the title's page, as the card menu's Play does: Detail owns the
-edition, resume and request choices. The app's Request missing is not here.
+edition, resume and request choices. Request N missing (the whole universe,
+or one chapter) asks for what the library lacks, as tofa's apps do.
 """
 from __future__ import annotations
+
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import xbmcgui
 
 from . import kodigui, theme
-from .. import http, regional, textmetrics, universe
+from .. import http, regional, textmetrics, toast, universe
 from ..skin import icon_glyphs
 from ..skin import tokens as T
 
@@ -96,9 +100,10 @@ class UniverseWindow(kodigui.ControlledWindow):
     width = 1920
     height = 1080
 
-    CONTINUE_ID, ORDER_ID, DETAILS_ID, STRIP_ID = 9101, 9102, 9103, 9200
-    GROUP_IDS = {CONTINUE_ID: 9151, ORDER_ID: 9152, DETAILS_ID: 9153}
+    CONTINUE_ID, ORDER_ID, DETAILS_ID, REQUEST_ID, STRIP_ID = 9101, 9102, 9103, 9104, 9200
+    GROUP_IDS = {CONTINUE_ID: 9151, ORDER_ID: 9152, DETAILS_ID: 9153, REQUEST_ID: 9154}
     GRID_PANEL_IDS = tuple(9301 + 10 * i for i in range(T.UNI_GRID_BLOCKS))
+    GRID_REQUEST_IDS = tuple(9302 + 10 * i for i in range(T.UNI_GRID_BLOCKS))
 
     def __init__(self, *args, **kwargs):
         self.universe = kwargs.pop("universe", None) or {}
@@ -113,6 +118,10 @@ class UniverseWindow(kodigui.ControlledWindow):
         self._grid_at = (None, None)    # (panel, row) before the last key
         self._was = None                # focus before the last key: onAction sees it after
         self._moved_to = None
+        self._services = (False, False)  # (films, shows) the server can request
+        self._requested: set = set()    # member keys asked for on this page
+        self._block_chapters: dict = {}  # grid block -> chapter index, for its Request
+        self._requesting = False
 
     def onFirstInit(self):
         self.setProperty("accent_color", theme.default_accent())
@@ -122,6 +131,7 @@ class UniverseWindow(kodigui.ControlledWindow):
         self.setProperty("u_details_label", "Details")
         self.strip = kodigui.ManagedControlList(self, self.STRIP_ID, 30)
         self.panels = [kodigui.ManagedControlList(self, pid, 21) for pid in self.GRID_PANEL_IDS]
+        self._services = self._request_services()
         self._render()
         self.setFocusId(self.CONTINUE_ID if self.universe.get("next_up") else self.ORDER_ID)
 
@@ -155,6 +165,9 @@ class UniverseWindow(kodigui.ControlledWindow):
         self.setProperty("u_chapters", "1" if self.order == STORY and u.get("chapters") else "")
         self.setProperty("u_all_label", "ALL {0}".format(regional.number(len(u.get("members") or []))))
         self.setProperty("u_name_upper", (u.get("name") or "").upper())
+        count = len(self._missing())
+        self.setProperty("u_request_label", "Request {0} missing".format(
+            regional.number(count)) if count else "")
         self._fill_strip(keep)
         self._fill_grid()
         if not keep or not self.getProperty("u_state"):
@@ -210,14 +223,139 @@ class UniverseWindow(kodigui.ControlledWindow):
                 pass
             self.setProperty("u_block{0}".format(index), "1")
             self.setProperty("u_block{0}_name".format(index), name.upper())
+            self._layout_block_request(index, name)
             shown.append(self.GRID_PANEL_IDS[index])
         self._grid_shown = shown
-        for above, below in zip(shown, shown[1:]):
+        for index, panel_id in enumerate(shown):
+            block = self.GRID_PANEL_IDS.index(panel_id)
+            above = shown[index - 1] if index else None
+            request = self.GRID_REQUEST_IDS[block]
             try:
-                self.getControl(above).controlDown(self.getControl(below))
-                self.getControl(below).controlUp(self.getControl(above))
+                panel = self.getControl(panel_id)
+                if index + 1 < len(shown):
+                    panel.controlDown(self.getControl(shown[index + 1]))
+                if self.getProperty("u_block{0}_request".format(block)):
+                    button = self.getControl(request)
+                    panel.controlUp(button)
+                    button.controlDown(panel)
+                    if above:
+                        button.controlUp(self.getControl(above))
+                elif above:
+                    panel.controlUp(self.getControl(above))
             except RuntimeError:
                 pass
+
+    def _layout_block_request(self, index: int, name: str):
+        """A chapter's "+ Request N", placed after its name as the app draws it."""
+        chapter = next((i for i, (n, _s, _e) in enumerate(self.universe.get("chapters") or [])
+                        if n == name), None) if name and self.order == STORY else None
+        self._block_chapters[index] = chapter
+        count = len(self._missing(chapter)) if chapter is not None else 0
+        label = "+  Request {0}".format(regional.number(count)) if count else ""
+        self.setProperty("u_block{0}_request".format(index), label)
+        if not label:
+            return
+        # The eyebrow face is bold capitals at 17px; the metrics are 23px regular.
+        x = int(textmetrics.text_width(name.upper()) * 17 / textmetrics.SIZE * 1.18) + 18
+        width = int(textmetrics.text_width(label) * 22 / textmetrics.SIZE * 1.04) + 36
+        try:
+            self.getControl(self.GRID_REQUEST_IDS[index]).setPosition(x, 15)
+            self.getControl(self.GRID_REQUEST_IDS[index]).setWidth(width)
+        except RuntimeError:
+            pass
+
+    # ------------------------------------------------------------------
+    # Request missing
+    # ------------------------------------------------------------------
+
+    def _request_services(self) -> tuple:
+        """(films, shows): whether the server has Radarr / Sonarr to ask."""
+        try:
+            status = (self.client.integrations_status() if self.client else None) or {}
+        except http.ApiError as exc:
+            kodigui.ERROR("universepage: integrations failed: {0}".format(exc))
+            status = {}
+        return status.get("radarr") is not None, status.get("sonarr") is not None
+
+    def _missing(self, chapter=None) -> list:
+        films, shows = self._services
+        return universe.missing_rows(self.universe, chapter, films, shows,
+                                     frozenset(self._requested))
+
+    def _request_missing(self, chapter=None):
+        """List what is missing, let the viewer untick, then ask for the rest."""
+        if self._requesting:
+            return
+        rows = self._missing(chapter)
+        if not rows:
+            return
+        listing, plan = self._request_listing(rows)
+        if not listing:
+            toast.show("Everything here is in your library or already requested")
+            return
+        from .requestseasons import RequestSeasonsDialog
+        name = self.universe["chapters"][chapter][0] if chapter is not None else self.universe["name"]
+        chosen = RequestSeasonsDialog.pick(heading=name, eyebrow="Request missing",
+                                           rows=listing, noun="Title", all_label="All Titles")
+        if not chosen:
+            return
+        self._requesting = True
+        threading.Thread(target=self._send_requests, args=([plan[k] for k in chosen],),
+                         daemon=True).start()
+
+    def _request_listing(self, rows: list) -> tuple:
+        """([(key, title, detail)], {key: request}) -- a series only with seasons to ask for."""
+        series = [r for r in rows if r["kind"] == "series"]
+
+        def detail(row):
+            try:
+                return row["key"], self.client.discovery_detail("tv", row["tmdb_id"]) or {}
+            except http.ApiError as exc:
+                kodigui.ERROR("universepage: seasons of {0}: {1}".format(row["title"], exc))
+                return row["key"], None
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            details = dict(pool.map(detail, series))
+        listing, plan = [], {}
+        for row in rows:
+            year = str(row["year"]) if row["year"] else ""
+            if row["kind"] == "film":
+                listing.append((row["key"], row["title"], " · ".join(p for p in ("Film", year) if p)))
+                plan[row["key"]] = (row, None, None)
+                continue
+            found = details.get(row["key"])
+            seasons = universe.default_seasons(row, universe.requestable_seasons(found)) if found else []
+            if not seasons:
+                continue
+            listing.append((row["key"], row["title"], " · ".join(
+                p for p in ("Series", year, universe.seasons_label(seasons)) if p)))
+            plan[row["key"]] = (row, seasons, found.get("tvdb_id"))
+        return listing, plan
+
+    def _send_requests(self, plan: list):
+        """One request at a time, as the web app sends them; one sentence at the end."""
+        results = []
+        try:
+            toast.show("Requesting {0} title{1}".format(len(plan), "" if len(plan) == 1 else "s"))
+            for row, seasons, tvdb_id in plan:
+                try:
+                    if row["kind"] == "film":
+                        self.client.create_request("movie", row["title"], row["tmdb_id"])
+                    else:
+                        self.client.create_request("tv", row["title"], row["tmdb_id"],
+                                                   seasons=seasons, tvdb_id=tvdb_id)
+                    self._requested.update(m["key"] for m in row["members"])
+                    results.append((row["kind"], True))
+                except http.ApiError as exc:
+                    kodigui.ERROR("universepage: request {0}: {1}".format(row["title"], exc))
+                    results.append((row["kind"], False))
+            outcome = universe.request_outcome(results)
+            if outcome:
+                toast.show(outcome)
+        finally:
+            self._requesting = False
+        universe.forget()
+        self.onReInit()
 
     def _grid_item(self, member: dict, number: int, next_key) -> kodigui.ManagedListItem:
         item = member["item"]
@@ -307,9 +445,13 @@ class UniverseWindow(kodigui.ControlledWindow):
         title_state = bool(self.getProperty("u_state"))
         play = self.getProperty("u_play_label")
         x = T.UNI_LEFT
-        second = (self.DETAILS_ID, self.getProperty("u_details_label"), False) if title_state \
-            else (self.ORDER_ID, self.getProperty("u_order_label"), True)
-        for control_id, label, icon in ((self.CONTINUE_ID, play, True), second):
+        pills = [(self.CONTINUE_ID, play, True)]
+        if title_state:
+            pills.append((self.DETAILS_ID, self.getProperty("u_details_label"), False))
+        else:
+            pills.append((self.ORDER_ID, self.getProperty("u_order_label"), True))
+            pills.append((self.REQUEST_ID, self.getProperty("u_request_label"), True))
+        for control_id, label, icon in pills:
             if not label:
                 continue
             width = pill_width(label, icon)
@@ -339,6 +481,11 @@ class UniverseWindow(kodigui.ControlledWindow):
         focus = self.getFocusId()
         if self.getProperty("u_grid"):
             if back:
+                self._close_grid()
+                return
+            first_request = (self.GRID_REQUEST_IDS[self.GRID_PANEL_IDS.index(self._grid_shown[0])]
+                             if self._grid_shown else None)
+            if (action.getId() == xbmcgui.ACTION_MOVE_UP and focus == was == first_request):
                 self._close_grid()
                 return
             if focus in self.GRID_PANEL_IDS:
@@ -388,6 +535,10 @@ class UniverseWindow(kodigui.ControlledWindow):
             self._open(member)
         elif controlId in (self.DETAILS_ID, self.STRIP_ID):
             self._open(self._focused_member())
+        elif controlId == self.REQUEST_ID:
+            self._request_missing()
+        elif controlId in self.GRID_REQUEST_IDS:
+            self._request_missing(self._block_chapters.get(self.GRID_REQUEST_IDS.index(controlId)))
         elif controlId in self.GRID_PANEL_IDS:
             panel = dict(zip(self.GRID_PANEL_IDS, self.panels))[controlId]
             item = panel.getSelectedItem()

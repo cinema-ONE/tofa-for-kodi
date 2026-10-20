@@ -265,6 +265,94 @@ def member_status(member: dict, next_key: Optional[str]) -> str:
     return "Requested" if member["requested"] else "Not in your library"
 
 
+def missing_rows(universe: dict, chapter: Optional[int] = None, films: bool = True,
+                 shows: bool = True, requested: frozenset = frozenset()) -> list:
+    """What "Request N missing" offers, as tofa's web app picks it: members not
+    held, not coming, not already requested, of a kind the server can request.
+    A series is one row however many of its seasons the universe lists."""
+    members = universe["members"]
+    if chapter is not None:
+        if chapter >= len(universe["chapters"]):
+            return []
+        _name, start, end = universe["chapters"][chapter]
+        members = members[start:end + 1]
+    rows, series = [], {}
+    for m in members:
+        if (m["owned"] or m["upcoming"] or m["requested"] or m["key"] in requested
+                or not (shows if m["is_show"] else films)):
+            continue
+        item = m["item"]
+        if not m["is_show"]:
+            rows.append({"key": m["key"], "kind": "film", "title": item.get("title") or "",
+                         "year": item.get("year"), "tmdb_id": item.get("tmdb_id"),
+                         "members": [m], "seasons": None})
+            continue
+        row = series.get(item.get("tmdb_id"))
+        if row is None:
+            row = {"key": "series-{0}".format(item.get("tmdb_id")), "kind": "series",
+                   "title": item.get("title") or "", "year": item.get("year"),
+                   "tmdb_id": item.get("tmdb_id"), "members": [], "seasons": []}
+            series[item.get("tmdb_id")] = row
+            rows.append(row)
+        row["members"].append(m)
+        season = item.get("season_number")
+        if season is None:
+            row["seasons"] = None           # the whole show is in the universe
+        elif row["seasons"] is not None and season not in row["seasons"]:
+            row["seasons"].append(season)
+    for row in series.values():
+        if row["seasons"]:
+            row["seasons"].sort()
+    return rows
+
+
+def requestable_seasons(detail: dict) -> list:
+    """Seasons of a /discovery/detail show not on request and not complete here."""
+    asked = {s.get("season_number") for s in detail.get("request_seasons") or []
+             if s.get("status") not in ("denied", "failed")}
+    def complete(number):
+        held = next((s for s in detail.get("library_seasons") or []
+                     if s.get("season_number") == number), None)
+        if not held or (held.get("episodes_available") or 0) <= 0:
+            return False
+        total = next((s.get("episode_count") for s in detail.get("seasons") or []
+                      if s.get("season_number") == number), None)
+        return not total or total <= 0 or held["episodes_available"] >= total
+    numbers = [s.get("season_number") for s in detail.get("seasons") or []]
+    return sorted(n for n in numbers if n is not None and n not in asked and not complete(n))
+
+
+def default_seasons(row: dict, requestable: list) -> list:
+    """The seasons a series row asks for: the universe's own, else all but specials."""
+    if row["seasons"] is None:
+        return [n for n in requestable if n > 0]
+    return [n for n in requestable if n in row["seasons"]]
+
+
+def seasons_label(seasons: list) -> str:
+    """"Season 2", "Seasons 1–3", "Seasons 1, 3 and 5"."""
+    if not seasons:
+        return ""
+    if len(seasons) == 1:
+        return "Season {0}".format(seasons[0])
+    if seasons == list(range(seasons[0], seasons[-1] + 1)):
+        return "Seasons {0}\u2013{1}".format(seasons[0], seasons[-1])
+    return "Seasons {0} and {1}".format(", ".join(str(n) for n in seasons[:-1]), seasons[-1])
+
+
+def request_outcome(results: list) -> Optional[str]:
+    """One sentence for a batch of (kind, ok), or None when all went through."""
+    failed = [kind for kind, ok in results if not ok]
+    if not failed:
+        return None
+    done = len(results) - len(failed)
+    if not done:
+        return "Couldn't request {0}, try again".format(
+            "it" if len(failed) == 1 else "these {0} titles".format(len(failed)))
+    return "Requested {0} of {1}; try the other {2} again".format(
+        done, len(results), len(failed))
+
+
 def strip_key(universe: dict) -> str:
     """What a strip's picture depends on, to name its file without drawing it."""
     next_key = (universe["next_up"] or {}).get("key")

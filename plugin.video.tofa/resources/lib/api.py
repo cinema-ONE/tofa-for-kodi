@@ -839,6 +839,10 @@ class MediaServerClient:
         opens by media id."""
         return self._get(f"/api/v1/collections/custom/{collection_id}")
 
+    def integrations_status(self) -> Any:
+        """`{radarr, sonarr, ...}`: a service is null when none is set up."""
+        return self._get("/api/v1/integrations/status")
+
     def discovery_detail(self, media_type: str, tmdb_id: int) -> Any:
         return self._get(f"/api/v1/discovery/detail/{media_type}/{tmdb_id}")
 
