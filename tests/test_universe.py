@@ -97,6 +97,14 @@ check("gaps scale with the picture: 4px at the skin's 2x",
       first[-4:] == [0, 0, 0, 0] and first[-5] == 255, str(first[-6:]))
 
 
+moved = U.build(dict(SAGA, items=[dict(i) for i in SAGA["items"]]))
+moved["members"][3]["watched"], moved["members"][3]["state"] = True, "watched"
+moved["next_up"] = moved["members"][4]
+check("a strip's name follows what it shows: same state, same key",
+      U.strip_key(u) == U.strip_key(U.build(SAGA)))
+check("...a watched title or a new up next, a new one", U.strip_key(u) != U.strip_key(moved))
+
+
 class FakeClient:
     def __init__(self, details, fail=()):
         self.details, self.fail, self.asked = details, set(fail), []
