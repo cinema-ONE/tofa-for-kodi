@@ -79,13 +79,14 @@ _CATALOG = {
     MARK_UNWATCHED: ("Mark as Unwatched", icon_glyphs.MINUS_CIRCLE, False),
     WATCHLIST_ADD: ("Add to Watchlist", icon_glyphs.BOOKMARK, False),
     WATCHLIST_REMOVE: ("Remove from Watchlist", icon_glyphs.BOOKMARK_OFF, False),
-    REMOVE_FROM_CW: ("Remove from Continue Watching", icon_glyphs.CIRCLE_X, True),
+    # White, as app 2.1.0 draws it: removing a card loses nothing.
+    REMOVE_FROM_CW: ("Remove from Continue Watching", icon_glyphs.CIRCLE_X, False),
     # The Apple TV app's words (2.1.0). A set mark reads as its state, and
     # choosing it clears the mark.
     SEEN_ADD: ("Seen it", icon_glyphs.CIRCLE_CHECK, False),
-    SEEN_REMOVE: ("Seen", icon_glyphs.CIRCLE_CHECK, False),
+    SEEN_REMOVE: ("Seen", icon_glyphs.CIRCLE_CHECK_FILLED, False),
     NOT_INTERESTED_ADD: ("Not interested", icon_glyphs.THUMBS_DOWN, False),
-    NOT_INTERESTED_REMOVE: ("Hidden from suggestions", icon_glyphs.THUMBS_DOWN, False),
+    NOT_INTERESTED_REMOVE: ("Hidden from suggestions", icon_glyphs.THUMBS_DOWN_FILLED, False),
     PLAY_SEASON: ("Play Season", icon_glyphs.PLAY, False),
     MARK_SEASON_WATCHED: ("Mark Season as Watched", icon_glyphs.CIRCLE_CHECK, False),
     MARK_SEASON_UNWATCHED: ("Mark Season as Unwatched", icon_glyphs.MINUS_CIRCLE, False),
@@ -179,7 +180,6 @@ class CardOptionsDialog(kodigui.BaseDialog):
     LIST_ID = 100
 
     def __init__(self, *args, **kwargs):
-        self._resume = bool(kwargs.pop("resume", False))
         self._title = kwargs.pop("title", "")
         self._subtitle = kwargs.pop("subtitle", "")
         self._eyebrow = kwargs.pop("eyebrow", "")
@@ -217,9 +217,8 @@ class CardOptionsDialog(kodigui.BaseDialog):
 
         items = []
         for key in self._keys:
+            # "Play" even part way through: app 2.1.0's menu says Play.
             label, glyph, destructive = _CATALOG[key]
-            if key == PLAY and self._resume:
-                label = "Resume"
             mli = kodigui.ManagedListItem(label=label, data_source=key)
             mli.setProperty("icon_glyph", chr(glyph))
             mli.setProperty("destructive", "1" if destructive else "")
@@ -266,7 +265,6 @@ def show(
     keys: list[str],
     subtitle: str = "",
     eyebrow: str = "",
-    resume: bool = False,
     focus: str | None = None,
 ) -> str | None:
     """Open the panel and return the chosen action key, or None if
@@ -275,8 +273,7 @@ def show(
     if not keys:
         return None
     dialog = CardOptionsDialog.open(
-        title=title, subtitle=subtitle, eyebrow=eyebrow, keys=keys, resume=resume,
-        focus=focus,
+        title=title, subtitle=subtitle, eyebrow=eyebrow, keys=keys, focus=focus,
     )
     picked = getattr(dialog, "picked", None)
     del dialog

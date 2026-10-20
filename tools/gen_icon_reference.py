@@ -125,6 +125,10 @@ WIRED_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("ARROW_UP", "Sort: ascending \u2014 on the picker's active row AND on the\n            Browse Sort pill itself"),
         ("ARROW_DOWN", "Sort: descending \u2014 on the picker's active row AND on the\n            Browse Sort pill itself"),
     ]),
+    ("Set marks (ours, not Lucide)", "resources/lib/windows/cardoptions.py + detail.py", [
+        ("CIRCLE_CHECK_FILLED", "Seen: the mark once set, in the card menu and on the title page (app 2.1.0)"),
+        ("THUMBS_DOWN_FILLED", "Hidden from suggestions: the mark once set (app 2.1.0)"),
+    ]),
     ("Universe page", "resources/skins/Main/1080i/script-tofa-universe.xml", [
         ("ARROW_UP_DOWN", "Story order / Release order pill (app 2.1.0)"),
     ]),
