@@ -93,28 +93,38 @@ grouped = discover.group_shelves({"shelves": [dict(SHELF, group="coming-up", ite
 check("an empty planner view is kept: it says Nothing dated", len(grouped["coming-up"]) == 1)
 
 # The view is the profile's, as the web keeps it (preferences.coming_up_view).
+import threading
 import time
 from resources.lib.windows.main import MainWindow
 
 
 class FakeWindow:
     _cu_saved_view = MainWindow._cu_saved_view
-    _cu_save_view = MainWindow._cu_save_view
+    _save_preference = MainWindow._save_preference
 
     def __init__(self, prefs, default):
         self._preferences, self._cu_default_view = prefs, default
-        self._cu_saving, self._cu_pending_view = False, None
+        self._prefs_lock = threading.Lock()
+        self._prefs_saving, self._prefs_pending = False, {}
 
     def _ensure_preferences(self):
         return self._preferences
 
 
 class FakeClient:
-    def __init__(self):
-        self.saved = []
+    def __init__(self, gate=None):
+        self.saved, self.gate = [], gate
 
     def update_preferences(self, patch):
         self.saved.append(patch)
+        if self.gate and len(self.saved) == 1:
+            self.gate.wait(2)
+
+
+def settle(w):
+    deadline = time.time() + 2
+    while w._prefs_saving and time.time() < deadline:
+        time.sleep(0.01)
 
 
 check("the profile's saved view comes first",
@@ -123,12 +133,23 @@ check("...then the server's default for the page",
       FakeWindow({}, "movies")._cu_saved_view() == "movies")
 check("...and TV Shows when neither says", FakeWindow({"coming_up_view": "x"}, None)._cu_saved_view() == "shows")
 w, client = FakeWindow({}, "shows"), FakeClient()
-w._cu_save_view(client, "movies")
-deadline = time.time() + 2
-while w._cu_saving and time.time() < deadline:
-    time.sleep(0.01)
+w._save_preference(client, "coming_up_view", "movies")
+settle(w)
 check("a switch is saved on the profile", client.saved == [{"coming_up_view": "movies"}], str(client.saved))
 check("...and read back without asking the server again", w._cu_saved_view() == "movies")
+gate = threading.Event()
+w, client = FakeWindow({}, "shows"), FakeClient(gate)
+w._save_preference(client, "coming_up_view", "movies")
+time.sleep(0.05)
+w._save_preference(client, "discover_filters", {"hide_watched": True})
+w._save_preference(client, "discover_filters", {"hide_watched": False})
+w._save_preference(client, "coming_up_view", "shows")
+gate.set()
+settle(w)
+check("changes made during a save go in ONE more write, the last value per key",
+      client.saved == [{"coming_up_view": "movies"},
+                       {"discover_filters": {"hide_watched": False}, "coming_up_view": "shows"}],
+      str(client.saved))
 
 # Films: Kodi moves inside a day's grid; at its edge focus goes on to the next day.
 class Panel:

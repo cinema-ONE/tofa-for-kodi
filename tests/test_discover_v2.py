@@ -38,6 +38,15 @@ check("ranked and tiles are the server's flags",
 check("the Genres wall: one tile per lane with a slug",
       discover.lane_tiles(page) == [{"key": "horror", "title": "Horror", "artwork": "h.jpg",
                                      "target": "lane"}])
+keys = [key for key, _label in home_rows.DISCOVER_FILTERS]
+check("no saved filters: all off", discover.saved_filters({}, keys) == dict.fromkeys(keys, False))
+check("saved filters: only a real true is on, as the web reads them",
+      discover.saved_filters({"discover_filters": {"hide_watched": True, "hide_cinema": "true",
+                                                   "only_in_library": 1}}, keys)
+      == {"hide_watched": True, "hide_cinema": False, "hide_upcoming": False,
+          "only_in_library": False})
+check("a saved value that is not an object reads as all off",
+      discover.saved_filters({"discover_filters": "hide_watched"}, keys) == dict.fromkeys(keys, False))
 
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))
