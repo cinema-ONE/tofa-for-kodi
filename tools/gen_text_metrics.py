@@ -47,6 +47,7 @@ _TABLES = [
     ("_ADVANCE", "tofa_font_metadata", "tofa_inter_tight_regular.ttf", 23),
     ("_ADVANCE_HERO_TITLE", "tofa_font_hero_title", "tofa_inter_tight_bold.ttf", 61),
     ("_ADVANCE_PLATE", "tofa_font_account", "tofa_inter_tight_semibold.ttf", 20),
+    ("_ADVANCE_CARD_TITLE", "tofa_font_card_title", "tofa_inter_tight_semibold.ttf", 22),
 ]
 
 
@@ -221,6 +222,12 @@ def _render() -> str:
         '    if words:',
         '        out.append(" ".join(words))',
         '    return out',
+        '',
+        '',
+        'def card_title_width(text: str) -> float:',
+        '    """Width of `text` in tofa_font_card_title (inter_tight_semibold @ 22)."""',
+        '    return sum(',
+        '        _ADVANCE_CARD_TITLE.get(c, _ADVANCE_CARD_TITLE_FALLBACK) for c in text)',
         '',
     ]
     return "\n".join(body)

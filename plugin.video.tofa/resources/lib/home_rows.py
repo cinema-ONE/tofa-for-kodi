@@ -297,50 +297,16 @@ DISCOVER_ROW_LIST_IDS: tuple[int, ...] = tuple(gid + 10 for gid in DISCOVER_ROW_
 
 
 # ------------------------------------------------------------ Discover tabs --
-# GET /discovery/page returns all 32 shelves in one flat list, each tagged with
-# a `kind`. The real Apple TV app groups them under four pills rather than
-# scrolling all 32, and the grouping is purely by kind -- live server counts
-# 2026-07-31: now 8, availability 3, standard 4, decade 6, genre 7, house 4.
-#
-# This mapping is the design spec's (TV-DESIGN.md 7.9.2, dated 2026-07-31), not
-# one inferred from screenshots. It differs from what our reference captures
-# show in two ways, both resolved in the spec's favour on Adrian's call --
-# the spec is newer than the shipped tvOS build we captured:
-#
-#   * `house` files under Acclaimed, not Now. (Captures showed Reality TV, a
-#     `house` shelf, sitting in Now directly above the `availability` block.)
-#   * An unknown kind falls into ACCLAIMED, not Now. The spec sweeps any
-#     kind it does not know into that tab and tells us never to drop a
-#     shelf -- the important half is that it must never vanish; which tab
-#     catches it is the arbitrary part.
-#
-# Dropping `house` from Now also retires DISCOVER_SHELF_ORDER_LAST, which
-# existed solely to sort `top-reality-tv` to the end of Now's `house` block so
-# it landed adjacent to Coming Soon the way the capture showed. With `house`
-# gone from the tab entirely there is nothing left for that hack to fix, and
-# shelves now keep the server's order within a kind, everywhere, with no
-# exceptions.
-#
-# Now stays the largest tab (8 + 3 = 11); Acclaimed is 8 plus whatever unknown
-# kinds arrive. MAX_DISCOVER_ROWS keeps its headroom rather than shrinking to
-# fit today's counts -- see its own comment.
-DISCOVER_TAB_KINDS: dict[str, tuple[str, ...]] = {
-    "now": ("now", "availability"),
-    "acclaimed": ("standard", "house"),
-    "genres": ("genre",),
-    "decades": ("decade",),
-}
-# Where a shelf goes when its `kind` matches nothing above. Deliberately NOT
-# the same constant as the tab that opens first (that's DISCOVER_DEFAULT_TAB).
-DISCOVER_UNKNOWN_KIND_TAB = "acclaimed"
-DISCOVER_DEFAULT_TAB = "now"
-
-# (tab key, label), in screen order.
+# Discover's tabs, as the Apple TV app 2.1.0 has them. The server's layout-2
+# page names all but Universes, which tofa's apps add before Genres.
+DISCOVER_DEFAULT_TAB = "for-you"
 DISCOVER_TABS: tuple[tuple[str, str], ...] = (
-    ("now", "Now"),
-    ("acclaimed", "Acclaimed"),
+    ("for-you", "For You"),
+    ("trending", "Trending"),
+    ("coming-up", "Coming Up"),
+    ("best-of", "Best Of"),
+    ("universes", "Universes"),
     ("genres", "Genres"),
-    ("decades", "Decades"),
 )
 # The sub-tabs are one list (app 2.0.0's text tabs), clear of Browse
 # (6000-6200), Search (6700-6860) and the Discover rows (7000-7310).

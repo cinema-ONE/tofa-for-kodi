@@ -351,8 +351,8 @@ HOME_ROWS_H_NOHERO = SCREEN_H - HOME_ROWS_Y_NOHERO
 # Sub-tabs are text tabs on one list, five 384px slots (the fifth is Filters).
 DISCOVER_SUBTAB_SLOT = 384
 #: Centre of each sub-tab's ink, and its ink width in tofa_font_caption.
-DISCOVER_SUBTAB_CENTRES = (124, 262, 421, 570)
-DISCOVER_SUBTAB_INK_W = (52, 118, 81, 100)
+DISCOVER_SUBTAB_CENTRES = (143, 292, 464, 627, 783, 937)      # app 2.1.0, measured
+DISCOVER_SUBTAB_INK_W = (91, 106, 134, 88, 120, 85)
 #: Cap top 150 on the capture.
 DISCOVER_SUBTAB_LABEL_Y = 139
 DISCOVER_SUBTAB_LABEL_H = 34
@@ -360,7 +360,56 @@ DISCOVER_SUBTAB_UNDERLINE_Y = 187
 DISCOVER_SUBTAB_DOT_Y = 186
 #: A 1px rule under the sub-tabs, white at ~7%.
 DISCOVER_DIVIDER_Y = 221
+
+# App 2.1.0's Discover beyond rows (2026-10-19 captures). Picture tiles
+# (Genres to Try, By Decade, the Genres wall) are 16:9 with the name under;
+# Universes is a three-across grid of wide cards; a genre or decade opens
+# a page titled where the sub-tabs were.
+DISCOVER_TILE_W, DISCOVER_TILE_H, DISCOVER_TILE_PITCH = 320, 180, 352
+DISCOVER_TILE_LABEL_DY, DISCOVER_TILE_LABEL_H = 208, 32    # from the tile's top
+DISCOVER_WALL_Y, DISCOVER_WALL_PITCH_Y = 264, 268
+DISCOVER_WALL_COLS = 5
+DISCOVER_UNI_W, DISCOVER_UNI_H = 550, 308
+DISCOVER_UNI_PITCH_X, DISCOVER_UNI_PITCH_Y = 589, 454
+DISCOVER_UNI_Y = 252
+DISCOVER_UNI_NAME_DY, DISCOVER_UNI_NAME_H = 342, 36        # from the card's top
+DISCOVER_UNI_STRIP_DY, DISCOVER_UNI_STRIP_H = 361, 15      # the up-next dot, then the strip
+DISCOVER_UNI_LINE_DY, DISCOVER_UNI_LINE_H = 398, 28
+DISCOVER_PAGE_TITLE_Y, DISCOVER_PAGE_TITLE_H = 136, 84
+DISCOVER_FOLLOW_X, DISCOVER_FOLLOW_Y = 1611, 149
+DISCOVER_FOLLOW_W, DISCOVER_FOLLOW_H = 212, 66
 DISCOVER_DIVIDER_W = 1823 - DISCOVER_LEFT
+# Coming Up's planner (app 2.1.0 captures, 2026-10-19): the page at rest,
+# under the sub-tabs. Focus in the pills or the days lifts it by CU_LIFT.
+CU_LIFT = 120
+CU_PILLS_Y, CU_PILLS_H = 242, 57             # the focused capsule; cap top 260
+CU_SHOWS_X, CU_SHOWS_W = 73, 196             # "TV Shows" ink at 96-246
+CU_MOVIES_X, CU_MOVIES_W = 276, 158          # "Movies" ink at 301-405
+CU_PILL_PAD = 23
+CU_DOT_X = 261
+CU_TURN_Y, CU_TURN_H = 253, 48               # "Next seven days >", cap top 269
+CU_NEXT_X, CU_NEXT_W = 1600, 236
+CU_PREV_X, CU_PREV_W = 1546, 48
+CU_LOGO_X, CU_LOGO_Y, CU_LOGO_W, CU_LOGO_H = 96, 310, 360, 100
+CU_META_Y, CU_META_H = 426, 34               # cap 433-451
+CU_META_TEXT_X = 132
+CU_GENRES_Y, CU_GENRES_H = 467, 30
+CU_OVERVIEW_Y, CU_OVERVIEW_W, CU_OVERVIEW_H = 504, 780, 30
+CU_OVERVIEW_PITCH = 32                       # two lines at most, as the app
+CU_ART_X, CU_ART_Y, CU_ART_W, CU_ART_H = 614, 120, 1306, 735
+CU_DAY_PITCH = 249.25
+CU_DAY_W = 233
+CU_HEAD_Y, CU_HEAD_H = 586, 32               # "Mon 19", cap 593-610
+CU_REL_Y, CU_REL_H = 620, 24                 # "Today", cap 625-638
+CU_RULE_Y = 653
+CU_ROWS_Y = 664                              # the first thumb's top
+CU_ROW_PAD = 9                               # the focus plate around a row
+CU_THUMB_W, CU_THUMB_H = 46, 68
+CU_TITLE_DX = 59
+CU_TITLE_LINE = 27.5
+#: The app breaks titles narrower than the column: every capture fits 141-164.
+CU_TITLE_WRAP = 152
+CU_SLOTS = 15                                # 14 entries and "N more"
 DISCOVER_DIVIDER = "0x12FFFFFF"
 #: Row 0's header label top (ink at 261) and the row pitch, 586 as on the app.
 DISCOVER_ROWS_Y = 247

@@ -396,6 +396,15 @@ def gen_person_glow(photo: int) -> None:
 TOP_RESULT_W, TOP_RESULT_H = 220, 330
 
 
+def gen_mask(w: int, h: int, radius: int, name: str) -> None:
+    """A bare rounded mask of w x h, for art too small for a focus set."""
+    sz = (w * S, h * S)
+    im = Image.new("RGBA", sz, (0, 0, 0, 0))
+    ImageDraw.Draw(im).rounded_rectangle(
+        [0, 0, sz[0] - 1, sz[1] - 1], radius=radius * S, fill="white")
+    _save(im, name, (w, h))
+
+
 def gen_card_set(w: int, h: int, prefix: str) -> None:
     """Mask, focus border and focus glow for a bare poster of w x h."""
     sz = (w * S, h * S)
@@ -708,6 +717,9 @@ def main() -> None:
     gen_card_set(GRID_POSTER_W, GRID_POSTER_H, "grid-poster")
     gen_browse_tile_assets()
     gen_card_set(SAGA_CARD_W, SAGA_CARD_H, "saga-card")
+    gen_card_set(320, 180, "discover-tile")         # Discover's genre and decade tiles
+    gen_card_set(550, 308, "discover-universe")     # Discover's Universes grid
+    gen_mask(46, 68, 7, "cu-thumb-mask.png")         # Coming Up's day rows
     gen_avatar_shadow()
     gen_collection_assets()
     gen_alpha_disc_rim()

@@ -693,7 +693,8 @@ class MediaServerClient:
     # Verified live against 0.9.25 / api_version 17. Not described by the
     # published API docs, which still ship the 0.9.21 endpoint list.
 
-    def discovery_page(self, filters: Optional[dict] = None) -> Any:
+    def discovery_page(self, filters: Optional[dict] = None, layout: Optional[int] = None,
+                       coming_up: Optional[str] = None) -> Any:
         """`{heroes: [...], shelves: [...]}` -- the whole Discover shell in
         one call. 32 shelves, each `{key, kind, title, subtitle, list_type,
         items, missing_count, generated_at}`.
@@ -706,9 +707,27 @@ class MediaServerClient:
         `heroes` is legacy: the apps dropped the spotlight in 0.9.25 and
         open straight onto the rows. `filters` maps Discover's four flags
         (hide_watched, hide_cinema, hide_upcoming, only_in_library) to bools;
-        only the true ones are sent."""
+        only the true ones are sent.
+
+        `layout=2` (server 0.12.0) is the Apple TV app's Discover: `groups`
+        name the tabs, every shelf carries its `group`, `lanes` are the
+        genres; `coming_up="spotlight"` returns Coming Up as dated shelves."""
         params = {k: "true" for k, v in (filters or {}).items() if v}
+        if layout:
+            params["layout"] = str(layout)
+        if coming_up:
+            params["coming_up"] = coming_up
         return self._get("/api/v1/discovery/page", params=params or None)
+
+    def discovery_lane(self, slug: str, filters: Optional[dict] = None) -> Any:
+        """`{lane, shelves}`: one genre's page (Discover > Genres, app 2.1.0)."""
+        params = {k: "true" for k, v in (filters or {}).items() if v}
+        return self._get(f"/api/v1/discovery/lanes/{slug}", params=params or None)
+
+    def follow_lane(self, slug: str, on: bool) -> Any:
+        """Follow a genre (its shelves join For You) or stop following it."""
+        path = f"/api/v1/discovery/lanes/{slug}/follow"
+        return self._put(path) if on else self._delete(path)
 
     # Shelves that accept the `genre` axis. NOT derivable from `kind`:
     # new-noteworthy-* is kind=now yet rejects genre, while upcoming-movies

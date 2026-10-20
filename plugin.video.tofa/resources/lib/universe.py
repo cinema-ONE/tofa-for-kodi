@@ -236,6 +236,15 @@ def card_line(universe: dict) -> str:
     return line
 
 
+def grid_line(universe: dict) -> str:
+    """"58 of 77 in your library · 33 watched" under a Universes-tab card,
+    counted out of every title as the Apple TV app (2.1.0) counts them."""
+    line = "{0} of {1} in your library".format(universe["owned_count"], len(universe["members"]))
+    if universe["watched_count"]:
+        line += " · {0} watched".format(universe["watched_count"])
+    return line
+
+
 def summary(universe: dict) -> str:
     """"77 titles in story order · 58 in your library · 33 watched", as the
     Apple TV app (2.1.0) heads the page; it leaves out the web's "· 2 coming"."""
@@ -272,14 +281,8 @@ def strip_key(universe: dict) -> str:
                     for m in universe["members"])
 
 
-def strip_png(universe: dict, width: int, height: int, edge: bool = True,
-              radius: int = 0, up_next: bool = False) -> bytes:
-    """The segmented strip as a PNG: one segment per member, shaded by state.
-
-    Kodi has no way to draw a variable number of shapes in a list item, so
-    the strip is a picture. `edge` is the card-bottom variant, whose up-next
-    segment is left out to be drawn on its own in the accent: `up_next`
-    gives that segment alone, in white. `radius` rounds the card's corners."""
+def _strip_row(universe: dict, width: int, edge: bool, up_next: bool) -> tuple:
+    """One line of the strip as RGBA bytes, and the up-next segment's centre x."""
     members = universe["members"]
     count = max(1, len(members))
     gap = max(1, width // 278)          # 2px on a 556px card, as the app draws it
@@ -288,7 +291,7 @@ def strip_png(universe: dict, width: int, height: int, edge: bool = True,
     next_key = (universe["next_up"] or {}).get("key")
     fills = {"watched": (255, 255, 255, 255), "owned": (255, 255, 255, 92),
              "missing": (255, 255, 255, 28), "upcoming": (0, 0, 0, 0)}
-    row = bytearray()
+    row, centre = bytearray(), None
     for x in range(width):
         index = min(count - 1, x * count // width)
         start = index * width // count
@@ -304,6 +307,20 @@ def strip_png(universe: dict, width: int, height: int, edge: bool = True,
         else:
             colour = fills[member["state"]]
         row.extend(colour)
+        if member is not None and member["key"] == next_key and centre is None:
+            centre = (start + end - gap) / 2
+    return row, centre
+
+
+def strip_png(universe: dict, width: int, height: int, edge: bool = True,
+              radius: int = 0, up_next: bool = False) -> bytes:
+    """The segmented strip as a PNG: one segment per member, shaded by state.
+
+    Kodi has no way to draw a variable number of shapes in a list item, so
+    the strip is a picture. `edge` is the card-bottom variant, whose up-next
+    segment is left out to be drawn on its own in the accent: `up_next`
+    gives that segment alone, in white. `radius` rounds the card's corners."""
+    row, _centre = _strip_row(universe, width, edge, up_next)
     raw = bytearray()
     for y in range(height):
         line = bytearray(row)
@@ -317,6 +334,28 @@ def strip_png(universe: dict, width: int, height: int, edge: bool = True,
                     alpha = 4 * x + 3
                     line[alpha] = int(line[alpha] * max(0.0, min(1.0, radius - dist + 0.5)))
         raw.append(0)
+        raw.extend(line)
+    return _png(width, height, bytes(raw))
+
+
+def dot_strip_png(universe: dict, width: int, strip_h: int, dot: int, gap: int) -> bytes:
+    """The Universes tab's strip (app 2.1.0): every member shaded by state,
+    and a white dot above the one up next."""
+    row, centre = _strip_row(universe, width, edge=False, up_next=False)
+    height = dot + gap + strip_h
+    raw = bytearray()
+    radius = dot / 2
+    for y in range(height):
+        raw.append(0)
+        if y >= dot + gap:
+            raw.extend(row)
+            continue
+        line = bytearray(4 * width)
+        if centre is not None and y < dot:
+            for x in range(max(0, int(centre - radius) - 1), min(width, int(centre + radius) + 2)):
+                cover = max(0.0, min(1.0, radius - math.hypot(x + 0.5 - centre, y + 0.5 - radius) + 0.5))
+                if cover:
+                    line[4 * x:4 * x + 4] = bytes((255, 255, 255, int(255 * cover)))
         raw.extend(line)
     return _png(width, height, bytes(raw))
 
