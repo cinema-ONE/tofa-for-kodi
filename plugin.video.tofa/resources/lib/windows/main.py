@@ -2327,15 +2327,19 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def _saga_strip_files(self, u: dict) -> tuple:
         """(strip, up-next segment) PNG paths for a universe, named by their
-        bytes so Kodi's texture cache never shows a stale one."""
+        content so Kodi's texture cache never shows a stale one."""
         width, height, radius = self.SAGA_STRIP_PX
         folder = self._saga_dir()
         os.makedirs(folder, exist_ok=True)
         paths = []
         for up_next in (False, True):
-            data = universe.strip_png(u, width, height, radius=radius, up_next=up_next)
-            path = os.path.join(folder, "strip-{0}.png".format(hashlib.sha1(data).hexdigest()[:16]))
+            # Named by what it shows, so an unchanged strip is never drawn again.
+            key = "{0}x{1}r{2}{3}:{4}".format(width, height, radius, "n" * up_next,
+                                              universe.strip_key(u))
+            path = os.path.join(folder, "strip-{0}.png".format(
+                hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]))
             if not os.path.exists(path):
+                data = universe.strip_png(u, width, height, radius=radius, up_next=up_next)
                 with open(path + ".tmp", "wb") as fh:
                     fh.write(data)
                 os.replace(path + ".tmp", path)

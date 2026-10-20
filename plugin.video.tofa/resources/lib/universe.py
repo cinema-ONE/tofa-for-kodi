@@ -265,6 +265,13 @@ def member_status(member: dict, next_key: Optional[str]) -> str:
     return "Requested" if member["requested"] else "Not in your library"
 
 
+def strip_key(universe: dict) -> str:
+    """What a strip's picture depends on, to name its file without drawing it."""
+    next_key = (universe["next_up"] or {}).get("key")
+    return "|".join("{0}{1}".format(m["state"][0], "*" if m["key"] == next_key else "")
+                    for m in universe["members"])
+
+
 def strip_png(universe: dict, width: int, height: int, edge: bool = True,
               radius: int = 0, up_next: bool = False) -> bytes:
     """The segmented strip as a PNG: one segment per member, shaded by state.
@@ -281,7 +288,7 @@ def strip_png(universe: dict, width: int, height: int, edge: bool = True,
     next_key = (universe["next_up"] or {}).get("key")
     fills = {"watched": (255, 255, 255, 255), "owned": (255, 255, 255, 92),
              "missing": (255, 255, 255, 28), "upcoming": (0, 0, 0, 0)}
-    row = []
+    row = bytearray()
     for x in range(width):
         index = min(count - 1, x * count // width)
         start = index * width // count
@@ -296,18 +303,21 @@ def strip_png(universe: dict, width: int, height: int, edge: bool = True,
             colour = (255, 255, 255, 56) if x in (start, end - 1 - gap) else (0, 0, 0, 0)
         else:
             colour = fills[member["state"]]
-        row.append(colour)
+        row.extend(colour)
     raw = bytearray()
     for y in range(height):
-        raw.append(0)
+        line = bytearray(row)
         rise = height - y - 0.5          # this line's height above the card's bottom edge
-        for x, (r, g, b, a) in enumerate(row):
-            if radius and a and rise < radius:
+        if radius and rise < radius:
+            # Only the ends can fall outside the card's rounded corners.
+            for x in list(range(min(radius, width))) + list(range(max(0, width - radius), width)):
                 across = min(x + 0.5, width - x - 0.5)
                 if across < radius:
                     dist = math.hypot(radius - across, radius - rise)
-                    a = int(a * max(0.0, min(1.0, radius - dist + 0.5)))
-            raw.extend((r, g, b, a))
+                    alpha = 4 * x + 3
+                    line[alpha] = int(line[alpha] * max(0.0, min(1.0, radius - dist + 0.5)))
+        raw.append(0)
+        raw.extend(line)
     return _png(width, height, bytes(raw))
 
 
