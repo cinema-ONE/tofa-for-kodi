@@ -427,9 +427,11 @@ def test_discover_tabs(run: Run):
               b.label("System.CurrentControlId") in ("7400", "7401"), b.label("System.CurrentControlId"))
     b.key("Down", pause=1.2)
     row = b.label("System.CurrentControlId")
-    run.check("Coming Up: then a day's first row, and the hero follows it",
-              row.isdigit() and 7700 <= int(row) < 7812 and b.label("Window.Property(cu_title)"),
-              row + " " + b.label("Window.Property(cu_title)"))
+    # A TV row, or on Movies a film's poster; the hero names it either way.
+    run.check("Coming Up: then a day's first title, and the hero follows it",
+              row.isdigit() and (7700 <= int(row) < 7812 or 7440 <= int(row) < 7447)
+              and b.label("Window.Property(cu_title2)"),
+              row + " " + b.label("Window.Property(cu_title2)"))
     run.shot("05c-coming-up-row")
     b.key("Up", pause=1.0)
     run.check("Coming Up: Up from the first row returns to the pills",

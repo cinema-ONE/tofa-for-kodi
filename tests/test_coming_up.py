@@ -130,6 +130,58 @@ while w._cu_saving and time.time() < deadline:
 check("a switch is saved on the profile", client.saved == [{"coming_up_view": "movies"}], str(client.saved))
 check("...and read back without asking the server again", w._cu_saved_view() == "movies")
 
+# Films: Kodi moves inside a day's grid; at its edge focus goes on to the next day.
+class Panel:
+    def __init__(self, n, pos=0):
+        self.n, self.pos = n, pos
+
+    def getSelectedPos(self):
+        return self.pos
+
+    def selectItem(self, i):
+        self.pos = i
+
+
+def film_page(counts, start="2026-10-19"):
+    return {"days": [{"iso": start, "entries": [{"key": "%d-%d" % (d, i)} for i in range(n)]}
+                     for d, n in enumerate(counts)], "count": sum(counts)}
+
+
+class Grid:
+    _cu_poster_moved = MainWindow._cu_poster_moved
+
+    def __init__(self, pages):
+        self._cu = {"pages": pages, "page": 0, "last": len(pages) - 1, "stop": None}
+        self._cu_panels = [Panel(len(d["entries"])) for d in pages[0]["days"]]
+        self.focused, self.shown = None, []
+
+    def _cu_focus(self, stop):
+        self.focused = stop
+
+    def _cu_show(self, entry):
+        self.shown.append(entry)
+
+    def _cu_entry(self, stop):
+        return stop
+
+
+g = Grid([film_page([2, 0, 1, 8, 0, 0, 0]), film_page([3, 2, 0, 0, 0, 0, 0])])
+g._cu_panels[0].pos = 1
+g._cu_poster_moved(0, "right", stuck=True)
+check("Right off a day's row skips the empty day to the next with films", g.focused == (0, 2, 0), str(g.focused))
+g._cu_panels[3].pos = 5
+g._cu_poster_moved(3, "right", stuck=True)
+check("Right off the week's last films turns the page, on that row's first film (or the last row's)",
+      g.focused == (1, 0, 0), str(g.focused))
+g._cu_panels[3].pos = 3
+g._cu_poster_moved(3, "left", stuck=True)
+check("Left lands on the end of the same row of the day before", g.focused == (0, 2, 0), str(g.focused))
+g._cu_panels[3].pos = 4
+g.focused = None
+g._cu_poster_moved(3, "right", stuck=False)
+check("a move Kodi made inside the grid only follows with the hero",
+      g.focused is None and g._cu["stop"] == (0, 3, 4), str(g._cu["stop"]))
+
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))
 raise SystemExit(1 if failed else 0)

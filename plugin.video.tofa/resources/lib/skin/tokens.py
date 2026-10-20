@@ -390,12 +390,12 @@ CU_PILL_PAD = 23
 CU_DOT_X = 261
 CU_TURN_Y, CU_TURN_H = 253, 48               # "Next seven days >", cap top 269
 CU_NEXT_X, CU_NEXT_W = 1600, 236
-CU_PREV_X, CU_PREV_W = 1546, 48
+CU_PREV_X, CU_PREV_W = 1586, 44            # a bare chevron left of the label
 CU_LOGO_X, CU_LOGO_Y, CU_LOGO_W, CU_LOGO_H = 96, 310, 360, 100
 CU_META_Y, CU_META_H = 426, 34               # cap 433-451
 CU_META_TEXT_X = 132
 CU_GENRES_Y, CU_GENRES_H = 467, 30
-CU_OVERVIEW_Y, CU_OVERVIEW_W, CU_OVERVIEW_H = 504, 780, 30
+CU_OVERVIEW_Y, CU_OVERVIEW_W, CU_OVERVIEW_H = 504, 840, 30   # the app wraps at 806-827px of text
 CU_OVERVIEW_PITCH = 32                       # two lines at most, as the app
 CU_ART_X, CU_ART_Y, CU_ART_W, CU_ART_H = 614, 120, 1306, 735
 CU_DAY_PITCH = 249.25
@@ -411,6 +411,12 @@ CU_TITLE_LINE = 27.5
 #: The app breaks titles narrower than the column: every capture fits 141-164.
 CU_TITLE_WRAP = 152
 CU_SLOTS = 15                                # 14 entries and "N more"
+# No logo: the title in bold 40, two lines at most, bottom-aligned in the logo box.
+CU_TITLE_W, CU_TITLE_Y1, CU_TITLE_Y2, CU_TITLE_H = 470, 316, 365, 52
+# Films are posters, three across a day; one film alone shows its title and venue under it.
+CU_POSTER_W, CU_POSTER_H, CU_POSTER_PITCH_X, CU_POSTER_PITCH_Y = 71, 107, 82, 117
+CU_POSTER_PAD = 12                           # the panel's margin for the ring and glow
+CU_SOLO_TITLE_DY, CU_SOLO_META_DY = 114, 149   # from the poster's top: caps at +123, +154
 DISCOVER_DIVIDER = "0x12FFFFFF"
 #: Row 0's header label top (ink at 261) and the row pitch, 586 as on the app.
 DISCOVER_ROWS_Y = 247
@@ -1392,6 +1398,7 @@ FONT_BROWSE_SECTION = "tofa_font_settings_title"   # bold 38, as Settings
 FONT_CARD_TITLE = "tofa_font_card_title"
 FONT_CARD_META = "tofa_font_card_meta"
 FONT_DAY_HEADING = "tofa_font_day_heading"
+FONT_CU_TITLE = "tofa_font_cu_title"
 FONT_FEATURE_TITLE = "tofa_font_feature_title"
 FONT_PERSON_NAME = "tofa_font_person_name"
 FONT_PERSON_PANEL = "tofa_font_person_panel"

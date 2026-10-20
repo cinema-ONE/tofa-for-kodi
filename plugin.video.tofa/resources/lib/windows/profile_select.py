@@ -290,7 +290,9 @@ class ProfileDialog(kodigui.BaseDialog):
             return
         try:
             self._rows[row].setSelectedItemByPos(col)
-            self.setFocusId(self.ROW_IDS[row])
+            # Waited for: the row shows only once Kodi re-reads `state`, and a
+            # focus aimed at it before then is dropped (seen on a cold start).
+            self.waitAndSetFocus(self.ROW_IDS[row])
         except Exception:  # noqa: BLE001 - never block the picker
             log.debug("profile: could not focus %d" % index)
 
