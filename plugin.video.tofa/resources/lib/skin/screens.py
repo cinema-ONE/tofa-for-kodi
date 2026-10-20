@@ -31,6 +31,7 @@ def _load(name: str) -> str:
 
 #: Discover's grid panels and its genre page's Follow pill (app 2.1.0).
 DISCOVER_UNIVERSES_ID, DISCOVER_WALL_ID, DISCOVER_FOLLOW_ID = 6600, 6610, 6620
+DISCOVER_FOLLOW_GROUP_ID = 6621
 
 
 def _discover_page_header() -> str:
@@ -50,7 +51,7 @@ def _discover_page_header() -> str:
                 <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                 <label>$INFO[Window.Property(discover_page)]</label>
             </control>
-            <control type="group">
+            <control type="group" id="{DISCOVER_FOLLOW_GROUP_ID}">
                 <visible>{page} + {follow}</visible>
                 <posx>{T.DISCOVER_FOLLOW_X}</posx>
                 <posy>{T.DISCOVER_FOLLOW_Y}</posy>
@@ -64,7 +65,8 @@ def _discover_page_header() -> str:
                     <font>{T.FONT_CAPTION}</font>
                     <textcolor>$INFO[Window.Property(text_primary)]</textcolor>
                     <focusedcolor>$INFO[Window.Property(accent_color)]</focusedcolor>
-                    <textoffsetx>{pad + T.UNI_PILL_ICON_W + T.UNI_PILL_ICON_GAP - 12}</textoffsetx>
+                    <textoffsetx>{T.DISCOVER_FOLLOW_TEXT_PAD}</textoffsetx>
+                    <align>right</align>
                     <aligny>center</aligny>
                     <texturefocus border="{T.DISCOVER_FOLLOW_H // 2}" colordiffuse="$INFO[Window.Property(accent_color)]">universe-pill-focus.png</texturefocus>
                     <texturenofocus border="{T.DISCOVER_FOLLOW_H // 2}">universe-pill.png</texturenofocus>
@@ -216,7 +218,7 @@ def _cu_day(day: int) -> str:
                 <width>{T.CU_DAY_W}</width>
                 <height>{T.CU_HEAD_H}</height>
                 <aligny>center</aligny>
-                <font>{T.FONT_ROW_TITLE}</font>
+                <font>{T.FONT_DAY_HEADING}</font>
                 <textcolor>$INFO[Window.Property({p}_head_color)]</textcolor>
                 <label>$INFO[Window.Property({p}_head)]</label>
             </control>

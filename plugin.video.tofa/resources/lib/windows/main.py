@@ -738,6 +738,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # a plain sleep on the settle thread, which would hold that worker
         # and delay the NEXT focus change by the length of the dip.
         self._hero_swap = kodigui.SettleTimer(T.HERO_TEXT_DISSOLVE_MS, "tofa-hero-swap")
+        # Here, not in onInit: onClosed stops it even when Kodi refused the window.
+        self._discover_tab_settle = kodigui.SettleTimer(T.FOCUS_SETTLE_MS, "tofa-discover-tab")
         self._settle_ms_from_prefs = False
 
         # ---- home section state ----
@@ -1150,7 +1152,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._discover_universes: list = []
         self._discover_page_state: dict | None = None   # an open genre/decade page
         self._cu: dict | None = None                     # Coming Up's planner
-        self._cu_view = "shows"
+        self._cu_view: str | None = None    # None until the profile's choice is read
+        self._cu_default_view = None
+        self._cu_saving, self._cu_pending_view = False, None
         self._cu_seen = None        # focus as the last key left it: Kodi moves first
         self._cu_props: dict = {}   # what the planner's properties hold now
         self._cu_sizes: dict = {}
@@ -1173,8 +1177,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._discover_filter_list = kodigui.ManagedControlList(
             self, home_rows.DISCOVER_FILTER_LIST_ID, len(home_rows.DISCOVER_FILTERS) + 1)
         self._discover_mark_current_tab()
-        self._discover_tab_settle = kodigui.SettleTimer(
-            T.FOCUS_SETTLE_MS, "tofa-discover-tab")
         self._section_down_targets["discover"] = home_rows.DISCOVER_TAB_STRIP_ID
 
         # Search section's own control construction (cheap, no HTTP --
@@ -5204,6 +5206,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             page = {}
         self._discover_shelves_by_tab = discover.group_shelves(page, home_rows.DISCOVER_TABS)
         self._discover_lanes = discover.lane_tiles(page)
+        self._cu_default_view = page.get("coming_up_view")
         if self._discover_page_state:
             self._discover_show_page()
         else:
@@ -5230,7 +5233,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._discover_set_view("genres", self.DISCOVER_WALL_ID)
         elif tab == "coming-up" and self._cu_shelves():
             self._discover_fill_rows(client, [])
-            self._cu_open(client, self._cu_view)
+            self._cu_open(client, self._cu_view or self._cu_saved_view())
             self._discover_set_view("coming-up", self._cu_pill_id())
         else:
             shelves = self._discover_shelves_by_tab.get(tab, [])
@@ -5319,6 +5322,36 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             if shelf.get("form") == "spotlight":
                 found["movies" if "movie" in (shelf.get("key") or "") else "shows"] = shelf
         return found
+
+    def _cu_saved_view(self) -> str:
+        """The profile's last view, else the server's default, as the web reads them."""
+        for view in ((self._ensure_preferences() or {}).get("coming_up_view"),
+                     self._cu_default_view):
+            if view in ("shows", "movies"):
+                return view
+        return "shows"
+
+    def _cu_save_view(self, client: MediaServerClient, view: str) -> None:
+        """Remember the view on the profile, off the action thread; the last pick wins."""
+        if self._preferences is not None:
+            self._preferences["coming_up_view"] = view
+        self._cu_pending_view = view
+        if self._cu_saving:
+            return
+        self._cu_saving = True
+
+        def run():
+            try:
+                while self._cu_pending_view:
+                    pick, self._cu_pending_view = self._cu_pending_view, None
+                    try:
+                        client.update_preferences({"coming_up_view": pick})
+                    except http.ApiError as exc:
+                        log.warning("coming up: view not saved: {0}".format(exc))
+            finally:
+                self._cu_saving = False
+
+        threading.Thread(target=run, name="tofa-cu-view", daemon=True).start()
 
     def _cu_pill_id(self) -> int:
         return self.CU_MOVIES_ID if self._cu_view == "movies" else self.CU_SHOWS_ID
@@ -5516,6 +5549,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 client = self._get_client()
                 if view != self._cu_view and client:
                     self._cu_open(client, view)
+                    self._cu_save_view(client, view)
             return True
         if focus in (self.CU_PREV_ID, self.CU_NEXT_ID) and direction == "down" and not arrived:
             self._cu_enter()
@@ -5621,9 +5655,21 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if followed is None:
             self.setProperty("discover_follow_label", "")
             return
-        self.setProperty("discover_follow_label", "Following" if followed else "Follow")
+        label = "Following" if followed else "Follow"
+        self.setProperty("discover_follow_label", label)
         self.setProperty("discover_follow_glyph",
                          chr(icon_glyphs.CHECK if followed else icon_glyphs.PLUS))
+        # The pill grows leftwards to its words, as the app's does; the caption
+        # font is the plate's face at 25.
+        def text_w(words):
+            return int(textmetrics.plate_text_width(words) * 25 / 20)
+        width = T.DISCOVER_FOLLOW_W + text_w(label) - text_w("Follow")
+        right = T.DISCOVER_FOLLOW_X + T.DISCOVER_FOLLOW_W
+        try:
+            self.getControl(self.DISCOVER_FOLLOW_ID).setWidth(width)
+            self.getControl(self.DISCOVER_FOLLOW_ID + 1).setPosition(right - width, T.DISCOVER_FOLLOW_Y)
+        except RuntimeError:
+            pass
 
     def _discover_follow_clicked(self) -> None:
         """Follow a genre (its shelves join For You), or stop following it."""

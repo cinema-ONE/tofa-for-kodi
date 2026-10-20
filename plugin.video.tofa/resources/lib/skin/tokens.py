@@ -378,6 +378,7 @@ DISCOVER_UNI_LINE_DY, DISCOVER_UNI_LINE_H = 398, 28
 DISCOVER_PAGE_TITLE_Y, DISCOVER_PAGE_TITLE_H = 136, 84
 DISCOVER_FOLLOW_X, DISCOVER_FOLLOW_Y = 1611, 149
 DISCOVER_FOLLOW_W, DISCOVER_FOLLOW_H = 212, 66
+DISCOVER_FOLLOW_TEXT_PAD = 48                # "Follow" ink at 1702, right-aligned
 DISCOVER_DIVIDER_W = 1823 - DISCOVER_LEFT
 # Coming Up's planner (app 2.1.0 captures, 2026-10-19): the page at rest,
 # under the sub-tabs. Focus in the pills or the days lifts it by CU_LIFT.
@@ -399,7 +400,7 @@ CU_OVERVIEW_PITCH = 32                       # two lines at most, as the app
 CU_ART_X, CU_ART_Y, CU_ART_W, CU_ART_H = 614, 120, 1306, 735
 CU_DAY_PITCH = 249.25
 CU_DAY_W = 233
-CU_HEAD_Y, CU_HEAD_H = 586, 32               # "Mon 19", cap 593-610
+CU_HEAD_Y, CU_HEAD_H = 585, 32               # "Mon 19", cap 593-610
 CU_REL_Y, CU_REL_H = 620, 24                 # "Today", cap 625-638
 CU_RULE_Y = 653
 CU_ROWS_Y = 664                              # the first thumb's top
@@ -1390,6 +1391,7 @@ FONT_BROWSE_CAPTION = "tofa_font_browse_caption"
 FONT_BROWSE_SECTION = "tofa_font_settings_title"   # bold 38, as Settings
 FONT_CARD_TITLE = "tofa_font_card_title"
 FONT_CARD_META = "tofa_font_card_meta"
+FONT_DAY_HEADING = "tofa_font_day_heading"
 FONT_FEATURE_TITLE = "tofa_font_feature_title"
 FONT_PERSON_NAME = "tofa_font_person_name"
 FONT_PERSON_PANEL = "tofa_font_person_panel"

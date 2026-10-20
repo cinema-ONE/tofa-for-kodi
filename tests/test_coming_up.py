@@ -92,6 +92,44 @@ grouped = discover.group_shelves({"shelves": [dict(SHELF, group="coming-up", ite
                                  home_rows.DISCOVER_TABS)
 check("an empty planner view is kept: it says Nothing dated", len(grouped["coming-up"]) == 1)
 
+# The view is the profile's, as the web keeps it (preferences.coming_up_view).
+import time
+from resources.lib.windows.main import MainWindow
+
+
+class FakeWindow:
+    _cu_saved_view = MainWindow._cu_saved_view
+    _cu_save_view = MainWindow._cu_save_view
+
+    def __init__(self, prefs, default):
+        self._preferences, self._cu_default_view = prefs, default
+        self._cu_saving, self._cu_pending_view = False, None
+
+    def _ensure_preferences(self):
+        return self._preferences
+
+
+class FakeClient:
+    def __init__(self):
+        self.saved = []
+
+    def update_preferences(self, patch):
+        self.saved.append(patch)
+
+
+check("the profile's saved view comes first",
+      FakeWindow({"coming_up_view": "movies"}, "shows")._cu_saved_view() == "movies")
+check("...then the server's default for the page",
+      FakeWindow({}, "movies")._cu_saved_view() == "movies")
+check("...and TV Shows when neither says", FakeWindow({"coming_up_view": "x"}, None)._cu_saved_view() == "shows")
+w, client = FakeWindow({}, "shows"), FakeClient()
+w._cu_save_view(client, "movies")
+deadline = time.time() + 2
+while w._cu_saving and time.time() < deadline:
+    time.sleep(0.01)
+check("a switch is saved on the profile", client.saved == [{"coming_up_view": "movies"}], str(client.saved))
+check("...and read back without asking the server again", w._cu_saved_view() == "movies")
+
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))
 raise SystemExit(1 if failed else 0)
