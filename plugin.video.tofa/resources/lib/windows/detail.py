@@ -2776,11 +2776,15 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _sync_mark_pills(self):
         """The marks' pills and words, as app 2.1.0 words them set and unset."""
         marks = getattr(self, "_marks", None) or {}
-        for key, prop, on, off in (("seen", "seen", "Seen", "Seen it"),
-                                   ("not_interested", "not_interested",
-                                    "Hidden from suggestions", "Not interested")):
-            self.setProperty("show_" + prop, "1" if key in marks else "")
-            self.setProperty(prop + "_label", on if marks.get(key) else off)
+        for key, on, off in (
+                ("seen", ("Seen", icon_glyphs.CIRCLE_CHECK_FILLED),
+                 ("Seen it", icon_glyphs.CIRCLE_CHECK)),
+                ("not_interested", ("Hidden from suggestions", icon_glyphs.THUMBS_DOWN_FILLED),
+                 ("Not interested", icon_glyphs.THUMBS_DOWN))):
+            label, glyph = on if marks.get(key) else off
+            self.setProperty("show_" + key, "1" if key in marks else "")
+            self.setProperty(key + "_label", label)
+            self.setProperty(key + "_glyph", chr(glyph))
 
     def _toggle_mark(self, seen_row: bool):
         """Set or clear Seen it / Not interested; silent unless it fails."""
@@ -2904,7 +2908,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             subtitle=self.getProperty("hero_meta_line") or "",
             eyebrow="OPTIONS",
             keys=keys,
-            resume=bool(self.resume_ms),
         )
         if picked == cardoptions.PLAY:
             self._play(self._fresh_resume_ms())
@@ -3200,7 +3203,6 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 title=item.getLabel() or "",
                 subtitle=item.getProperty("caption") or "",
                 keys=keys,
-                resume=bool(item.getProperty("progress_fill")) and not completed,
             )
             if picked == cardoptions.PLAY:
                 self._episode_clicked()
@@ -3242,9 +3244,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 seen=seen,
                 not_interested=not_interested,
             ) if listable or k not in (cardoptions.WATCHLIST_ADD, cardoptions.WATCHLIST_REMOVE)]
+            # The title alone, as the app's card menu draws it (2.1.0).
             picked = cardoptions.show(
                 title=item.getLabel() or "",
-                subtitle=item.getProperty("caption_meta") or "",
                 keys=keys,
             )
             # Play opens the title's own page, which owns version and resume.

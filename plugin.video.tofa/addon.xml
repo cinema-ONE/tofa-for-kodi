@@ -22,7 +22,7 @@
          SO: adding or changing a font means bumping resource.font.tofa's
          version AND this minversion to match. tests/test_font_resource_addon.py
          fails if they drift. -->
-    <import addon="resource.font.tofa" minversion="1.0.0" version="1.0.0"/>
+    <import addon="resource.font.tofa" minversion="1.1.0" version="1.0.0"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>video</provides>
