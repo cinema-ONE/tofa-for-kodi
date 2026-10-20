@@ -1568,10 +1568,17 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     def _sync_nav_collapse(self, control_id) -> None:
         """App 2.0.0 fades the tabs, gear and avatar and shrinks the fox once
         focus goes past a page's first row. Settings and Browse keep the bar."""
+        section = self.getProperty("active_section")
         rows = {"home": self.ROW_LIST_IDS,
                 "discover": self.DISCOVER_ROW_LIST_IDS,
-                "search": self.SEARCH_RESULT_LIST_IDS}.get(self.getProperty("active_section"), ())
-        self.setProperty("nav_collapsed", "1" if control_id in rows[1:] else "")
+                "search": self.SEARCH_RESULT_LIST_IDS}.get(section, ())
+        first = 1
+        if (section == "home" and self.getProperty("row1_kind") == "saga"
+                and self._cw_list_id == rows[0]):
+            # App 2.1.0 keeps the bar over Continue the saga under Continue
+            # Watching; the web draws the two as one section.
+            first = 2
+        self.setProperty("nav_collapsed", "1" if control_id in rows[first:] else "")
 
     def onFocus(self, controlID):
         self._sync_nav_collapse(controlID)
@@ -2327,15 +2334,19 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
 
     def _saga_strip_files(self, u: dict) -> tuple:
         """(strip, up-next segment) PNG paths for a universe, named by their
-        bytes so Kodi's texture cache never shows a stale one."""
+        content so Kodi's texture cache never shows a stale one."""
         width, height, radius = self.SAGA_STRIP_PX
         folder = self._saga_dir()
         os.makedirs(folder, exist_ok=True)
         paths = []
         for up_next in (False, True):
-            data = universe.strip_png(u, width, height, radius=radius, up_next=up_next)
-            path = os.path.join(folder, "strip-{0}.png".format(hashlib.sha1(data).hexdigest()[:16]))
+            # Named by what it shows, so an unchanged strip is never drawn again.
+            key = "{0}x{1}r{2}{3}:{4}".format(width, height, radius, "n" * up_next,
+                                              universe.strip_key(u))
+            path = os.path.join(folder, "strip-{0}.png".format(
+                hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]))
             if not os.path.exists(path):
+                data = universe.strip_png(u, width, height, radius=radius, up_next=up_next)
                 with open(path + ".tmp", "wb") as fh:
                     fh.write(data)
                 os.replace(path + ".tmp", path)
