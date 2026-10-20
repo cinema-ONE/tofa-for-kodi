@@ -1,8 +1,0 @@
-- The posters behind Browse's tiles drift at the Apple TV app's pace, and
-  the picture dips briefly as you move between tiles, as on the Apple TV.
-- Watchlist can be sorted (Date Added, Title, Year, Rating, Runtime or
-  Shuffle) and narrowed by genre or year.
-- Posters download much smaller where the server holds a large image, and
-  the Videos library's backdrop shows many more different posters.
-- Fixed the title page's episode row moving focus onto a card that was
-  mostly off the screen.
