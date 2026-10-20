@@ -134,9 +134,19 @@ class UniverseWindow(kodigui.ControlledWindow):
         self.setProperty("u_details_label", "Details")
         self.strip = kodigui.ManagedControlList(self, self.STRIP_ID, 30)
         self.panels = [kodigui.ManagedControlList(self, pid, 21) for pid in self.GRID_PANEL_IDS]
-        self._services = self._request_services()
+        start = self.getFocusId()
         self._render()
-        self.setFocusId(self.CONTINUE_ID if self.universe.get("next_up") else self.ORDER_ID)
+        # On a slow box the viewer's first key can land while the page fills:
+        # Kodi has already moved focus, and pulling it back would eat the key.
+        if self.getFocusId() in (start, 0):
+            self.setFocusId(self.CONTINUE_ID if self.universe.get("next_up") else self.ORDER_ID)
+        threading.Thread(target=self._load_services, name="tofa-universe-arr", daemon=True).start()
+
+    def _load_services(self):
+        """Whether Radarr / Sonarr can take requests, asked after the page is up."""
+        self._services = self._request_services()
+        if any(self._services):
+            self._sync_requests()
 
     def onReInit(self):
         """Back from a title's page: watching it may have moved up next."""
@@ -232,6 +242,22 @@ class UniverseWindow(kodigui.ControlledWindow):
             self._layout_block_request(index, name)
             shown.append(self.GRID_PANEL_IDS[index])
         self._grid_shown = shown
+        self._wire_grid()
+
+    def _sync_requests(self):
+        """The Request pill and each chapter's "+ Request N", without refilling."""
+        count = len(self._missing())
+        self.setProperty("u_request_label", "Request {0} missing".format(
+            regional.number(count)) if count else "")
+        for index, (name, _members) in enumerate(
+                grid_blocks(self.universe, self.order)[:len(self.panels)]):
+            self._layout_block_request(index, name)
+        self._wire_grid()
+        self._layout_pills()
+
+    def _wire_grid(self):
+        """Up and Down between the chapters, through a chapter's Request."""
+        shown = self._grid_shown
         for index, panel_id in enumerate(shown):
             block = self.GRID_PANEL_IDS.index(panel_id)
             above = shown[index - 1] if index else None
