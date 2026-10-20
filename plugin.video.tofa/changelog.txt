@@ -1,3 +1,35 @@
+1.3.0
+- Discover follows the Apple TV app: For You, Trending, Coming Up, Best
+  Of, Universes and Genres. Coming Up is a week planner for TV shows and
+  films, one column per day; Universes lists every film and TV universe;
+  a genre opens its own page, which you can follow.
+- Home has a new row, Continue the saga, under Continue Watching: the film
+  and TV universes you are part way through, each with the next title to
+  watch. Select one to see the whole universe in story or release order.
+  A title's page shows the universe it belongs to, with its place in it,
+  and Down on a universe lists every title by chapter.
+- A universe's page can request what your library is missing, for the
+  whole universe or one chapter, if your server has Radarr or Sonarr.
+- A title you don't have shows Seen it and Not interested on its page;
+  both are marked with a filled icon once set.
+- Card menus list their choices in the Apple TV app's order, and Not
+  interested takes the card off the row straight away.
+- On a title page, the options menu of More Like This, More to Discover
+  and a collection's titles now does what it offers: Watchlist and Mark as
+  Watched work there, and Seen it and Not interested appear where they
+  apply.
+- A film resumes the edition you were watching last, wherever you open
+  it from, not the first one listed.
+- Browse shows your libraries in a row of their own, above Watchlist,
+  History, Collections and Surprise me.
+- Back on Browse, Discover, Search or Settings now returns to Home, to the
+  card you were on.
+- Settings > Appearance has Missing episodes: Automatic, Always show or
+  Never show.
+- Playback Options lists each quality as 1080p, 720p and so on, with the
+  rate the server will actually send.
+- After updating, tofa asks once more to install its fonts.
+
 1.2.0
 - Needs tofa media server 0.12.0 or newer. An older server still works,
   but you are told once per session that some screens may be incomplete.
