@@ -75,6 +75,15 @@ def _movie_file(files: list, prefer_id=None, records: dict | None = None):
     return preferred or (available[0] if available else (files[0] if files else None))
 
 
+def _with_presentation(resolution: str, f: dict, edition: str) -> str:
+    """"4K IMAX", as the server labels a version: since 0.12.1 IMAX, Open Matte
+    and the like are a file's `presentation`, not its edition."""
+    presentation = f.get("presentation") or ""
+    if presentation.lower() in edition.lower():
+        presentation = ""
+    return " ".join(x for x in (resolution, presentation) if x)
+
+
 def _dot_join(*parts) -> str:
     return u" • ".join(p for p in parts if p)
 
@@ -3392,11 +3401,12 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         codec = tracks.video_codec_label(f.get("video_codec")) if full else ""
         size = tracks.file_size_label(f.get("file_size")) if full else ""
         edition = f.get("edition") or ""
+        shown = _with_presentation(resolution, f, edition)
         if edition:
-            return edition, _dot_join(resolution, dynamic_range, codec, audio_label, size)
+            return edition, _dot_join(shown, dynamic_range, codec, audio_label, size)
         # A file with no edition name leads with its resolution instead of a
         # blank, so the detail must not repeat it.
-        return (resolution or "Version"), _dot_join(dynamic_range, codec, audio_label, size)
+        return (shown or "Version"), _dot_join(dynamic_range, codec, audio_label, size)
 
     def _version_row_label(self, f: dict) -> str:
         """The two columns as one string, for the Options panel's subtitle --
@@ -3441,8 +3451,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         is choosing between, and 1080p vs 4K only becomes the distinguishing
         fact when nobody has named the files."""
         fmt = f.get("format") or {}
-        return (f.get("edition") or fmt.get("resolution_label")
-                or cls._resolution_fallback(f) or "Version")
+        return (f.get("edition")
+                or _with_presentation(fmt.get("resolution_label") or cls._resolution_fallback(f), f, "")
+                or "Version")
 
     def _version_clicked(self):
         """Pick which of the title's own FILES plays.

@@ -57,6 +57,22 @@ def main() -> int:
     check("nothing at all still says something",
           label(format={}) == "Version")
 
+    # Server 0.12.1: IMAX and the like are the file's `presentation`.
+    check("a presentation joins the resolution, as the server labels it",
+          label(height=2160, format={"resolution_label": "4K"}, presentation="IMAX") == "4K IMAX")
+    check("...but a named edition still wins",
+          label(edition="Extended Cut IMAX", presentation="IMAX", format={}) == "Extended Cut IMAX")
+    row = DetailWindow.__new__(DetailWindow)._version_row_parts
+    check("a row names it after the resolution when an edition leads",
+          row({"edition": "Theatrical Cut", "presentation": "IMAX",
+               "format": {"resolution_label": "4K"}}) == ("Theatrical Cut", "4K IMAX"))
+    check("...and never twice when the edition already says it",
+          row({"edition": "Extended Cut IMAX", "presentation": "IMAX",
+               "format": {"resolution_label": "4K"}}) == ("Extended Cut IMAX", "4K"))
+    check("...and leads with it when nothing is named",
+          row({"presentation": "Open Matte", "format": {"resolution_label": "1080p"}})[0]
+          == "1080p Open Matte")
+
     # The actual regression: raw dimensions must never reach the pill, no
     # matter what else the file carries.
     for res in ("1920x1080", "4000x2250", "3840x1600"):
