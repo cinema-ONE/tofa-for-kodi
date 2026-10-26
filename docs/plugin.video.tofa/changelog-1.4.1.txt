@@ -1,0 +1,6 @@
+- Discover's tabs (For You, Trending and the rest) no longer disappear
+  after a visit to Coming Up.
+- Coming Up no longer stays empty when you move to it along the tabs
+  after tofa has been reopened.
+- A film's versions name IMAX, Open Matte and similar beside the
+  resolution, for example "4K IMAX", as tofa labels them.
