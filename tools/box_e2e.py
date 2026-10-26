@@ -7,6 +7,9 @@ asserts each one loaded, plays a title on a TEST profile only, and fails on
 any error tofa wrote to kodi.log meanwhile. Changes no setting; playback
 leaves a few seconds of progress on the test profile.
 
+It reads focus and window properties, never pixels: after a change to
+animation or visibility, look at the screenshots it saves.
+
     python3 tools/box_e2e.py --host 192.168.1.50 --ssh mybox \
         [--play --test-profile "Test"]
 """
