@@ -787,7 +787,9 @@ def render_main() -> str:
     row_kwargs["discover_lift"] = (
         f'                <animation effect="slide" end="0,-{T.CU_LIFT}" time="{T.SCROLLTIME}" '
         f'tween="cubic" easing="out" condition="{CU_LIFTED}">Conditional</animation>\n'
-        f'                <animation effect="fade" end="0" time="{T.SCROLLTIME}" '
+        # start="100" is load-bearing: a reversed Conditional stays APPLIED at its
+        # start, and a fade's default start is 0 -- the strip never came back.
+        f'                <animation effect="fade" start="100" end="0" time="{T.SCROLLTIME}" '
         f'condition="{CU_LIFTED}">Conditional</animation>')
 
     # Browse (app 2.0): the landing's tiles, the view's two header pills and

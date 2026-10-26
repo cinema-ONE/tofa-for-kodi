@@ -203,6 +203,20 @@ g._cu_poster_moved(3, "right", stuck=False)
 check("a move Kodi made inside the grid only follows with the hero",
       g.focused is None and g._cu["stop"] == (0, 3, 4), str(g._cu["stop"]))
 
+# Kodi's Python breaks strptime on a worker thread once a script has re-run,
+# and Coming Up renders on one: day headings must not depend on it.
+import datetime as _dt
+from resources.lib import regional
+_real = _dt.datetime
+class _NoStrptime(_dt.datetime):
+    strptime = None
+_dt.datetime = _NoStrptime
+try:
+    heading = regional.weekday_day("2026-10-26")
+finally:
+    _dt.datetime = _real
+check("a day heading needs no strptime", heading.endswith("26"), repr(heading))
+
 failed = [n for n, ok in RESULTS if not ok]
 print("\n%d/%d passed" % (len(RESULTS) - len(failed), len(RESULTS)))
 raise SystemExit(1 if failed else 0)

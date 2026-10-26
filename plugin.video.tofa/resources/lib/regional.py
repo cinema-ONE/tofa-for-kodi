@@ -305,7 +305,9 @@ def _as_date(value):
         return value
     text = str(value or "")[:10]
     try:
-        return datetime.datetime.strptime(text, "%Y-%m-%d").date()
+        # Not strptime: in a re-run script Kodi's Python raises "'NoneType'
+        # object is not callable" from it on a worker thread.
+        return datetime.date.fromisoformat(text)
     except ValueError:
         return None
 
