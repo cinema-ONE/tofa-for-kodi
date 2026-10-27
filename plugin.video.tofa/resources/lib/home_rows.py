@@ -122,7 +122,8 @@ def normalize_home_screen(home: dict | None) -> dict:
 
     Returns a NEW dict {show_hero, rows} and never touches the input. Rows
     without a string `id` are dropped, as the web drops them; `enabled`
-    defaults to True; a row's type is inferred from its fields the same way.
+    defaults to True and a missing type reads as builtin. Unlike the web, a
+    row keeps its other fields and its type even when we cannot draw it.
     """
     defaults = ([{"id": rid, "type": "builtin", "enabled": True}
                  for rid in HOME_ROW_DEFAULT_BUILTINS]
@@ -140,15 +141,11 @@ def normalize_home_screen(home: dict | None) -> dict:
     for row in stored:
         if not isinstance(row, dict) or not isinstance(row.get("id"), str):
             continue
+        # Every stored field and type is kept: this list is written back on
+        # the first edit, and a newer app's row must survive it intact.
         row_type = row.get("type")
-        if row_type not in ("genre", "discovery"):
-            row_type = "builtin"
-        out = {"id": row["id"], "type": row_type,
-               "enabled": row.get("enabled") if isinstance(row.get("enabled"), bool) else True}
-        if row.get("genre"):
-            out["genre"] = row["genre"]
-        if row.get("discoveryList"):
-            out["discoveryList"] = row["discoveryList"]
+        out = dict(row, type=row_type if isinstance(row_type, str) and row_type else "builtin",
+                   enabled=row.get("enabled") if isinstance(row.get("enabled"), bool) else True)
         rows.append(out)
     present = {r["id"] for r in rows}
     if "continue_saga" not in present:

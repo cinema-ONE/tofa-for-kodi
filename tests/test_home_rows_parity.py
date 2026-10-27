@@ -109,6 +109,16 @@ check("a row without an id is dropped",
       all("no" not in r for r in odd["rows"]) and len(odd["rows"]) == 3 + 10)
 check("a switched-off row stays switched off",
       odd_suggested["enabled"] is False)
+newer = {"id": "library:abc", "type": "library", "library_id": "abc", "enabled": False}
+kept = home_rows.normalize_home_screen({"rows": [newer, {"id": "suggested", "type": "builtin",
+                                                          "extra": 1}]})["rows"]
+kept = {r["id"]: r for r in kept}
+check("a row type we do not know is kept exactly as stored",
+      kept["library:abc"] == newer, str(kept["library:abc"]))
+check("...and a known row keeps fields we do not read",
+      kept["suggested"].get("extra") == 1)
+check("...and neither can be removed from the editor, nor drawn",
+      home_rows.row_removable(newer) is False and home_rows.row_title(newer, _) == "")
 check("...and a present default is not appended again",
       [r["id"] for r in odd["rows"]].count("suggested") == 1
       and [r["id"] for r in odd["rows"]].count("discover-popular-tv") == 1)
