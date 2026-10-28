@@ -7952,8 +7952,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             commercial, pause = get(ids["commercial"]), get(self.SETTINGS_PAUSESCREEN_ID)
             commercial.controlDown(pause)
             pause.controlUp(commercial)
-            add_row = get(self.SETTINGS_ADD_ROW_ID)
-            add_row.controlDown(add_row)
         except Exception:                                       # noqa: BLE001
             log.warning("settings: could not wire the picker rows")
 
