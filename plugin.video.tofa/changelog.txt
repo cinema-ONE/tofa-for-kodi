@@ -1,3 +1,10 @@
+1.4.2
+- Settings > Home can add a row of one library's newest additions, as
+  tofa's Apple TV app does.
+- "Add a genre row" in Settings > Home can now be reached with the remote.
+- Home rows added in a newer tofa app are kept when you change your Home
+  rows here, instead of being lost from every app.
+
 1.4.1
 - Discover's tabs (For You, Trending and the rest) no longer disappear
   after a visit to Coming Up.
