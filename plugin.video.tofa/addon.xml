@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.4.1" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.4.2" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,12 +45,11 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Discover's tabs (For You, Trending and the rest) no longer disappear
-        after a visit to Coming Up.
-      - Coming Up no longer stays empty when you move to it along the tabs
-        after tofa has been reopened.
-      - A film's versions name IMAX, Open Matte and similar beside the
-        resolution, for example "4K IMAX", as tofa labels them.
+      - Settings &gt; Home can add a row of one library's newest additions, as
+        tofa's Apple TV app does.
+      - "Add a genre row" in Settings &gt; Home can now be reached with the remote.
+      - Home rows added in a newer tofa app are kept when you change your Home
+        rows here, instead of being lost from every app.
     </news>
     <assets>
       <icon>icon.png</icon>
