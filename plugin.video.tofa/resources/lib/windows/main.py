@@ -662,9 +662,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     SETTINGS_PAUSESCREEN_ID = 8495      # Playback > PLAYER (device)
     SETTINGS_MOTION_ID = 8295           # Appearance > MOTION (device)
     SETTINGS_SPOTLIGHT_ID = 8320
-    #: ADD A ROW: "Add a Discover row", "Add a genre row" (app 2.0).
+    #: ADD A ROW: "Add a Discover row", "Add a genre row" (app 2.0) and
+    #: "Add a library row" (app 2.1.2).
     SETTINGS_ADD_ROW_ID = 8340
     SETTINGS_ADD_GENRE_ID = 8345
+    SETTINGS_ADD_LIBRARY_ID = 8346
     SETTINGS_REGION_ID = 8360
     SETTINGS_MISSING_ID = 8366
     # Playback & Video (8400s) and Audio & Subtitles (8500s) each own a
@@ -849,6 +851,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # the Settings editor fetched the page first. The server names a
         # discovery row on every surface (home_rows.row_title).
         self._shelf_titles: dict[str, str] = {}
+        self._library_names: dict | None = None  # library id -> name, see _library_names_map()
         self._settings_languages: list | None = None  # /media/facets languages, see _settings_language_facet()
         self._settings_metadata_options: dict | None = None  # see _settings_metadata()
         self._settings_last_control: dict[str, int] = {}  # page key -> control left last
@@ -1092,6 +1095,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self, self.SETTINGS_ADD_ROW_ID, 1)
         self.settings_add_genre_list = kodigui.ManagedControlList(
             self, self.SETTINGS_ADD_GENRE_ID, 1)
+        self.settings_add_library_list = kodigui.ManagedControlList(
+            self, self.SETTINGS_ADD_LIBRARY_ID, 1)
         self.settings_region_list = kodigui.ManagedControlList(
             self, self.SETTINGS_REGION_ID, 1)
         self.settings_missing_list = kodigui.ManagedControlList(
@@ -1506,6 +1511,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             self._settings_add_row("discovery")
         elif controlID == self.SETTINGS_ADD_GENRE_ID:
             self._settings_add_row("genre")
+        elif controlID == self.SETTINGS_ADD_LIBRARY_ID:
+            self._settings_add_row("library")
         elif controlID == self.SETTINGS_REGION_ID:
             self._settings_region_clicked()
         elif controlID == self.SETTINGS_MISSING_ID:
@@ -2106,6 +2113,14 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 row_kind = "library"
                 row_title = genre
                 items = self._home_genre_row_items(client, genre)
+            elif row_type == "library":
+                # App 2.1.2: one library's newest additions, named after it.
+                row_title = home_rows.row_title(row, _, library_names=self._library_names_map(client))
+                if not row_title:
+                    log.debug(f"main.py: skipping library row for unknown library {row.get('libraryId')}")
+                    continue
+                row_kind = "library"
+                items = self._home_library_row_items(client, row["libraryId"])
             else:
                 log.debug(f"main.py: skipping unknown home_screen row type={row_type}")
                 continue
@@ -2306,6 +2321,31 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             kodigui.ERROR("main.py: genre row {0} failed: {1}".format(genre, exc))
             return []
         return (resp or {}).get("items") or []
+
+    def _home_library_row_items(self, client: MediaServerClient, library_id: str) -> list[dict]:
+        """Items for a library row: that library's media, newest added first,
+        which is the order the Apple TV app shows."""
+        try:
+            resp = client.media_list(
+                media_type=None, library_id=library_id, sort="added_at", order="desc",
+                page=1, per_page=20,
+            )
+        except http.ApiError as exc:
+            kodigui.ERROR("main.py: library row {0} failed: {1}".format(library_id, exc))
+            return []
+        return (resp or {}).get("items") or []
+
+    def _library_names_map(self, client: MediaServerClient | None, refresh: bool = False) -> dict:
+        """Library id -> name, fetched once; a failed fetch is retried next time."""
+        if client is not None and (self._library_names is None or refresh):
+            try:
+                libraries = client.libraries() or []
+            except http.ApiError as exc:
+                log.warning("main.py: libraries unavailable ({0})".format(exc.message))
+                return self._library_names or {}
+            self._library_names = {lib["id"]: lib["name"] for lib in libraries
+                                   if isinstance(lib, dict) and lib.get("id") and lib.get("name")}
+        return self._library_names or {}
 
     def _home_discovery_shelves(self, client: MediaServerClient) -> dict[str, dict]:
         """Discovery shelves a home row can reference, keyed by every id the
@@ -7433,6 +7473,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         8205: "fox", 8310: "episodes_remaining", 8312: "watched_marks", 8315: "hide_spoilers",
         8495: "pause_screen", 8295: "reduce_motion",
         8360: "region", 8366: "missing_episodes", 8320: "spotlight", 8340: "add_discover", 8345: "add_genre",
+        8346: "add_library",
         8620: "licences", 8720: "art_budget", 8730: "art_clear",
     }
 
@@ -7443,7 +7484,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                          "home_rows": "home", "spotlight": "home",
                          "rating": "cards", "episodes_remaining": "cards",
                          "watched_marks": "cards",
-                         "add_discover": "home", "add_genre": "home"}
+                         "add_discover": "home", "add_genre": "home", "add_library": "home"}
     #: A skip row's preview: the button's words, the segment, and whether it
     #: sits at the start or the end of the programme.
     SETTINGS_SKIP_PREVIEWS = {
@@ -7911,8 +7952,6 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             commercial, pause = get(ids["commercial"]), get(self.SETTINGS_PAUSESCREEN_ID)
             commercial.controlDown(pause)
             pause.controlUp(commercial)
-            add_row = get(self.SETTINGS_ADD_ROW_ID)
-            add_row.controlDown(add_row)
         except Exception:                                       # noqa: BLE001
             log.warning("settings: could not wire the picker rows")
 
@@ -8248,8 +8287,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # (index in home_screen.rows, title, enabled, removable) per row we can
         # name; a row type this add-on does not know is skipped, never guessed.
         shown = []
+        names = self._library_names_map(self._get_client()) if any(
+            r.get("type") == "library" for r in home.get("rows") or []) else {}
         for index, row in enumerate(home.get("rows") or []):
-            title = home_rows.row_title(row, _, self._shelf_titles)
+            title = home_rows.row_title(row, _, self._shelf_titles, names)
             if not title:
                 log.debug("settings: skipping unnameable home row {0}".format(row))
                 continue
@@ -8304,7 +8345,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             chain = [get(self.SETTINGS_SPOTLIGHT_ID)]
             chain += [get(lid) for lid in home_rows.HOME_ROW_EDIT_IDS[
                 :len(getattr(self, "_settings_home_shown", []))]]
-            chain += [get(self.SETTINGS_ADD_ROW_ID), get(self.SETTINGS_ADD_GENRE_ID)]
+            chain += [get(self.SETTINGS_ADD_ROW_ID), get(self.SETTINGS_ADD_GENRE_ID),
+                      get(self.SETTINGS_ADD_LIBRARY_ID)]
         except Exception as exc:                                # noqa: BLE001
             log.debug("settings: home row wiring skipped ({0!r})".format(exc))
             return
@@ -8368,10 +8410,11 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
     # --- Home: adding a row ------------------------------------------------
 
     def _settings_fill_add_rows(self):
-        """ADD A ROW's two rows. What they offer is only fetched on Select,
+        """ADD A ROW's three rows. What they offer is only fetched on Select,
         so this page draws without a network call."""
         for lst, label in ((self.settings_add_row_list, "Add a Discover row"),
-                           (self.settings_add_genre_list, "Add a genre row")):
+                           (self.settings_add_genre_list, "Add a genre row"),
+                           (self.settings_add_library_list, "Add a library row")):
             if not lst.size():
                 lst.addItems([kodigui.ManagedListItem(label=label)])
 
@@ -8413,6 +8456,13 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
                 options.append((shelf.get("title") or key, {
                     "type": "discovery", "discoveryList": key,
                     "id": "discover-{0}".format(key), "enabled": True}))
+        elif kind == "library":
+            taken = {r.get("libraryId") for r in rows if r.get("type") == "library"}
+            # Every library, in the server's order, as the Apple TV app offers them.
+            names = self._library_names_map(client, refresh=True)
+            for library_id, name in names.items():
+                if library_id not in taken:
+                    options.append((name, home_rows.library_row(library_id)))
         else:
             taken = {r.get("genre") for r in rows if r.get("type") == "genre"}
             try:
@@ -8433,7 +8483,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         def _pick(index):
             home["rows"] = rows + [options[index][1]]
             self._settings_write_home(home)
-        key = "add_discover" if kind == "discovery" else "add_genre"
+        key = {"discovery": "add_discover", "library": "add_library"}.get(kind, "add_genre")
         self._settings_choose(key, settings_info.ROWS[key].title,
                               [{"label": label} for label, _r in options], -1, _pick)
 

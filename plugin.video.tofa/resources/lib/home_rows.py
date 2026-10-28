@@ -183,7 +183,7 @@ def row_removable(row: dict) -> bool:
     off? Mirrors the web app's `Jn`.
 
     A default row never can. Anything else can, provided we recognise it:
-    a discovery row, a genre row, or a builtin from BUILTIN_ROW_LABELS.
+    a discovery, genre or library row, or a builtin from BUILTIN_ROW_LABELS.
 
     A row matching none of those is one this add-on does not understand, and
     it is left alone deliberately -- removing what we cannot name would
@@ -192,11 +192,17 @@ def row_removable(row: dict) -> bool:
     if row_is_default(row):
         return False
     row_type = row.get("type")
-    if row_type in ("genre", "discovery"):
+    if row_type in ("genre", "discovery", "library"):
         return True
     if row.get("genre") or row.get("discoveryList"):
         return True
     return row_type == "builtin" and row.get("id") in BUILTIN_ROW_LABELS
+
+
+def library_row(library_id: str) -> dict:
+    """A "Recently Added in <library>" row, stored as the Apple TV app (2.1.2) stores it."""
+    return {"type": "library", "id": "library-recent:" + library_id,
+            "libraryId": library_id, "enabled": True}
 
 
 DISCOVERY_LIST_LABELS: dict[str, int] = {
@@ -318,7 +324,8 @@ DISCOVER_FILTERS: tuple[tuple[str, str], ...] = (
 DISCOVER_FILTER_LIST_ID = 6950
 
 
-def row_title(row: dict, localize, shelf_titles: dict | None = None) -> str:
+def row_title(row: dict, localize, shelf_titles: dict | None = None,
+              library_names: dict | None = None) -> str:
     """A display name for one `home_screen.rows` entry, WITHOUT touching the
     network.
 
@@ -334,6 +341,9 @@ def row_title(row: dict, localize, shelf_titles: dict | None = None) -> str:
 
     The local label map is the fallback, and deslug() the fallback's fallback,
     so the editor still draws without a network call.
+
+    A library row is named after its library, from `library_names` (id ->
+    name); one whose library is gone, or not yet known, is unnamed.
 
     Returns "" for a row this add-on does not understand, so callers can skip
     it the same way _home_load() does rather than showing a blank line.
@@ -355,4 +365,7 @@ def row_title(row: dict, localize, shelf_titles: dict | None = None) -> str:
         return deslug(list_type)
     if row_type == "genre":
         return row.get("genre") or ""
+    if row_type == "library":
+        name = (library_names or {}).get(row.get("libraryId"))
+        return "Recently Added in {0}".format(name) if name else ""
     return ""

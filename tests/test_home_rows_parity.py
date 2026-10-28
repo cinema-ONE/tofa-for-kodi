@@ -109,16 +109,26 @@ check("a row without an id is dropped",
       all("no" not in r for r in odd["rows"]) and len(odd["rows"]) == 3 + 10)
 check("a switched-off row stays switched off",
       odd_suggested["enabled"] is False)
-newer = {"id": "library:abc", "type": "library", "library_id": "abc", "enabled": False}
+newer = {"id": "party:abc", "type": "party", "party_id": "abc", "enabled": False}
 kept = home_rows.normalize_home_screen({"rows": [newer, {"id": "suggested", "type": "builtin",
                                                           "extra": 1}]})["rows"]
 kept = {r["id"]: r for r in kept}
 check("a row type we do not know is kept exactly as stored",
-      kept["library:abc"] == newer, str(kept["library:abc"]))
+      kept["party:abc"] == newer, str(kept["party:abc"]))
 check("...and a known row keeps fields we do not read",
       kept["suggested"].get("extra") == 1)
 check("...and neither can be removed from the editor, nor drawn",
       home_rows.row_removable(newer) is False and home_rows.row_title(newer, _) == "")
+# The Apple TV app's library row (2.1.2), exactly as it stored one.
+atv = {"enabled": True, "id": "library-recent:f3d6", "libraryId": "f3d6", "type": "library"}
+check("a library row is written as the Apple TV app writes it",
+      home_rows.library_row("f3d6") == atv, str(home_rows.library_row("f3d6")))
+check("...is named after its library",
+      home_rows.row_title(atv, _, library_names={"f3d6": "Movies"}) == "Recently Added in Movies")
+check("...is unnamed, so skipped, when its library is unknown",
+      home_rows.row_title(atv, _, library_names={}) == "" and home_rows.row_title(atv, _) == "")
+check("...and can be removed, not being a default",
+      home_rows.row_removable(atv) is True)
 check("...and a present default is not appended again",
       [r["id"] for r in odd["rows"]].count("suggested") == 1
       and [r["id"] for r in odd["rows"]].count("discover-popular-tv") == 1)

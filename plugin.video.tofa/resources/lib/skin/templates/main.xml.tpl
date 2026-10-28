@@ -2208,6 +2208,7 @@
 {settings_homeadd_eyebrow}
 {settings_homeadd_discover}
 {settings_homeadd_genre}
+{settings_homeadd_library}
                     </control>
 
                 </control>
