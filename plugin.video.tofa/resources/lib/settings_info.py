@@ -156,6 +156,9 @@ ROWS: dict[str, Info] = {
     "add_genre": Info(
         "Add a genre row",
         "Puts everything in your library from one genre at the end of Home."),
+    "add_library": Info(
+        "Add a library row",
+        "Puts the newest additions to one of your libraries at the end of Home."),
     # Privacy & About
     "licences": Info(
         "Open Source Notices",

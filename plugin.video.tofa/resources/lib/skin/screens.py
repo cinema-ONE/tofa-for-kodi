@@ -1124,7 +1124,11 @@ def render_main() -> str:
         settings_homeadd_genre=fragments.settings_choice_list(
             8345, value_property="settings_homeadd_none",
             posy=T.SETTINGS_HOMEADD_Y + T.SETTINGS_HOMEROW_PITCH,
-            onup=8340, ondown=8345),
+            onup=8340, ondown=8346),
+        settings_homeadd_library=fragments.settings_choice_list(
+            8346, value_property="settings_homeadd_none",
+            posy=T.SETTINGS_HOMEADD_Y + 2 * T.SETTINGS_HOMEROW_PITCH,
+            onup=8345, ondown=8346),
         **settings_seg_groups,
         settings_homerow_editors=settings_homerow_editors,
         settings_episodes_item=settings_episodes_item,
