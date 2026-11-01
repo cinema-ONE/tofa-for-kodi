@@ -143,7 +143,7 @@ class UniverseWindow(kodigui.ControlledWindow):
         threading.Thread(target=self._load_services, name="tofa-universe-arr", daemon=True).start()
 
     def _load_services(self):
-        """Whether Radarr / Sonarr can take requests, asked after the page is up."""
+        """Whether this viewer can ask for titles, asked after the page is up."""
         self._services = self._request_services()
         if any(self._services):
             self._sync_requests()
@@ -301,13 +301,14 @@ class UniverseWindow(kodigui.ControlledWindow):
     # ------------------------------------------------------------------
 
     def _request_services(self) -> tuple:
-        """(films, shows): whether the server has Radarr / Sonarr to ask."""
+        """(films, shows): whether this viewer can ask, the same for both."""
         try:
-            status = (self.client.integrations_status() if self.client else None) or {}
+            info = (self.client.system_info() if self.client else None) or {}
         except http.ApiError as exc:
-            kodigui.ERROR("universepage: integrations failed: {0}".format(exc))
-            status = {}
-        return status.get("radarr") is not None, status.get("sonarr") is not None
+            kodigui.ERROR("universepage: system info failed: {0}".format(exc))
+            info = {}
+        allowed = info.get("requests_available") is True
+        return allowed, allowed
 
     def _missing(self, chapter=None) -> list:
         films, shows = self._services

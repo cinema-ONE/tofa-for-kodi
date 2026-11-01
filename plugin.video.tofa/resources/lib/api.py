@@ -597,6 +597,11 @@ class MediaServerClient:
     def continue_watching(self) -> Any:
         return self._get("/api/v1/users/me/continue")
 
+    def binge_ready(self, limit: int = 20) -> Any:
+        """`items` of whole seasons this profile can start: `{media,
+        season_number, episode_count, ...}`, newest first."""
+        return self._get("/api/v1/media/binge-ready", params={"limit": limit})
+
     def suggested(self) -> Any:
         """`items` (owned, playable) plus `personalized` (false on
         cold-start fallback; caller decides whether to hide a mostly-empty
@@ -667,9 +672,10 @@ class MediaServerClient:
         return self._get("/api/v1/libraries")
 
     def browse_sections(self) -> Any:
-        """Browse's tabs (0.12.0): `{sections: [{key, kind "type"|"library",
-        media_type, name, total, libraries: [{id, name}], library_id}]}`."""
-        return self._get("/api/v1/browse/sections")
+        """Browse's tabs in the owner's layout: `{sections: [{key, kind
+        "type"|"library", library_kind, media_type, name, total,
+        libraries: [{id, name}], library_id}]}`."""
+        return self._get("/api/v1/browse/sections", params={"library_layout": "true"})
 
     def discovery_list(self, list_type: str) -> Any:
         """One of the 7 fixed `ListType` values (trending-movies, trending-tv,
@@ -857,10 +863,6 @@ class MediaServerClient:
         items the curated route answers, so every member is owned and
         opens by media id."""
         return self._get(f"/api/v1/collections/custom/{collection_id}")
-
-    def integrations_status(self) -> Any:
-        """`{radarr, sonarr, ...}`: a service is null when none is set up."""
-        return self._get("/api/v1/integrations/status")
 
     def discovery_detail(self, media_type: str, tmdb_id: int) -> Any:
         return self._get(f"/api/v1/discovery/detail/{media_type}/{tmdb_id}")

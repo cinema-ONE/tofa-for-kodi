@@ -63,19 +63,24 @@ def _nav_mark(x: int, w: int, y: int, h: int, texture: str, visible: str) -> str
                         </control>"""
 
 
-def _nav_slot(idx: int, *, focused: bool, list_id: int) -> str:
+def _nav_slot(idx: int, *, focused: bool, list_id: int, moved: int | None = None) -> str:
     """Everything tab `idx` draws, in item-relative coordinates.
+
+    `moved` is the spot it draws at with Discover off: that tab's place, for
+    Search; the gear keeps its own place but its list position is one less.
 
     The focused layout is the SELECTED tab: underline while the bar has
     focus, a dot once focus has gone down into the page. Other tabs rest in
     half-white, except the current one, which stays white."""
-    off = idx * _NAV_SLOT
-    gate = f"String.IsEqual(ListItem.Property(nav_idx),{idx})"
+    off = (idx if moved is None else moved) * _NAV_SLOT
+    slot_id = idx if moved is None else "{0}p{1}".format(idx, moved)
+    gate = f"String.IsEqual(ListItem.Property(nav_idx),{slot_id})"
     on = _NAV_FOCUSED.format(list_id=list_id)
     rest = _NAV_RESTING.format(list_id=list_id)
     current = "!String.IsEmpty(ListItem.Property(is_current))"
     if idx < len(T.NAV_TAB_INK):
-        x, w = T.NAV_TAB_INK[idx][0] - off, T.NAV_TAB_INK[idx][1]
+        ink_x = T.NAV_TAB_INK[idx if moved is None else moved][0]
+        x, w = ink_x - off, T.NAV_TAB_INK[idx][1]
         centre = x + w // 2
         label_x = x - T.NAV_TAB_LSB[idx]
         white = "$INFO[Window.Property(text_primary)]"
@@ -134,8 +139,10 @@ def nav_bar(*, ondown_target: int, list_id: int = 3000, group_id: int = 2000,
     memory and the section switch all keep working off a single control.
     Right from the gear goes to the avatar, which the template draws."""
     slots = len(T.NAV_TAB_INK) + 1
-    item = "".join(_nav_slot(i, focused=False, list_id=list_id) for i in range(slots))
-    sel = "".join(_nav_slot(i, focused=True, list_id=list_id) for i in range(slots))
+    # Search and the gear, one list position earlier with Discover off.
+    spots = [(i, None) for i in range(slots)] + [(3, 2), (4, 3)]
+    item = "".join(_nav_slot(i, focused=False, list_id=list_id, moved=m) for i, m in spots)
+    sel = "".join(_nav_slot(i, focused=True, list_id=list_id, moved=m) for i, m in spots)
     return f"""        <control type="group" id="{group_id}">
             {T.NAV_COLLAPSE_FADE}
             <control type="list" id="{list_id}">

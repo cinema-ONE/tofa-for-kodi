@@ -121,6 +121,9 @@ check("...and neither can be removed from the editor, nor drawn",
       home_rows.row_removable(newer) is False and home_rows.row_title(newer, _) == "")
 # The Apple TV app's library row (2.1.2), exactly as it stored one.
 atv = {"enabled": True, "id": "library-recent:f3d6", "libraryId": "f3d6", "type": "library"}
+check("Ready to binge can be added, and is not a default",
+      "binge_ready" in home_rows.ADDABLE_BUILTIN_IDS
+      and "binge_ready" not in home_rows.HOME_ROW_PROTECTED_IDS)
 check("a library row is written as the Apple TV app writes it",
       home_rows.library_row("f3d6") == atv, str(home_rows.library_row("f3d6")))
 check("...is named after its library",

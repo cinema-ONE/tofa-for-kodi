@@ -75,7 +75,7 @@ from . import log
 
 #: 0.12.0: Seen it / Not interested, the server's next-up episode, missing
 #: episodes per profile, subtitle roles, person pages by id, Browse sections.
-MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 12, 0)
+MIN_SERVER_VERSION: Tuple[int, int, int] = (0, 13, 0)
 
 #: Warn once per KODI session, not once per add-on run. The add-on is
 #: relaunched constantly -- from the Programs tile, from a profile switch,
