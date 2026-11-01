@@ -81,6 +81,12 @@ def fetch_builtin_row(client: MediaServerClient, row_id: str) -> list:
                      "poster_path": it.get("poster_path"),
                      "delete_after": it.get("delete_after"), "available": True}
                     for it in (client.leaving_soon() or []) if isinstance(it, dict)]
+        if row_id == "binge_ready":
+            # A season's show, with the season's own caption and destination.
+            return [dict(it["media"], binge_season=it.get("season_number"),
+                         binge_episodes=it.get("episode_count"))
+                    for it in (client.binge_ready() or {}).get("items") or []
+                    if isinstance(it.get("media"), dict)]
         if row_id == "recent_movies":
             resp = client.media_list(media_type="movie", sort="added_at", order="desc", page=1, per_page=25)
             return (resp or {}).get("items") or []

@@ -26,6 +26,35 @@ NAV_TABS = (
 )
 
 
+#: Where the tabs after Discover draw once it is gone: nav_idx per list position
+#: (fragments.nav_bar draws these spots as "<tab>p<position>").
+_NO_DISCOVER_IDX = {"search_window": "3p2", "settings_window": "4p3"}
+
+
+def _tabs(window) -> tuple:
+    return getattr(window, "_nav_tabs", NAV_TABS)
+
+
+def drop_discover(window, nav_list_id: int) -> None:
+    """Take the Discover tab off the bar; the owner has switched it off.
+
+    Removes the one item rather than rebuilding: a reset would drop focus."""
+    nav_list = window.getControl(nav_list_id)
+    tabs = _tabs(window)
+    targets = [t[1] for t in tabs]
+    if "discover_window" not in targets:
+        return
+    index = targets.index("discover_window")
+    selected = nav_list.getSelectedPosition()
+    window._nav_tabs = tabs[:index] + tabs[index + 1:]
+    nav_list.removeItem(index)
+    for pos, (_label, target, _icon) in enumerate(window._nav_tabs):
+        if target in _NO_DISCOVER_IDX:
+            nav_list.getListItem(pos).setProperty("nav_idx", _NO_DISCOVER_IDX[target])
+    if selected > index:
+        nav_list.selectItem(selected - 1)
+
+
 def build_nav(window, nav_list_id: int, current_target: str) -> None:
     """Populate `nav_list_id` with NAV_TABS, flagging + selecting whichever
     tab matches `current_target` (e.g. "home_window")."""
@@ -55,7 +84,7 @@ def set_current(window, nav_list_id: int, current_target: str) -> None:
     follows the real current section instead of staying stuck on whichever
     one the window happened to start on."""
     nav_list = window.getControl(nav_list_id)
-    for idx, (_label, target, _icon) in enumerate(NAV_TABS):
+    for idx, (_label, target, _icon) in enumerate(_tabs(window)):
         li = nav_list.getListItem(idx)
         li.setProperty("is_current", "1" if target == current_target else "")
 
@@ -67,9 +96,10 @@ def resolve_nav_click(window, nav_list_id: int, current_target: str) -> str | No
     sibling imports."""
     nav_list = window.getControl(nav_list_id)
     index = nav_list.getSelectedPosition()
-    if index < 0 or index >= len(NAV_TABS):
+    tabs = _tabs(window)
+    if index < 0 or index >= len(tabs):
         return None
-    _label, target, _icon = NAV_TABS[index]
+    _label, target, _icon = tabs[index]
     if target == current_target:
         return None
     return target
@@ -90,9 +120,10 @@ def resolve_nav_focus(window, nav_list_id: int, current_target: str) -> str | No
     that it is an ordinary section, it loads on focus like the rest."""
     nav_list = window.getControl(nav_list_id)
     index = nav_list.getSelectedPosition()
-    if index < 0 or index >= len(NAV_TABS):
+    tabs = _tabs(window)
+    if index < 0 or index >= len(tabs):
         return None
-    _label, target, _icon = NAV_TABS[index]
+    _label, target, _icon = tabs[index]
     if target == current_target:
         return None
     return target

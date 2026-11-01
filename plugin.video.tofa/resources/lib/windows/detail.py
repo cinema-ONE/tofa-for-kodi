@@ -311,6 +311,8 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         # point opens the title with no file in mind, so this is None there
         # and _next_up_episode() or _movie_file() works it out.
         self.prefer_file_id = kwargs.pop("play_file_id", None)
+        #: The season to open on, from a Ready to binge card.
+        self.prefer_season = kwargs.pop("season_number", None)
         kodigui.ControlledWindow.__init__(self, *args, **kwargs)
         self.client: MediaServerClient | None = None
         #: True when _get_client came back empty because the viewer DECLINED
@@ -1596,7 +1598,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if next_ep is None:
             next_ep, _ = self._next_up_episode(client, seasons)
         default_season_number = None
-        if next_ep:
+        if any(s.get("season_number") == self.prefer_season for s in seasons):
+            default_season_number = self.prefer_season
+        elif next_ep:
             for s in seasons:
                 if next_ep in (s.get("episodes") or []):
                     default_season_number = s.get("season_number")
@@ -2271,10 +2275,9 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self.is4k_capable = bool(disc.get("is4k_capable"))
         self.disc_seasons = list(disc.get("seasons") or [])
         arr = disc.get("arr_status") or {}
-        # No integration configured for this media type means nothing can be
-        # requested at all, and a pill that always fails is worse than one
-        # that is honest about it.
-        integrated = bool(disc.get("integration_available"))
+        # The server says whether this viewer can ask at all, and a pill that
+        # always fails is worse than one that is honest about it.
+        integrated = bool(disc.get("requests_available"))
 
         self.can_request = False
         self.can_retry_request = False
@@ -3891,7 +3894,7 @@ class DetailWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             )
         except http.ApiError as exc:
             kodigui.ERROR("detail.py: request failed: {0}".format(exc))
-            self._notify("Could not request this title")
+            self._notify(http.viewer_message(exc, "Could not request this title"))
             return
         self._refresh_request_state()
 

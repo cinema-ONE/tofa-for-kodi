@@ -52,12 +52,12 @@ class FakeWindow:
         return bool(self.props.get("show_cancel_request"))
 
 
-MOVIE = {"integration_available": True}
+MOVIE = {"requests_available": True}
 
 
 # 1. No integration for this media type: nothing is requestable, whatever
 #    else the payload says.
-w = FakeWindow("tv").render({"integration_available": False,
+w = FakeWindow("tv").render({"requests_available": False,
                              "seasons": [{"season_number": 1}]})
 check("no integration says so and offers nothing", w.label == "Not in library" and not w.actionable)
 
@@ -115,7 +115,7 @@ check("an available request is coming to the library too",
 #    reads as a broken button.
 for disc in (dict(MOVIE, request_status="requested", request_id="r1"),
              dict(MOVIE, request_status="failed", request_id="r1"),
-             dict(MOVIE, integration_available=False),
+             dict(MOVIE, requests_available=False),
              dict(MOVIE, arr_status={"tracked": True, "has_file": True})):
     w = FakeWindow().render(disc)
     check(f"{w.label!r} carries no glyph", w.glyph == "")

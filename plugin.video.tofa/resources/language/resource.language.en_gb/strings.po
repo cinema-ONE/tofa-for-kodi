@@ -537,3 +537,7 @@ msgstr ""
 msgctxt "#31134"
 msgid "Continue the saga"
 msgstr ""
+
+msgctxt "#31135"
+msgid "Ready to binge"
+msgstr ""

@@ -45,6 +45,9 @@ BUILTIN_ROW_LABELS: dict[str, int] = {
     # the `lifecycle` capability; an older server answers 404, which
     # fetch_builtin_row turns into an empty row, and an empty row hides.
     "leaving_soon": 31123,
+    # Server 0.13.0: whole seasons this profile can start, from
+    # GET /media/binge-ready. Offered where the server reports `media.binge_ready`.
+    "binge_ready": 31135,
     "top_rated_movies": 31062,
     "top_rated_tv": 31063,
     "suggested": 31064,

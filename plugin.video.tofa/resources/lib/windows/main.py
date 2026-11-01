@@ -67,6 +67,10 @@ def _card_meta_left(item: dict) -> str:
     leaves = _leaves_label(item.get("delete_after"))
     if leaves:
         return leaves
+    if item.get("binge_season") is not None:
+        count = item.get("binge_episodes") or 0
+        return "Season {0} · {1} episode{2}".format(
+            item["binge_season"], count, "" if count == 1 else "s")
     return _item_year(item)
 
 
@@ -844,6 +848,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         self._browse_letter_counts: dict[str, int] = {}
         self._server_capabilities: set = set()  # from GET /api/v1/system/info, see _ensure_capabilities()
         self._capabilities_loaded = False
+        #: The owner's "Show Discover and requests" (GET /system/info).
+        self._discover_enabled = True
         self._capabilities_fetch: threading.Thread | None = None  # see _start_capabilities()
         self._capabilities_lock = threading.Lock()
         self._preferences: dict | None = None  # whoami's preferences, see _ensure_preferences()
@@ -2905,7 +2911,7 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         src = item.dataSource or {}
         media_id = src.get("id") or src.get("media_id")
         if media_id:
-            self.open_detail(media_id=media_id)
+            self.open_detail(media_id=media_id, season_number=src.get("binge_season"))
 
     # ==================================================================
     # BROWSE SECTION -- Watchlist/History/Collections/Surprise Me fixed
@@ -2971,6 +2977,10 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
             return
         self._server_capabilities = set(info.get("capabilities") or [])
         self._capabilities_loaded = True
+        if info.get("discover_enabled") is False:
+            self._discover_enabled = False
+            if self.isOpen:
+                navbar.drop_discover(self, self.NAV_LIST_ID)
         log.info("capabilities: %d in %.2fs"
                  % (len(self._server_capabilities), time.monotonic() - started))
         # Same response, so the version check is free here. It warns at most
@@ -3283,15 +3293,18 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         """A Browse section as a tile source, count from its `total`.
 
         A section of one library browses as that library, folders included;
-        one spanning several is filtered by type alone, as on tofa's web app."""
-        media_type = sec.get("media_type")
+        one spanning several is filtered by type alone, as on tofa's web app.
+        A mixed library holds both types, so it is not filtered by one."""
+        mixed = sec.get("kind") == "library" and sec.get("library_kind") == "mixed"
+        media_type = None if mixed else sec.get("media_type")
         libs = sec.get("libraries") or []
         return {
-            "kind": "library", "key": sec.get("key"),
+            "kind": "library", "key": sec.get("key"), "mixed": mixed,
             "id": sec.get("library_id") or (libs[0].get("id") if len(libs) == 1 else None),
             "name": sec.get("name") or "Library", "media_type": media_type,
-            "glyph": {"movie": icon_glyphs.CLAPPERBOARD, "tv": icon_glyphs.TV}.get(
-                media_type, icon_glyphs.VIDEO),
+            "glyph": icon_glyphs.CLAPPERBOARD if mixed else
+                {"movie": icon_glyphs.CLAPPERBOARD, "tv": icon_glyphs.TV}.get(
+                    media_type, icon_glyphs.VIDEO),
             "count": _library_count(sec),
         }
 
@@ -3309,7 +3322,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not count:
             return ""
         noun = {"collections": "collections", "watchlist": "titles"}.get(
-            kind, self._TILE_NOUN.get(src.get("media_type"), "videos"))
+            kind, "titles" if src.get("mixed") else
+            self._TILE_NOUN.get(src.get("media_type"), "videos"))
         return "{0} {1}".format(count, noun)
 
     def _browse_library_count_art(self, client: MediaServerClient, lib: dict) -> tuple:
@@ -4271,7 +4285,9 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if not self._browse_folders_offered(src):
             return False
         on = self._browse_folders_on.get(src.get("id"))
-        return src.get("media_type") not in ("movie", "tv") if on is None else on
+        if on is not None:
+            return on
+        return not src.get("mixed") and src.get("media_type") not in ("movie", "tv")
 
     def _browse_sync_folders_pill(self, src: dict):
         """The title row's view pill names where it goes (app 2.0): Folders,
@@ -4280,7 +4296,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         on = offered and self._browse_in_folders(src)
         self.setProperty("browse_folders_offered", "1" if offered else "")
         self.setProperty("browse_folders", "1" if on else "")
-        own = self._VIEW_KIND.get(src.get("media_type"), self._VIEW_OTHER)
+        own = "Titles" if src.get("mixed") else self._VIEW_KIND.get(
+            src.get("media_type"), self._VIEW_OTHER)
         view = self.folders_list[0]
         view.setProperty("view_label", own if on else "Folders")
         view.setProperty("view_glyph", chr(
@@ -6432,7 +6449,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         raw_movies, actors, discover = [], [], []
         if client:
             try:
-                resp = client.search(q, movie_limit=40, actor_limit=12, discover_limit=12,
+                resp = client.search(q, movie_limit=40, actor_limit=12,
+                                     discover_limit=12 if self._discover_enabled else 0,
                                      collection_limit=1) or {}
                 raw_movies = resp.get("movies") or []
                 actors = resp.get("actors") or []
@@ -8435,8 +8453,8 @@ class MainWindow(focusmemory.FocusMemory, kodigui.ControlledWindow):
         if kind == "discovery":
             present = {r.get("id") for r in rows}
             for rid in home_rows.ADDABLE_BUILTIN_IDS:
-                if rid in present or (rid == "leaving_soon"
-                                      and not self._has_capability("lifecycle")):
+                needs = {"leaving_soon": "lifecycle", "binge_ready": "media.binge_ready"}.get(rid)
+                if rid in present or (needs and not self._has_capability(needs)):
                     continue
                 options.append((_(home_rows.BUILTIN_ROW_LABELS[rid]),
                                 {"type": "builtin", "id": rid, "enabled": True}))

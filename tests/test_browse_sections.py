@@ -41,6 +41,25 @@ check("no folders for a section spanning libraries",
       not W._browse_folders_offered(Caps(), movies))
 check("folders for a one-library section", W._browse_folders_offered(Caps(), tv))
 
+MIXED = {"key": "library:mix", "kind": "library", "library_kind": "mixed", "media_type": "movie",
+         "name": "Family", "total": 40, "library_id": "mix",
+         "libraries": [{"id": "mix", "name": "Family"}]}
+mixed = W._browse_section_source(MIXED)
+check("a mixed library is not filtered by a type", mixed["media_type"] is None, str(mixed))
+check("...and browses as that library", mixed["id"] == "mix")
+
+
+class Folders(Caps):
+    _browse_folders_on = {}
+    def _browse_active_source(self):
+        return mixed
+    def _browse_folders_offered(self, src):
+        return True
+
+check("...and opens on its titles, not its folders", not W._browse_in_folders(Folders(), mixed))
+check("a library of other videos still opens on its folders", W._browse_in_folders(
+    Folders(), W._browse_section_source({"kind": "library", "media_type": "other", "library_id": "v"})))
+
 print()
 failed = [n for n, ok in RESULTS if not ok]
 print(f"{len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
