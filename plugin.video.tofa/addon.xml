@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.4.2" provider-name="cinemaONE">
+<addon id="plugin.video.tofa" name="tofa for Kodi" version="1.5.0" provider-name="cinemaONE">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.31.0"/>
@@ -45,11 +45,16 @@ Both play through Kodi's native VideoPlayer, negotiating DirectPlay/DirectFile s
     <license>GPL-2.0-only</license>
     <website>https://tofa.tv</website>
     <news>
-      - Settings &gt; Home can add a row of one library's newest additions, as
-        tofa's Apple TV app does.
-      - "Add a genre row" in Settings &gt; Home can now be reached with the remote.
-      - Home rows added in a newer tofa app are kept when you change your Home
-        rows here, instead of being lost from every app.
+      - Home can add a Ready to binge row: whole seasons you can start from the
+        beginning. Its cards open on that season.
+      - Request buttons now follow your server, so they also work without Radarr
+        or Sonarr, and go when your requests are switched off.
+      - Browse follows your server's layout, by type or by library, and a library
+        of films and shows together opens on all its titles.
+      - If your server has Discover switched off, its tab goes, and Search shows
+        only what is on your server.
+      - Needs tofa media server 0.13.0 or newer. An older server still works,
+        but you are told once per session that some screens may be incomplete.
     </news>
     <assets>
       <icon>icon.png</icon>
