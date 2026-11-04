@@ -77,9 +77,8 @@ it; that is the value doing its job, not a copied sentence.
 MARKERS
 -------
 
-Every IPv4 literal, box hostname, server name and personal identifier that
-has ever been in this tree, as patterns rather than as a memory of which
-files were fixed. IPs are checked against an ALLOWLIST rather than a
+Every IPv4 literal and private identifier, as patterns rather than as a
+memory of which files were fixed. IPs are checked against an ALLOWLIST rather than a
 denylist: a new address typed into a docstring next year is the case that
 matters, and it cannot be on a list of the ones we already knew about.
 
@@ -187,7 +186,7 @@ IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 #:
 #: `tofa.cinemaone.ch` is the add-on's update channel, settled 2026-08-15. The
 #: domain it sits on is also the personal email domain below, so the marker
-#: rule still has to fire on `adrian.betschart@cinemaone.ch` and on any other
+#: rule still has to fire on an address at that domain and on any other
 #: host -- only these exact names are exempt.
 ALLOWED_HOSTS = {
     "tofa.cinemaone.ch",
@@ -201,17 +200,9 @@ ALLOWED_HOST_RE = re.compile(
 #: "UGOOS AM6B" is a product, and naming the box a measurement was taken on
 #: is what makes the measurement worth anything.
 MARKER_PATTERNS = [
-    (re.compile(r"\bCINEMAONE-BOX\b", re.I), "a box hostname"),
-    (re.compile(r"\bHOMATICS-BOX\b", re.I), "a box hostname"),
-    (re.compile(r"\bMACBOT\b", re.I), "a box hostname"),
-    (re.compile(r"\bKODIBOT\b", re.I), "a box hostname"),
-    (re.compile(r"\bPETABOT\b", re.I), "a server name"),
-    (re.compile(r"feste ?TESTE", re.I), "a server name"),
-    (re.compile(r"\bbetschart\b", re.I), "a surname"),
     (re.compile(r"cinemaone\.ch", re.I), "a personal email domain"),
-    (re.compile(r"\bbe6a8725\b|\b9f34e13d\b", re.I), "a real server uuid"),
     (re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.I), "a MAC address"),
-    # Case-SENSITIVE, and the only one that is: `/Users/adrian` is a macOS
+    # Case-SENSITIVE, and the only one that is: `/Users/<name>` is a macOS
     # home directory, `/users/me` is the API endpoint half this add-on's
     # docstrings mention.
     (re.compile(r"/Users/[a-z]+"), "a path on someone's machine"),
@@ -573,7 +564,7 @@ def scan_markers() -> list[tuple[str, int, str, str]]:
             # A hit that falls INSIDE an allowed hostname is that hostname,
             # not a leak -- `tofa.cinemaone.ch` contains the private domain by
             # construction. Matched by span rather than by substring so that
-            # `adrian.betschart@cinemaone.ch` on the same line still fires.
+            # an address at that domain on the same line still fires.
             allowed = [m.span() for m in ALLOWED_HOST_RE.finditer(line)]
             for pattern, why in MARKER_PATTERNS + private:
                 for match in pattern.finditer(line):

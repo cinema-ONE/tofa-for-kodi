@@ -36,7 +36,7 @@ DEFAULT_CONTAINERS = "mkv,mp4,m2ts,ts,avi,mov,webm"
 #: instead, so anything this box cannot decode WELL has no business on the
 #: list.
 #:
-#: Measured on AM6B-BOX (CoreELEC 21.3, Amlogic, kernel 4.9) 2026-08-19 by
+#: Measured on an AM6B+ (CoreELEC 21.3, Amlogic, kernel 4.9) 2026-08-19 by
 #: playing an HEVC-only fMP4 HLS media playlist -- the packaging a re-encode
 #: actually arrives in, which DirectPlay of an HEVC FILE never exercises:
 #:
@@ -88,7 +88,7 @@ class CapabilityProfile:
     #: settings are per-API -- usedxva2 / usevtb / usemediacodec / usevaapi
     #: -- never per codec, and the only per-codec ones anywhere are
     #: CoreELEC's useamcodec{h264,mpeg2,mpeg4,vc1}, which has no HEVC entry
-    #: at all (all 378 settings enumerated on AM6B-BOX, 2026-08-19).
+    #: at all (all 378 settings enumerated on an AM6B+, 2026-08-19).
     #: Deriving this would be inventing an answer Kodi never gave, which is
     #: the failure capabilities.py exists to avoid.
     transcode_video_codecs: str = DEFAULT_TRANSCODE_VIDEO_CODECS
