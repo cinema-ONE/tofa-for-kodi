@@ -7,7 +7,7 @@ H.264, which is what every release before this one got.
 The trap this file guards is that it looks like a copy of
 `direct_play_video_codecs` and must not be one. Those two answer different
 questions, and getting the second wrong does not degrade quality, it hands
-the box a stream it cannot keep up with. Measured on AM6B-BOX (CoreELEC 21.3,
+the box a stream it cannot keep up with. Measured on an AM6B+ (CoreELEC 21.3,
 Amlogic, kernel 4.9) on 2026-08-19 by playing single-codec streams and
 reading `Player.Process(videodecoder)`:
 
@@ -68,7 +68,7 @@ def run():
     # hardware -- and then it is a per-box question, not this constant.
     check("av1 is NOT offered as a re-encode target",
           "av1" not in wanted,
-          "%r -- AM6B-BOX decodes AV1 on ff-libdav1d (software), 2026-08-19"
+          "%r -- the AM6B+ decodes AV1 on ff-libdav1d (software), 2026-08-19"
           % (wanted,))
     for absent in ("vp9", "mpeg2video", "vc1"):
         check("%s is not a re-encode target either" % absent,
